@@ -60,6 +60,74 @@ export type Database = {
           },
         ]
       }
+      clients: {
+        Row: {
+          archived_at: string | null
+          billing_email: string | null
+          contact_email: string | null
+          contact_name: string | null
+          contact_phone: string | null
+          created_at: string
+          health: string
+          id: string
+          industry: string | null
+          name: string
+          notes: string | null
+          organization_id: string
+          owner_id: string | null
+          service: string | null
+          status: string
+          updated_at: string
+          website: string | null
+        }
+        Insert: {
+          archived_at?: string | null
+          billing_email?: string | null
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          health?: string
+          id?: string
+          industry?: string | null
+          name: string
+          notes?: string | null
+          organization_id: string
+          owner_id?: string | null
+          service?: string | null
+          status?: string
+          updated_at?: string
+          website?: string | null
+        }
+        Update: {
+          archived_at?: string | null
+          billing_email?: string | null
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          health?: string
+          id?: string
+          industry?: string | null
+          name?: string
+          notes?: string | null
+          organization_id?: string
+          owner_id?: string | null
+          service?: string | null
+          status?: string
+          updated_at?: string
+          website?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clients_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invitations: {
         Row: {
           accepted_at: string | null
@@ -177,6 +245,8 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      has_role: { Args: { org: string; roles: string[] }; Returns: boolean }
+      is_member_of: { Args: { org: string }; Returns: boolean }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
     }
