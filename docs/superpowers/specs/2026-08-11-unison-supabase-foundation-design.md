@@ -43,7 +43,7 @@ The project has no git repository. `git init`, then commit the current front end
 
 ### Type safety
 
-`next.config.mjs` sets `typescript.ignoreBuildErrors: true`. Remove it. This requires `tsc --noEmit` to pass first; the current error count is unknown and is the opening task. If the cleanup turns out to be large, report before proceeding rather than absorbing it silently.
+`next.config.mjs` sets `typescript.ignoreBuildErrors: true`. Remove it. Verified on the baseline commit: `tsc --noEmit` already passes clean, so this is a free change — and from that point a broken query fails the build instead of shipping.
 
 ### Migration home
 
@@ -258,7 +258,7 @@ Deliberately excluded from this phase, in rough priority order for what follows:
 
 ## Open risks
 
-- **Unknown typecheck debt.** `ignoreBuildErrors` has been masking errors for an unknown period. The size of that cleanup is not yet measured.
+- ~~**Unknown typecheck debt.**~~ Retired 2026-08-11: `tsc --noEmit` passes clean on the baseline commit, so removing `ignoreBuildErrors` requires no cleanup.
 - **Shared UAT database during tests.** Fixture scoping is the mitigation; drift toward a local stack is the escape hatch.
 - **Invitation deliverability.** Client-facing mail from a general-purpose mailbox lands in spam more readily than mail from a transactional provider. The domain's SPF and DKIM records need checking before the first real client invitation, and GoDaddy's daily cap needs confirming against expected volume.
 - **Atlas naming collision.** UNISON's Atlas module, the `himark-site` Atlas chatbot product, and the archived Command Center spec all use the name. Not a blocker for this phase, but it will need resolving before Atlas gains a backend.
