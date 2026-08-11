@@ -1,10 +1,14 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { MissingEnvError, readAppUrl, readSmtpEnv, readSupabaseEnv } from '../../lib/env.ts'
+import { MissingEnvError, readAppUrl, readSmtpEnv, readSupabasePublicEnv, readSupabaseSecretKey } from '../../lib/env.ts'
 
-const supabaseVars = {
+const supabasePublicVars = {
   NEXT_PUBLIC_SUPABASE_URL: 'https://example.supabase.co',
   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_test',
+}
+
+const supabaseVars = {
+  ...supabasePublicVars,
   SUPABASE_SECRET_KEY: 'secret',
 }
 
@@ -16,23 +20,38 @@ const smtpVars = {
   SMTP_FROM: 'HIMARK <invitations@himark.example>',
 }
 
-test('readSupabaseEnv returns typed values when present', () => {
-  const env = readSupabaseEnv(supabaseVars)
+test('readSupabasePublicEnv returns typed values when present', () => {
+  const env = readSupabasePublicEnv(supabaseVars)
   assert.equal(env.SUPABASE_URL, 'https://example.supabase.co')
-  assert.equal(env.SUPABASE_SECRET_KEY, 'secret')
+  assert.equal(env.SUPABASE_PUBLISHABLE_KEY, 'sb_publishable_test')
 })
 
-test('readSupabaseEnv names the missing variable', () => {
-  const { SUPABASE_SECRET_KEY: _omitted, ...incomplete } = supabaseVars
-  assert.throws(() => readSupabaseEnv(incomplete), (error: unknown) => {
+test('readSupabasePublicEnv names the missing variable', () => {
+  const { NEXT_PUBLIC_SUPABASE_URL: _omitted, ...incomplete } = supabasePublicVars
+  assert.throws(() => readSupabasePublicEnv(incomplete), (error: unknown) => {
     assert.ok(error instanceof MissingEnvError)
-    assert.match((error as Error).message, /SUPABASE_SECRET_KEY/)
+    assert.match((error as Error).message, /NEXT_PUBLIC_SUPABASE_URL/)
     return true
   })
 })
 
-test('readSupabaseEnv does not require SMTP variables', () => {
-  assert.doesNotThrow(() => readSupabaseEnv(supabaseVars))
+test('readSupabasePublicEnv does not require SUPABASE_SECRET_KEY', () => {
+  // The whole point of splitting the reader: a deployment holding only the
+  // public keys (the correct posture for a user-scoped client) must be able
+  // to construct that client without the service-role secret being present.
+  assert.doesNotThrow(() => readSupabasePublicEnv(supabasePublicVars))
+})
+
+test('readSupabaseSecretKey returns the secret when present', () => {
+  assert.equal(readSupabaseSecretKey(supabaseVars), 'secret')
+})
+
+test('readSupabaseSecretKey names the missing variable', () => {
+  assert.throws(() => readSupabaseSecretKey(supabasePublicVars), (error: unknown) => {
+    assert.ok(error instanceof MissingEnvError)
+    assert.match((error as Error).message, /SUPABASE_SECRET_KEY/)
+    return true
+  })
 })
 
 test('readSmtpEnv coerces the port to a number', () => {

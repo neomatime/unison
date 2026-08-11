@@ -1,6 +1,6 @@
 import 'server-only'
 import { createClient } from '@supabase/supabase-js'
-import { readSupabaseEnv } from '@/lib/env'
+import { readSupabasePublicEnv, readSupabaseSecretKey } from '@/lib/env'
 import type { Database } from '@/types/database'
 
 /**
@@ -9,8 +9,9 @@ import type { Database } from '@/types/database'
  * Never import this from anything under features/ — a test enforces that.
  */
 export function createAdminSupabase() {
-  const env = readSupabaseEnv(process.env)
-  return createClient<Database>(env.SUPABASE_URL, env.SUPABASE_SECRET_KEY, {
+  const env = readSupabasePublicEnv(process.env)
+  const secretKey = readSupabaseSecretKey(process.env)
+  return createClient<Database>(env.SUPABASE_URL, secretKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   })
 }

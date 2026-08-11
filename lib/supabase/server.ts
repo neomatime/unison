@@ -1,11 +1,11 @@
 import 'server-only'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
-import { readSupabaseEnv } from '@/lib/env'
+import { readSupabasePublicEnv } from '@/lib/env'
 import type { Database } from '@/types/database'
 
 export async function createServerSupabase() {
-  const env = readSupabaseEnv(process.env)
+  const env = readSupabasePublicEnv(process.env)
   const cookieStore = await cookies()
 
   return createServerClient<Database>(env.SUPABASE_URL, env.SUPABASE_PUBLISHABLE_KEY, {

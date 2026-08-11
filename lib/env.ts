@@ -19,12 +19,15 @@ function requiredPort(source: Source, name: string): number {
   return value
 }
 
-export function readSupabaseEnv(source: Source) {
+export function readSupabasePublicEnv(source: Source) {
   return {
     SUPABASE_URL: required(source, 'NEXT_PUBLIC_SUPABASE_URL'),
     SUPABASE_PUBLISHABLE_KEY: required(source, 'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY'),
-    SUPABASE_SECRET_KEY: required(source, 'SUPABASE_SECRET_KEY'),
   } as const
+}
+
+export function readSupabaseSecretKey(source: Source): string {
+  return required(source, 'SUPABASE_SECRET_KEY')
 }
 
 export function readSmtpEnv(source: Source) {
@@ -41,5 +44,5 @@ export function readAppUrl(source: Source): string {
   return required(source, 'NEXT_PUBLIC_APP_URL')
 }
 
-export type SupabaseEnv = ReturnType<typeof readSupabaseEnv>
+export type SupabasePublicEnv = ReturnType<typeof readSupabasePublicEnv>
 export type SmtpEnv = ReturnType<typeof readSmtpEnv>
