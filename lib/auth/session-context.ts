@@ -14,18 +14,37 @@ export function resolveSessionContext(input: {
   const active = input.memberships.filter((m) => m.status === 'active')
   if (active.length === 0) throw new NoMembershipError()
 
-  const candidate = input.cookieOrganizationId ?? active[0].organizationId
-
-  // A cookie naming a foreign organization falls back — it never fails open.
-  let organization: Organization
-  let membership: OrganizationMembership
-  try {
-    organization = resolveOrganization(input.organizations, candidate)
-    membership = requireMembership(active, input.userId, organization.id)
-  } catch {
-    organization = resolveOrganization(input.organizations, active[0].organizationId)
-    membership = requireMembership(active, input.userId, organization.id)
+  // A cookie naming a resolvable organization the user is an active member of wins.
+  // It never fails open: an unresolvable or foreign org falls through to the loop below.
+  if (input.cookieOrganizationId !== undefined) {
+    const fromCookie = tryResolve(input.organizations, active, input.userId, input.cookieOrganizationId)
+    if (fromCookie) return { ...fromCookie, role: fromCookie.membership.roleId }
   }
 
-  return { organization, membership, role: membership.roleId }
+  // Walk active memberships in order and take the first whose organization actually
+  // resolves (exists and is active). An org can be suspended/archived without its
+  // membership rows being touched, so resolution — not just membership status — must gate this.
+  for (const candidate of active) {
+    const resolved = tryResolve(input.organizations, active, input.userId, candidate.organizationId)
+    if (resolved) return { ...resolved, role: resolved.membership.roleId }
+  }
+
+  // No active membership has a usable organization. This is the caller's cue to
+  // redirect somewhere like /join-organization, not an unhandled error.
+  throw new NoMembershipError()
+}
+
+function tryResolve(
+  organizations: readonly Organization[],
+  active: readonly OrganizationMembership[],
+  userId: string,
+  organizationIdentifier: string,
+): { organization: Organization; membership: OrganizationMembership } | undefined {
+  try {
+    const organization = resolveOrganization(organizations, organizationIdentifier)
+    const membership = requireMembership(active, userId, organization.id)
+    return { organization, membership }
+  } catch {
+    return undefined
+  }
 }
