@@ -33,17 +33,25 @@ export async function proxy(request: NextRequest) {
     const url = request.nextUrl.clone()
     url.pathname = '/sign-in'
     url.searchParams.set('next', path)
-    return NextResponse.redirect(url)
+    return withRefreshedCookies(NextResponse.redirect(url), response)
   }
 
   if (user && PUBLIC_PATHS.some((p) => path.startsWith(p))) {
     const url = request.nextUrl.clone()
     url.pathname = '/overview'
     url.search = ''
-    return NextResponse.redirect(url)
+    return withRefreshedCookies(NextResponse.redirect(url), response)
   }
 
   return response
+}
+
+// A redirect response is a fresh NextResponse and does not carry the cookies `setAll` wrote
+// onto `response` above. Since Supabase refresh tokens rotate, dropping those cookies here
+// would leave the browser holding an already-consumed refresh token.
+function withRefreshedCookies(redirectResponse: NextResponse, response: NextResponse) {
+  for (const cookie of response.cookies.getAll()) redirectResponse.cookies.set(cookie)
+  return redirectResponse
 }
 
 export const config = {
