@@ -55,9 +55,9 @@ Two candidate homes exist: the empty `database/{migrations,seeds,policies,functi
 
 ### Configuration
 
-New dependencies: `@supabase/supabase-js`, `@supabase/ssr`, `zod`.
+New dependencies: `@supabase/supabase-js`, `@supabase/ssr`, `zod`, `nodemailer`.
 
-Three environment variables — project URL, publishable key, secret key — in `.env.local` (already covered by `.env*.local`). All access goes through `lib/env.ts`, which validates presence at module load and throws a named error. No `process.env.X!` anywhere else: a missing variable fails at boot with a clear message rather than as a null three layers deep.
+Environment variables — the Supabase project URL, publishable key, and secret key, plus the SMTP host, port, user, and sender address from section 6 — live in `.env.local` (already covered by `.env*.local`). All access goes through `lib/env.ts`, which validates presence at module load and throws a named error. No `process.env.X!` anywhere else: a missing variable fails at boot with a clear message rather than as a null three layers deep.
 
 ### Cleanup
 
@@ -199,7 +199,29 @@ Two consequences for a connected module:
 
 Audit rows are written by a trigger on `clients` capturing `auth.uid()`, old value, and new value — not inside each action. A convention every future action must remember is a convention that will eventually be forgotten. Actions stay focused on intent; the record keeps itself.
 
-## 6. Testing
+## 6. Email delivery
+
+Invitations are client-facing mail from HIMARK, so they cannot go out through Supabase's default sender. Delivery uses the existing HIMARK GoDaddy mailbox, configured in two places.
+
+**Supabase Auth mailer.** Custom SMTP configured in the project's Auth settings, covering password reset and email verification. The default templates are rebranded to match UNISON so the three emails a new user receives look like one system.
+
+**UNISON's own sender.** The invitation email carries our token, from our `invitations` table, so it is not Supabase's to send. A small module under `lib/email/` — a directory already reserved for this — wraps `nodemailer` behind a single `sendEmail(to, template, data)` interface. Server actions call that; they never touch transport details.
+
+One interface, two consumers, one mailbox. The provider stays swappable if GoDaddy's limits become a constraint.
+
+### Configuration
+
+SMTP host, port, and sender address are environment variables validated by `lib/env.ts` alongside the Supabase keys. The exact host depends on which GoDaddy email product backs the domain — their own SMTP relay and a Microsoft 365-backed mailbox use different endpoints — so it is confirmed against the live account at implementation rather than assumed here.
+
+The SMTP password is a credential. It is entered by the account owner directly into the Supabase dashboard and into `.env.local`; it is never pasted into the repository, a migration, or a tool call.
+
+### Constraints
+
+GoDaddy enforces a daily outbound cap well below a transactional provider's. Invite-only provisioning keeps volume low, so this is adequate — but a future bulk notification feature would outgrow it, which is the point at which the `lib/email/` interface earns its keep.
+
+Tests never send real mail. A development transport logs the rendered message instead, so the invitation flow is testable without a live mailbox.
+
+## 7. Testing
 
 Three layers, two of which already exist.
 
@@ -221,6 +243,7 @@ These run against `unison-uat` itself using fixture organizations the suite crea
 - `pnpm build` succeeds
 - All specs pass, including the new RLS integration suite
 - A browser pass, screenshotted: sign in, land on Clients, create a client, edit it, archive it, sign out — with rows visibly persisting in Supabase
+- One real invitation sent from the HIMARK mailbox, accepted by a second account, resulting in a working membership
 
 ## Out of scope
 
@@ -230,7 +253,6 @@ Deliberately excluded from this phase, in rough priority order for what follows:
 - Atlas model provider, retrieval, and prompt system
 - Automation engine, scheduler, and job queue
 - File storage and storage-path tenancy
-- Email delivery for invitations beyond Supabase Auth defaults
 - Realtime subscriptions
 - Notifications persistence
 
@@ -238,4 +260,5 @@ Deliberately excluded from this phase, in rough priority order for what follows:
 
 - **Unknown typecheck debt.** `ignoreBuildErrors` has been masking errors for an unknown period. The size of that cleanup is not yet measured.
 - **Shared UAT database during tests.** Fixture scoping is the mitigation; drift toward a local stack is the escape hatch.
+- **Invitation deliverability.** Client-facing mail from a general-purpose mailbox lands in spam more readily than mail from a transactional provider. The domain's SPF and DKIM records need checking before the first real client invitation, and GoDaddy's daily cap needs confirming against expected volume.
 - **Atlas naming collision.** UNISON's Atlas module, the `himark-site` Atlas chatbot product, and the archived Command Center spec all use the name. Not a blocker for this phase, but it will need resolving before Atlas gains a backend.
