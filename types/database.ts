@@ -245,6 +245,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accept_invitation: { Args: { raw_token: string }; Returns: string }
       has_role: { Args: { org: string; roles: string[] }; Returns: boolean }
       is_member_of: { Args: { org: string }; Returns: boolean }
       show_limit: { Args: never; Returns: number }
