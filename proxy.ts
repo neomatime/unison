@@ -6,7 +6,7 @@ const PUBLIC_PATHS = ['/sign-in', '/forgot-password']
 // and links that arrive in an already-authenticated session.
 const AUTH_EXEMPT = ['/accept-invitation', '/verify-email', '/reset-password']
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request })
 
   const supabase = createServerClient(
