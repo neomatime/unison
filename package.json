@@ -9,7 +9,8 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "node --test --experimental-strip-types tests/integration/tenancy/*.test.ts tests/unit/*.test.ts",
-    "test:rls": "node --test --env-file=.env.local --experimental-strip-types tests/integration/rls/*.test.ts"
+    "test:rls": "node --test --env-file=.env.local --experimental-strip-types tests/integration/rls/*.test.ts",
+    "grant-owner": "node --env-file=.env.local --experimental-strip-types scripts/grant-owner.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",
