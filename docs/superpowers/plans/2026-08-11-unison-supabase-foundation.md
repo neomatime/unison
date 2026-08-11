@@ -78,7 +78,12 @@
 
 **Interfaces:**
 - Consumes: nothing.
-- Produces: `env` object with `SUPABASE_URL: string`, `SUPABASE_PUBLISHABLE_KEY: string`, `SUPABASE_SECRET_KEY: string`, `SMTP_HOST: string`, `SMTP_PORT: number`, `SMTP_USER: string`, `SMTP_PASSWORD: string`, `SMTP_FROM: string`, `APP_URL: string`. Also exports `MissingEnvError`.
+- Produces three independent readers plus `MissingEnvError`:
+  - `readSupabaseEnv(source)` → `{ SUPABASE_URL: string; SUPABASE_PUBLISHABLE_KEY: string; SUPABASE_SECRET_KEY: string }`
+  - `readSmtpEnv(source)` → `{ SMTP_HOST: string; SMTP_PORT: number; SMTP_USER: string; SMTP_PASSWORD: string; SMTP_FROM: string }`
+  - `readAppUrl(source)` → `string`
+
+**Why three readers and not one:** a single eager reader would make Supabase access depend on mail configuration — the app could not boot, or even sign in, until SMTP was set up. Each group is validated only where it is used, so a mail misconfiguration can never take down authentication.
 
 - [ ] **Step 1: Install dependencies**
 
@@ -94,37 +99,51 @@ Create `tests/unit/env.test.ts`. It tests the pure reader, not the module single
 ```ts
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { MissingEnvError, readEnv } from '../../lib/env.ts'
+import { MissingEnvError, readAppUrl, readSmtpEnv, readSupabaseEnv } from '../../lib/env.ts'
 
-const complete = {
+const supabaseVars = {
   NEXT_PUBLIC_SUPABASE_URL: 'https://example.supabase.co',
   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_test',
   SUPABASE_SECRET_KEY: 'secret',
+}
+
+const smtpVars = {
   SMTP_HOST: 'smtp.example.com',
   SMTP_PORT: '465',
   SMTP_USER: 'invitations@himark.example',
   SMTP_PASSWORD: 'password',
   SMTP_FROM: 'HIMARK <invitations@himark.example>',
-  NEXT_PUBLIC_APP_URL: 'http://localhost:3000',
 }
 
-test('readEnv returns typed values when every variable is present', () => {
-  const env = readEnv(complete)
+test('readSupabaseEnv returns typed values when present', () => {
+  const env = readSupabaseEnv(supabaseVars)
   assert.equal(env.SUPABASE_URL, 'https://example.supabase.co')
-  assert.equal(env.SMTP_PORT, 465)
+  assert.equal(env.SUPABASE_SECRET_KEY, 'secret')
 })
 
-test('readEnv names the missing variable', () => {
-  const { SUPABASE_SECRET_KEY: _omitted, ...incomplete } = complete
-  assert.throws(() => readEnv(incomplete), (error: unknown) => {
+test('readSupabaseEnv names the missing variable', () => {
+  const { SUPABASE_SECRET_KEY: _omitted, ...incomplete } = supabaseVars
+  assert.throws(() => readSupabaseEnv(incomplete), (error: unknown) => {
     assert.ok(error instanceof MissingEnvError)
     assert.match((error as Error).message, /SUPABASE_SECRET_KEY/)
     return true
   })
 })
 
-test('readEnv rejects a non-numeric port', () => {
-  assert.throws(() => readEnv({ ...complete, SMTP_PORT: 'abc' }), MissingEnvError)
+test('readSupabaseEnv does not require SMTP variables', () => {
+  assert.doesNotThrow(() => readSupabaseEnv(supabaseVars))
+})
+
+test('readSmtpEnv coerces the port to a number', () => {
+  assert.equal(readSmtpEnv(smtpVars).SMTP_PORT, 465)
+})
+
+test('readSmtpEnv rejects a non-numeric port', () => {
+  assert.throws(() => readSmtpEnv({ ...smtpVars, SMTP_PORT: 'abc' }), MissingEnvError)
+})
+
+test('readAppUrl reads the public app url', () => {
+  assert.equal(readAppUrl({ NEXT_PUBLIC_APP_URL: 'http://localhost:3000' }), 'http://localhost:3000')
 })
 ```
 
@@ -157,29 +176,38 @@ function requiredPort(source: Source, name: string): number {
   return value
 }
 
-export function readEnv(source: Source) {
+export function readSupabaseEnv(source: Source) {
   return {
     SUPABASE_URL: required(source, 'NEXT_PUBLIC_SUPABASE_URL'),
     SUPABASE_PUBLISHABLE_KEY: required(source, 'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY'),
     SUPABASE_SECRET_KEY: required(source, 'SUPABASE_SECRET_KEY'),
+  } as const
+}
+
+export function readSmtpEnv(source: Source) {
+  return {
     SMTP_HOST: required(source, 'SMTP_HOST'),
     SMTP_PORT: requiredPort(source, 'SMTP_PORT'),
     SMTP_USER: required(source, 'SMTP_USER'),
     SMTP_PASSWORD: required(source, 'SMTP_PASSWORD'),
     SMTP_FROM: required(source, 'SMTP_FROM'),
-    APP_URL: required(source, 'NEXT_PUBLIC_APP_URL'),
   } as const
 }
 
-export type Env = ReturnType<typeof readEnv>
+export function readAppUrl(source: Source): string {
+  return required(source, 'NEXT_PUBLIC_APP_URL')
+}
+
+export type SupabaseEnv = ReturnType<typeof readSupabaseEnv>
+export type SmtpEnv = ReturnType<typeof readSmtpEnv>
 ```
 
-Note: do **not** add a module-level `export const env = readEnv(process.env)` here. Browser bundles would then demand `SUPABASE_SECRET_KEY`. Server modules call `readEnv(process.env)` themselves; the two public values are read directly from `process.env` in the browser client.
+Note: do **not** add module-level `export const env = ...` calls here. Browser bundles would then demand `SUPABASE_SECRET_KEY`. Server modules call the reader they need; the two public values are read directly from `process.env` in the browser client.
 
 - [ ] **Step 5: Run the test and confirm it passes**
 
 Run: `pnpm exec node --test --experimental-strip-types tests/unit/env.test.ts`
-Expected: PASS, 3 tests.
+Expected: PASS, 6 tests.
 
 - [ ] **Step 6: Create `.env.local.example`**
 
@@ -777,7 +805,7 @@ git commit -m "feat(db): add accept_invitation RPC"
 - Test: `tests/unit/service-role-boundary.test.ts`
 
 **Interfaces:**
-- Consumes: `readEnv` from Task 1, `Database` from Task 3.
+- Consumes: `readSupabaseEnv` from Task 1, `Database` from Task 3.
 - Produces: `createServerSupabase(): Promise<SupabaseClient<Database>>`, `createBrowserSupabase(): SupabaseClient<Database>`, `createAdminSupabase(): SupabaseClient<Database>`.
 
 - [ ] **Step 1: Write the failing boundary test**
@@ -824,11 +852,11 @@ pnpm add server-only
 import 'server-only'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
-import { readEnv } from '@/lib/env'
+import { readSupabaseEnv } from '@/lib/env'
 import type { Database } from '@/types/database'
 
 export async function createServerSupabase() {
-  const env = readEnv(process.env)
+  const env = readSupabaseEnv(process.env)
   const cookieStore = await cookies()
 
   return createServerClient<Database>(env.SUPABASE_URL, env.SUPABASE_PUBLISHABLE_KEY, {
@@ -866,7 +894,7 @@ export function createBrowserSupabase() {
 ```ts
 import 'server-only'
 import { createClient } from '@supabase/supabase-js'
-import { readEnv } from '@/lib/env'
+import { readSupabaseEnv } from '@/lib/env'
 import type { Database } from '@/types/database'
 
 /**
@@ -875,7 +903,7 @@ import type { Database } from '@/types/database'
  * Never import this from anything under features/ — a test enforces that.
  */
 export function createAdminSupabase() {
-  const env = readEnv(process.env)
+  const env = readSupabaseEnv(process.env)
   return createClient<Database>(env.SUPABASE_URL, env.SUPABASE_SECRET_KEY, {
     auth: { autoRefreshToken: false, persistSession: false },
   })
@@ -900,12 +928,15 @@ git commit -m "feat(auth): add Supabase client factories with a tested service-r
 ### Task 8: Per-request session context
 
 **Files:**
-- Create: `lib/auth/errors.ts`, `lib/auth/session-context.ts`
+- Create: `lib/auth/errors.ts`, `lib/auth/session-context.ts`, `lib/auth/get-session-context.ts`
 - Test: `tests/unit/session-context.test.ts`
 
 **Interfaces:**
 - Consumes: `createServerSupabase` (Task 7); `resolveOrganization`, `requireMembership`, `TenantAccessDeniedError` from `lib/tenancy`.
-- Produces: `resolveSessionContext(input)` — the pure, testable core — and `getSessionContext()` — the request-bound wrapper returning `{ user, organization, membership, role }`. Also `ACTIVE_ORG_COOKIE = 'unison_org'`.
+- Produces, from `lib/auth/session-context.ts` (pure, no `server-only`): `resolveSessionContext(input)` and `ACTIVE_ORG_COOKIE = 'unison_org'`.
+- Produces, from `lib/auth/get-session-context.ts` (`server-only`): `getSessionContext()` returning `{ user, organizations, organization, membership, role }`.
+
+**Split rationale:** the Step 1 unit test imports the pure resolver under `node --test`, where `server-only` throws. Keeping the request-bound wrapper in its own file is what makes the core testable.
 
 - [ ] **Step 1: Write the failing test for the pure resolver**
 
@@ -1015,11 +1046,15 @@ Note the pure core takes plain data, so the existing `lib/tenancy` guards are ex
 Run: `pnpm exec node --test --experimental-strip-types tests/unit/session-context.test.ts`
 Expected: PASS, 4 tests.
 
-- [ ] **Step 6: Add the request-bound wrapper to the same file**
+- [ ] **Step 6: Add the request-bound wrapper in a SEPARATE file**
+
+Create `lib/auth/get-session-context.ts`. It must be a different file from `session-context.ts`, because `session-context.ts` is imported directly by the Node test in Step 1 and `server-only` throws outside a bundler. The pure resolver stays testable; the request-bound wrapper stays server-only.
 
 ```ts
 import 'server-only'
 import { cookies } from 'next/headers'
+import { resolveSessionContext, ACTIVE_ORG_COOKIE } from './session-context'
+import type { Organization, OrganizationMembership } from '@/types/tenancy'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { NotAuthenticatedError } from './errors'
 
@@ -1236,7 +1271,7 @@ Expected: exactly one row, id `00000000-0000-4000-8000-000000000001`, slug `hima
 
 ```ts
 import { createClient } from '@supabase/supabase-js'
-import { readEnv } from '../lib/env.ts'
+import { readSupabaseEnv } from '../lib/env.ts'
 
 const HIMARK_ID = '00000000-0000-4000-8000-000000000001'
 
@@ -1246,7 +1281,7 @@ if (!email) {
   process.exit(1)
 }
 
-const env = readEnv(process.env)
+const env = readSupabaseEnv(process.env)
 const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_SECRET_KEY, {
   auth: { autoRefreshToken: false, persistSession: false },
 })
@@ -1303,7 +1338,7 @@ git commit -m "feat(db): seed HIMARK and add the grant-owner script"
 - Test: `tests/unit/email-templates.test.ts`
 
 **Interfaces:**
-- Consumes: `readEnv` (Task 1).
+- Consumes: `readSmtpEnv` (Task 1).
 - Produces: `sendEmail(input: { to: string; template: EmailTemplate })`, and `invitationTemplate(data: { organizationName: string; acceptUrl: string; invitedBy: string })` returning `{ subject: string; html: string; text: string }`.
 
 - [ ] **Step 1: Write the failing template test**
@@ -1394,13 +1429,16 @@ Expected: PASS, 2 tests.
 ```ts
 import 'server-only'
 import nodemailer from 'nodemailer'
-import { readEnv } from '@/lib/env'
+import { readSmtpEnv } from '@/lib/env'
 
 let cached: nodemailer.Transporter | undefined
 
 export function getTransport() {
   if (cached) return cached
-  const env = readEnv(process.env)
+
+  // Read SMTP config here, not at import time: a mail misconfiguration
+  // must never break authentication or database access.
+  const env = readSmtpEnv(process.env)
 
   // Tests and local work without a mailbox: log instead of sending.
   if (process.env.EMAIL_TRANSPORT === 'log') {
@@ -1422,12 +1460,12 @@ export function getTransport() {
 
 ```ts
 import 'server-only'
-import { readEnv } from '@/lib/env'
+import { readSmtpEnv } from '@/lib/env'
 import { getTransport } from './transport'
 import type { EmailTemplate } from './templates/invitation'
 
 export async function sendEmail(input: { to: string; template: EmailTemplate }) {
-  const env = readEnv(process.env)
+  const env = readSmtpEnv(process.env)
   const info = await getTransport().sendMail({
     from: env.SMTP_FROM,
     to: input.to,
@@ -1488,8 +1526,8 @@ export type InviteInput = z.infer<typeof inviteSchema>
 ```ts
 'use server'
 import { createHash, randomBytes } from 'node:crypto'
-import { readEnv } from '@/lib/env'
-import { getSessionContext } from '@/lib/auth/session-context'
+import { readAppUrl } from '@/lib/env'
+import { getSessionContext } from '@/lib/auth/get-session-context'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { sendEmail } from '@/lib/email/send-email'
 import { invitationTemplate } from '@/lib/email/templates/invitation'
@@ -1527,12 +1565,12 @@ export async function sendInvitationAction(_prev: { error?: string; sent?: boole
       : { error: 'The invitation could not be created.' }
   }
 
-  const env = readEnv(process.env)
+  const appUrl = readAppUrl(process.env)
   await sendEmail({
     to: parsed.data.email,
     template: invitationTemplate({
       organizationName: organization.name,
-      acceptUrl: `${env.APP_URL}/accept-invitation?token=${rawToken}`,
+      acceptUrl: `${appUrl}/accept-invitation?token=${rawToken}`,
       invitedBy: user.email ?? 'A colleague',
     }),
   })
@@ -1610,7 +1648,7 @@ git commit -m "feat(invitations): send and accept invitations with hashed tokens
 'use server'
 import { cookies } from 'next/headers'
 import { revalidatePath } from 'next/cache'
-import { getSessionContext } from '@/lib/auth/session-context'
+import { getSessionContext } from '@/lib/auth/get-session-context'
 import { ACTIVE_ORG_COOKIE } from '@/lib/auth/session-context'
 
 export async function switchOrganizationAction(formData: FormData) {
@@ -1636,7 +1674,7 @@ export async function switchOrganizationAction(formData: FormData) {
 import type React from 'react'
 import { redirect } from 'next/navigation'
 import { AppShell } from '@/components/layout/app-shell'
-import { getSessionContext } from '@/lib/auth/session-context'
+import { getSessionContext } from '@/lib/auth/get-session-context'
 import { NoMembershipError } from '@/lib/auth/errors'
 
 export default async function UnisonLayout({ children }: { children: React.ReactNode }) {
@@ -1766,7 +1804,7 @@ The enums must match the check constraints in Task 5 exactly.
 
 ```ts
 import 'server-only'
-import { getSessionContext } from '@/lib/auth/session-context'
+import { getSessionContext } from '@/lib/auth/get-session-context'
 import { createServerSupabase } from '@/lib/supabase/server'
 import type { MockRecord } from '@/features/product-ui/types'
 
@@ -1815,7 +1853,7 @@ The `.eq('organization_id', ...)` is belt-and-braces: RLS already forbids other 
 
 ```ts
 import 'server-only'
-import { getSessionContext } from '@/lib/auth/session-context'
+import { getSessionContext } from '@/lib/auth/get-session-context'
 import { createServerSupabase } from '@/lib/supabase/server'
 
 export async function getClient(id: string) {
@@ -1837,7 +1875,7 @@ Each follows the same four steps — validate, authorize, mutate, revalidate. `c
 'use server'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
-import { getSessionContext } from '@/lib/auth/session-context'
+import { getSessionContext } from '@/lib/auth/get-session-context'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { clientInputSchema } from '../schemas/client'
 
