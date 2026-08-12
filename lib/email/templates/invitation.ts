@@ -1,9 +1,46 @@
 export type EmailTemplate = { subject: string; html: string; text: string }
 
+const ALLOWED_URL_PROTOCOLS = new Set(['http:', 'https:'])
+const MAX_FIELD_LENGTH = 200
+
 function escapeHtml(value: string): string {
   return value.replace(/[&<>"']/g, (char) => (
     { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]!
   ))
+}
+
+// organizationName and invitedBy are database-sourced and attacker-influenced
+// in a multi-tenant product. Without this, a name containing CR/LF could
+// inject fabricated content (e.g. a second "Accept the invitation" block)
+// into the plain-text body — content spoofing inside an otherwise trustworthy
+// transactional email. Collapse newlines and whitespace runs, trim, and cap
+// length so a pathological name can't dominate the email either.
+function sanitizeLine(value: string, maxLength = MAX_FIELD_LENGTH): string {
+  const collapsed = value.replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ').trim()
+  return collapsed.length > maxLength ? `${collapsed.slice(0, maxLength)}…` : collapsed
+}
+
+// Entity-escaping (escapeHtml) prevents breaking out of the href="..."
+// attribute, but does nothing to stop a scheme like `javascript:` from
+// executing when the link is clicked — that requires validating the scheme
+// itself. Parse with the WHATWG URL constructor rather than string matching,
+// and allow only absolute http(s) URLs. Reject by throwing rather than
+// silently dropping the link, so a programming error surfaces loudly at send
+// time instead of shipping a dead or dangerous button inside a trusted
+// HIMARK email. acceptUrl is application-constructed today, not
+// user-supplied, but this template is a reusable component and a future
+// caller may not preserve that invariant.
+function assertSafeUrl(value: string): string {
+  let parsed: URL
+  try {
+    parsed = new URL(value)
+  } catch {
+    throw new Error(`invitationTemplate: acceptUrl is not a valid absolute URL: ${value}`)
+  }
+  if (!ALLOWED_URL_PROTOCOLS.has(parsed.protocol)) {
+    throw new Error(`invitationTemplate: acceptUrl has a disallowed protocol "${parsed.protocol}": ${value}`)
+  }
+  return value
 }
 
 export function invitationTemplate(data: {
@@ -11,17 +48,25 @@ export function invitationTemplate(data: {
   acceptUrl: string
   invitedBy: string
 }): EmailTemplate {
-  const org = escapeHtml(data.organizationName)
-  const by = escapeHtml(data.invitedBy)
-  const url = escapeHtml(data.acceptUrl)
+  const acceptUrl = assertSafeUrl(data.acceptUrl)
+  const organizationName = sanitizeLine(data.organizationName)
+  const invitedBy = sanitizeLine(data.invitedBy)
+
+  const org = escapeHtml(organizationName)
+  const by = escapeHtml(invitedBy)
+  const url = escapeHtml(acceptUrl)
 
   return {
-    subject: `You have been invited to ${data.organizationName} on UNISON`,
+    // Raw (unescaped) organization name is intentional: nodemailer's
+    // mime-node replaces CR/LF in header values with spaces, so header
+    // injection is neutralised by the library, and HTML-escaping a subject
+    // would show recipients literal "&amp;" instead of "&".
+    subject: `You have been invited to ${organizationName} on UNISON`,
     text: [
-      `${data.invitedBy} has invited you to join ${data.organizationName} on UNISON.`,
+      `${invitedBy} has invited you to join ${organizationName} on UNISON.`,
       '',
       'Accept the invitation:',
-      data.acceptUrl,
+      acceptUrl,
       '',
       'This link expires in 7 days. If you were not expecting it, you can ignore this email.',
     ].join('\n'),
