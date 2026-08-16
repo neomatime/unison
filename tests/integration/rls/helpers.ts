@@ -47,6 +47,19 @@ export async function signedInClient(email: string, password: string): Promise<S
   return client
 }
 
+// GUARANTEE: cleanup() must remove every row a fixture caused, in every
+// table, with no exceptions -- including audit_events rows that
+// delete_organization() deliberately leaves behind. That survival is correct
+// production behaviour (an organization's audit trail, especially the record
+// of who deleted it, must outlive the organization -- see migration
+// 20260816232306_deletable_organizations.sql), but it is wrong for synthetic
+// fixture data: applied to test runs on a shared database, it accumulates
+// forever, un-owned by any organization and invisible to anything but the
+// service role. If you add a fixture path that writes to a new table, extend
+// this function (or its caller) to remove those rows too -- "the suite never
+// assumes an empty table" cuts both ways: it must not assume it's fine to
+// leave one fuller than it found it, either.
+//
 // Best-effort and order-independent: a failure partway through one fixture's
 // teardown must not stop the others from being attempted, since `after`
 // hooks run even when a `before` hook throws partway through setup (e.g. the
@@ -67,11 +80,68 @@ export async function signedInClient(email: string, password: string): Promise<S
 // idempotent -- a nonexistent id is a silent no-op -- and permits the
 // service role in addition to an organization's owner, so this admin client
 // can call it directly.
+//
+// audit_events provenance cannot be captured by querying "what's tied to
+// this org right now, before we delete it" -- some specs (e.g.
+// deletable-organizations.test.ts) call delete_organization() themselves,
+// as the very thing under test, before this `after` hook ever runs. By the
+// time cleanup() sees that fixture, the org is already gone and every row
+// it touched already has organization_id = null -- there is no "before" left
+// to snapshot. And blindly deleting every null-organization_id row is unsafe
+// regardless: it would also delete genuine history from any org ever
+// legitimately deleted (not a concern today, since nothing but this suite
+// calls delete_organization(), but the query itself must not depend on that
+// happening to be true).
+//
+// The fix: identify rows by what they permanently recorded about
+// themselves, not by current table state or ordering.
+//   - The organization's own deletion event is unambiguous: resource =
+//     'organizations', resource_id = this org's id. Only delete_organization()
+//     ever writes that combination, and resource_id is a random UUID no
+//     unrelated row could coincidentally share.
+//   - clients_audit's insert/update/delete events for this org's clients
+//     rows are identified by the organization_id *recorded inside the JSONB
+//     snapshot* (new_value for insert, old_value for delete, both for
+//     update) -- which clients_audit wrote while the row's real
+//     organization_id column was still valid, and which the later `on
+//     delete set null` on the *column* never touches, because it's just
+//     JSON text at that point, not a live foreign key.
+// Both queries also filter on organization_id is null, so this can never
+// touch a row still legitimately attached to a live organization (HIMARK's
+// or anyone else's).
+//
+// This only accounts for clients_audit today, since that is the only
+// audit-triggered child table organizations has. A future audit trigger on
+// another child table would need the same snapshot-based capture added
+// here, or its fixture rows would leak the same way audit_events did before
+// this fix.
 export async function cleanup(organizationIds: string[], userIds: string[]) {
   const errors: unknown[] = []
   for (const id of organizationIds) {
-    const { error } = await admin.rpc('delete_organization', { target_org: id })
-    if (error) errors.push(error)
+    const { error: deleteOrgError } = await admin.rpc('delete_organization', { target_org: id })
+    if (deleteOrgError) errors.push(deleteOrgError)
+
+    const { data: orgEvent, error: orgEventError } = await admin
+      .from('audit_events')
+      .select('id')
+      .is('organization_id', null)
+      .eq('resource', 'organizations')
+      .eq('resource_id', id)
+    if (orgEventError) errors.push(orgEventError)
+
+    const { data: clientEvents, error: clientEventsError } = await admin
+      .from('audit_events')
+      .select('id')
+      .is('organization_id', null)
+      .eq('resource', 'clients')
+      .or(`old_value->>organization_id.eq.${id},new_value->>organization_id.eq.${id}`)
+    if (clientEventsError) errors.push(clientEventsError)
+
+    const auditIds = [...(orgEvent ?? []), ...(clientEvents ?? [])].map((row) => row.id as string)
+    if (auditIds.length > 0) {
+      const { error: auditDeleteError } = await admin.from('audit_events').delete().in('id', auditIds)
+      if (auditDeleteError) errors.push(auditDeleteError)
+    }
   }
   for (const id of userIds) {
     const { error } = await admin.auth.admin.deleteUser(id)
