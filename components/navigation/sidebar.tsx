@@ -17,8 +17,8 @@ export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
   const { user, organization, role } = useShellContext()
-  const displayName: string = user.user_metadata?.full_name ?? user.email ?? 'Unknown user'
-  const avatarUrl: string | undefined = user.user_metadata?.avatar_url
+  const displayName = user.displayName
+  const avatarUrl = user.avatarUrl
   const roleLabel = roles.find((definition) => definition.id === role)?.label ?? role
   return (
     <aside className={cn('flex h-full shrink-0 flex-col bg-sidebar text-sidebar-foreground transition-[width]', collapsed ? 'w-20' : 'w-64')}>

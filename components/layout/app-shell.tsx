@@ -3,15 +3,14 @@
 import type React from 'react'
 import { Menu, X } from 'lucide-react'
 import { useState } from 'react'
-import type { User } from '@supabase/supabase-js'
 
 import { Sidebar } from '@/components/navigation/sidebar'
 import { NavigationLoading } from '@/components/shared/navigation-loading'
-import { ShellProvider } from '@/components/layout/shell-context'
+import { ShellProvider, type ShellUser } from '@/components/layout/shell-context'
 import type { Organization } from '@/types/tenancy'
 
 type AppShellProps = {
-  user: User
+  user: ShellUser
   organization: Organization
   organizations: Organization[]
   role: string

@@ -2,11 +2,24 @@
 
 import { createContext, useContext } from 'react'
 import type React from 'react'
-import type { User } from '@supabase/supabase-js'
 import type { Organization } from '@/types/tenancy'
 
+/**
+ * A deliberate narrow projection of the Supabase `User` — display name, email and
+ * avatar only, the three things the shell actually renders. The full `User` object
+ * (app_metadata, identities, factors, timestamps, ...) must never cross to the
+ * client: it would be serialised into the RSC payload and shipped as browser
+ * JavaScript for no reason. Derive this once, server-side, in
+ * `app/(unison)/layout.tsx` from `getSessionContext()`'s user.
+ */
+export type ShellUser = {
+  displayName: string
+  email: string | null
+  avatarUrl: string | null
+}
+
 export type ShellContextValue = {
-  user: User
+  user: ShellUser
   organization: Organization
   organizations: Organization[]
   role: string
