@@ -24,7 +24,7 @@ export type Database = {
           id: string
           new_value: Json | null
           old_value: Json | null
-          organization_id: string
+          organization_id: string | null
           resource: string
           resource_id: string | null
         }
@@ -35,7 +35,7 @@ export type Database = {
           id?: string
           new_value?: Json | null
           old_value?: Json | null
-          organization_id: string
+          organization_id?: string | null
           resource: string
           resource_id?: string | null
         }
@@ -46,7 +46,7 @@ export type Database = {
           id?: string
           new_value?: Json | null
           old_value?: Json | null
-          organization_id?: string
+          organization_id?: string | null
           resource?: string
           resource_id?: string | null
         }
@@ -246,6 +246,7 @@ export type Database = {
     }
     Functions: {
       accept_invitation: { Args: { raw_token: string }; Returns: string }
+      delete_organization: { Args: { target_org: string }; Returns: undefined }
       has_role: { Args: { org: string; roles: string[] }; Returns: boolean }
       is_member_of: { Args: { org: string }; Returns: boolean }
       show_limit: { Args: never; Returns: number }

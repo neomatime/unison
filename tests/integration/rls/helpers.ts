@@ -53,24 +53,24 @@ export async function signedInClient(email: string, password: string): Promise<S
 // org fixture exists but the user fixture failed), and this is the only
 // chance to clean up before the suite exits.
 //
-// `clients` rows are deleted explicitly, before the organization, rather
-// than left to `organizations`' `on delete cascade`. Discovered empirically:
-// clients_audit is an AFTER DELETE trigger that INSERTs into audit_events
-// (organization_id references organizations, no cascade timing exception).
-// When the cascade fires that trigger as a side effect of deleting the
-// parent organization row in the same statement, the audit insert's FK
-// check finds the organization already gone and raises 23503 -- which
-// aborts and rolls back the *entire* delete statement, including the
-// cascade, silently leaving the organization (and everything under it)
-// behind. Deleting `clients` first, as its own statement while the
-// organization row still exists, lets that trigger's insert succeed, so the
-// later organization delete has nothing left to cascade through it.
+// Organizations are removed through public.delete_organization() -- the
+// sanctioned deletion path added in migration
+// 20260816232306_deletable_organizations.sql -- rather than by hand-ordering
+// child deletes here. An earlier version of this helper deleted `clients`
+// before `organizations` to work around a schema defect (deleting an
+// organization with clients rows raised 23503, because the clients_audit
+// trigger's audit_events insert raced the cascading delete's FK check); that
+// defect is now fixed at the schema level, and calling delete_organization()
+// directly means this helper exercises the exact same path production code
+// (and the deletable-organizations.test.ts spec) would use, instead of a
+// bespoke workaround that could drift from it. delete_organization() is
+// idempotent -- a nonexistent id is a silent no-op -- and permits the
+// service role in addition to an organization's owner, so this admin client
+// can call it directly.
 export async function cleanup(organizationIds: string[], userIds: string[]) {
   const errors: unknown[] = []
   for (const id of organizationIds) {
-    const { error: clientsError } = await admin.from('clients').delete().eq('organization_id', id)
-    if (clientsError) errors.push(clientsError)
-    const { error } = await admin.from('organizations').delete().eq('id', id)
+    const { error } = await admin.rpc('delete_organization', { target_org: id })
     if (error) errors.push(error)
   }
   for (const id of userIds) {
