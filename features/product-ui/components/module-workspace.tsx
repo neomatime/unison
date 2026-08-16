@@ -8,13 +8,12 @@ import { ConfirmationDialog } from '@/components/shared/confirmation-dialog'
 import { EmptyState, ErrorState, LoadingSkeleton, PermissionState } from '@/components/shared/state-feedback'
 import { WorkspaceHeader } from '@/components/shared/workspace-header'
 import { StatusBadge } from '@/components/ui/status-badge'
-import { moduleFixtures } from '../mocks/modules'
 import type { MockRecord, ModuleDefinition } from '../types'
 import { hasSpecialWorkspace, SpecialWorkspace } from './special-workspaces'
 
 type DemoState = 'populated' | 'loading' | 'empty' | 'error' | 'restricted'
 
-export function ModuleWorkspace({ module }: { module: ModuleDefinition }) {
+export function ModuleWorkspace({ module, records, connected }: { module: ModuleDefinition; records: MockRecord[]; connected?: boolean }) {
   const [query, setQuery] = useState('')
   const [activeView, setActiveView] = useState(module.views[0])
   const [filterOpen, setFilterOpen] = useState(false)
@@ -25,7 +24,6 @@ export function ModuleWorkspace({ module }: { module: ModuleDefinition }) {
   const [selected, setSelected] = useState<string[]>([])
   const [archiveRecord, setArchiveRecord] = useState<MockRecord | null>(null)
   const [toast, setToast] = useState('')
-  const records = moduleFixtures[module.id] ?? []
   const filtered = useMemo(() => records.filter((record) => Object.values(record).some((value) => value.toLowerCase().includes(query.toLowerCase()))).toSorted((a, b) => sortMode === 'name' ? a.name.localeCompare(b.name) : sortMode === 'status' ? a.status.localeCompare(b.status) : a.updated.localeCompare(b.updated)), [query, records, sortMode])
   const special = hasSpecialWorkspace(module.id, activeView)
 
@@ -53,10 +51,12 @@ export function ModuleWorkspace({ module }: { module: ModuleDefinition }) {
             <button type="button" onClick={() => { setToast(`${module.label} export prepared. No file was generated in demo mode.`); window.setTimeout(() => setToast(''), 3000) }} className="inline-flex h-10 items-center gap-2 rounded-lg border border-border px-3 text-sm font-medium"><Download className="size-4" />Export</button>
           </div>
           <div className="flex items-center gap-2">
-            <label className="sr-only" htmlFor={`${module.id}-state`}>Preview screen state</label>
-            <select id={`${module.id}-state`} value={demoState} onChange={(event) => setDemoState(event.target.value as DemoState)} className="h-10 rounded-lg border border-border bg-background px-3 text-xs text-muted-foreground">
-              <option value="populated">Populated</option><option value="loading">Loading state</option><option value="empty">Empty state</option><option value="error">Error state</option><option value="restricted">Restricted state</option>
-            </select>
+            {!connected ? <>
+              <label className="sr-only" htmlFor={`${module.id}-state`}>Preview screen state</label>
+              <select id={`${module.id}-state`} value={demoState} onChange={(event) => setDemoState(event.target.value as DemoState)} className="h-10 rounded-lg border border-border bg-background px-3 text-xs text-muted-foreground">
+                <option value="populated">Populated</option><option value="loading">Loading state</option><option value="empty">Empty state</option><option value="error">Error state</option><option value="restricted">Restricted state</option>
+              </select>
+            </> : null}
             <div className="flex rounded-lg border border-border p-1"><button type="button" onClick={() => setDisplayMode('list')} aria-label="List view" className={`rounded-md p-1.5 ${displayMode === 'list' ? 'bg-muted' : 'text-muted-foreground'}`}><List className="size-4" /></button><button type="button" onClick={() => setDisplayMode('grid')} aria-label="Grid view" className={`rounded-md p-1.5 ${displayMode === 'grid' ? 'bg-muted' : 'text-muted-foreground'}`}><LayoutGrid className="size-4" /></button></div>
           </div>
         </div>
