@@ -1,7 +1,5 @@
-'use client'
-
 import Link from 'next/link'
-import { Archive, ArrowLeft, Pencil } from 'lucide-react'
+import { Archive, AlertTriangle, ArrowLeft, Pencil } from 'lucide-react'
 
 import { WorkspaceHeader } from '@/components/shared/workspace-header'
 import { StatusBadge } from '@/components/ui/status-badge'
@@ -18,12 +16,24 @@ function statusTone(status: string): 'brand' | 'warning' | 'info' | 'neutral' {
   return 'info'
 }
 
-export function ClientDetail({ client }: { client: ClientRecord }) {
+// A Server Component, deliberately: the archive confirmation below is a
+// two-step, plain-HTML flow (a link to `?confirm=archive`, then a form
+// posted from that page) rather than a client-side confirm() dialog, so it
+// works identically with or without JS/hydration having completed.
+export function ClientDetail({ client, confirmArchive, archiveError }: { client: ClientRecord; confirmArchive?: boolean; archiveError?: boolean }) {
   const archived = Boolean(client.archived_at)
+  const detailHref = `/operations/clients/${client.id}`
 
   return <>
     <WorkspaceHeader category="Operations" parent={{ label: 'Clients', href: '/operations/clients' }} title={client.name} />
     <Link href="/operations/clients" className="mb-4 inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground"><ArrowLeft className="size-4" />Back to Clients</Link>
+
+    {archiveError ? (
+      <div className="mb-4 flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+        <AlertTriangle className="size-4 shrink-0" />
+        The client could not be archived. Please try again.
+      </div>
+    ) : null}
 
     <section className="rounded-xl border border-border bg-card p-6 shadow-[0_1px_2px_rgb(16_32_46_/_0.04)]">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -36,23 +46,17 @@ export function ClientDetail({ client }: { client: ClientRecord }) {
             {client.contact_name ?? 'No primary contact on file'} · Last activity {formatDate(client.updated_at)}
           </p>
         </div>
-        {!archived ? (
+        {!archived && !confirmArchive ? (
           <div className="flex flex-wrap gap-2">
-            <Link href={`/operations/clients/${client.id}/edit`} className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm font-medium"><Pencil className="size-4" />Edit</Link>
+            <Link href={`${detailHref}/edit`} className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm font-medium"><Pencil className="size-4" />Edit</Link>
             {/*
-              A real <form> posting to the server action, not an onClick handler,
-              so archiving works via plain HTML submission (progressive
-              enhancement) the same way create/edit already do — it does not
-              depend on client-side hydration having completed.
+              A plain link to a confirmation step, not a client-side
+              confirm()/dialog gate — this way the "are you sure" prompt
+              is guaranteed to show up even if JS never loads or hasn't
+              hydrated yet, closing the "archive with no confirmation"
+              gap a client-only dialog would leave open.
             */}
-            <form
-              action={archiveClientAction.bind(null, client.id)}
-              onSubmit={(event) => {
-                if (!window.confirm(`Archive ${client.name}? This removes it from the active clients list.`)) event.preventDefault()
-              }}
-            >
-              <button type="submit" className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm font-medium text-destructive"><Archive className="size-4" />Archive Client</button>
-            </form>
+            <Link href={`${detailHref}?confirm=archive`} className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm font-medium text-destructive"><Archive className="size-4" />Archive Client</Link>
           </div>
         ) : null}
       </div>
@@ -63,6 +67,18 @@ export function ClientDetail({ client }: { client: ClientRecord }) {
         <Summary label="Active projects" value="—" />
         <Summary label="Last activity" value={formatDate(client.updated_at)} />
       </div>
+      {!archived && confirmArchive ? (
+        <div className="mt-6 rounded-xl border border-destructive/30 bg-destructive/5 p-4">
+          <p className="text-sm font-semibold text-destructive">Archive {client.name}?</p>
+          <p className="mt-1 text-sm text-muted-foreground">This removes it from the active clients list. There is no undo through the UI.</p>
+          <div className="mt-4 flex gap-2">
+            <Link href={detailHref} className="rounded-lg border border-border px-4 py-2 text-sm font-medium">Cancel</Link>
+            <form action={archiveClientAction.bind(null, client.id)}>
+              <button type="submit" className="inline-flex items-center gap-2 rounded-lg bg-destructive px-4 py-2 text-sm font-semibold text-white"><Archive className="size-4" />Yes, archive client</button>
+            </form>
+          </div>
+        </div>
+      ) : null}
     </section>
 
     <div className="mt-5 grid gap-5 xl:grid-cols-3">

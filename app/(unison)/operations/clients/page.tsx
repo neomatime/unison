@@ -9,7 +9,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
   const sort = typeof params.sort === 'string' ? params.sort : undefined
   const page = typeof params.page === 'string' ? Number(params.page) : undefined
 
-  const { records } = await listClients({ q, status, sort, page })
+  const { records, total, page: resolvedPage, pageSize } = await listClients({ q, status, sort, page })
 
-  return <ModuleWorkspace module={moduleById.clients} records={records} connected />
+  return <ModuleWorkspace module={moduleById.clients} records={records} connected total={total} page={resolvedPage} pageSize={pageSize} />
 }

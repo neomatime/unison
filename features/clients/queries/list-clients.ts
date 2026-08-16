@@ -5,6 +5,13 @@ import type { MockRecord } from '@/features/product-ui/types'
 
 const PAGE_SIZE = 25
 
+// ilike treats % and _ as wildcards and \ as its escape character — escape
+// all three so a search for e.g. "50% Off" or "big_corp" matches the
+// literal text instead of silently matching more or fewer rows.
+function escapeLikePattern(value: string) {
+  return value.replace(/[\\%_]/g, (match) => `\\${match}`)
+}
+
 export async function listClients(params: { q?: string; status?: string; sort?: string; page?: number }) {
   const { organization } = await getSessionContext()
   const supabase = await createServerSupabase()
@@ -16,7 +23,7 @@ export async function listClients(params: { q?: string; status?: string; sort?: 
     .eq('organization_id', organization.id)
     .is('archived_at', null)
 
-  if (params.q) query = query.ilike('name', `%${params.q}%`)
+  if (params.q) query = query.ilike('name', `%${escapeLikePattern(params.q)}%`)
   if (params.status) query = query.eq('status', params.status)
 
   const column = params.sort === 'name' ? 'name' : params.sort === 'status' ? 'status' : 'updated_at'
