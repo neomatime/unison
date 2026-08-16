@@ -1,5 +1,6 @@
-import { ClientSetupWorkflow } from '@/features/clients/components/client-setup-workflow'
+import { ClientForm } from '@/features/clients/components/client-form'
+import { createClientAction } from '@/features/clients/actions/create-client'
 
 export default function Page() {
-  return <ClientSetupWorkflow />
+  return <ClientForm mode="create" action={createClientAction} />
 }
