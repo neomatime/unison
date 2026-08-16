@@ -1640,7 +1640,9 @@ git commit -m "feat(invitations): send and accept invitations with hashed tokens
 
 **Interfaces:**
 - Consumes: `getSessionContext` (Task 8).
-- Produces: `switchOrganizationAction(formData: FormData)`. `AppShell` gains props `{ user, organization, organizations }`.
+- Produces: `switchOrganizationAction(formData: FormData)`, and `components/layout/shell-context.tsx` exporting `ShellProvider` / `useShellContext`.
+
+**Amended 2026-08-12 after implementation.** This originally specified `AppShell` gaining props `{ user, organization, organizations }` and `TenantSwitcher` taking `{ organizations, active }`. That was written without checking how `TenantSwitcher` is actually reached: it is nested under `TopNav` and `WorkspaceHeader`, which are consumed by `overview-screen`, `module-workspace`, `module-record`, `module-form` and `client-setup-workflow` — five files outside this task's scope. Prop-drilling would have modified all of them. A client context resolved once in `app/(unison)/layout.tsx` delivers the same data without touching those files, and every route rendering these components sits under that single layout, so the provider is always present. The context approach is the specification.
 
 - [ ] **Step 1: Write the switch action**
 
