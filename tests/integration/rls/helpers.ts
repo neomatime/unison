@@ -110,11 +110,35 @@ export async function signedInClient(email: string, password: string): Promise<S
 // touch a row still legitimately attached to a live organization (HIMARK's
 // or anyone else's).
 //
-// This only accounts for clients_audit today, since that is the only
-// audit-triggered child table organizations has. A future audit trigger on
-// another child table would need the same snapshot-based capture added
-// here, or its fixture rows would leak the same way audit_events did before
-// this fix.
+// Coverage as of Task 12's fix round 1: this accounts for clients_audit
+// (resource = 'clients', via the JSONB-snapshot technique above) and for
+// public.accept_invitation()'s own audit write (resource = 'memberships',
+// see below). Those are the only two audit-writing paths that can attach a
+// row to a fixture organization today. The rule stands: any new
+// audit-writing path (a trigger on another child table, another
+// SECURITY DEFINER function that inserts into audit_events) needs its
+// resource type added here, with a way to trace an orphaned row back to
+// this fixture, or its rows leak into the shared database exactly like
+// these did.
+//
+// memberships-resource rows need a different tracing strategy than
+// clients_audit's, because their provenance isn't shaped the same way.
+// accept_invitation() (20260811131355_accept_invitation_idempotent_active_member.sql)
+// writes new_value as jsonb_build_object('via', 'invitation', 'invitation_id',
+// ..., 'role_id', ..., 'status', 'active') -- organization_id is never a key
+// in that JSONB, so the "read organization_id back out of the snapshot"
+// trick clients_audit rows above use does not apply here.
+//
+// What accept_invitation() does write immutably is actor_id = auth.uid():
+// the id of whichever fixture user called it. userIds is already a
+// parameter of this function, so that is the traceable link -- PROVIDED it
+// runs before the userIds deletion loop below, since audit_events.actor_id
+// itself has `on delete set null` on auth.users and would otherwise be
+// nulled out from under this query by the very users loop that follows it,
+// the same ordering hazard organization_id has for delete_organization()
+// above. Because these are fresh, randomly generated (createFixtureUser)
+// ids unique to this test run, matching on actor_id can never reach a real
+// user's audit history.
 export async function cleanup(organizationIds: string[], userIds: string[]) {
   const errors: unknown[] = []
   for (const id of organizationIds) {
@@ -143,6 +167,23 @@ export async function cleanup(organizationIds: string[], userIds: string[]) {
       if (auditDeleteError) errors.push(auditDeleteError)
     }
   }
+
+  if (userIds.length > 0) {
+    const { data: membershipEvents, error: membershipEventsError } = await admin
+      .from('audit_events')
+      .select('id')
+      .is('organization_id', null)
+      .eq('resource', 'memberships')
+      .in('actor_id', userIds)
+    if (membershipEventsError) errors.push(membershipEventsError)
+
+    const membershipAuditIds = (membershipEvents ?? []).map((row) => row.id as string)
+    if (membershipAuditIds.length > 0) {
+      const { error: membershipAuditDeleteError } = await admin.from('audit_events').delete().in('id', membershipAuditIds)
+      if (membershipAuditDeleteError) errors.push(membershipAuditDeleteError)
+    }
+  }
+
   for (const id of userIds) {
     const { error } = await admin.auth.admin.deleteUser(id)
     if (error) errors.push(error)
