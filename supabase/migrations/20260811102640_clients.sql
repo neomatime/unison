@@ -1,3 +1,23 @@
+-- NOTE (final fix wave, added after this migration was originally applied):
+-- this file creates a trigram index below using public.gin_trgm_ops, but
+-- the pg_trgm extension was never created by any migration -- it only
+-- existed on this project because it predated the Task 1 schema reset. A
+-- fresh replay of this history onto a new project would fail here.
+-- Appending a later "create extension" migration cannot fix that, because
+-- migrations replay in filename order and this file sorts first. The only
+-- way to make a from-scratch replay succeed is to make this migration
+-- self-sufficient, so this line was added in-place rather than only as a
+-- new migration further down the history.
+-- This is a deliberate edit to an already-applied migration file. It is
+-- safe because `create extension if not exists` is a no-op against this
+-- live project (pg_trgm is already installed here), so nothing changes for
+-- the database this history has actually been run against; it only changes
+-- what a *future* fresh replay onto a new project would do. See also
+-- 20260817165022_ensure_pg_trgm_extension.sql, which independently records
+-- extension provisioning as its own migration for discoverability and as a
+-- backstop if this file is ever reverted.
+create extension if not exists pg_trgm with schema public;
+
 create table public.clients (
   id uuid primary key default gen_random_uuid(),
   organization_id uuid not null references public.organizations(id) on delete cascade,
