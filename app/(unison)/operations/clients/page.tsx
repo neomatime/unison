@@ -7,7 +7,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
   const q = typeof params.q === 'string' ? params.q : undefined
   const status = typeof params.status === 'string' ? params.status : undefined
   const sort = typeof params.sort === 'string' ? params.sort : undefined
-  const page = typeof params.page === 'string' ? Number(params.page) : undefined
+  const parsedPage = typeof params.page === 'string' ? Number(params.page) : undefined
+  const page = parsedPage !== undefined && Number.isInteger(parsedPage) && parsedPage > 0 ? parsedPage : undefined
 
   const { records, total, page: resolvedPage, pageSize } = await listClients({ q, status, sort, page })
 
