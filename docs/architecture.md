@@ -48,11 +48,13 @@ Tenant resolution occurs before business data access: `getSessionContext()` (`li
 
 ## What is now true, and what genuinely remains undone
 
-Connected: a real Supabase Postgres project, RLS-enforced `organizations`/`memberships`/`invitations`/`audit_events`/`clients` tables, `getSessionContext`/`resolveSessionContext` session resolution, a `proxy.ts` (Next.js 16's Middleware, renamed) that gates unauthenticated and already-authenticated routes, sign-in/sign-up/password-reset/invitation-accept against Supabase Auth, owner-gated role changes, and one full CRUD module (Clients) reading and writing real rows with server-side search.
+Connected: a real Supabase Postgres project, RLS-enforced `organizations`/`memberships`/`invitations`/`audit_events`/`clients` tables, `getSessionContext`/`resolveSessionContext` session resolution, a `proxy.ts` (Next.js 16's Middleware, renamed) that gates unauthenticated and already-authenticated routes, sign-in/sign-out/invitation-accept against Supabase Auth, owner-gated role changes, and one full CRUD module (Clients) reading and writing real rows with server-side search.
 
 Still not done:
 - **Clients is the only connected product module.** The other sixteen (Projects, Tasks, Calendar, Leads, Quotes, Sales, Invoices, Expenses, Forecast, Team, HR, Leave, Knowledge, Atlas, Overview, Settings) still render `moduleFixtures` — no API route, no persistence. See `docs/product-ui.md`.
-- **Supabase Auth's own SMTP is not configured** in the dashboard, so password-reset and verification email still come from Supabase's default sender rather than a HIMARK address. The app-level SMTP (`lib/email`) is a separate concern used only for invitation email, and it has never sent a live invitation — the send/accept flow is verified against a log transport only.
+- **Sign-up does not exist.** UNISON is invite-only, and `app/(auth)/sign-up/` was removed as unreachable (see "Current routes" above).
+- **`/forgot-password`, `/reset-password`, and `/verify-email` remain non-functional demos.** Each renders a bare `<AuthScreen>` for its `kind` with no Supabase call behind it — no `resetPasswordForEmail`, no `updateUser`, nothing wired. Only sign-in, sign-out, and invitation acceptance (`kind="accept"`) actually call Supabase Auth today.
+- **Supabase Auth's own SMTP is not configured** in the dashboard, so password-reset and verification email would still come from Supabase's default sender rather than a HIMARK address if that flow were ever wired up. The app-level SMTP (`lib/email`) is a separate concern used only for invitation email, and it has never sent a live invitation — the send/accept flow is verified against a log transport only.
 - **Atlas, automation, file storage, realtime, and notifications remain unimplemented** — no schema, no service, no UI wiring beyond the existing visual mock.
 - The root overview remains available at `/` to preserve the original entry route; `/overview` is the canonical sidebar destination.
 - Next.js and package-manager configuration remains at the repository root because the framework requires it.
