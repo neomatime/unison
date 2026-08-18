@@ -38,6 +38,29 @@ export async function createFixtureUser(organizationId: string | null, roleId: '
   return { id: data.user.id, email, password }
 }
 
+// Simulates a Microsoft sign-in by giving a fixture user an azure identity.
+// The real OAuth handshake cannot run in a test; claim_directory_membership()
+// reads this table either way, so the authorisation rules are exercised
+// faithfully.
+//
+// This cannot go through admin.schema('auth').from('identities').insert() --
+// PostgREST on this project exposes only the `public` and `graphql_public`
+// schemas (confirmed live: that call returns PGRST106, "Invalid schema:
+// auth"), and there is no GoTrue Admin API method for writing an identity
+// the way createUser()/updateUserById() exist for auth.users. Instead this
+// calls public.rls_test_give_azure_identity(), a SECURITY DEFINER bridge
+// (migration 20260818171200_rls_test_give_azure_identity.sql) restricted to
+// service_role, which is the same kind of bridge claim_directory_membership()
+// itself uses to reach auth.users/auth.identities from the public schema
+// side.
+export async function giveAzureIdentity(userId: string, email: string) {
+  const { error } = await admin.rpc('rls_test_give_azure_identity', {
+    target_user_id: userId,
+    target_email: email,
+  })
+  if (error) throw error
+}
+
 export async function signedInClient(email: string, password: string): Promise<SupabaseClient> {
   const client = createClient(env.SUPABASE_URL, env.SUPABASE_PUBLISHABLE_KEY, {
     auth: { autoRefreshToken: false, persistSession: false },
@@ -59,6 +82,17 @@ export async function signedInClient(email: string, password: string): Promise<S
 // this function (or its caller) to remove those rows too -- "the suite never
 // assumes an empty table" cuts both ways: it must not assume it's fine to
 // leave one fuller than it found it, either.
+//
+// auth.identities (rows created by giveAzureIdentity() above) needs no
+// separate delete here: identities_user_id_fkey is `on delete cascade` onto
+// auth.users(id) -- confirmed live via pg_constraint -- so the userIds
+// deletion loop below already removes them as a side effect of deleting the
+// user. There is no audit trail on that table either (no triggers on
+// auth.identities), so unlike clients and memberships there is no
+// audit_events residue to trace for it. This still counts as "covered by
+// cleanup", not "nothing to do": if a future migration ever changes that FK
+// to `on delete set null` or adds an audit trigger, this table joins
+// clients/memberships as something this function must handle explicitly.
 //
 // Best-effort and order-independent: a failure partway through one fixture's
 // teardown must not stop the others from being attempted, since `after`
@@ -184,6 +218,9 @@ export async function cleanup(organizationIds: string[], userIds: string[]) {
     }
   }
 
+  // Deleting the user also removes any auth.identities row giveAzureIdentity()
+  // created for them, via identities_user_id_fkey's `on delete cascade` --
+  // see the GUARANTEE comment above for why that needs no separate step here.
   for (const id of userIds) {
     const { error } = await admin.auth.admin.deleteUser(id)
     if (error) errors.push(error)
