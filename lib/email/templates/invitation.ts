@@ -57,10 +57,13 @@ export function invitationTemplate(data: {
   const url = escapeHtml(acceptUrl)
 
   return {
-    // Raw (unescaped) organization name is intentional: nodemailer's
-    // mime-node replaces CR/LF in header values with spaces, so header
-    // injection is neutralised by the library, and HTML-escaping a subject
-    // would show recipients literal "&amp;" instead of "&".
+    // Raw (unescaped) organization name is intentional: HTML-escaping a
+    // subject would show recipients a literal "&amp;" instead of "&". Header
+    // injection is prevented by sanitizeLine above, which strips CR/LF before
+    // the value reaches here — and again by sanitizeHeaderValue in mime.ts
+    // when the header is actually assembled. This used to rely on nodemailer's
+    // mime-node doing it; since mail moved to the Graph API that protection is
+    // ours, so it is now enforced at both ends rather than by a library.
     subject: `You have been invited to ${organizationName} on UNISON`,
     text: [
       `${invitedBy} has invited you to join ${organizationName} on UNISON.`,

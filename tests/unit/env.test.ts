@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { MissingEnvError, readAppUrl, readSmtpEnv, readSupabasePublicEnv, readSupabaseSecretKey } from '../../lib/env.ts'
+import { MissingEnvError, readAppUrl, readGraphEnv, readSupabasePublicEnv, readSupabaseSecretKey } from '../../lib/env.ts'
 
 const supabasePublicVars = {
   NEXT_PUBLIC_SUPABASE_URL: 'https://example.supabase.co',
@@ -12,12 +12,11 @@ const supabaseVars = {
   SUPABASE_SECRET_KEY: 'secret',
 }
 
-const smtpVars = {
-  SMTP_HOST: 'smtp.example.com',
-  SMTP_PORT: '465',
-  SMTP_USER: 'invitations@himark.example',
-  SMTP_PASSWORD: 'password',
-  SMTP_FROM: 'HIMARK <invitations@himark.example>',
+const graphVars = {
+  GRAPH_TENANT_ID: 'tenant-id',
+  GRAPH_CLIENT_ID: 'client-id',
+  GRAPH_CLIENT_SECRET: 'client-secret',
+  MAIL_FROM: 'HIMARK <invitations@himark.example>',
 }
 
 test('readSupabasePublicEnv returns typed values when present', () => {
@@ -54,12 +53,26 @@ test('readSupabaseSecretKey names the missing variable', () => {
   })
 })
 
-test('readSmtpEnv coerces the port to a number', () => {
-  assert.equal(readSmtpEnv(smtpVars).SMTP_PORT, 465)
+test('readGraphEnv returns the Graph credentials when present', () => {
+  const env = readGraphEnv(graphVars)
+  assert.equal(env.GRAPH_TENANT_ID, 'tenant-id')
+  assert.equal(env.MAIL_FROM, 'HIMARK <invitations@himark.example>')
 })
 
-test('readSmtpEnv rejects a non-numeric port', () => {
-  assert.throws(() => readSmtpEnv({ ...smtpVars, SMTP_PORT: 'abc' }), MissingEnvError)
+test('readGraphEnv names the missing variable', () => {
+  const { GRAPH_CLIENT_SECRET: _omitted, ...incomplete } = graphVars
+  assert.throws(() => readGraphEnv(incomplete), (error: unknown) => {
+    assert.ok(error instanceof MissingEnvError)
+    assert.match((error as Error).message, /GRAPH_CLIENT_SECRET/)
+    return true
+  })
+})
+
+test('readGraphEnv is independent of the Supabase readers', () => {
+  // Same reasoning as the split above: mail configuration must never be a
+  // precondition for reaching the database, and vice versa.
+  assert.doesNotThrow(() => readGraphEnv(graphVars))
+  assert.doesNotThrow(() => readSupabasePublicEnv(supabasePublicVars))
 })
 
 test('readAppUrl reads the public app url', () => {

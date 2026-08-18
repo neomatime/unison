@@ -24,7 +24,7 @@ of rows; misleading at scale.
 
 ## Correctness and consistency
 
-- **A failed SMTP send leaves a seven-day lockout.** `features/invitations/actions/send-invitation.ts`
+- **A failed send leaves a seven-day lockout.** `features/invitations/actions/send-invitation.ts`
   inserts the invitation before sending. If the send throws, the pending row survives, and the
   partial unique index blocks re-inviting that address until it expires. Revoke on send failure.
 - **`accept-invitation` surfaces raw error text** from the RPC, where every other action returns
@@ -54,11 +54,19 @@ of rows; misleading at scale.
 
 ## Operational
 
-- **Supabase Auth SMTP is not configured.** Password-reset and verification mail still come from
-  Supabase's sender rather than HIMARK's mailbox. Requires the mailbox password, so it is a
-  dashboard action for the account owner.
+- **Scope the Entra app with an ApplicationAccessPolicy.** The `Mail.Send` application permission
+  lets the app send as *any* mailbox in the tenant. Restrict it to the sending mailbox:
+  `New-ApplicationAccessPolicy -AppId <client-id> -PolicyScopeGroupId info@himark.co.za
+  -AccessRight RestrictAccess`. Needs the ExchangeOnlineManagement module and can take an hour to
+  take effect. Until this is done, a leaked client secret is a tenant-wide send capability.
+- **Rotate the Graph client secret before it expires.** Whatever expiry was set at registration is
+  a hard deadline: mail stops on that date with a token error, not a warning.
+- **Supabase Auth mail still comes from Supabase's sender.** Auth's mailer only speaks SMTP, which
+  M365 blocks here, so the Graph route cannot serve it. Password-reset and verification email stay
+  unbranded until a transactional provider is added — that provider would also give Supabase an
+  SMTP endpoint that takes an API key as the password, which basic auth handles fine.
 - **No live invitation email has ever been sent.** The flow is verified end to end against a log
-  transport only.
+  transport, and the Graph sender is unit-tested but has never delivered a real message.
 - **Advisors outstanding:** three unindexed foreign keys, one unused index, leaked-password
   protection disabled, `pg_trgm` and `btree_gist` installed in `public`, and a mutable
   `search_path` on `set_updated_at` (adjudicated a non-defect — it is `SECURITY INVOKER` and

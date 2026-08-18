@@ -13,12 +13,6 @@ function required(source: Source, name: string): string {
   return value
 }
 
-function requiredPort(source: Source, name: string): number {
-  const value = Number(required(source, name))
-  if (!Number.isInteger(value) || value <= 0) throw new MissingEnvError(name, 'is not a valid port')
-  return value
-}
-
 export function readSupabasePublicEnv(source: Source) {
   return {
     SUPABASE_URL: required(source, 'NEXT_PUBLIC_SUPABASE_URL'),
@@ -30,13 +24,17 @@ export function readSupabaseSecretKey(source: Source): string {
   return required(source, 'SUPABASE_SECRET_KEY')
 }
 
-export function readSmtpEnv(source: Source) {
+// Microsoft 365 blocks SMTP AUTH while security defaults are enabled, so mail
+// goes through the Graph API with an OAuth2 client-credentials grant instead of
+// a mailbox password. These are read lazily at send time, never at import: a
+// mail misconfiguration must not be able to break authentication or database
+// access.
+export function readGraphEnv(source: Source) {
   return {
-    SMTP_HOST: required(source, 'SMTP_HOST'),
-    SMTP_PORT: requiredPort(source, 'SMTP_PORT'),
-    SMTP_USER: required(source, 'SMTP_USER'),
-    SMTP_PASSWORD: required(source, 'SMTP_PASSWORD'),
-    SMTP_FROM: required(source, 'SMTP_FROM'),
+    GRAPH_TENANT_ID: required(source, 'GRAPH_TENANT_ID'),
+    GRAPH_CLIENT_ID: required(source, 'GRAPH_CLIENT_ID'),
+    GRAPH_CLIENT_SECRET: required(source, 'GRAPH_CLIENT_SECRET'),
+    MAIL_FROM: required(source, 'MAIL_FROM'),
   } as const
 }
 
@@ -45,4 +43,4 @@ export function readAppUrl(source: Source): string {
 }
 
 export type SupabasePublicEnv = ReturnType<typeof readSupabasePublicEnv>
-export type SmtpEnv = ReturnType<typeof readSmtpEnv>
+export type GraphEnv = ReturnType<typeof readGraphEnv>
