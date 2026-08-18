@@ -65,8 +65,13 @@ of rows; misleading at scale.
   M365 blocks here, so the Graph route cannot serve it. Password-reset and verification email stay
   unbranded until a transactional provider is added — that provider would also give Supabase an
   SMTP endpoint that takes an API key as the password, which basic auth handles fine.
-- **No live invitation email has ever been sent.** The flow is verified end to end against a log
-  transport, and the Graph sender is unit-tested but has never delivered a real message.
+- **A real invitation has been delivered** (2026-08-18, via Graph, inbox not spam), but no one has
+  ever *accepted* one from a real emailed link. Acceptance is covered by the RLS suite and was
+  exercised against fixtures during implementation; the round trip from inbox to membership has
+  not been done end to end.
+- **`NEXT_PUBLIC_APP_URL` must point at wherever the app actually runs.** It silently determines
+  the accept link inside every invitation. A wrong value produces a perfectly-delivered email
+  containing a dead link, with nothing failing anywhere to signal it.
 - **Advisors outstanding:** three unindexed foreign keys, one unused index, leaked-password
   protection disabled, `pg_trgm` and `btree_gist` installed in `public`, and a mutable
   `search_path` on `set_updated_at` (adjudicated a non-defect — it is `SECURITY INVOKER` and
