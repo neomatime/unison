@@ -1,6 +1,6 @@
 export class MissingEnvError extends Error {
   constructor(name: string, reason = 'is not set') {
-    super(`Environment variable ${name} ${reason}. Add it to .env.local — see .env.local.example.`)
+    super(`Environment variable ${name} ${reason}. Add it to .env.local — see .env.example.`)
     this.name = 'MissingEnvError'
   }
 }
