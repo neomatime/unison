@@ -3,7 +3,9 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { ArrowRight, CheckCircle2, Mail } from 'lucide-react'
-import { useState } from 'react'
+import { useActionState, useState } from 'react'
+import { signInAction } from './actions/sign-in'
+import { acceptInvitationAction } from '@/features/invitations/actions/accept-invitation'
 
 type AuthKind = 'sign-in' | 'forgot' | 'reset' | 'accept' | 'verify' | 'create-organization' | 'join-organization'
 type CompletionMethod = 'email' | 'microsoft' | null
@@ -18,11 +20,15 @@ const copy: Record<AuthKind, { title: string; description: string; action: strin
   'join-organization': { title: 'Join an organization', description: 'Enter the invitation code supplied by your administrator.', action: 'Join organization' },
 }
 
-export function AuthScreen({ kind }: { kind: AuthKind }) {
+export function AuthScreen({ kind, next, token }: { kind: AuthKind; next?: string; token?: string }) {
   const [completion, setCompletion] = useState<CompletionMethod>(null)
+  const [signInState, signInFormAction, signInPending] = useActionState(signInAction, undefined)
+  const [acceptState, acceptFormAction, acceptPending] = useActionState(acceptInvitationAction, undefined)
   const content = copy[kind]
-  const showPassword = ['sign-in', 'reset', 'accept'].includes(kind)
+  const showPassword = ['sign-in', 'reset'].includes(kind)
   const organization = ['create-organization', 'join-organization'].includes(kind)
+  const isSignIn = kind === 'sign-in'
+  const isAccept = kind === 'accept'
 
   return <main className="grid min-h-screen bg-background lg:grid-cols-2">
     <BrandPanel />
@@ -40,11 +46,19 @@ export function AuthScreen({ kind }: { kind: AuthKind }) {
         {completion ? <CompletionState kind={kind} method={completion} /> : <>
           {kind === 'sign-in' ? <MicrosoftSignIn onClick={() => setCompletion('microsoft')} /> : null}
 
-          <form onSubmit={(event) => { event.preventDefault(); setCompletion('email') }} className={kind === 'sign-in' ? 'mt-6 space-y-4' : 'mt-8 space-y-4'}>
-            {organization ? <label className="block text-sm font-medium">Organization name or code<input required defaultValue={kind === 'create-organization' ? 'HIMARK' : ''} className="mt-1.5 h-12 w-full rounded-xl border border-border bg-card px-3 outline-none transition-shadow focus:border-ring focus:ring-2 focus:ring-ring/15" /></label> : <label className="block text-sm font-medium">Work email<div className="relative mt-1.5"><Mail className="absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted-foreground" /><input required type="email" defaultValue={kind === 'accept' ? 'neo@himark.co.za' : ''} className="h-12 w-full rounded-xl border border-border bg-card pr-3 pl-10 outline-none transition-shadow focus:border-ring focus:ring-2 focus:ring-ring/15" /></div></label>}
-            {showPassword ? <label className="block text-sm font-medium">Password<input required type="password" className="mt-1.5 h-12 w-full rounded-xl border border-border bg-card px-3 outline-none transition-shadow focus:border-ring focus:ring-2 focus:ring-ring/15" /></label> : null}
+          <form
+            action={isSignIn ? signInFormAction : isAccept ? acceptFormAction : undefined}
+            onSubmit={isSignIn || isAccept ? undefined : (event) => { event.preventDefault(); setCompletion('email') }}
+            className={kind === 'sign-in' ? 'mt-6 space-y-4' : 'mt-8 space-y-4'}
+          >
+            {isSignIn ? <input type="hidden" name="next" value={next ?? '/overview'} /> : null}
+            {isAccept ? <input type="hidden" name="token" value={token ?? ''} /> : null}
+            {isAccept ? null : organization ? <label className="block text-sm font-medium">Organization name or code<input required defaultValue={kind === 'create-organization' ? 'HIMARK' : ''} className="mt-1.5 h-12 w-full rounded-xl border border-border bg-card px-3 outline-none transition-shadow focus:border-ring focus:ring-2 focus:ring-ring/15" /></label> : <label className="block text-sm font-medium">Work email<div className="relative mt-1.5"><Mail className="absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted-foreground" /><input required type="email" name={isSignIn ? 'email' : undefined} defaultValue="" className="h-12 w-full rounded-xl border border-border bg-card pr-3 pl-10 outline-none transition-shadow focus:border-ring focus:ring-2 focus:ring-ring/15" /></div></label>}
+            {showPassword ? <label className="block text-sm font-medium">Password<input required type="password" name={isSignIn ? 'password' : undefined} className="mt-1.5 h-12 w-full rounded-xl border border-border bg-card px-3 outline-none transition-shadow focus:border-ring focus:ring-2 focus:ring-ring/15" /></label> : null}
             {kind === 'sign-in' ? <div className="flex justify-end"><Link href="/forgot-password" className="text-sm text-muted-foreground hover:text-foreground">Forgot password?</Link></div> : null}
-            <button type="submit" className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-foreground text-sm font-semibold text-primary-foreground transition-transform hover:-translate-y-0.5">{content.action}<ArrowRight className="size-4" /></button>
+            {isSignIn && signInState?.error ? <p role="alert" className="text-sm text-destructive">{signInState.error}</p> : null}
+            {isAccept && acceptState?.error ? <p role="alert" className="text-sm text-destructive">{acceptState.error}</p> : null}
+            <button type="submit" disabled={(isSignIn && signInPending) || (isAccept && acceptPending)} className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-foreground text-sm font-semibold text-primary-foreground transition-transform hover:-translate-y-0.5">{content.action}<ArrowRight className="size-4" /></button>
           </form>
 
           {kind === 'sign-in' ? <p className="mt-6 text-center text-xs text-muted-foreground">Invitation-only access.</p> : null}

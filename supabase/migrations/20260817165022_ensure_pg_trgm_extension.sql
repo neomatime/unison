@@ -1,0 +1,21 @@
+-- The clients migration (20260811102640_clients.sql) creates a trigram
+-- index using public.gin_trgm_ops, but no migration has ever created the
+-- pg_trgm extension itself -- it only exists on this project because it
+-- predates the Task 1 schema reset (installed under the old booking
+-- schema). Replaying this migration history onto a fresh project fails at
+-- that index. pg_trgm lives in the public schema here (verified via
+-- pg_extension.extnamespace), unlike pgcrypto which lives in `extensions`
+-- -- so this must not blindly copy the `with schema extensions` convention
+-- platform_tables.sql uses for pgcrypto.
+--
+-- This migration alone does not fix a fresh replay: migrations run in
+-- filename order, and this file's timestamp necessarily sorts after
+-- 20260811102640_clients.sql, so a from-scratch run would still fail at
+-- the clients migration before ever reaching this one. See
+-- 20260811102640_clients.sql itself, which has been patched separately to
+-- create the extension inline (idempotently) so the ordering is correct
+-- for a fresh replay. This migration is kept anyway, applied and recorded
+-- through the normal MCP flow, so that extension provisioning has its own
+-- explicit, discoverable record independent of the clients table -- and as
+-- a defensive backstop if clients.sql is ever changed again.
+create extension if not exists pg_trgm with schema public;

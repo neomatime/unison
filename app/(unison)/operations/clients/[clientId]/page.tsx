@@ -1,8 +1,12 @@
-import { ModuleRecord } from '@/features/product-ui/components/module-record'
-import { moduleById } from '@/features/product-ui/registry'
+import { notFound } from 'next/navigation'
 
-export default async function Page({ params }: { params: Promise<{ clientId: string }> }) {
+import { ClientDetail } from '@/features/clients/components/client-detail'
+import { getClient } from '@/features/clients/queries/get-client'
+
+export default async function Page({ params, searchParams }: { params: Promise<{ clientId: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const { clientId } = await params
-  return <ModuleRecord module={moduleById.clients} recordId={clientId} />
+  const search = await searchParams
+  const client = await getClient(clientId)
+  if (!client) notFound()
+  return <ClientDetail client={client} confirmArchive={search.confirm === 'archive'} archiveError={search.archiveError === '1'} />
 }
-

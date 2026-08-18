@@ -1,11 +1,5 @@
-import { AppShell } from '@/components/layout/app-shell'
-import { OverviewScreen } from '@/features/overview/components/overview-screen'
+import { redirect } from 'next/navigation'
 
 export default function HomePage() {
-  return (
-    <AppShell>
-      <OverviewScreen />
-    </AppShell>
-  )
+  redirect('/overview')
 }
-

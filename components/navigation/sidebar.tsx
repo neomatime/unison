@@ -6,12 +6,20 @@ import { usePathname } from 'next/navigation'
 import { Menu, ChevronDown } from 'lucide-react'
 import { useState } from 'react'
 import { navigationSections } from '@/config/navigation'
-import { cn } from '@/lib/utils'
+import { cn, getInitials } from '@/lib/utils'
+import { useShellContext } from '@/components/layout/shell-context'
+import { InitialAvatar } from '@/components/ui/initial-avatar'
+import { roles } from '@/config/roles'
+import { signOutAction } from '@/features/auth-ui/actions/sign-out'
 
 export function Sidebar() {
   const pathname = usePathname()
   const [collapsed, setCollapsed] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
+  const { user, organization, role } = useShellContext()
+  const displayName = user.displayName
+  const avatarUrl = user.avatarUrl
+  const roleLabel = roles.find((definition) => definition.id === role)?.label ?? role
   return (
     <aside className={cn('flex h-full shrink-0 flex-col bg-sidebar text-sidebar-foreground transition-[width]', collapsed ? 'w-20' : 'w-64')}>
       {/* Brand */}
@@ -76,22 +84,26 @@ export function Sidebar() {
           aria-expanded={profileOpen}
           className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left transition-colors hover:bg-sidebar-active/60"
         >
-          <Image
-            src="/avatars/neo-morake.png"
-            alt="Neo Morake"
-            width={40}
-            height={40}
-            className="size-10 shrink-0 rounded-full object-cover"
-          />
+          {avatarUrl ? (
+            <Image
+              src={avatarUrl}
+              alt={displayName}
+              width={40}
+              height={40}
+              className="size-10 shrink-0 rounded-full object-cover"
+            />
+          ) : (
+            <InitialAvatar initials={getInitials(displayName)} className="size-10 rounded-full" />
+          )}
           <span className={cn('min-w-0 flex-1', collapsed && 'sr-only')}>
             <span className="block truncate text-sm font-semibold text-sidebar-active-foreground">
-              Neo Morake
+              {displayName}
             </span>
-            <span className="block truncate text-xs text-sidebar-muted">CEO</span>
+            <span className="block truncate text-xs text-sidebar-muted">{roleLabel}</span>
           </span>
           <ChevronDown className={cn('size-4 shrink-0 text-sidebar-muted', collapsed && 'hidden')} />
         </button>
-        {profileOpen ? <div className={cn('absolute bottom-full z-50 mb-2 rounded-xl border border-border bg-card p-2 text-foreground shadow-xl', collapsed ? 'left-2 w-52' : 'right-3 left-3')}><p className="px-2 py-2 text-xs font-semibold text-muted-foreground">Neo Morake · HIMARK</p><Link href="/people/team/neo-morake" className="block rounded-lg px-2 py-2 text-sm hover:bg-muted">View profile</Link><Link href="/settings" className="block rounded-lg px-2 py-2 text-sm hover:bg-muted">Organization settings</Link><Link href="/sign-in" className="block rounded-lg px-2 py-2 text-sm text-destructive hover:bg-muted">Sign out demo</Link></div> : null}
+        {profileOpen ? <div className={cn('absolute bottom-full z-50 mb-2 rounded-xl border border-border bg-card p-2 text-foreground shadow-xl', collapsed ? 'left-2 w-52' : 'right-3 left-3')}><p className="px-2 py-2 text-xs font-semibold text-muted-foreground">{displayName} · {organization.name}</p><Link href="/people/team" className="block rounded-lg px-2 py-2 text-sm hover:bg-muted">View profile</Link><Link href="/settings" className="block rounded-lg px-2 py-2 text-sm hover:bg-muted">Organization settings</Link><form action={signOutAction}><button type="submit" className="block w-full rounded-lg px-2 py-2 text-left text-sm text-destructive hover:bg-muted">Sign out</button></form></div> : null}
       </div>
     </aside>
   )

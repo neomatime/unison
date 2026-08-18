@@ -1,6 +1,6 @@
 # UNISON product UI
 
-The current phase is a front-end visual specification. It contains no API routes, database access, authentication enforcement, external integrations, AI calls, automation execution, or durable CRUD persistence.
+Seventeen product modules exist as routed screens. Of those, **Clients is the only module connected to the database** — its workspace, create, detail, and edit routes read and write real `clients` rows through `features/clients`, scoped to the active organization and enforced by RLS. Every other module (Projects, Tasks, Calendar, Leads, Quotes, Sales, Invoices, Expenses, Forecast, Team, HR, Leave, Knowledge, Atlas, Overview, Settings) still renders `moduleFixtures` from `features/product-ui/mocks/modules.ts` — no persistence, no API route, local-only interaction that resets on refresh. Authentication enforcement, AI calls, external integrations, and automation execution remain unimplemented outside of what Clients and the auth/tenancy flows use.
 
 ## Product modules
 
@@ -10,7 +10,7 @@ Each applicable module has thin Next.js routes for its workspace, create form, r
 
 ## Mock fixtures
 
-Professional fixture records are isolated in `features/product-ui/mocks/modules.ts`. Local interactions intentionally reset on refresh. The tenant switcher contains HIMARK, Acme Group, Meridian Holdings, and Northstar Advisory as visual contexts.
+Professional fixture records for the sixteen unconnected modules are isolated in `features/product-ui/mocks/modules.ts`. Local interactions on those modules intentionally reset on refresh. The tenant switcher renders the signed-in user's real organizations and memberships (via `ShellProvider`/`useShellContext`, see below) rather than a fixed visual list.
 
 ## Shared interaction model
 
@@ -23,4 +23,4 @@ Professional fixture records are isolated in `features/product-ui/mocks/modules.
 
 ## Backend boundary
 
-All controls are demonstrative. Connect and save buttons do not call external services. Tenant selection, module toggles, Atlas prompts, archive actions, approvals, invitations, and authentication forms are local UI only.
+Clients create/edit/archive controls call real server actions against the database (`features/clients/actions`), scoped to the active organization and subject to RLS. Sign-in, invitation send/accept, and tenant switching are also real — they hit Supabase Auth and the `memberships`/`invitations`/`accept_invitation` machinery described in `docs/tenancy.md`, not local state. Everywhere else, controls remain demonstrative: connect/save buttons on the sixteen unconnected modules do not call external services, and module toggles, Atlas prompts, approvals, and automation are local UI only. Password-reset and verification mail still come from Supabase's own sender — Auth's custom SMTP is not configured in the dashboard — and no invitation email has ever actually been sent; the send/accept flow is verified against a log transport only, not a live mailbox.

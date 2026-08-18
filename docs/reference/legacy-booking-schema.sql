@@ -1,0 +1,668 @@
+-- ============================================================================
+-- ARCHIVED SCHEMA REFERENCE — NOT A RUNNABLE SCRIPT
+-- ============================================================================
+-- Archived:     2026-08-11
+-- Project ref:  nwdzpjzllhhqwawmsxjd  (unison-uat)
+-- Archived by:  Task 2 of the unison-supabase-foundation plan
+--               (.superpowers/sdd/2026-08-11-unison-supabase-foundation/)
+--
+-- WHY: unison-uat's public schema was provisioned for a superseded booking
+-- product (a multi-tenant firm/client/booking scheduling system), not for
+-- UNISON. All 17 tables below were confirmed empty (0 rows) at archive time.
+-- Task 2 drops every one of them (see
+-- supabase/migrations/20260811000001_reset_legacy_schema.sql) so the project
+-- starts clean for the UNISON schema that later tasks build.
+--
+-- This file is a human-readable capture of the schema as it existed
+-- immediately before the drop — columns, types, nullability, constraints,
+-- indexes, RLS policies, and function bodies — reconstructed from
+-- information_schema / pg_catalog queries run via the Supabase MCP
+-- execute_sql tool against project nwdzpjzllhhqwawmsxjd. It intentionally
+-- omits CREATE TABLE boilerplate; treat it as a reference, not a restore
+-- script. If unison-uat is ever restored to this state, use the project's
+-- own migration history (versions 20260419134420 through 20260427233223,
+-- listed at the bottom of this file) via Supabase point-in-time recovery
+-- or by replaying those migrations, not by pasting this file into psql.
+--
+-- Extensions in use by this schema (pg_trgm, btree_gist) are NOT being
+-- removed — pg_trgm in particular is needed by later UNISON tasks.
+-- ============================================================================
+
+
+-- ----------------------------------------------------------------------------
+-- TABLE: public.firms
+-- ----------------------------------------------------------------------------
+-- Top-level tenant. Every other table hangs off firm_id (multi-tenant model).
+--
+-- Columns:
+--   id                    uuid        not null   default gen_random_uuid()
+--   name                  text        not null
+--   slug                  text        not null                                   -- UNIQUE
+--   type                  text        not null
+--   phone                 text        null
+--   address               jsonb       null
+--   vat_number            text        null
+--   registration_number   text        null
+--   logo_url              text        null
+--   timezone              text        not null   default 'Africa/Johannesburg'::text
+--   currency              text        not null   default 'ZAR'::text
+--   settings              jsonb       not null   default '{}'::jsonb
+--   plan                  text        not null   default 'free'::text
+--   created_at            timestamptz not null   default now()
+--   updated_at            timestamptz not null   default now()
+--
+-- Constraints:
+--   firms_pkey          PRIMARY KEY (id)
+--   firms_slug_unique   UNIQUE (slug)
+--
+-- Indexes:
+--   firms_pkey          UNIQUE btree (id)
+--   firms_slug_unique   UNIQUE btree (slug)
+--
+-- RLS: enabled (not forced)
+--   firms_insert_service_role  INSERT  PERMISSIVE  public   with_check: false
+--                              (no client-side inserts; rows are created by service_role only)
+--   firms_select_own           SELECT  PERMISSIVE  public   qual: id = (auth.jwt() ->> 'firm_id')::uuid
+--   firms_update_own           UPDATE  PERMISSIVE  public   qual: id = (auth.jwt() ->> 'firm_id')::uuid
+--
+-- Referenced by (firm_id FK, ON DELETE default/NO ACTION unless noted): users,
+-- service_categories, service_price_history, service_provider_assignments,
+-- services, client_addresses, client_contacts, clients, booking_participants,
+-- booking_status_history, bookings, audit_logs, notifications, team_invites,
+-- team_availability, team_leave.
+
+
+-- ----------------------------------------------------------------------------
+-- TABLE: public.users
+-- ----------------------------------------------------------------------------
+-- App-level user profile, keyed 1:1 with an auth.users row (id has no default —
+-- it is expected to be set to the auth.users id on insert).
+--
+-- Columns:
+--   id               uuid        not null   (no default — mirrors auth.users.id)
+--   firm_id          uuid        not null
+--   email            text        not null                                        -- UNIQUE
+--   name             text        not null
+--   phone            text        null
+--   avatar_url       text        null
+--   role             text        not null   default 'read_only'::text
+--   status           text        not null   default 'active'::text
+--   onboarded        boolean     not null   default false
+--   invited_by       uuid        null
+--   invited_at       timestamptz null
+--   last_active_at   timestamptz null
+--   deleted_at       timestamptz null
+--   created_at       timestamptz not null   default now()
+--   updated_at       timestamptz not null   default now()
+--
+-- Constraints:
+--   users_pkey           PRIMARY KEY (id)
+--   users_email_unique   UNIQUE (email)
+--   users_firm_id_firms_id_fk   FOREIGN KEY (firm_id) REFERENCES firms(id)
+--
+-- Indexes:
+--   users_pkey           UNIQUE btree (id)
+--   users_email_unique   UNIQUE btree (email)
+--
+-- RLS: enabled (not forced)
+--   users_insert_service_role  INSERT  PERMISSIVE  public   with_check: false
+--   users_select_same_firm     SELECT  PERMISSIVE  public   qual: firm_id = (auth.jwt() ->> 'firm_id')::uuid
+--   users_update_own           UPDATE  PERMISSIVE  public
+--     qual: (id = auth.uid()) OR (firm_id = (auth.jwt() ->> 'firm_id')::uuid
+--           AND (auth.jwt() ->> 'role') = ANY (ARRAY['owner','admin']))
+--
+-- Referenced by: team_availability.user_id, team_invites.invited_by,
+-- team_leave.user_id/approved_by, service_price_history.changed_by,
+-- service_provider_assignments.user_id/assigned_by,
+-- booking_status_history.changed_by, bookings.provider_id/cancelled_by/created_by,
+-- audit_logs.actor_id, notifications.user_id.
+
+
+-- ----------------------------------------------------------------------------
+-- TABLE: public.team_availability
+-- ----------------------------------------------------------------------------
+-- Columns:
+--   id             uuid        not null   default gen_random_uuid()
+--   firm_id        uuid        not null
+--   user_id        uuid        not null
+--   day_of_week    smallint    not null
+--   start_time     time        not null
+--   end_time       time        not null
+--   is_available   boolean     not null   default true
+--   created_at     timestamptz not null   default now()
+--   updated_at     timestamptz not null   default now()
+--
+-- Constraints:
+--   team_availability_pkey                    PRIMARY KEY (id)
+--   team_availability_firm_id_firms_id_fk      FOREIGN KEY (firm_id) REFERENCES firms(id)
+--   team_availability_user_id_users_id_fk      FOREIGN KEY (user_id) REFERENCES users(id)
+--
+-- Indexes: team_availability_pkey UNIQUE btree (id)
+--
+-- RLS: enabled (not forced)
+--   firm_isolation  ALL  PERMISSIVE  public   qual: firm_id = (auth.jwt() ->> 'firm_id')::uuid
+
+
+-- ----------------------------------------------------------------------------
+-- TABLE: public.team_invites
+-- ----------------------------------------------------------------------------
+-- Columns:
+--   id            uuid        not null   default gen_random_uuid()
+--   firm_id       uuid        not null
+--   email         text        not null
+--   role          text        not null
+--   token         text        not null                                          -- UNIQUE
+--   invited_by    uuid        not null
+--   expires_at    timestamptz not null
+--   accepted_at   timestamptz null
+--   revoked_at    timestamptz null
+--   created_at    timestamptz not null   default now()
+--
+-- Constraints:
+--   team_invites_pkey                     PRIMARY KEY (id)
+--   team_invites_token_unique             UNIQUE (token)
+--   team_invites_firm_id_firms_id_fk      FOREIGN KEY (firm_id) REFERENCES firms(id)
+--   team_invites_invited_by_users_id_fk   FOREIGN KEY (invited_by) REFERENCES users(id)
+--
+-- Indexes:
+--   team_invites_pkey           UNIQUE btree (id)
+--   team_invites_token_unique   UNIQUE btree (token)
+--
+-- RLS: enabled (not forced)
+--   firm_isolation  ALL  PERMISSIVE  public   qual: firm_id = (auth.jwt() ->> 'firm_id')::uuid
+
+
+-- ----------------------------------------------------------------------------
+-- TABLE: public.team_leave
+-- ----------------------------------------------------------------------------
+-- Columns:
+--   id            uuid    not null   default gen_random_uuid()
+--   firm_id       uuid    not null
+--   user_id       uuid    not null
+--   starts_at     date    not null
+--   ends_at       date    not null
+--   reason        text    null
+--   approved_by   uuid    null
+--   status        text    not null   default 'pending'::text
+--   created_at    timestamptz not null default now()
+--
+-- Constraints:
+--   team_leave_pkey                     PRIMARY KEY (id)
+--   team_leave_firm_id_firms_id_fk      FOREIGN KEY (firm_id) REFERENCES firms(id)
+--   team_leave_user_id_users_id_fk      FOREIGN KEY (user_id) REFERENCES users(id)
+--   team_leave_approved_by_users_id_fk  FOREIGN KEY (approved_by) REFERENCES users(id)
+--
+-- Indexes: team_leave_pkey UNIQUE btree (id)
+--
+-- RLS: enabled (not forced)
+--   firm_isolation  ALL  PERMISSIVE  public   qual: firm_id = (auth.jwt() ->> 'firm_id')::uuid
+
+
+-- ----------------------------------------------------------------------------
+-- TABLE: public.service_categories
+-- ----------------------------------------------------------------------------
+-- Columns:
+--   id           uuid        not null   default gen_random_uuid()
+--   firm_id      uuid        not null
+--   name         text        not null
+--   slug         text        not null
+--   color        text        null
+--   sort_order   integer     not null   default 0
+--   created_at   timestamptz not null   default now()
+--
+-- Constraints:
+--   service_categories_pkey                PRIMARY KEY (id)
+--   service_categories_firm_id_firms_id_fk FOREIGN KEY (firm_id) REFERENCES firms(id)
+--
+-- Indexes: service_categories_pkey UNIQUE btree (id)
+--
+-- RLS: enabled (not forced)
+--   firm_isolation  ALL  PERMISSIVE  public   qual: firm_id = (auth.jwt() ->> 'firm_id')::uuid
+--
+-- Referenced by: services.category_id
+
+
+-- ----------------------------------------------------------------------------
+-- TABLE: public.service_price_history
+-- ----------------------------------------------------------------------------
+-- Columns:
+--   id           uuid        not null   default gen_random_uuid()
+--   firm_id      uuid        not null
+--   service_id   uuid        not null
+--   old_price    numeric     not null
+--   new_price    numeric     not null
+--   reason       text        null
+--   changed_by   uuid        not null
+--   changed_at   timestamptz not null   default now()
+--
+-- Constraints:
+--   service_price_history_pkey                    PRIMARY KEY (id)
+--   service_price_history_firm_id_firms_id_fk      FOREIGN KEY (firm_id) REFERENCES firms(id)
+--   service_price_history_service_id_services_id_fk FOREIGN KEY (service_id) REFERENCES services(id)
+--   service_price_history_changed_by_users_id_fk   FOREIGN KEY (changed_by) REFERENCES users(id)
+--
+-- Indexes: service_price_history_pkey UNIQUE btree (id)
+--
+-- RLS: enabled (not forced)
+--   firm_isolation  ALL  PERMISSIVE  public   qual: firm_id = (auth.jwt() ->> 'firm_id')::uuid
+
+
+-- ----------------------------------------------------------------------------
+-- TABLE: public.service_provider_assignments
+-- ----------------------------------------------------------------------------
+-- Composite-key join table between services and users. No surrogate id column.
+--
+-- Columns:
+--   service_id    uuid        not null
+--   user_id       uuid        not null
+--   firm_id       uuid        not null
+--   assigned_at   timestamptz not null   default now()
+--   assigned_by   uuid        not null
+--
+-- Constraints:
+--   service_provider_assignments_service_id_user_id_pk   PRIMARY KEY (service_id, user_id)
+--   service_provider_assignments_service_id_services_id_fk FOREIGN KEY (service_id) REFERENCES services(id)
+--   service_provider_assignments_user_id_users_id_fk      FOREIGN KEY (user_id) REFERENCES users(id)
+--   service_provider_assignments_firm_id_firms_id_fk      FOREIGN KEY (firm_id) REFERENCES firms(id)
+--   service_provider_assignments_assigned_by_users_id_fk  FOREIGN KEY (assigned_by) REFERENCES users(id)
+--
+-- Indexes:
+--   service_provider_assignments_service_id_user_id_pk  UNIQUE btree (service_id, user_id)
+--
+-- RLS: enabled (not forced)
+--   firm_isolation  ALL  PERMISSIVE  public   qual: firm_id = (auth.jwt() ->> 'firm_id')::uuid
+
+
+-- ----------------------------------------------------------------------------
+-- TABLE: public.services
+-- ----------------------------------------------------------------------------
+-- Columns:
+--   id                   uuid        not null   default gen_random_uuid()
+--   firm_id              uuid        not null
+--   category_id          uuid        null
+--   name                 text        not null
+--   slug                 text        not null
+--   description          text        null
+--   duration_minutes     integer     not null
+--   buffer_minutes       integer     not null   default 0
+--   price                numeric     not null
+--   currency             text        not null   default 'ZAR'::text
+--   price_type           text        not null   default 'fixed'::text
+--   status               text        not null   default 'draft'::text
+--   is_online_bookable   boolean     not null   default false
+--   max_participants     integer     not null   default 1
+--   sort_order           integer     not null   default 0
+--   deleted_at           timestamptz null
+--   created_at           timestamptz not null   default now()
+--   updated_at           timestamptz not null   default now()
+--
+-- Constraints:
+--   services_pkey                          PRIMARY KEY (id)
+--   services_firm_id_firms_id_fk           FOREIGN KEY (firm_id) REFERENCES firms(id)
+--   services_category_id_service_categories_id_fk FOREIGN KEY (category_id) REFERENCES service_categories(id)
+--
+-- Indexes: services_pkey UNIQUE btree (id)
+--
+-- RLS: enabled (not forced)
+--   firm_isolation  ALL  PERMISSIVE  public   qual: firm_id = (auth.jwt() ->> 'firm_id')::uuid
+--
+-- Referenced by: service_provider_assignments.service_id,
+-- service_price_history.service_id, bookings.service_id
+
+
+-- ----------------------------------------------------------------------------
+-- TABLE: public.client_addresses
+-- ----------------------------------------------------------------------------
+-- Columns:
+--   id           uuid        not null   default gen_random_uuid()
+--   firm_id      uuid        not null
+--   client_id    uuid        not null
+--   label        text        not null   default 'home'::text
+--   street       text        not null
+--   city         text        not null
+--   province     text        null
+--   postal_code  text        null
+--   country      text        not null   default 'ZA'::text
+--   is_primary   boolean     not null   default false
+--   created_at   timestamptz not null   default now()
+--
+-- Constraints:
+--   client_addresses_pkey                  PRIMARY KEY (id)
+--   client_addresses_firm_id_firms_id_fk   FOREIGN KEY (firm_id) REFERENCES firms(id)
+--   client_addresses_client_id_clients_id_fk FOREIGN KEY (client_id) REFERENCES clients(id)
+--
+-- Indexes: client_addresses_pkey UNIQUE btree (id)
+--
+-- RLS: enabled (not forced)
+--   firm_isolation  ALL  PERMISSIVE  public   qual: firm_id = (auth.jwt() ->> 'firm_id')::uuid
+
+
+-- ----------------------------------------------------------------------------
+-- TABLE: public.client_contacts
+-- ----------------------------------------------------------------------------
+-- Columns:
+--   id           uuid        not null   default gen_random_uuid()
+--   firm_id      uuid        not null
+--   client_id    uuid        not null
+--   type         text        not null
+--   value        text        not null
+--   label        text        null
+--   is_primary   boolean     not null   default false
+--   created_at   timestamptz not null   default now()
+--
+-- Constraints:
+--   client_contacts_pkey                  PRIMARY KEY (id)
+--   client_contacts_firm_id_firms_id_fk   FOREIGN KEY (firm_id) REFERENCES firms(id)
+--   client_contacts_client_id_clients_id_fk FOREIGN KEY (client_id) REFERENCES clients(id)
+--
+-- Indexes: client_contacts_pkey UNIQUE btree (id)
+--
+-- RLS: enabled (not forced)
+--   firm_isolation  ALL  PERMISSIVE  public   qual: firm_id = (auth.jwt() ->> 'firm_id')::uuid
+
+
+-- ----------------------------------------------------------------------------
+-- TABLE: public.clients
+-- ----------------------------------------------------------------------------
+-- Columns:
+--   id                 uuid        not null   default gen_random_uuid()
+--   firm_id            uuid        not null
+--   first_name         text        not null
+--   last_name          text        not null
+--   email              text        null
+--   phone              text        null
+--   status             text        not null   default 'active'::text
+--   tags               text[]      not null   default '{}'::text[]
+--   notes              text        null
+--   source             text        null
+--   blacklist_reason   text        null
+--   merged_into        uuid        null
+--   deleted_at         timestamptz null
+--   created_at         timestamptz not null   default now()
+--   updated_at         timestamptz not null   default now()
+--
+-- Constraints:
+--   clients_pkey                PRIMARY KEY (id)
+--   clients_firm_id_firms_id_fk FOREIGN KEY (firm_id) REFERENCES firms(id)
+--
+-- Indexes:
+--   clients_pkey                UNIQUE btree (id)
+--   clients_email_trgm_idx      GIN btree/gin_trgm_ops (email)          -- pg_trgm fuzzy search
+--   clients_first_name_trgm_idx GIN gin_trgm_ops (first_name)
+--   clients_last_name_trgm_idx  GIN gin_trgm_ops (last_name)
+--
+-- RLS: enabled (not forced)
+--   firm_isolation  ALL  PERMISSIVE  public   qual: firm_id = (auth.jwt() ->> 'firm_id')::uuid
+--
+-- Referenced by: client_contacts.client_id, bookings.client_id,
+-- booking_participants.client_id, client_addresses.client_id
+
+
+-- ----------------------------------------------------------------------------
+-- TABLE: public.booking_participants
+-- ----------------------------------------------------------------------------
+-- Columns:
+--   id           uuid        not null   default gen_random_uuid()
+--   firm_id      uuid        not null
+--   booking_id   uuid        not null
+--   client_id    uuid        not null
+--   is_primary   boolean     not null   default false
+--   created_at   timestamptz not null   default now()
+--
+-- Constraints:
+--   booking_participants_pkey                    PRIMARY KEY (id)
+--   booking_participants_firm_id_firms_id_fk      FOREIGN KEY (firm_id) REFERENCES firms(id)
+--   booking_participants_booking_id_bookings_id_fk FOREIGN KEY (booking_id) REFERENCES bookings(id)
+--   booking_participants_client_id_clients_id_fk  FOREIGN KEY (client_id) REFERENCES clients(id)
+--
+-- Indexes: booking_participants_pkey UNIQUE btree (id)
+--
+-- RLS: enabled (not forced)
+--   firm_isolation  ALL  PERMISSIVE  public   qual: firm_id = (auth.jwt() ->> 'firm_id')::uuid
+
+
+-- ----------------------------------------------------------------------------
+-- TABLE: public.booking_status_history
+-- ----------------------------------------------------------------------------
+-- Columns:
+--   id           uuid        not null   default gen_random_uuid()
+--   firm_id      uuid        not null
+--   booking_id   uuid        not null
+--   from_status  text        not null
+--   to_status    text        not null
+--   reason       text        null
+--   changed_by   uuid        not null
+--   changed_at   timestamptz not null   default now()
+--
+-- Constraints:
+--   booking_status_history_pkey                    PRIMARY KEY (id)
+--   booking_status_history_firm_id_firms_id_fk      FOREIGN KEY (firm_id) REFERENCES firms(id)
+--   booking_status_history_booking_id_bookings_id_fk FOREIGN KEY (booking_id) REFERENCES bookings(id)
+--   booking_status_history_changed_by_users_id_fk   FOREIGN KEY (changed_by) REFERENCES users(id)
+--
+-- Indexes: booking_status_history_pkey UNIQUE btree (id)
+--
+-- RLS: enabled (not forced)
+--   firm_isolation  ALL  PERMISSIVE  public   qual: firm_id = (auth.jwt() ->> 'firm_id')::uuid
+
+
+-- ----------------------------------------------------------------------------
+-- TABLE: public.bookings
+-- ----------------------------------------------------------------------------
+-- The core scheduling entity. Notable: an EXCLUDE constraint prevents a
+-- provider from double-booking overlapping time ranges, backed by btree_gist
+-- (needed for the uuid = and tstzrange && operator combination in one GiST
+-- index), and a trigram index over `reference` backed by pg_trgm.
+--
+-- Columns:
+--   id                    uuid        not null   default gen_random_uuid()
+--   firm_id               uuid        not null
+--   reference             text        null       default generate_booking_reference()  -- UNIQUE
+--   client_id             uuid        not null
+--   provider_id           uuid        not null
+--   service_id            uuid        not null
+--   service_snapshot      jsonb       not null                                    -- denormalized copy of service at booking time
+--   status                text        not null   default 'pending_confirmation'::text
+--   scheduled_at          timestamptz not null
+--   ends_at               timestamptz not null
+--   duration_minutes      integer     not null
+--   price                 numeric     not null
+--   currency              text        not null   default 'ZAR'::text
+--   notes                 text        null
+--   client_notes          text        null
+--   cancellation_reason   text        null
+--   cancelled_by          uuid        null
+--   checked_in_at         timestamptz null
+--   completed_at          timestamptz null
+--   no_show_at            timestamptz null
+--   rescheduled_from      uuid        null
+--   created_by            uuid        not null
+--   deleted_at            timestamptz null
+--   created_at            timestamptz not null   default now()
+--   updated_at            timestamptz not null   default now()
+--
+-- Constraints:
+--   bookings_pkey                       PRIMARY KEY (id)
+--   bookings_reference_unique           UNIQUE (reference)
+--   bookings_firm_id_firms_id_fk        FOREIGN KEY (firm_id) REFERENCES firms(id)
+--   bookings_client_id_clients_id_fk    FOREIGN KEY (client_id) REFERENCES clients(id)
+--   bookings_provider_id_users_id_fk    FOREIGN KEY (provider_id) REFERENCES users(id)
+--   bookings_service_id_services_id_fk  FOREIGN KEY (service_id) REFERENCES services(id)
+--   bookings_created_by_users_id_fk     FOREIGN KEY (created_by) REFERENCES users(id)
+--   bookings_cancelled_by_users_id_fk   FOREIGN KEY (cancelled_by) REFERENCES users(id)
+--   bookings_no_overlap  EXCLUDE USING gist (provider_id WITH =, tstzrange(scheduled_at, ends_at) WITH &&)
+--                         WHERE (status NOT IN ('cancelled','no_show','rescheduled','draft'))
+--
+-- Indexes:
+--   bookings_pkey               UNIQUE btree (id)
+--   bookings_reference_unique   UNIQUE btree (reference)
+--   bookings_no_overlap         GIST (provider_id, tstzrange(scheduled_at, ends_at)) WHERE status NOT IN (...)
+--   bookings_reference_trgm_idx GIN gin_trgm_ops (reference) WHERE reference IS NOT NULL
+--
+-- RLS: enabled (not forced)
+--   firm_isolation  ALL  PERMISSIVE  public   qual: firm_id = (auth.jwt() ->> 'firm_id')::uuid
+--
+-- Referenced by: booking_participants.booking_id, booking_status_history.booking_id
+
+
+-- ----------------------------------------------------------------------------
+-- TABLE: public.audit_logs
+-- ----------------------------------------------------------------------------
+-- Columns:
+--   id            uuid        not null   default gen_random_uuid()
+--   firm_id       uuid        not null
+--   actor_id      uuid        not null
+--   resource      text        not null
+--   resource_id   uuid        not null
+--   action        text        not null
+--   old_value     jsonb       null
+--   new_value     jsonb       null
+--   ip_address    text        null
+--   user_agent    text        null
+--   created_at    timestamptz not null   default now()
+--
+-- Constraints:
+--   audit_logs_pkey                  PRIMARY KEY (id)
+--   audit_logs_firm_id_firms_id_fk   FOREIGN KEY (firm_id) REFERENCES firms(id)
+--   audit_logs_actor_id_users_id_fk  FOREIGN KEY (actor_id) REFERENCES users(id)
+--
+-- Indexes:
+--   audit_logs_pkey             UNIQUE btree (id)
+--   audit_logs_actor_idx        btree (actor_id)
+--   audit_logs_firm_resource_idx btree (firm_id, resource, resource_id)
+--
+-- RLS: enabled (not forced)
+--   firm_isolation  ALL  PERMISSIVE  public   qual: firm_id = (auth.jwt() ->> 'firm_id')::uuid
+
+
+-- ----------------------------------------------------------------------------
+-- TABLE: public.notifications
+-- ----------------------------------------------------------------------------
+-- Columns:
+--   id           uuid        not null   default gen_random_uuid()
+--   firm_id      uuid        not null
+--   user_id      uuid        not null
+--   type         text        not null
+--   title        text        not null
+--   body         text        not null
+--   href         text        null
+--   read_at      timestamptz null
+--   payload      jsonb       not null   default '{}'::jsonb
+--   created_at   timestamptz not null   default now()
+--
+-- Constraints:
+--   notifications_pkey                  PRIMARY KEY (id)
+--   notifications_firm_id_firms_id_fk   FOREIGN KEY (firm_id) REFERENCES firms(id)
+--   notifications_user_id_users_id_fk   FOREIGN KEY (user_id) REFERENCES users(id)
+--
+-- Indexes:
+--   notifications_pkey             UNIQUE btree (id)
+--   notifications_user_created_idx btree (user_id, created_at DESC)
+--
+-- RLS: enabled (not forced)
+--   own_notifications  ALL  PERMISSIVE  public
+--     qual: firm_id = (auth.jwt() ->> 'firm_id')::uuid AND user_id = auth.uid()
+
+
+-- ============================================================================
+-- FUNCTIONS
+-- ============================================================================
+
+-- ----------------------------------------------------------------------------
+-- public.custom_access_token_hook(event jsonb) RETURNS jsonb
+-- LANGUAGE plpgsql STABLE SECURITY DEFINER
+-- ----------------------------------------------------------------------------
+-- Registered (per migration 20260419134521, "custom_access_token_hook") as a
+-- Supabase Auth "Customize Access Token (JWT) Claims" hook. On each JWT
+-- issuance it looks up the user's role/firm_id/onboarded flag from
+-- public.users and stamps them into the JWT claims, which is what the RLS
+-- policies above (auth.jwt() ->> 'firm_id', ->> 'role') depend on. Dropping
+-- this function does NOT unregister it as an auth hook — see the migration
+-- reset notes for why that matters.
+--
+-- Full body, captured verbatim via pg_get_functiondef:
+--
+-- CREATE OR REPLACE FUNCTION public.custom_access_token_hook(event jsonb)
+--  RETURNS jsonb
+--  LANGUAGE plpgsql
+--  STABLE SECURITY DEFINER
+-- AS $function$
+-- DECLARE
+--   claims         jsonb;
+--   user_role      text;
+--   user_firm_id   uuid;
+--   user_onboarded boolean;
+-- BEGIN
+--   SELECT role, firm_id, onboarded
+--     INTO user_role, user_firm_id, user_onboarded
+--     FROM public.users
+--    WHERE id = (event->>'user_id')::uuid;
+--
+--   -- If the user row does not exist yet (e.g., first JWT issued before DB insert),
+--   -- return the event unchanged — getSession() will return null and middleware
+--   -- will redirect to /sign-in, which is the correct fallback.
+--   IF user_role IS NULL THEN
+--     RETURN event;
+--   END IF;
+--
+--   claims := event->'claims';
+--   claims := jsonb_set(claims, '{role}',      to_jsonb(user_role));
+--   claims := jsonb_set(claims, '{firm_id}',   to_jsonb(user_firm_id::text));
+--   claims := jsonb_set(claims, '{onboarded}', to_jsonb(user_onboarded));
+--
+--   RETURN jsonb_set(event, '{claims}', claims);
+-- END;
+-- $function$
+--
+-- Grants: EXECUTE granted to supabase_auth_admin, service_role, postgres
+-- (the EXECUTE grant to supabase_auth_admin is the standard wiring for a
+-- Supabase Auth hook function, but it is not proof that the hook is
+-- currently enabled in the project's Auth settings — that is a separate,
+-- dashboard-only configuration value not visible to SQL. See task-2-report.md
+-- for the finding on this.)
+
+
+-- ----------------------------------------------------------------------------
+-- public.generate_booking_reference() RETURNS text
+-- LANGUAGE plpgsql (not STABLE/VOLATILE-annotated, no SECURITY DEFINER)
+-- ----------------------------------------------------------------------------
+-- Not required by the brief, captured for completeness because it was the
+-- DEFAULT expression on bookings.reference and depends on a standalone
+-- sequence, public.booking_reference_seq (bigint, start 1, increment 1),
+-- created in migration 20260427084857
+-- ("bookings_exclude_constraint_and_reference_sequence"). Note this function
+-- and its backing sequence are NOT covered by the DROP statements in
+-- 20260811000001_reset_legacy_schema.sql (that migration only drops
+-- custom_access_token_hook) — see task-2-report.md for this as a flagged
+-- finding, not something silently fixed here.
+--
+-- CREATE OR REPLACE FUNCTION public.generate_booking_reference()
+--  RETURNS text
+--  LANGUAGE plpgsql
+-- AS $function$
+-- DECLARE
+--   seq_num bigint;
+--   year_part text;
+-- BEGIN
+--   seq_num := nextval('booking_reference_seq');
+--   year_part := to_char(now(), 'YYYY');
+--   RETURN 'BKG-' || year_part || '-' || lpad(seq_num::text, 6, '0');
+-- END;
+-- $function$
+
+
+-- ============================================================================
+-- MIGRATION HISTORY (supabase_migrations.schema_migrations at archive time)
+-- ============================================================================
+-- 20260419134420  initial_firms_users
+-- 20260419134452  extensions_rls_policies
+-- 20260419134521  custom_access_token_hook
+-- 20260427084746  team_tables
+-- 20260427084807  service_tables
+-- 20260427084824  client_tables_and_trgm_indexes
+-- 20260427084846  bookings_tables
+-- 20260427084857  bookings_exclude_constraint_and_reference_sequence
+-- 20260427233135  0007_audit_logs_and_notifications
+-- 20260427233144  0008_indexes_and_trgm
+-- 20260427233223  0009_rls_audit_logs_and_notifications
+-- ============================================================================
