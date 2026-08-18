@@ -68,7 +68,10 @@ export function AuthScreen({ kind, next, token }: { kind: AuthKind; next?: strin
   </main>
 }
 
-function BrandPanel() {
+// Exported so the invitation signup screen can share the exact same left-hand
+// panel without either duplicating it or adding a further branch to the
+// already heavily-conditional component above.
+export function BrandPanel() {
   return <section className="relative hidden min-h-screen overflow-hidden bg-sidebar p-12 text-sidebar-active-foreground lg:flex lg:flex-col">
     <div aria-hidden="true" className="absolute inset-0">
       <Image src="/brand/himark-login-background.png" alt="" fill priority sizes="50vw" className="scale-[1.01] object-cover object-center" />

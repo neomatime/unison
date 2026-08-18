@@ -248,6 +248,13 @@ export type Database = {
       accept_invitation: { Args: { raw_token: string }; Returns: string }
       delete_organization: { Args: { target_org: string }; Returns: undefined }
       has_role: { Args: { org: string; roles: string[] }; Returns: boolean }
+      invitation_preview: {
+        Args: { raw_token: string }
+        Returns: {
+          email: string
+          organization_name: string
+        }[]
+      }
       is_member_of: { Args: { org: string }; Returns: boolean }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }

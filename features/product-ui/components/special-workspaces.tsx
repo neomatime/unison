@@ -15,6 +15,7 @@ import {
   Database,
   Download,
   FileText,
+  GripVertical,
   Mail,
   MessageSquare,
   Monitor,
@@ -27,7 +28,7 @@ import {
   UserPlus,
   X,
 } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 
 export function hasSpecialWorkspace(moduleId: string, view: string) {
   return moduleId === 'calendar'
@@ -112,10 +113,174 @@ function PipelineWorkspace() {
 function ProjectBoard() { return <Board columns={[['Planning',['Aurelia research sprint']],['On Track',['Meridian Growth Programme','Aurelia Client Platform']],['At Risk',['Northstar Brand Transformation']],['Review',['Kopano Service Blueprint']],['Complete',['Copperleaf Discovery']]]} /> }
 function TaskBoard() { return <Board columns={[['To do',['Approve workshop brief','Confirm interview panel']],['In progress',['Review campaign budget','Prepare prototype walkthrough']],['Blocked',['Northstar identity approval']],['Review',['Invoice schedule update']],['Complete',['Client research synthesis']]]} /> }
 
+type BoardColumn = { title: string; cards: string[] }
+type BoardDropTarget = { columnIndex: number; cardIndex: number }
+type BoardDrag = {
+  card: string
+  fromColumn: number
+  fromIndex: number
+  pointerId: number
+  x: number
+  y: number
+  offsetX: number
+  offsetY: number
+  width: number
+}
+type BoardCandidate = BoardDrag & { startX: number; startY: number }
+
 function Board({ columns }: { columns: Array<[string, string[]]> }) {
   const [selected, setSelected] = useState('')
-  return <><div className="grid min-w-[1000px] grid-cols-5 gap-3 overflow-x-auto">{columns.map(([title,cards]) => <section key={title} className="rounded-xl bg-muted/50 p-3"><div className="mb-3 flex items-center justify-between"><h2 className="text-sm font-semibold">{title}</h2><span className="rounded-full bg-card px-2 text-xs text-muted-foreground">{cards.length}</span></div>{cards.map((card,index) => <button type="button" onClick={() => setSelected(card)} key={card} className="mb-2 block w-full rounded-lg border border-border bg-card p-3 text-left shadow-sm"><span className="block text-sm font-semibold">{card}</span><span className="mt-2 block text-xs text-muted-foreground">{index % 2 ? 'Amara Dlamini' : 'Neo Morake'} · {index + 2} actions</span></button>)}</section>)}</div>{selected ? <InlineNotice message={`${selected} detail drawer opened.`} onClose={() => setSelected('')} /> : null}</>
+  const [boardColumns, setBoardColumns] = useState<BoardColumn[]>(() => columns.map(([title, cards]) => ({ title, cards: [...cards] })))
+  const [drag, setDrag] = useState<BoardDrag | null>(null)
+  const [dropTarget, setDropTarget] = useState<BoardDropTarget | null>(null)
+  const [moveMessage, setMoveMessage] = useState('')
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const candidateRef = useRef<BoardCandidate | null>(null)
+  const dragRef = useRef<BoardDrag | null>(null)
+  const dropTargetRef = useRef<BoardDropTarget | null>(null)
+  const frameRef = useRef<number | null>(null)
+  const suppressClickRef = useRef(false)
+
+  function setActiveDropTarget(next: BoardDropTarget | null) {
+    const current = dropTargetRef.current
+    if (current?.columnIndex === next?.columnIndex && current?.cardIndex === next?.cardIndex) return
+    dropTargetRef.current = next
+    setDropTarget(next)
+  }
+
+  function locateDropTarget(clientX: number, clientY: number) {
+    const element = document.elementFromPoint(clientX, clientY)
+    const columnElement = element?.closest('[data-board-column-index]') as HTMLElement | null
+    if (!columnElement) return null
+    const columnIndex = Number(columnElement.dataset.boardColumnIndex)
+    const cardElement = element?.closest('[data-board-card-index]') as HTMLElement | null
+    if (!cardElement) return { columnIndex, cardIndex: boardColumns[columnIndex].cards.length }
+    const cardIndex = Number(cardElement.dataset.boardCardIndex)
+    const bounds = cardElement.getBoundingClientRect()
+    return { columnIndex, cardIndex: cardIndex + (clientY > bounds.top + bounds.height / 2 ? 1 : 0) }
+  }
+
+  function autoScroll(clientX: number) {
+    const scroller = scrollRef.current
+    if (!scroller) return
+    const bounds = scroller.getBoundingClientRect()
+    if (clientX < bounds.left + 56) scroller.scrollLeft -= 18
+    if (clientX > bounds.right - 56) scroller.scrollLeft += 18
+  }
+
+  function beginPointer(event: React.PointerEvent<HTMLButtonElement>, card: string, columnIndex: number, cardIndex: number) {
+    if (event.button !== 0) return
+    const bounds = event.currentTarget.getBoundingClientRect()
+    event.currentTarget.setPointerCapture(event.pointerId)
+    suppressClickRef.current = false
+    candidateRef.current = {
+      card,
+      fromColumn: columnIndex,
+      fromIndex: cardIndex,
+      pointerId: event.pointerId,
+      x: event.clientX,
+      y: event.clientY,
+      startX: event.clientX,
+      startY: event.clientY,
+      offsetX: event.clientX - bounds.left,
+      offsetY: event.clientY - bounds.top,
+      width: bounds.width,
+    }
+  }
+
+  function movePointer(event: React.PointerEvent<HTMLButtonElement>) {
+    const candidate = candidateRef.current
+    if (!candidate || candidate.pointerId !== event.pointerId) return
+    if (!dragRef.current && Math.hypot(event.clientX - candidate.startX, event.clientY - candidate.startY) < 6) return
+    event.preventDefault()
+    suppressClickRef.current = true
+    autoScroll(event.clientX)
+    setActiveDropTarget(locateDropTarget(event.clientX, event.clientY))
+    const next = { ...candidate, x: event.clientX, y: event.clientY }
+    dragRef.current = next
+    if (frameRef.current !== null) cancelAnimationFrame(frameRef.current)
+    frameRef.current = requestAnimationFrame(() => {
+      setDrag(next)
+      frameRef.current = null
+    })
+  }
+
+  function endPointer(event: React.PointerEvent<HTMLButtonElement>) {
+    const activeDrag = dragRef.current
+    const target = dropTargetRef.current
+    candidateRef.current = null
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId)
+    if (activeDrag && target) {
+      setBoardColumns((current) => {
+        const next = current.map((column) => ({ ...column, cards: [...column.cards] }))
+        const [movedCard] = next[activeDrag.fromColumn].cards.splice(activeDrag.fromIndex, 1)
+        let insertIndex = target.cardIndex
+        if (target.columnIndex === activeDrag.fromColumn && insertIndex > activeDrag.fromIndex) insertIndex -= 1
+        insertIndex = Math.max(0, Math.min(insertIndex, next[target.columnIndex].cards.length))
+        next[target.columnIndex].cards.splice(insertIndex, 0, movedCard)
+        setMoveMessage(`${movedCard} moved to ${next[target.columnIndex].title}.`)
+        setSelected('')
+        return next
+      })
+    }
+    if (frameRef.current !== null) cancelAnimationFrame(frameRef.current)
+    frameRef.current = null
+    dragRef.current = null
+    setDrag(null)
+    setActiveDropTarget(null)
+    window.setTimeout(() => { suppressClickRef.current = false }, 0)
+  }
+
+  function cancelPointer(event: React.PointerEvent<HTMLButtonElement>) {
+    candidateRef.current = null
+    dragRef.current = null
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId)
+    if (frameRef.current !== null) cancelAnimationFrame(frameRef.current)
+    frameRef.current = null
+    setDrag(null)
+    setActiveDropTarget(null)
+  }
+
+  return <>
+    <div ref={scrollRef} className="overflow-x-auto pb-3">
+      <div className="grid min-w-[1000px] grid-cols-5 gap-3">
+        {boardColumns.map((column, columnIndex) => {
+          const isTarget = Boolean(drag && dropTarget?.columnIndex === columnIndex)
+          return <section key={column.title} data-board-column-index={columnIndex} className={`min-h-80 rounded-xl border p-3 transition-colors duration-150 ${isTarget ? 'border-brand/40 bg-brand-soft/40' : 'border-transparent bg-muted/50'}`}>
+            <div className="mb-3 flex items-center justify-between"><h2 className="text-sm font-semibold">{column.title}</h2><span className="rounded-full bg-card px-2 text-xs text-muted-foreground">{column.cards.length}</span></div>
+            <div className="min-h-60">
+              {column.cards.map((card, cardIndex) => <div key={card} data-board-card-index={cardIndex}>
+                {isTarget && dropTarget?.cardIndex === cardIndex ? <DropIndicator /> : null}
+                <button
+                  type="button"
+                  onPointerDown={(event) => beginPointer(event, card, columnIndex, cardIndex)}
+                  onPointerMove={movePointer}
+                  onPointerUp={endPointer}
+                  onPointerCancel={cancelPointer}
+                  onClick={(event) => { if (suppressClickRef.current) { event.preventDefault(); return } setSelected(card); setMoveMessage('') }}
+                  className={`group mb-2 block w-full touch-none select-none rounded-lg border border-border bg-card p-3 text-left shadow-sm transition-[transform,box-shadow,opacity] duration-150 ease-out hover:-translate-y-0.5 hover:shadow-md active:cursor-grabbing ${drag?.card === card ? 'opacity-25' : 'cursor-grab opacity-100'}`}
+                >
+                  <BoardCardContent card={card} index={cardIndex} />
+                </button>
+              </div>)}
+              {isTarget && dropTarget?.cardIndex === column.cards.length ? <DropIndicator /> : null}
+              {drag && column.cards.length === 0 ? <div className="flex h-24 items-center justify-center rounded-lg border border-dashed border-brand/30 text-xs font-medium text-brand">Drop card here</div> : null}
+            </div>
+          </section>
+        })}
+      </div>
+    </div>
+    {drag ? <div aria-hidden="true" className="pointer-events-none fixed top-0 left-0 z-[70] will-change-transform" style={{ width: drag.width, transform: `translate3d(${drag.x - drag.offsetX}px, ${drag.y - drag.offsetY}px, 0) rotate(1deg)` }}><div className="rounded-lg border border-brand/30 bg-card p-3 text-left shadow-2xl ring-2 ring-brand/10"><BoardCardContent card={drag.card} index={drag.fromIndex} dragging /></div></div> : null}
+    {selected ? <InlineNotice message={`${selected} detail drawer opened.`} onClose={() => setSelected('')} /> : null}
+    {moveMessage ? <InlineNotice message={moveMessage} onClose={() => setMoveMessage('')} /> : null}
+  </>
 }
+
+function BoardCardContent({ card, index, dragging }: { card: string; index: number; dragging?: boolean }) {
+  return <><span className="flex items-start gap-2"><GripVertical className={`mt-0.5 size-4 shrink-0 transition-colors ${dragging ? 'text-brand' : 'text-muted-foreground/40 group-hover:text-muted-foreground'}`} /><span className="block text-sm font-semibold">{card}</span></span><span className="mt-2 block pl-6 text-xs text-muted-foreground">{index % 2 ? 'Amara Dlamini' : 'Neo Morake'} · {index + 2} actions</span></>
+}
+
+function DropIndicator() { return <div className="mb-2 flex h-2 items-center"><span className="size-2 rounded-full bg-brand" /><span className="h-0.5 flex-1 rounded-full bg-brand" /></div> }
 
 function ProjectTimeline() {
   const [selected, setSelected] = useState('')
