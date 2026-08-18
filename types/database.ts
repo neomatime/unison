@@ -249,6 +249,7 @@ export type Database = {
     }
     Functions: {
       accept_invitation: { Args: { raw_token: string }; Returns: string }
+      claim_directory_membership: { Args: never; Returns: string }
       delete_organization: { Args: { target_org: string }; Returns: undefined }
       has_role: { Args: { org: string; roles: string[] }; Returns: boolean }
       invitation_preview: {
