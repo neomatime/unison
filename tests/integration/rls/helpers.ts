@@ -49,10 +49,15 @@ export async function createFixtureUser(organizationId: string | null, roleId: '
 // auth"), and there is no GoTrue Admin API method for writing an identity
 // the way createUser()/updateUserById() exist for auth.users. Instead this
 // calls public.rls_test_give_azure_identity(), a SECURITY DEFINER bridge
-// (migration 20260818171200_rls_test_give_azure_identity.sql) restricted to
+// (migration 20260818171200_rls_test_give_azure_identity.sql, fenced by
+// 20260818224500_fence_rls_test_give_azure_identity.sql) restricted to
 // service_role, which is the same kind of bridge claim_directory_membership()
 // itself uses to reach auth.users/auth.identities from the public schema
-// side.
+// side. The fencing migration additionally refuses any target_user_id whose
+// own email doesn't end in `.test` -- every fixture below follows that
+// convention, so a wrong id here (this account, HIMARK's real accounts,
+// anything not manufactured by this suite) is refused loudly rather than
+// silently attaching a fabricated Microsoft identity to a real user.
 export async function giveAzureIdentity(userId: string, email: string) {
   const { error } = await admin.rpc('rls_test_give_azure_identity', {
     target_user_id: userId,

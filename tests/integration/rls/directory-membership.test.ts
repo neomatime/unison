@@ -152,7 +152,12 @@ test('a suspended organization does not accept directory sign-in', async () => {
   await giveAzureIdentity(user.id, `x@${domain}`)
   const client = await signedInClient(`x@${domain}`, user.password)
 
-  const { data } = await client.rpc('claim_directory_membership')
+  const { data, error } = await client.rpc('claim_directory_membership')
+  assert.equal(error, null, 'a suspended organization is an ordinary non-match, not an error')
   assert.equal(data, null)
+
+  const { data: rows } = await admin.from('memberships').select('id').eq('user_id', user.id)
+  assert.deepEqual(rows, [], 'no membership may be created for a suspended organization')
+
   await cleanup([suspended], [])
 })
