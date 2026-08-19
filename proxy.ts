@@ -4,7 +4,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 const PUBLIC_PATHS = ['/sign-in', '/forgot-password']
 // Reachable while signed in: an existing user joining a second organization,
 // and links that arrive in an already-authenticated session.
-const AUTH_EXEMPT = ['/accept-invitation', '/verify-email', '/reset-password']
+const AUTH_EXEMPT = ['/accept-invitation', '/verify-email', '/reset-password', '/auth/callback']
 
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request })
