@@ -5,10 +5,11 @@ import Link from 'next/link'
 import { ArrowRight, CheckCircle2, Mail } from 'lucide-react'
 import { useActionState, useState } from 'react'
 import { signInAction } from './actions/sign-in'
+import { signInWithMicrosoftAction } from './actions/sign-in-with-microsoft'
 import { acceptInvitationAction } from '@/features/invitations/actions/accept-invitation'
 
 type AuthKind = 'sign-in' | 'forgot' | 'reset' | 'accept' | 'verify' | 'create-organization' | 'join-organization'
-type CompletionMethod = 'email' | 'microsoft' | null
+type CompletionMethod = 'email' | null
 
 const copy: Record<AuthKind, { title: string; description: string; action: string }> = {
   'sign-in': { title: 'Welcome back', description: 'Sign in to continue to your HIMARK workspace.', action: 'Sign in' },
@@ -20,7 +21,7 @@ const copy: Record<AuthKind, { title: string; description: string; action: strin
   'join-organization': { title: 'Join an organization', description: 'Enter the invitation code supplied by your administrator.', action: 'Join organization' },
 }
 
-export function AuthScreen({ kind, next, token }: { kind: AuthKind; next?: string; token?: string }) {
+export function AuthScreen({ kind, next, token, message }: { kind: AuthKind; next?: string; token?: string; message?: string }) {
   const [completion, setCompletion] = useState<CompletionMethod>(null)
   const [signInState, signInFormAction, signInPending] = useActionState(signInAction, undefined)
   const [acceptState, acceptFormAction, acceptPending] = useActionState(acceptInvitationAction, undefined)
@@ -43,8 +44,10 @@ export function AuthScreen({ kind, next, token }: { kind: AuthKind; next?: strin
         <h1 className="text-3xl font-bold tracking-tight">{content.title}</h1>
         <p className="mt-2 text-sm text-muted-foreground">{kind === 'sign-in' ? 'Sign in to your HIMARK workspace.' : content.description}</p>
 
-        {completion ? <CompletionState kind={kind} method={completion} /> : <>
-          {kind === 'sign-in' ? <MicrosoftSignIn onClick={() => setCompletion('microsoft')} /> : null}
+        {isSignIn && message ? <p role="alert" className="mt-6 text-sm text-destructive">{message}</p> : null}
+
+        {completion ? <CompletionState kind={kind} /> : <>
+          {kind === 'sign-in' ? <MicrosoftSignIn /> : null}
 
           <form
             action={isSignIn ? signInFormAction : isAccept ? acceptFormAction : undefined}
@@ -99,9 +102,11 @@ function HimarkMark({ className }: { className?: string }) {
   </svg>
 }
 
-function MicrosoftSignIn({ onClick }: { onClick: () => void }) {
+function MicrosoftSignIn() {
   return <div className="mt-8">
-    <button type="button" onClick={onClick} className="flex h-12 w-full items-center justify-center gap-3 rounded-xl border border-border bg-card text-sm font-semibold shadow-[0_1px_2px_rgb(16_32_46_/_0.04)] transition-colors hover:bg-muted/50"><MicrosoftMark />Continue with Microsoft</button>
+    <form action={signInWithMicrosoftAction}>
+      <button type="submit" className="flex h-12 w-full items-center justify-center gap-3 rounded-xl border border-border bg-card text-sm font-semibold shadow-[0_1px_2px_rgb(16_32_46_/_0.04)] transition-colors hover:bg-muted/50"><MicrosoftMark />Continue with Microsoft</button>
+    </form>
     <div className="mt-6 flex items-center gap-3"><span className="h-px flex-1 bg-border" /><span className="text-[0.6875rem] font-medium tracking-wide text-muted-foreground uppercase">or sign in with email</span><span className="h-px flex-1 bg-border" /></div>
   </div>
 }
@@ -110,12 +115,12 @@ function MicrosoftMark() {
   return <span className="grid size-4 grid-cols-2 gap-[2px]" aria-hidden="true"><span className="bg-[#f25022]" /><span className="bg-[#7fba00]" /><span className="bg-[#00a4ef]" /><span className="bg-[#ffb900]" /></span>
 }
 
-function CompletionState({ kind, method }: { kind: AuthKind; method: Exclude<CompletionMethod, null> }) {
+function CompletionState({ kind }: { kind: AuthKind }) {
   const signIn = kind === 'sign-in'
   return <div className="mt-8 rounded-xl border border-brand/30 bg-brand-soft p-5">
     <CheckCircle2 className="size-5 text-brand" />
     <h2 className="mt-3 font-semibold">{signIn ? 'Sign-in ready' : 'Demo action complete'}</h2>
-    <p className="mt-1 text-sm leading-6 text-muted-foreground">{method === 'microsoft' ? 'Microsoft authentication is represented as a complete UI flow and is ready for identity-provider integration.' : 'No authentication or invitation was sent. This interaction currently uses local UI state.'}</p>
+    <p className="mt-1 text-sm leading-6 text-muted-foreground">No authentication or invitation was sent. This interaction currently uses local UI state.</p>
     <Link href="/overview" className="mt-5 inline-flex items-center gap-2 text-sm font-semibold">Continue to UNISON <ArrowRight className="size-4" /></Link>
   </div>
 }
