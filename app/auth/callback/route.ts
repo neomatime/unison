@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createServerSupabase } from '@/lib/supabase/server'
+import { readAppUrl } from '@/lib/env'
 
 /**
  * Where Microsoft returns the user. Exchanges the code for a session, then
@@ -14,7 +15,12 @@ import { createServerSupabase } from '@/lib/supabase/server'
 export async function GET(request: NextRequest) {
   const url = new URL(request.url)
   const code = url.searchParams.get('code')
-  const origin = url.origin
+  // Redirect targets are built from the configured app URL, not the request's
+  // own Host header — a spoofed Host behind a proxy that doesn't pin the
+  // trusted host would otherwise turn every one of these into an
+  // attacker-controlled redirect, reachable with no authentication at all
+  // via the code-less path.
+  const origin = readAppUrl(process.env)
 
   // Microsoft reports user-cancelled consent and similar here.
   if (url.searchParams.get('error')) {

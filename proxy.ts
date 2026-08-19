@@ -6,6 +6,14 @@ const PUBLIC_PATHS = ['/sign-in', '/forgot-password']
 // and links that arrive in an already-authenticated session.
 const AUTH_EXEMPT = ['/accept-invitation', '/verify-email', '/reset-password', '/auth/callback']
 
+// A plain startsWith would also match e.g. /auth/callback-admin or
+// /reset-password-debug, silently granting them the same unauthenticated
+// bypass the moment such a route is ever added. Require an exact match or a
+// path that continues with a "/" segment boundary.
+function matchesPath(path: string, entry: string): boolean {
+  return path === entry || path.startsWith(`${entry}/`)
+}
+
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request })
 
@@ -27,16 +35,16 @@ export async function proxy(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   const path = request.nextUrl.pathname
 
-  if (AUTH_EXEMPT.some((p) => path.startsWith(p))) return response
+  if (AUTH_EXEMPT.some((p) => matchesPath(path, p))) return response
 
-  if (!user && !PUBLIC_PATHS.some((p) => path.startsWith(p))) {
+  if (!user && !PUBLIC_PATHS.some((p) => matchesPath(path, p))) {
     const url = request.nextUrl.clone()
     url.pathname = '/sign-in'
     url.searchParams.set('next', path)
     return withRefreshedCookies(NextResponse.redirect(url), response)
   }
 
-  if (user && PUBLIC_PATHS.some((p) => path.startsWith(p))) {
+  if (user && PUBLIC_PATHS.some((p) => matchesPath(path, p))) {
     const url = request.nextUrl.clone()
     url.pathname = '/overview'
     url.search = ''
