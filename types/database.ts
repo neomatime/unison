@@ -216,6 +216,7 @@ export type Database = {
       organizations: {
         Row: {
           created_at: string
+          email_domain: string | null
           id: string
           name: string
           slug: string
@@ -224,6 +225,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          email_domain?: string | null
           id?: string
           name: string
           slug: string
@@ -232,6 +234,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          email_domain?: string | null
           id?: string
           name?: string
           slug?: string
@@ -246,6 +249,7 @@ export type Database = {
     }
     Functions: {
       accept_invitation: { Args: { raw_token: string }; Returns: string }
+      claim_directory_membership: { Args: never; Returns: string }
       delete_organization: { Args: { target_org: string }; Returns: undefined }
       has_role: { Args: { org: string; roles: string[] }; Returns: boolean }
       invitation_preview: {
@@ -256,6 +260,10 @@ export type Database = {
         }[]
       }
       is_member_of: { Args: { org: string }; Returns: boolean }
+      rls_test_give_azure_identity: {
+        Args: { target_email: string; target_user_id: string }
+        Returns: undefined
+      }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
     }

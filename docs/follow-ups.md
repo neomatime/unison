@@ -35,6 +35,31 @@ of rows; misleading at scale.
 - **`proxy.ts` reads `process.env.X!` directly**, bypassing `lib/env.ts`, which exists precisely to
   make missing configuration fail loudly and by name. Justified in `lib/supabase/client.ts` for
   bundle inlining; not here.
+- **`proxy.ts` builds its redirect targets from `request.nextUrl.clone()`** — the request's own Host
+  header — for both the sign-in bounce and the already-authenticated bounce off `/sign-in`. The
+  Microsoft callback route was deliberately pinned to the configured app URL rather than the
+  request's origin (`lib/env.ts`'s `readAppUrl`); `proxy.ts` was left alone because changing it
+  touches every gated route in the app. Same class of open-redirect exposure as the callback route
+  had before that fix, still open here.
+- **`claim_directory_membership()` has no branch for the `invited` membership status.** The function
+  checks for `active` (idempotent no-op), then `suspended`/`removed` (refused), and anything else —
+  including `invited` — falls through to the insert, which would raise a raw unique-constraint
+  violation instead of a clean error. Unreachable today because nothing in the codebase creates an
+  `invited` row before a user can reach this function; worth a branch the day something does.
+- **`rls_test_give_azure_identity` is test scaffolding living in the production schema.** It
+  fabricates an `auth.identities` row with provider `azure` so fixtures can simulate a Microsoft
+  sign-in without a real OAuth handshake. It is fenced — restricted to `service_role` and refuses
+  any target whose email doesn't end in `.test` — but it is still a function, in the production
+  database, whose only job is to forge an identity. **Decision taken: keep it.** Dropping it breaks
+  all eight directory specs, and the fence already constrains the one thing that mattered — it
+  refuses any target that is not a `.test` fixture, so it cannot be pointed at a real account. Its
+  caller, `service_role`, can already write `public.memberships` directly, so the function raises no
+  privilege ceiling; it only prevents accidents. Revisit if the specs ever stop needing it.
+- **The `'Sign-in ready'` title in `CompletionState`** (`features/auth-ui/auth-screen.tsx`) is now
+  unreachable. It only rendered when the sign-in form's local `completion` state was set, and that
+  path belonged to the old demo Microsoft button; the real `signInWithMicrosoftAction()` redirects
+  instead of setting local state, and the email sign-in form posts to `signInFormAction` rather than
+  calling `setCompletion`. Dead branch to remove next time this component is touched.
 - **A user who belongs to two organizations can reparent a client between them.** The `clients_update`
   policy checks membership of the new `organization_id`, which permits it. Authorized by the letter
   of the policy; worth a product decision.
@@ -54,6 +79,20 @@ of rows; misleading at scale.
 
 ## Operational
 
+- **Offboarding is two steps, and only one of them happens today.** Removing someone from the Entra
+  directory does not revoke their UNISON membership — the membership outlives the directory account
+  that created it, because `claim_directory_membership()` only ever inserts a row, it never checks
+  back. Until that revocation is automated, an employee removed from Microsoft keeps whatever UNISON
+  access they had, indefinitely, with nothing in either system flagging the mismatch.
+
+  **Offboard by setting `status` to `removed`. Never delete the membership row.** The two look
+  equivalent and are not. `claim_directory_membership()` is granted to `authenticated` and callable
+  from any session, not only from the OAuth callback — and an `auth.identities` row survives deletion
+  of the Entra account that created it. So a departed employee who still holds a password on the same
+  Supabase user can call the RPC directly. Revoke the membership and the `suspended`/`removed` branch
+  refuses them. Delete the row instead and there is nothing for that branch to find: execution falls
+  through to the insert and they re-grant themselves `member` access. The refusal only fires on a row
+  that still exists.
 - **Scope the Entra app with an ApplicationAccessPolicy.** The `Mail.Send` application permission
   lets the app send as *any* mailbox in the tenant. Restrict it to the sending mailbox:
   `New-ApplicationAccessPolicy -AppId <client-id> -PolicyScopeGroupId info@himark.co.za
