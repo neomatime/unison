@@ -6,6 +6,15 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 /**
+ * Formats a timestamp for display in a record. Shared so every connected module
+ * renders dates identically rather than each picking its own locale and options.
+ * en-ZA gives day-first, which is what the people using this expect.
+ */
+export function formatDate(value: string): string {
+  return new Date(value).toLocaleDateString('en-ZA', { day: '2-digit', month: 'short', year: 'numeric' })
+}
+
+/**
  * Derives a one- or two-letter monogram from a name-like string (a person's name,
  * an email local-part, or an organization name). Two or more words use the first
  * letter of each of the first two words; a single word uses its first two characters.

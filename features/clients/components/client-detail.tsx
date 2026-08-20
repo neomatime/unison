@@ -1,14 +1,13 @@
 import Link from 'next/link'
-import { Archive, AlertTriangle, ArrowLeft, Pencil } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, Pencil } from 'lucide-react'
 
+import { ArchiveConfirmation, ArchiveTrigger } from '@/components/shared/archive-confirmation'
 import { WorkspaceHeader } from '@/components/shared/workspace-header'
+import { DetailTile, SummaryTile } from '@/components/ui/record-tiles'
 import { StatusBadge } from '@/components/ui/status-badge'
+import { formatDate } from '@/lib/utils'
 import { archiveClientAction } from '../actions/archive-client'
 import type { ClientRecord } from '../queries/get-client'
-
-function formatDate(value: string) {
-  return new Date(value).toLocaleDateString('en-ZA', { day: '2-digit', month: 'short', year: 'numeric' })
-}
 
 function statusTone(status: string): 'brand' | 'warning' | 'info' | 'neutral' {
   if (status === 'Active') return 'brand'
@@ -16,10 +15,9 @@ function statusTone(status: string): 'brand' | 'warning' | 'info' | 'neutral' {
   return 'info'
 }
 
-// A Server Component, deliberately: the archive confirmation below is a
-// two-step, plain-HTML flow (a link to `?confirm=archive`, then a form
-// posted from that page) rather than a client-side confirm() dialog, so it
-// works identically with or without JS/hydration having completed.
+// A Server Component, deliberately: the archive confirmation is a two-step,
+// plain-HTML flow rather than a client-side dialog, so it works identically
+// with or without JS having loaded. See components/shared/archive-confirmation.
 export function ClientDetail({ client, confirmArchive, archiveError }: { client: ClientRecord; confirmArchive?: boolean; archiveError?: boolean }) {
   const archived = Boolean(client.archived_at)
   const detailHref = `/operations/clients/${client.id}`
@@ -49,35 +47,25 @@ export function ClientDetail({ client, confirmArchive, archiveError }: { client:
         {!archived && !confirmArchive ? (
           <div className="flex flex-wrap gap-2">
             <Link href={`${detailHref}/edit`} className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm font-medium"><Pencil className="size-4" />Edit</Link>
-            {/*
-              A plain link to a confirmation step, not a client-side
-              confirm()/dialog gate — this way the "are you sure" prompt
-              is guaranteed to show up even if JS never loads or hasn't
-              hydrated yet, closing the "archive with no confirmation"
-              gap a client-only dialog would leave open.
-            */}
-            <Link href={`${detailHref}?confirm=archive`} className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm font-medium text-destructive"><Archive className="size-4" />Archive Client</Link>
+            <ArchiveTrigger detailHref={detailHref} label="Archive Client" />
           </div>
         ) : null}
       </div>
       <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <Summary label="Status" value={client.status} />
-        <Summary label="Client health" value={client.health} />
+        <SummaryTile label="Status" value={client.status} />
+        <SummaryTile label="Client health" value={client.health} />
         {/* No projects table yet — an em dash, not a fabricated 0. */}
-        <Summary label="Active projects" value="—" />
-        <Summary label="Last activity" value={formatDate(client.updated_at)} />
+        <SummaryTile label="Active projects" value={null} />
+        <SummaryTile label="Last activity" value={formatDate(client.updated_at)} />
       </div>
       {!archived && confirmArchive ? (
-        <div className="mt-6 rounded-xl border border-destructive/30 bg-destructive/5 p-4">
-          <p className="text-sm font-semibold text-destructive">Archive {client.name}?</p>
-          <p className="mt-1 text-sm text-muted-foreground">This removes it from the active clients list. There is no undo through the UI.</p>
-          <div className="mt-4 flex gap-2">
-            <Link href={detailHref} className="rounded-lg border border-border px-4 py-2 text-sm font-medium">Cancel</Link>
-            <form action={archiveClientAction.bind(null, client.id)}>
-              <button type="submit" className="inline-flex items-center gap-2 rounded-lg bg-destructive px-4 py-2 text-sm font-semibold text-white"><Archive className="size-4" />Yes, archive client</button>
-            </form>
-          </div>
-        </div>
+        <ArchiveConfirmation
+          recordName={client.name}
+          cancelHref={detailHref}
+          action={archiveClientAction.bind(null, client.id)}
+          description="This removes it from the active clients list. There is no undo through the UI."
+          confirmLabel="Yes, archive client"
+        />
       ) : null}
     </section>
 
@@ -86,13 +74,13 @@ export function ClientDetail({ client, confirmArchive, archiveError }: { client:
         <h3 className="font-semibold">Company</h3>
         <p className="mt-1 text-sm text-muted-foreground">Core details on record for {client.name}.</p>
         <div className="mt-6 grid gap-4 sm:grid-cols-2">
-          <Detail label="Industry" value={client.industry} />
-          <Detail label="Website" value={client.website} />
-          <Detail label="Primary contact" value={client.contact_name} />
-          <Detail label="Contact email" value={client.contact_email} />
-          <Detail label="Contact phone" value={client.contact_phone} />
-          <Detail label="Primary engagement" value={client.service} />
-          <Detail label="Billing email" value={client.billing_email} />
+          <DetailTile label="Industry" value={client.industry} />
+          <DetailTile label="Website" value={client.website} />
+          <DetailTile label="Primary contact" value={client.contact_name} />
+          <DetailTile label="Contact email" value={client.contact_email} />
+          <DetailTile label="Contact phone" value={client.contact_phone} />
+          <DetailTile label="Primary engagement" value={client.service} />
+          <DetailTile label="Billing email" value={client.billing_email} />
         </div>
         {client.notes ? (
           <div className="mt-6">
@@ -110,12 +98,4 @@ export function ClientDetail({ client, confirmArchive, archiveError }: { client:
       </aside>
     </div>
   </>
-}
-
-function Summary({ label, value }: { label: string; value: string }) {
-  return <div className="rounded-lg border border-border p-4"><p className="text-xs font-medium text-muted-foreground">{label}</p><p className="mt-2 text-sm font-semibold">{value}</p></div>
-}
-
-function Detail({ label, value }: { label: string; value: string | null }) {
-  return <div className="rounded-lg bg-muted/50 p-4"><p className="text-[0.6875rem] font-semibold tracking-wide text-muted-foreground uppercase">{label}</p><p className="mt-1 text-sm font-medium">{value ?? '—'}</p></div>
 }
