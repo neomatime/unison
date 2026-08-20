@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { Archive, ArrowDownUp, ChevronLeft, ChevronRight, Download, Filter, LayoutGrid, List, MoreHorizontal, Search, SlidersHorizontal } from 'lucide-react'
 import { useMemo, useState } from 'react'
 
@@ -13,7 +14,8 @@ import { hasSpecialWorkspace, SpecialWorkspace } from './special-workspaces'
 
 type DemoState = 'populated' | 'loading' | 'empty' | 'error' | 'restricted'
 
-export function ModuleWorkspace({ module, records, connected, total, page: serverPage, pageSize }: { module: ModuleDefinition; records: MockRecord[]; connected?: boolean; total?: number; page?: number; pageSize?: number }) {
+export function ModuleWorkspace({ module, records, connected, initialQuery, total, page: serverPage, pageSize }: { module: ModuleDefinition; records: MockRecord[]; connected?: boolean; initialQuery?: string; total?: number; page?: number; pageSize?: number }) {
+  const router = useRouter()
   const [query, setQuery] = useState('')
   const [activeView, setActiveView] = useState(module.views[0])
   const [filterOpen, setFilterOpen] = useState(false)
@@ -24,7 +26,16 @@ export function ModuleWorkspace({ module, records, connected, total, page: serve
   const [selected, setSelected] = useState<string[]>([])
   const [archiveRecord, setArchiveRecord] = useState<MockRecord | null>(null)
   const [toast, setToast] = useState('')
-  const filtered = useMemo(() => records.filter((record) => Object.values(record).some((value) => value.toLowerCase().includes(query.toLowerCase()))).toSorted((a, b) => sortMode === 'name' ? a.name.localeCompare(b.name) : sortMode === 'status' ? a.status.localeCompare(b.status) : a.updated.localeCompare(b.updated)), [query, records, sortMode])
+  // A connected module is already filtered by the server against the URL's `q`,
+  // so re-filtering here would search only the current page while the record
+  // count describes the whole result — the two would describe different things.
+  // Unconnected modules keep the in-memory filter over their fixtures.
+  const filtered = useMemo(() => {
+    const base = connected
+      ? records
+      : records.filter((record) => Object.values(record).some((value) => value.toLowerCase().includes(query.toLowerCase())))
+    return base.toSorted((a, b) => sortMode === 'name' ? a.name.localeCompare(b.name) : sortMode === 'status' ? a.status.localeCompare(b.status) : a.updated.localeCompare(b.updated))
+  }, [connected, query, records, sortMode])
   const special = hasSpecialWorkspace(module.id, activeView)
 
   function confirmArchive() {
@@ -45,7 +56,26 @@ export function ModuleWorkspace({ module, records, connected, total, page: serve
       {special ? <SpecialWorkspace moduleId={module.id} view={activeView} /> : <section className="overflow-hidden rounded-xl border border-border bg-card shadow-[0_1px_2px_rgb(16_32_46_/_0.04)]">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-4">
           <div className="flex flex-1 flex-wrap items-center gap-2">
-            <div className="relative min-w-56 flex-1 sm:max-w-xs"><Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" /><input value={query} onChange={(event) => setQuery(event.target.value)} aria-label={`Search ${module.label}`} placeholder={`Search ${module.label.toLowerCase()}...`} className="h-10 w-full rounded-lg border border-border bg-background pr-3 pl-9 text-sm outline-none focus:border-ring" /></div>
+            {connected ? (
+              // A real GET form, so searching works with JavaScript disabled and
+              // the result is a shareable, reloadable URL. The submit handler
+              // upgrades it to a soft navigation when JS is present.
+              <form
+                method="get"
+                action={module.route}
+                className="relative min-w-56 flex-1 sm:max-w-xs"
+                onSubmit={(event) => {
+                  event.preventDefault()
+                  const value = String(new FormData(event.currentTarget).get('q') ?? '').trim()
+                  router.push(value ? `${module.route}?q=${encodeURIComponent(value)}` : module.route)
+                }}
+              >
+                <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+                <input name="q" defaultValue={initialQuery ?? ''} aria-label={`Search ${module.label}`} placeholder={`Search ${module.label.toLowerCase()}...`} className="h-10 w-full rounded-lg border border-border bg-background pr-3 pl-9 text-sm outline-none focus:border-ring" />
+              </form>
+            ) : (
+              <div className="relative min-w-56 flex-1 sm:max-w-xs"><Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" /><input value={query} onChange={(event) => setQuery(event.target.value)} aria-label={`Search ${module.label}`} placeholder={`Search ${module.label.toLowerCase()}...`} className="h-10 w-full rounded-lg border border-border bg-background pr-3 pl-9 text-sm outline-none focus:border-ring" /></div>
+            )}
             <div className="relative"><button type="button" onClick={() => setFilterOpen((value) => !value)} aria-expanded={filterOpen} className="inline-flex h-10 items-center gap-2 rounded-lg border border-border px-3 text-sm font-medium"><Filter className="size-4" />Filters</button>{filterOpen ? <div className="absolute top-full left-0 z-30 mt-2 w-72 rounded-xl border border-border bg-card p-4 shadow-xl"><div className="flex items-center justify-between"><p className="text-sm font-semibold">Filter {module.label}</p><button type="button" onClick={() => setFilterOpen(false)} className="text-xs text-muted-foreground">Close</button></div><div className="mt-4 space-y-3">{module.filters.map((filter) => <label key={filter} className="block text-xs font-medium text-muted-foreground">{filter}<select className="mt-1 h-9 w-full rounded-lg border border-border bg-background px-2 text-sm text-foreground"><option>All {filter.toLowerCase()}</option><option>Active</option><option>Needs attention</option></select></label>)}</div><div className="mt-4 flex gap-2"><button type="button" onClick={() => { setFilterOpen(false); setToast('Filters applied to this demo view.'); window.setTimeout(() => setToast(''), 2600) }} className="flex-1 rounded-lg bg-foreground px-3 py-2 text-xs font-semibold text-primary-foreground">Apply filters</button><button type="button" onClick={() => setFilterOpen(false)} className="rounded-lg border border-border px-3 py-2 text-xs font-semibold">Reset</button></div></div> : null}</div>
             <button type="button" onClick={() => setSortMode((current) => current === 'updated' ? 'name' : current === 'name' ? 'status' : 'updated')} className="inline-flex h-10 items-center gap-2 rounded-lg border border-border px-3 text-sm font-medium"><ArrowDownUp className="size-4" />Sort: {sortMode}</button>
             <button type="button" onClick={() => { setToast(`${module.label} export prepared. No file was generated in demo mode.`); window.setTimeout(() => setToast(''), 3000) }} className="inline-flex h-10 items-center gap-2 rounded-lg border border-border px-3 text-sm font-medium"><Download className="size-4" />Export</button>

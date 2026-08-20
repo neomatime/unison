@@ -12,5 +12,5 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
 
   const { records, total, page: resolvedPage, pageSize } = await listClients({ q, status, sort, page })
 
-  return <ModuleWorkspace module={moduleById.clients} records={records} connected total={total} page={resolvedPage} pageSize={pageSize} />
+  return <ModuleWorkspace module={moduleById.clients} records={records} connected initialQuery={q} total={total} page={resolvedPage} pageSize={pageSize} />
 }

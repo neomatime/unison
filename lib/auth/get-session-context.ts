@@ -1,11 +1,26 @@
 import 'server-only'
+import { cache } from 'react'
 import { cookies } from 'next/headers'
 import { resolveSessionContext, ACTIVE_ORG_COOKIE } from './session-context'
 import type { Organization, OrganizationMembership } from '@/types/tenancy'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { NotAuthenticatedError } from './errors'
 
-export async function getSessionContext() {
+/**
+ * Resolves who is signed in and which organization they are acting within.
+ *
+ * Wrapped in React's `cache()`, which deduplicates per request: the layout and
+ * every query on a page each call this, and without it each one pays a full
+ * `auth.getUser()` round trip to Supabase plus a memberships query. That cost
+ * multiplies with every module connected, so the page that loads a workspace,
+ * its record count and its rows would pay it three times over.
+ *
+ * Per-request, not global — the cache is scoped to a single render pass, so a
+ * membership revoked between requests takes effect immediately. That matters:
+ * this project deliberately resolves tenancy live rather than from JWT claims
+ * precisely so revocation is not deferred.
+ */
+export const getSessionContext = cache(async function getSessionContext() {
   const supabase = await createServerSupabase()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new NotAuthenticatedError()
@@ -42,4 +57,4 @@ export async function getSessionContext() {
   })
 
   return { user, organizations, ...context }
-}
+})
