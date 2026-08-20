@@ -26,6 +26,7 @@ Dependencies flow down this diagram. Route files stay thin, shared UI does not i
 - `/knowledge`, `/atlas`, and `/settings` provide standalone workspaces.
 - Every product module has workspace, create, record detail, and edit routes.
 - Authentication and onboarding routes cover sign-in, password recovery, invitation acceptance, email verification, and organization creation/joining. There is no sign-up route — UNISON is invite-only, so `app/(auth)/sign-up/` was removed as unreachable.
+- `/auth/callback` completes Microsoft (Entra ID) sign-in: it exchanges the OAuth code for a session and calls `claim_directory_membership()`.
 - `error.tsx`, `not-found.tsx`, and route-group loading boundaries provide global fallback states.
 
 The `(unison)`, `(auth)`, and `(onboarding)` route groups organize layouts without changing public URLs.
@@ -49,6 +50,8 @@ Tenant resolution occurs before business data access: `getSessionContext()` (`li
 ## What is now true, and what genuinely remains undone
 
 Connected: a real Supabase Postgres project, RLS-enforced `organizations`/`memberships`/`invitations`/`audit_events`/`clients` tables, `getSessionContext`/`resolveSessionContext` session resolution, a `proxy.ts` (Next.js 16's Middleware, renamed) that gates unauthenticated and already-authenticated routes, sign-in/sign-out/invitation-accept against Supabase Auth, owner-gated role changes, and one full CRUD module (Clients) reading and writing real rows with server-side search.
+
+**Microsoft (Entra ID) sign-in is real, not demonstrative.** The "Continue with Microsoft" button on `/sign-in` posts to `signInWithMicrosoftAction()`, which starts a real OAuth redirect through Supabase's Azure provider. The Entra app registration is single-tenant, so Microsoft itself refuses any account outside the HIMARK directory before UNISON code ever runs — a stronger guarantee than anything enforced in application logic. `/auth/callback` exchanges the returned code for a session and calls `claim_directory_membership()` (`security definer`), which auto-joins a verified HIMARK identity as `member` on first sign-in; owners and admins are still promoted deliberately, never automatically. Identity linking was verified against the live project: signing in with Microsoft attaches an `azure` identity to an existing email-and-password account rather than creating a second user — the Azure identity's email claim must match the caller's own verified email, so this cannot be used to claim someone else's account. A suspended or removed membership is refused, not reactivated, by signing in with Microsoft. Coverage: 31 RLS specs plus 64 offline tests.
 
 Still not done:
 - **Clients is the only connected product module.** The other sixteen (Projects, Tasks, Calendar, Leads, Quotes, Sales, Invoices, Expenses, Forecast, Team, HR, Leave, Knowledge, Atlas, Overview, Settings) still render `moduleFixtures` — no API route, no persistence. See `docs/product-ui.md`.
