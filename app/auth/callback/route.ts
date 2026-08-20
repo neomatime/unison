@@ -44,7 +44,10 @@ export async function GET(request: NextRequest) {
   // need to know.
   if (claimError || !organizationId) {
     if (claimError) console.warn('[auth/callback] directory claim refused:', claimError.message)
-    await supabase.auth.signOut()
+    // A failed sign-out is the one thing here that fails open — it would leave
+    // a rejected caller holding a live session — so it must not be silent.
+    const { error: signOutError } = await supabase.auth.signOut()
+    if (signOutError) console.error('[auth/callback] sign-out after refusal failed:', signOutError.message)
     return NextResponse.redirect(`${origin}/sign-in?error=no-access`)
   }
 

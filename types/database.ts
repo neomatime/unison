@@ -260,6 +260,10 @@ export type Database = {
         }[]
       }
       is_member_of: { Args: { org: string }; Returns: boolean }
+      rls_test_give_azure_identity: {
+        Args: { target_email: string; target_user_id: string }
+        Returns: undefined
+      }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
     }

@@ -50,9 +50,11 @@ of rows; misleading at scale.
   fabricates an `auth.identities` row with provider `azure` so fixtures can simulate a Microsoft
   sign-in without a real OAuth handshake. It is fenced — restricted to `service_role` and refuses
   any target whose email doesn't end in `.test` — but it is still a function, in the production
-  database, whose only job is to forge an identity. Drop it once Microsoft sign-in is settled and
-  no longer needs this kind of exercising, or keep it deliberately with that reasoning written down
-  next to the migration.
+  database, whose only job is to forge an identity. **Decision taken: keep it.** Dropping it breaks
+  all eight directory specs, and the fence already constrains the one thing that mattered — it
+  refuses any target that is not a `.test` fixture, so it cannot be pointed at a real account. Its
+  caller, `service_role`, can already write `public.memberships` directly, so the function raises no
+  privilege ceiling; it only prevents accidents. Revisit if the specs ever stop needing it.
 - **The `'Sign-in ready'` title in `CompletionState`** (`features/auth-ui/auth-screen.tsx`) is now
   unreachable. It only rendered when the sign-in form's local `completion` state was set, and that
   path belonged to the old demo Microsoft button; the real `signInWithMicrosoftAction()` redirects
@@ -82,6 +84,15 @@ of rows; misleading at scale.
   that created it, because `claim_directory_membership()` only ever inserts a row, it never checks
   back. Until that revocation is automated, an employee removed from Microsoft keeps whatever UNISON
   access they had, indefinitely, with nothing in either system flagging the mismatch.
+
+  **Offboard by setting `status` to `removed`. Never delete the membership row.** The two look
+  equivalent and are not. `claim_directory_membership()` is granted to `authenticated` and callable
+  from any session, not only from the OAuth callback — and an `auth.identities` row survives deletion
+  of the Entra account that created it. So a departed employee who still holds a password on the same
+  Supabase user can call the RPC directly. Revoke the membership and the `suspended`/`removed` branch
+  refuses them. Delete the row instead and there is nothing for that branch to find: execution falls
+  through to the insert and they re-grant themselves `member` access. The refusal only fires on a row
+  that still exists.
 - **Scope the Entra app with an ApplicationAccessPolicy.** The `Mail.Send` application permission
   lets the app send as *any* mailbox in the tenant. Restrict it to the sending mailbox:
   `New-ApplicationAccessPolicy -AppId <client-id> -PolicyScopeGroupId info@himark.co.za
