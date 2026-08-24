@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server'
+import { resolveAppOrigin } from '@/lib/auth/app-origin'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { readAppUrl } from '@/lib/env'
 
@@ -15,24 +16,35 @@ import { readAppUrl } from '@/lib/env'
 export async function GET(request: NextRequest) {
   const url = new URL(request.url)
   const code = url.searchParams.get('code')
-  // Redirect targets are built from the configured app URL, not the request's
-  // own Host header — a spoofed Host behind a proxy that doesn't pin the
-  // trusted host would otherwise turn every one of these into an
-  // attacker-controlled redirect, reachable with no authentication at all
-  // via the code-less path.
-  const origin = readAppUrl(process.env)
+  // Production remains pinned to the configured app URL. A loopback origin is
+  // accepted only in local development so the callback returns to whichever
+  // localhost/127.0.0.1 port is serving the current preview.
+  const origin = resolveAppOrigin(readAppUrl(process.env), url.origin)
 
-  // Microsoft reports user-cancelled consent and similar here.
-  if (url.searchParams.get('error')) {
+  // Every failure below renders the same sentence to the user, deliberately —
+  // sign-in failures should not narrate themselves to whoever is at the
+  // keyboard. That makes the server log the only place the four causes can be
+  // told apart, so each one has to say which it was.
+  const providerError = url.searchParams.get('error')
+  if (providerError) {
+    console.warn('[auth/callback] provider returned an error:', providerError, url.searchParams.get('error_description') ?? '')
     return NextResponse.redirect(`${origin}/sign-in?error=microsoft`)
   }
   if (!code) {
+    console.warn('[auth/callback] no authorization code on the callback URL')
     return NextResponse.redirect(`${origin}/sign-in?error=microsoft`)
   }
 
   const supabase = await createServerSupabase()
   const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
   if (exchangeError) {
+    // `pkce_code_verifier_not_found` is the one worth recognising on sight: the
+    // provider authenticated the user, but the verifier cookie this route needs
+    // is absent, so the flow began somewhere this request cannot see — a
+    // different host (the dev server's LAN address rather than localhost), a
+    // different browser, or cleared cookies. It fails without reaching Supabase
+    // at all, so nothing shows up in the project's auth logs to explain it.
+    console.warn('[auth/callback] code exchange failed:', exchangeError.code ?? exchangeError.name, '—', exchangeError.message)
     return NextResponse.redirect(`${origin}/sign-in?error=microsoft`)
   }
 
