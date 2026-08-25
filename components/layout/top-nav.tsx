@@ -40,7 +40,7 @@ export function TopNav({ greeting, subtitle }: TopNavProps) {
         <IconButton label="Help" onClick={() => setPanel('help')}>
           <CircleHelp className="size-5" strokeWidth={1.75} />
         </IconButton>
-        <Link href="/operations/tasks/new" className="hidden h-11 items-center gap-2 rounded-xl bg-foreground px-4 text-sm font-semibold text-primary-foreground 2xl:inline-flex"><Plus className="size-4" />Quick action</Link>
+        <Link href="/operations/projects/new" className="hidden h-11 items-center gap-2 rounded-xl bg-brand px-4 text-sm font-semibold text-white 2xl:inline-flex"><Plus className="size-4" />New project</Link>
       </div>
     </header><UtilityPanel kind={panel ?? 'help'} open={panel !== null} onClose={() => setPanel(null)} /></>
   )

@@ -4,7 +4,7 @@ import Link from 'next/link'
 import {
   Archive,
   ArrowLeft,
-  Bot,
+  ShieldCheck,
   CalendarDays,
   CheckCircle2,
   CircleDollarSign,
@@ -36,6 +36,7 @@ export function ModuleRecord({ module, recordId }: { module: ModuleDefinition; r
   const [moreOpen, setMoreOpen] = useState(false)
   const [activityOpen, setActivityOpen] = useState(false)
   const [actionMessage, setActionMessage] = useState('')
+  const [workflow, setWorkflow] = useState('')
   if (!record) return null
 
   const runAction = (message: string) => {
@@ -61,6 +62,7 @@ export function ModuleRecord({ module, recordId }: { module: ModuleDefinition; r
           {moreOpen ? <div className="absolute top-full right-0 z-30 mt-2 w-48 rounded-xl border border-border bg-card p-2 text-sm shadow-xl">
             <button type="button" onClick={() => runAction('A duplicate draft was created.')} className="block w-full rounded-lg px-3 py-2 text-left hover:bg-muted">Duplicate record</button>
             <button type="button" onClick={() => runAction('A secure preview link was copied.')} className="block w-full rounded-lg px-3 py-2 text-left hover:bg-muted">Share preview</button>
+            {moduleActions(module.id).map((action) => <button type="button" key={action} onClick={() => { setWorkflow(action); setMoreOpen(false) }} className="block w-full rounded-lg px-3 py-2 text-left hover:bg-muted">{action}</button>)}
             <button type="button" onClick={() => runAction('Summary export is ready.')} className="block w-full rounded-lg px-3 py-2 text-left hover:bg-muted">Download summary</button>
           </div> : null}
         </div>
@@ -86,7 +88,8 @@ export function ModuleRecord({ module, recordId }: { module: ModuleDefinition; r
       </aside>
     </div>
 
-    <ConfirmationDialog open={confirm} title={`${module.archiveLabel ?? 'Archive'}?`} description={`This UI-only action will mark ${record.name} as archived until the page is refreshed.`} confirmLabel={module.archiveLabel ?? 'Archive'} onCancel={() => setConfirm(false)} onConfirm={() => { setArchived(true); setConfirm(false); setActionMessage(`${record.name} was archived.`) }} />
+    <ConfirmationDialog open={confirm} title={`${module.archiveLabel ?? 'Archive'}?`} description={`${record.name} will leave active views and remain available from the archived register.`} confirmLabel={module.archiveLabel ?? 'Archive'} onCancel={() => setConfirm(false)} onConfirm={() => { setArchived(true); setConfirm(false); setActionMessage(`${record.name} was archived.`) }} />
+    <ModuleActionDialog action={workflow} record={record.name} onClose={() => setWorkflow('')} onConfirm={() => { setActionMessage(`${workflow} completed for ${record.name}.`); setWorkflow('') }} />
     {activityOpen ? <div className="fixed inset-0 z-50">
       <button type="button" aria-label="Close activity" onClick={() => setActivityOpen(false)} className="absolute inset-0 bg-foreground/20" />
       <aside className="absolute top-0 right-0 h-full w-full max-w-md overflow-y-auto border-l border-border bg-card p-6 shadow-2xl">
@@ -97,6 +100,27 @@ export function ModuleRecord({ module, recordId }: { module: ModuleDefinition; r
   </>
 }
 
+function moduleActions(moduleId: string) {
+  const actions: Record<string, string[]> = {
+    leads: ['Qualify lead', 'Disqualify lead', 'Convert lead'],
+    quotes: ['Submit for review', 'Send quote', 'Mark accepted', 'Mark declined'],
+    sales: ['Change stage', 'Mark won', 'Mark lost'],
+    invoices: ['Issue invoice', 'Mark paid', 'Cancel invoice'],
+    expenses: ['Submit expense', 'Approve expense', 'Reject expense'],
+    forecast: ['Duplicate scenario', 'Set as current'],
+    team: ['Assign role', 'Assign team', 'Deactivate person'],
+  }
+  return actions[moduleId] ?? []
+}
+
+function ModuleActionDialog({ action, record, onClose, onConfirm }: { action: string; record: string; onClose: () => void; onConfirm: () => void }) {
+  if (!action) return null
+  const needsReason = /disqualify|decline|lost|cancel|reject|deactivate|offboarding|close/i.test(action)
+  const needsAssignment = /assign|stage|onboarding/i.test(action)
+
+  return <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/30 p-4" onMouseDown={onClose}><section role="dialog" aria-modal="true" aria-labelledby="module-action-title" onMouseDown={(event) => event.stopPropagation()} className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-2xl"><p className="text-xs font-semibold tracking-wide text-brand uppercase">Record action</p><h2 id="module-action-title" className="mt-2 text-lg font-bold">{action}</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">Confirm this change for <strong className="text-foreground">{record}</strong>. The outcome will be reflected in the record history.</p>{needsAssignment ? <label className="mt-5 block text-sm font-medium">Selection<select className="mt-1.5 h-11 w-full rounded-lg border border-border bg-background px-3 text-sm"><option>Select an option</option><option>Neo Morake</option><option>Amara Dlamini</option><option>In Review</option><option>Approved</option></select></label> : null}<label className="mt-4 block text-sm font-medium">{needsReason ? 'Reason' : 'Comment'}<textarea required={needsReason} rows={4} placeholder={needsReason ? 'Provide a reason for this change' : 'Add context for the activity history'} className="mt-1.5 w-full rounded-lg border border-border bg-background p-3 text-sm" /></label><div className="mt-6 flex justify-end gap-2"><button type="button" onClick={onClose} className="rounded-lg border border-border px-4 py-2 text-sm font-medium">Cancel</button><button type="button" onClick={onConfirm} className="rounded-lg bg-foreground px-4 py-2 text-sm font-semibold text-primary-foreground">Confirm</button></div></section></div>
+}
+
 function RecordTabContent({ activeTab, module, record, onAction }: { activeTab: string; module: ModuleDefinition; record: FixtureRecord; onAction: (message: string) => void }) {
   if (activeTab === 'Document' && (module.id === 'quotes' || module.id === 'invoices')) return <BusinessDocument module={module} record={record} onAction={onAction} />
   if (activeTab === 'Activity') return <><TabIntro tab={activeTab} singular={module.singular} /><ActivityList limit={6} owner={record.owner} /></>
@@ -104,7 +128,7 @@ function RecordTabContent({ activeTab, module, record, onAction }: { activeTab: 
   if (['Contacts', 'Team', 'Candidates', 'Attendees'].includes(activeTab)) return <PeopleCollection title={activeTab} onAction={onAction} />
   if (['Tasks', 'Subtasks', 'Checklist', 'Dependencies', 'Milestones', 'Deliverables'].includes(activeTab)) return <WorkCollection title={activeTab} />
   if (activeTab === 'Onboarding') return <ClientOnboardingTab record={record} />
-  if (['Atlas'].includes(activeTab)) return <AtlasTab record={record} onAction={onAction} />
+  if (['Governance'].includes(activeTab)) return <GovernanceTab record={record} onAction={onAction} />
   if (['Approval', 'Approvals'].includes(activeTab)) return <ApprovalTab onAction={onAction} />
   if (['Related Records', 'Projects', 'Commercial', 'Financial', 'Payments', 'Meetings'].includes(activeTab)) return <RelatedCollection title={activeTab} />
   return <>
@@ -119,20 +143,55 @@ function TabIntro({ tab, singular }: { tab: string; singular: string }) {
 
 function FileCollection({ title, onAction }: { title: string; onAction: (message: string) => void }) {
   const files = ['Executive summary.pdf', 'Scope and requirements.docx', 'Commercial schedule.xlsx']
-  return <><div className="flex items-center justify-between"><TabIntro tab={title} singular="record" /><button type="button" onClick={() => onAction('File upload drawer opened.')} className="rounded-lg bg-foreground px-3 py-2 text-sm font-semibold text-primary-foreground">Upload file</button></div><div className="mt-6 divide-y divide-border rounded-xl border border-border">{files.map((file, index) => <button type="button" key={file} onClick={() => onAction(`${file} preview opened.`)} className="flex w-full items-center gap-3 p-4 text-left hover:bg-muted/40"><Paperclip className="size-4 text-muted-foreground" /><span><span className="block text-sm font-medium">{file}</span><span className="text-xs text-muted-foreground">{index + 1}.{index + 2} MB · Updated this week</span></span><span className="ml-auto text-xs text-muted-foreground">Preview</span></button>)}</div></>
+  const [uploading, setUploading] = useState(false)
+  return <><div className="flex items-center justify-between"><TabIntro tab={title} singular="record" /><button type="button" onClick={() => setUploading(true)} className="rounded-lg bg-foreground px-3 py-2 text-sm font-semibold text-primary-foreground">Upload file</button></div><div className="mt-6 divide-y divide-border rounded-xl border border-border">{files.map((file, index) => <button type="button" key={file} onClick={() => onAction(`${file} is ready to preview.`)} className="flex w-full items-center gap-3 p-4 text-left hover:bg-muted/40"><Paperclip className="size-4 text-muted-foreground" /><span><span className="block text-sm font-medium">{file}</span><span className="text-xs text-muted-foreground">{index + 1}.{index + 2} MB · Updated this week</span></span><span className="ml-auto text-xs text-muted-foreground">Preview</span></button>)}</div>{uploading ? <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/30 p-4"><section role="dialog" aria-modal="true" className="w-full max-w-lg rounded-2xl border border-border bg-card p-6 shadow-2xl"><h3 className="font-bold">Upload {title.toLowerCase()}</h3><p className="mt-1 text-sm text-muted-foreground">Add a file and confirm its classification before upload.</p><div className="mt-5 rounded-xl border-2 border-dashed border-border p-8 text-center"><Paperclip className="mx-auto size-6 text-muted-foreground" /><p className="mt-3 text-sm font-semibold">Drop a file here or choose from your computer</p></div><select className="mt-4 h-11 w-full rounded-lg border border-border bg-background px-3 text-sm"><option>Internal</option><option>Confidential</option><option>Restricted</option></select><div className="mt-6 flex justify-end gap-2"><button type="button" onClick={() => setUploading(false)} className="rounded-lg border border-border px-4 py-2 text-sm font-medium">Cancel</button><button type="button" onClick={() => { setUploading(false); onAction('File uploaded successfully.') }} className="rounded-lg bg-foreground px-4 py-2 text-sm font-semibold text-primary-foreground">Upload file</button></div></section></div> : null}</>
 }
 
 function PeopleCollection({ title, onAction }: { title: string; onAction: (message: string) => void }) {
-  return <><div className="flex items-center justify-between"><TabIntro tab={title} singular="record" /><button type="button" onClick={() => onAction(`Add ${title.toLowerCase()} drawer opened.`)} className="rounded-lg border border-border px-3 py-2 text-sm font-semibold">Add</button></div><div className="mt-6 grid gap-3 sm:grid-cols-2">{[['Neo Morake','Executive owner'],['Amara Dlamini','Delivery lead'],['Lethabo Nkosi','Product lead'],['Zanele Khumalo','Finance partner']].map(([name, role]) => <article key={name} className="flex items-center gap-3 rounded-xl border border-border p-4"><span className="flex size-9 items-center justify-center rounded-full bg-foreground text-xs font-bold text-primary-foreground">{name.split(' ').map((part) => part[0]).join('')}</span><span><span className="block text-sm font-semibold">{name}</span><span className="text-xs text-muted-foreground">{role}</span></span></article>)}</div></>
+  const [people, setPeople] = useState([
+    { name: 'Neo Morake', role: 'Executive owner' },
+    { name: 'Amara Dlamini', role: 'Delivery lead' },
+    { name: 'Lethabo Nkosi', role: 'Product lead' },
+    { name: 'Zanele Khumalo', role: 'Finance partner' },
+  ])
+  const [editing, setEditing] = useState<number | 'new' | null>(null)
+
+  function savePerson(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const data = new FormData(event.currentTarget)
+    const person = { name: String(data.get('name')), role: String(data.get('role')) }
+    setPeople((current) => editing === 'new' ? [...current, person] : current.map((item, index) => index === editing ? person : item))
+    setEditing(null)
+    onAction(`${person.name} was saved successfully.`)
+  }
+
+  return <>
+    <div className="flex items-center justify-between"><TabIntro tab={title} singular="record" /><button type="button" onClick={() => setEditing('new')} className="rounded-lg border border-border px-3 py-2 text-sm font-semibold">Add</button></div>
+    <div className="mt-6 grid gap-3 sm:grid-cols-2">{people.map((person, index) => <article key={person.name} className="flex items-center gap-3 rounded-xl border border-border p-4"><span className="flex size-9 items-center justify-center rounded-full bg-foreground text-xs font-bold text-primary-foreground">{person.name.split(' ').map((part) => part[0]).join('')}</span><span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold">{person.name}</span><span className="text-xs text-muted-foreground">{person.role}</span></span><button type="button" aria-label={`Edit ${person.name}`} onClick={() => setEditing(index)} className="rounded-md p-2 text-muted-foreground hover:bg-muted"><Pencil className="size-3.5" /></button><button type="button" aria-label={`Remove ${person.name}`} onClick={() => setPeople((current) => current.filter((_, personIndex) => personIndex !== index))} className="rounded-md p-2 text-muted-foreground hover:bg-muted hover:text-destructive"><Archive className="size-3.5" /></button></article>)}</div>
+    {editing !== null ? <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/30 p-4"><form onSubmit={savePerson} className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-2xl"><h3 className="text-lg font-bold">{editing === 'new' ? `Add ${title.toLowerCase()}` : `Edit ${title.toLowerCase()}`}</h3><label className="mt-5 block text-sm font-medium">Name<input name="name" required defaultValue={editing === 'new' ? '' : people[editing].name} className="mt-1.5 h-11 w-full rounded-lg border border-border bg-background px-3" /></label><label className="mt-4 block text-sm font-medium">Role<input name="role" required defaultValue={editing === 'new' ? '' : people[editing].role} className="mt-1.5 h-11 w-full rounded-lg border border-border bg-background px-3" /></label><div className="mt-6 flex justify-end gap-2"><button type="button" onClick={() => setEditing(null)} className="rounded-lg border border-border px-4 py-2 text-sm font-medium">Cancel</button><button type="submit" className="rounded-lg bg-foreground px-4 py-2 text-sm font-semibold text-primary-foreground">Save</button></div></form></div> : null}
+  </>
 }
 
 function WorkCollection({ title }: { title: string }) {
-  const [done, setDone] = useState<boolean[]>([true, false, false])
-  return <><TabIntro tab={title} singular="record" /><div className="mt-6 divide-y divide-border rounded-xl border border-border">{['Confirm owner and scope', 'Review stakeholder feedback', 'Complete quality assurance'].map((task, index) => <label key={task} className="flex cursor-pointer items-center gap-3 p-4"><input type="checkbox" checked={done[index]} onChange={() => setDone((current) => current.map((value, taskIndex) => taskIndex === index ? !value : value))} className="size-4" /><span className={done[index] ? 'text-sm text-muted-foreground line-through' : 'text-sm font-medium'}>{task}</span><span className="ml-auto text-xs text-muted-foreground">{index + 1} day{index ? 's' : ''}</span></label>)}</div></>
+  const [items, setItems] = useState([
+    { name: 'Confirm owner and scope', done: true },
+    { name: 'Review stakeholder feedback', done: false },
+    { name: 'Complete quality assurance', done: false },
+  ])
+  const [editing, setEditing] = useState<number | 'new' | null>(null)
+
+  function saveItem(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const name = String(new FormData(event.currentTarget).get('name'))
+    setItems((current) => editing === 'new' ? [...current, { name, done: false }] : current.map((item, index) => index === editing ? { ...item, name } : item))
+    setEditing(null)
+  }
+
+  return <><div className="flex items-center justify-between"><TabIntro tab={title} singular="record" /><button type="button" onClick={() => setEditing('new')} className="rounded-lg border border-border px-3 py-2 text-sm font-semibold">Add {title.toLowerCase()}</button></div><div className="mt-6 divide-y divide-border rounded-xl border border-border">{items.map((item, index) => <div key={`${item.name}-${index}`} className="flex items-center gap-3 p-4"><input aria-label={`Complete ${item.name}`} type="checkbox" checked={item.done} onChange={() => setItems((current) => current.map((entry, itemIndex) => itemIndex === index ? { ...entry, done: !entry.done } : entry))} className="size-4" /><span className={item.done ? 'flex-1 text-sm text-muted-foreground line-through' : 'flex-1 text-sm font-medium'}>{item.name}</span><button type="button" aria-label={`Edit ${item.name}`} onClick={() => setEditing(index)} className="rounded-md p-2 text-muted-foreground hover:bg-muted"><Pencil className="size-3.5" /></button><button type="button" aria-label={`Archive ${item.name}`} onClick={() => setItems((current) => current.filter((_, itemIndex) => itemIndex !== index))} className="rounded-md p-2 text-muted-foreground hover:bg-muted hover:text-destructive"><Archive className="size-3.5" /></button></div>)}</div>{editing !== null ? <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/30 p-4"><form onSubmit={saveItem} className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-2xl"><h3 className="text-lg font-bold">{editing === 'new' ? `Add ${title.toLowerCase()}` : `Edit ${title.toLowerCase()}`}</h3><label className="mt-5 block text-sm font-medium">Title<input name="name" required defaultValue={editing === 'new' ? '' : items[editing].name} className="mt-1.5 h-11 w-full rounded-lg border border-border bg-background px-3" /></label><div className="mt-6 flex justify-end gap-2"><button type="button" onClick={() => setEditing(null)} className="rounded-lg border border-border px-4 py-2 text-sm font-medium">Cancel</button><button type="submit" className="rounded-lg bg-foreground px-4 py-2 text-sm font-semibold text-primary-foreground">Save</button></div></form></div> : null}</>
 }
 
-function AtlasTab({ record, onAction }: { record: FixtureRecord; onAction: (message: string) => void }) {
-  return <><div className="flex items-center gap-2"><Bot className="size-5 text-brand" /><h3 className="font-semibold">Atlas intelligence</h3></div><p className="mt-2 text-sm text-muted-foreground">Contextual observations generated from the current mock record.</p><div className="mt-6 grid gap-3 sm:grid-cols-2">{['Delivery confidence is improving', 'One executive decision is overdue', 'Commercial follow-up recommended', 'Stakeholder engagement is healthy'].map((insight, index) => <article key={insight} className="rounded-xl border border-border p-4"><span className="text-xs font-semibold text-brand">{88 - index * 3}% confidence</span><p className="mt-2 text-sm font-medium">{insight}</p><button type="button" onClick={() => onAction(`Atlas insight reviewed for ${record.name}.`)} className="mt-4 text-xs font-semibold">Review insight</button></article>)}</div></>
+function GovernanceTab({ record, onAction }: { record: FixtureRecord; onAction: (message: string) => void }) {
+  return <><div className="flex items-center gap-2"><ShieldCheck className="size-5 text-brand" /><h3 className="font-semibold">Governance summary</h3></div><p className="mt-2 text-sm text-muted-foreground">Deterministic control observations from the current record.</p><div className="mt-6 grid gap-3 sm:grid-cols-2">{['Delivery confidence is improving', 'One executive decision is overdue', 'Commercial follow-up recommended', 'Stakeholder engagement is healthy'].map((insight, index) => <article key={insight} className="rounded-xl border border-border p-4"><span className="text-xs font-semibold text-brand">{88 - index * 3}% confidence</span><p className="mt-2 text-sm font-medium">{insight}</p><button type="button" onClick={() => onAction(`Governance item reviewed for ${record.name}.`)} className="mt-4 text-xs font-semibold">Review control</button></article>)}</div></>
 }
 
 function ApprovalTab({ onAction }: { onAction: (message: string) => void }) {

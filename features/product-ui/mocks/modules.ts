@@ -53,29 +53,10 @@ export const moduleFixtures: Record<string, MockRecord[]> = {
     { id: 'base-q3', name: 'Q3 Base Scenario', status: 'Active', owner: owners[0], updated: 'Today', period: 'Q3 2026', actual: 'R2.4M', projected: 'R3.8M', variance: '+6.2%' },
     { id: 'growth-q4', name: 'Q4 Growth Scenario', status: 'Draft', owner: owners[1], updated: 'Yesterday', period: 'Q4 2026', actual: '—', projected: 'R4.6M', variance: '+18.4%' },
   ],
-  team: [
-    { id: 'neo-morake', name: 'Neo Morake', status: 'Active', owner: 'HIMARK Board', updated: 'Today', title: 'Chief Executive Officer', department: 'Executive', team: 'Leadership', start: '01 Jan 2023' },
-    { id: 'amara-dlamini', name: 'Amara Dlamini', status: 'Active', owner: 'Neo Morake', updated: 'Today', title: 'Strategy Director', department: 'Consulting', team: 'Growth', start: '12 Feb 2024' },
-    { id: 'lethabo-nkosi', name: 'Lethabo Nkosi', status: 'Active', owner: 'Amara Dlamini', updated: 'Yesterday', title: 'Product Lead', department: 'Digital', team: 'Platforms', start: '06 May 2025' },
-    { id: 'zanele-khumalo', name: 'Zanele Khumalo', status: 'On Leave', owner: 'Neo Morake', updated: '2 days ago', title: 'Finance Manager', department: 'Finance', team: 'Operations', start: '18 Sep 2023' },
-  ],
-  hr: [
-    { id: 'vacancy-designer', name: 'Senior Experience Designer', status: 'Interview', owner: owners[2], updated: '30 min ago', type: 'Vacancy', department: 'Digital', stage: 'Interview', due: '28 Aug 2026' },
-    { id: 'candidate-maseko', name: 'Karabo Maseko', status: 'Assessment', owner: owners[1], updated: '2 hours ago', type: 'Candidate', department: 'Consulting', stage: 'Assessment', due: '15 Aug 2026' },
-  ],
-  leave: [
-    { id: 'leave-zanele', name: 'Zanele Khumalo', status: 'Approved', owner: 'Neo Morake', updated: 'Today', type: 'Annual Leave', from: '10 Aug 2026', to: '14 Aug 2026', days: '5' },
-    { id: 'leave-lethabo', name: 'Lethabo Nkosi', status: 'Awaiting Approval', owner: 'Amara Dlamini', updated: '1 hour ago', type: 'Personal Leave', from: '21 Aug 2026', to: '21 Aug 2026', days: '1' },
-  ],
   knowledge: [
     { id: 'client-onboarding-playbook', name: 'Client Onboarding Playbook', status: 'Published', owner: owners[1], updated: 'Yesterday', category: 'SOP', related: 'Operations', visibility: 'Company' },
     { id: 'proposal-quality-standard', name: 'Proposal Quality Standard', status: 'Review', owner: owners[0], updated: '2 days ago', category: 'Policy', related: 'Commercial', visibility: 'Company' },
     { id: 'northstar-decisions', name: 'Northstar Decision Register', status: 'Published', owner: owners[2], updated: '3 days ago', category: 'Decision Register', related: companies[1], visibility: 'Project Team' },
-  ],
-  atlas: [
-    { id: 'insight-margin', name: 'Margin pressure is concentrated in two delivery streams', status: 'Review', owner: 'Atlas', updated: '4 min ago', type: 'Risk', module: 'Finance', priority: 'High', confidence: '91%' },
-    { id: 'insight-renewal', name: 'Three client renewals can be advanced this month', status: 'New', owner: 'Atlas', updated: '20 min ago', type: 'Opportunity', module: 'Sales', priority: 'Medium', confidence: '87%' },
-    { id: 'insight-capacity', name: 'Design capacity may constrain September milestones', status: 'Acknowledged', owner: 'Atlas', updated: '1 hour ago', type: 'Observation', module: 'Projects', priority: 'High', confidence: '84%' },
   ],
   settings: [
     { id: 'company-profile', name: 'Company Profile', status: 'Configured', owner: owners[0], updated: '2 days ago', area: 'Company' },

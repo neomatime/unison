@@ -3,7 +3,6 @@ import { Quote } from 'lucide-react'
 import { TopNav } from '@/components/layout/top-nav'
 import { application } from '@/config/constants'
 import { kpiCards } from '@/features/overview/data'
-import { AtlasInsightsPanel } from './atlas-insights-panel'
 import { AutomationStatusPanel } from './automation-status-panel'
 import { ClientActivityPanel } from './client-activity-panel'
 import { KpiCard } from './kpi-card'
@@ -41,7 +40,6 @@ export function OverviewScreen() {
       </div>
 
       <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-3">
-        <AtlasInsightsPanel />
         <AutomationStatusPanel />
         <RecentActivityPanel />
       </div>

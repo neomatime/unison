@@ -1,7 +1,5 @@
-import { ModuleWorkspace } from '@/features/product-ui/components/module-workspace'
-import { moduleFixtures } from '@/features/product-ui/mocks/modules'
-import { moduleById } from '@/features/product-ui/registry'
+import { redirect } from 'next/navigation'
 
 export default function Page() {
-  return <ModuleWorkspace module={moduleById.leave} records={moduleFixtures.leave ?? []} />
+  redirect('/people/team')
 }

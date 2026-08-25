@@ -22,22 +22,42 @@ Dependencies flow down this diagram. Route files stay thin, shared UI does not i
 - `/operations/*` covers Clients, Projects, Tasks, and Calendar.
 - `/commercial/*` covers Leads, Quotes, and Sales.
 - `/finance/*` covers Invoices, Expenses, and Forecast.
-- `/people/*` covers Team, HR, and Leave.
+- `/people/team` is the only active People workspace. Team owns delivery roles, assignments, capacity, availability and accountability activity; retired `/people/hr/*` and `/people/leave/*` URLs redirect to Team for bookmark compatibility.
 - `/knowledge`, `/atlas`, and `/settings` provide standalone workspaces.
 - Every product module has workspace, create, record detail, and edit routes.
-- Authentication and onboarding routes cover sign-in, password recovery, invitation acceptance, email verification, and organization creation/joining. There is no sign-up route — UNISON is invite-only, so `app/(auth)/sign-up/` was removed as unreachable.
+- Authentication and onboarding routes cover tenant sign-in, dedicated HIMARK internal sign-in, password recovery, invitation acceptance, email verification, and organization creation/joining. There is no sign-up route — UNISON is invite-only, so `app/(auth)/sign-up/` was removed as unreachable.
 - `/auth/callback` completes Microsoft (Entra ID) sign-in: it exchanges the OAuth code for a session and calls `claim_directory_membership()`.
 - `error.tsx`, `not-found.tsx`, and route-group loading boundaries provide global fallback states.
 
-The `(unison)`, `(auth)`, and `(onboarding)` route groups organize layouts without changing public URLs.
+The `(unison)`, `(auth)`, and `(onboarding)` route groups organize layouts without changing public URLs. A separate `(internal)` route group owns the HIMARK-only `/internal/*` administration surface. Its public entry route is `/internal/sign-in`, outside the protected internal layout. The protected layout resolves the user's active HIMARK `owner` or `admin` membership independently from the selected tenant cookie and renders an internal shell that never exposes tenant business navigation.
+
+## HIMARK internal administration
+
+`/internal/sign-in` composes the dedicated `features/auth-ui/internal-sign-in-screen.tsx` entry. `/internal/overview`, `/internal/organisations`, `/internal/provisioning`, `/internal/tenants`, `/internal/subscriptions`, `/internal/support`, and `/internal/knowledge` compose the `features/internal-provisioning` screens. New and existing provisioning journeys use `/internal/provisioning/new` and `/internal/provisioning/[provisioningId]`.
+
+Both password and Microsoft authentication carry a validated relative `next` destination. The proxy selects `/internal/sign-in` for unauthenticated internal requests, the OAuth callback returns internal failures to the same entry, and internal sign-out does likewise. Tenant sign-in and sign-out continue to use `/sign-in` unchanged.
+
+Internal client provisioning and tenant `Operations → Onboarding` are deliberately separate:
+
+```text
+HIMARK internal provisioning
+  -> organisation + tier entitlement
+  -> tenant module activation
+  -> initial delivery and access configuration
+
+Tenant Operations / Onboarding
+  -> the tenant's own customer onboarding records
+```
+
+`config/unison-tiers.ts` is the UI source of truth for tier definitions, module groups, locked core modules, entitlement reconciliation, and enabled counts. Delivery and Team are locked for every tier. This implementation is front-end only: drafts, provisioning progress, tenant operations, and subscription changes reset on refresh and do not create organisations or change persisted entitlements.
 
 ## Directory responsibilities
 
 - `app/` owns routing, layouts, loading/error boundaries, and screen composition.
-- `features/` owns domain behavior. `features/product-ui` provides the registry-driven CRUD and specialized module screens; `features/overview` owns the executive dashboard.
+- `features/` owns domain behavior. `features/product-ui` provides the registry-driven CRUD and specialized module screens; `features/overview` owns the executive dashboard; `features/internal-provisioning` owns the isolated HIMARK administration and provisioning experience.
 - `components/` owns reusable layout, navigation, UI primitives, shared drawers, dialogs, tenant controls, and feedback states.
 - `lib/` owns framework and platform infrastructure, including auth, tenant resolution, permissions, Supabase boundaries, files, notifications, and utilities.
-- `config/` owns navigation, module registration, permissions, statuses, and tenant bootstrap configuration.
+- `config/` owns navigation, module registration, tier entitlements, permissions, statuses, and tenant bootstrap configuration.
 - `supabase/migrations/` owns the ordered SQL schema history, applied through the Supabase MCP. There is no `database/` directory.
 - `styles/` owns global styles and semantic UNISON tokens.
 - `hooks/` and `types/` hold cross-feature hooks and types only when they are genuinely shared.
@@ -54,7 +74,7 @@ Connected: a real Supabase Postgres project, RLS-enforced `organizations`/`membe
 **Microsoft (Entra ID) sign-in is real, not demonstrative.** The "Continue with Microsoft" button on `/sign-in` posts to `signInWithMicrosoftAction()`, which starts a real OAuth redirect through Supabase's Azure provider. The Entra app registration is single-tenant, so Microsoft itself refuses any account outside the HIMARK directory before UNISON code ever runs — a stronger guarantee than anything enforced in application logic. `/auth/callback` exchanges the returned code for a session and calls `claim_directory_membership()` (`security definer`), which auto-joins a verified HIMARK identity as `member` on first sign-in; owners and admins are still promoted deliberately, never automatically. Identity linking was verified against the live project: signing in with Microsoft attaches an `azure` identity to an existing email-and-password account rather than creating a second user — the Azure identity's email claim must match the caller's own verified email, so this cannot be used to claim someone else's account. A suspended or removed membership is refused, not reactivated, by signing in with Microsoft. Coverage: eight RLS specs exercise this path specifically — including that a revoked membership is refused rather than reactivated, and that an Azure identity for a different address cannot satisfy the check — inside a project total of 31 RLS specs and 64 offline tests. The rejection path in `/auth/callback` has not run live: the non-HIMARK account tested was refused by Microsoft before reaching it.
 
 Still not done:
-- **Clients is the only connected product module.** The other sixteen (Projects, Tasks, Calendar, Leads, Quotes, Sales, Invoices, Expenses, Forecast, Team, HR, Leave, Knowledge, Atlas, Overview, Settings) still render `moduleFixtures` — no API route, no persistence. See `docs/product-ui.md`.
+- **Clients is the only connected product module.** Team now has a dedicated front-end feature under `features/team`, while the other unconnected modules continue to use local fixture-driven interactions — no Team persistence or new API route was added by the People UI change. See `docs/product-ui.md`.
 - **Sign-up does not exist.** UNISON is invite-only, and `app/(auth)/sign-up/` was removed as unreachable (see "Current routes" above).
 - **`/forgot-password`, `/reset-password`, and `/verify-email` remain non-functional demos.** Each renders a bare `<AuthScreen>` for its `kind` with no Supabase call behind it — no `resetPasswordForEmail`, no `updateUser`, nothing wired. Only sign-in, sign-out, and invitation acceptance (`kind="accept"`) actually call Supabase Auth today.
 - **Invitation mail goes through the Microsoft Graph API, not SMTP.** Microsoft 365 blocks SMTP AUTH while security defaults are enabled — verified against the live server, which answers `535 5.7.139 ... locked by your organization's security defaults policy` — and Microsoft is deprecating SMTP client submission regardless. `lib/email` therefore acquires an OAuth2 client-credentials token and posts a raw MIME message to Graph. The `sendEmail()` interface is unchanged, so no caller knows the difference.

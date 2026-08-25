@@ -1,7 +1,5 @@
-import { ModuleWorkspace } from '@/features/product-ui/components/module-workspace'
-import { moduleFixtures } from '@/features/product-ui/mocks/modules'
-import { moduleById } from '@/features/product-ui/registry'
+import { TeamScreen } from '@/features/team/components/team-screen'
 
 export default function Page() {
-  return <ModuleWorkspace module={moduleById.team} records={moduleFixtures.team ?? []} />
+  return <TeamScreen />
 }

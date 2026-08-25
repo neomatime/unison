@@ -1,11 +1,14 @@
 'use server'
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
+import { authEntryPathFor } from '@/lib/auth/auth-entry'
 import { resolveAppOrigin } from '@/lib/auth/app-origin'
+import { safeRedirectPath } from '@/lib/auth/safe-redirect'
 import { readAppUrl } from '@/lib/env'
 import { createServerSupabase } from '@/lib/supabase/server'
 
-export async function signInWithMicrosoftAction() {
+export async function signInWithMicrosoftAction(formData: FormData) {
+  const next = safeRedirectPath(formData.get('next')?.toString())
   const supabase = await createServerSupabase()
   const requestOrigin = (await headers()).get('origin')
   const appOrigin = resolveAppOrigin(readAppUrl(process.env), requestOrigin)
@@ -21,16 +24,22 @@ export async function signInWithMicrosoftAction() {
   if (requestOrigin && requestOrigin !== appOrigin) {
     console.warn(`[sign-in] request origin ${requestOrigin} is not the app origin ${appOrigin}; the PKCE verifier will be written to the former and the callback will run on the latter, which cannot read it. Start sign-in from ${appOrigin}.`)
   }
+  const callbackUrl = new URL('/auth/callback', appOrigin)
+  callbackUrl.searchParams.set('next', next)
+
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'azure',
     options: {
-      redirectTo: `${appOrigin}/auth/callback`,
+      redirectTo: callbackUrl.toString(),
       // email is not in Azure's default scope set and the claim function
       // needs a verified address to match a domain against.
       scopes: 'email',
     },
   })
 
-  if (error || !data.url) redirect('/sign-in?error=microsoft')
+  if (error || !data.url) {
+    const params = new URLSearchParams({ error: 'microsoft', next })
+    redirect(`${authEntryPathFor(next)}?${params.toString()}`)
+  }
   redirect(data.url)
 }

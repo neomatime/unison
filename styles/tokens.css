@@ -20,18 +20,22 @@
   --input: oklch(0.925 0.006 247);
   --ring: oklch(0.55 0.06 240);
 
-  --brand: oklch(0.62 0.07 156);
+  --brand: oklch(0.56 0.16 252);
   --brand-foreground: oklch(0.985 0 0);
-  --brand-soft: oklch(0.95 0.03 156);
+  --brand-soft: oklch(0.955 0.025 252);
+  --success: oklch(0.58 0.14 151);
+  --success-soft: oklch(0.96 0.035 151);
   --warning: oklch(0.76 0.13 72);
   --warning-soft: oklch(0.95 0.045 78);
-  --info: oklch(0.72 0.04 260);
-  --info-soft: oklch(0.95 0.012 260);
+  --danger: oklch(0.6 0.19 25);
+  --danger-soft: oklch(0.965 0.035 25);
+  --info: oklch(0.58 0.12 285);
+  --info-soft: oklch(0.96 0.025 285);
 
   --sidebar: oklch(0.21 0.032 256);
   --sidebar-foreground: oklch(0.82 0.015 250);
   --sidebar-muted: oklch(0.6 0.02 252);
-  --sidebar-active: oklch(0.28 0.035 256);
+  --sidebar-active: oklch(0.39 0.1 252);
   --sidebar-active-foreground: oklch(0.99 0 0);
   --sidebar-border: oklch(0.3 0.03 256);
 
@@ -43,4 +47,3 @@
 
   --radius: 0.75rem;
 }
-

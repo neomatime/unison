@@ -1,8 +1,5 @@
-import { ModuleRecord } from '@/features/product-ui/components/module-record'
-import { moduleById } from '@/features/product-ui/registry'
+import { redirect } from 'next/navigation'
 
-export default async function Page({ params }: { params: Promise<{ requestId: string }> }) {
-  const { requestId } = await params
-  return <ModuleRecord module={moduleById.leave} recordId={requestId} />
+export default function Page() {
+  redirect('/people/team')
 }
-

@@ -1,8 +1,5 @@
-import { ModuleForm } from '@/features/product-ui/components/module-form'
-import { moduleById } from '@/features/product-ui/registry'
+import { redirect } from 'next/navigation'
 
-export default async function Page({ params }: { params: Promise<{ requestId: string }> }) {
-  const { requestId } = await params
-  return <ModuleForm module={moduleById.leave} mode="edit" recordId={requestId} />
+export default function Page() {
+  redirect('/people/team')
 }
-

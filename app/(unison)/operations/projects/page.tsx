@@ -1,7 +1,5 @@
-import { ModuleWorkspace } from '@/features/product-ui/components/module-workspace'
-import { moduleFixtures } from '@/features/product-ui/mocks/modules'
-import { moduleById } from '@/features/product-ui/registry'
+import { ProjectsScreen } from '@/features/delivery/components/projects-screen'
 
 export default function Page() {
-  return <ModuleWorkspace module={moduleById.projects} records={moduleFixtures.projects ?? []} />
+  return <ProjectsScreen />
 }

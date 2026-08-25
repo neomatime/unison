@@ -1,5 +1,8 @@
 import { NextResponse, type NextRequest } from 'next/server'
+import { authEntryPathFor } from '@/lib/auth/auth-entry'
+import { AUTH_UNAVAILABLE_ERROR, isAuthServiceUnavailable } from '@/lib/auth/auth-unavailable'
 import { resolveAppOrigin } from '@/lib/auth/app-origin'
+import { safeRedirectPath } from '@/lib/auth/safe-redirect'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { readAppUrl } from '@/lib/env'
 
@@ -19,14 +22,18 @@ import { readAppUrl } from '@/lib/env'
  * its console with it, and the address bar is the one place the reason survives
  * that. Never attached in production, where the log is the record.
  */
-function signInFailure(origin: string, reason: string): NextResponse {
-  const debug = process.env.NODE_ENV === 'production' ? '' : `&reason=${encodeURIComponent(reason)}`
-  return NextResponse.redirect(`${origin}/sign-in?error=microsoft${debug}`)
+function signInFailure(origin: string, reason: string, next: string, error = 'microsoft'): NextResponse {
+  const destination = new URL(authEntryPathFor(next), origin)
+  destination.searchParams.set('error', error)
+  destination.searchParams.set('next', next)
+  if (process.env.NODE_ENV !== 'production') destination.searchParams.set('reason', reason)
+  return NextResponse.redirect(destination)
 }
 
 export async function GET(request: NextRequest) {
   const url = new URL(request.url)
   const code = url.searchParams.get('code')
+  const next = safeRedirectPath(url.searchParams.get('next'))
   // Production remains pinned to the configured app URL. A loopback origin is
   // accepted only in local development so the callback returns to whichever
   // localhost/127.0.0.1 port is serving the current preview.
@@ -39,11 +46,11 @@ export async function GET(request: NextRequest) {
   const providerError = url.searchParams.get('error')
   if (providerError) {
     console.warn('[auth/callback] provider returned an error:', providerError, url.searchParams.get('error_description') ?? '')
-    return signInFailure(origin, `provider:${providerError}`)
+    return signInFailure(origin, `provider:${providerError}`, next)
   }
   if (!code) {
     console.warn('[auth/callback] no authorization code on the callback URL')
-    return signInFailure(origin, 'no-code')
+    return signInFailure(origin, 'no-code', next)
   }
 
   const supabase = await createServerSupabase()
@@ -61,7 +68,11 @@ export async function GET(request: NextRequest) {
     const verifierCookies = request.cookies.getAll().map((c) => c.name).filter((n) => n.includes('code-verifier'))
     console.warn('[auth/callback] code exchange failed:', reason, '—', exchangeError.message)
     console.warn('[auth/callback] callback origin:', url.origin, '| redirecting to:', origin, '| verifier cookies present:', verifierCookies.length ? verifierCookies.join(', ') : 'none')
-    return signInFailure(origin, reason)
+    // The provider authenticated the user; only this server's call to Supabase
+    // failed. Saying "Microsoft sign-in didn't complete" would be false and
+    // would send them back through a provider that is working.
+    const unavailable = isAuthServiceUnavailable(exchangeError)
+    return signInFailure(origin, reason, next, unavailable ? AUTH_UNAVAILABLE_ERROR : 'microsoft')
   }
 
   const { data: organizationId, error: claimError } = await supabase.rpc('claim_directory_membership')
@@ -76,8 +87,8 @@ export async function GET(request: NextRequest) {
     // a rejected caller holding a live session — so it must not be silent.
     const { error: signOutError } = await supabase.auth.signOut()
     if (signOutError) console.error('[auth/callback] sign-out after refusal failed:', signOutError.message)
-    return NextResponse.redirect(`${origin}/sign-in?error=no-access`)
+    return signInFailure(origin, 'no-access', next, 'no-access')
   }
 
-  return NextResponse.redirect(`${origin}/overview`)
+  return NextResponse.redirect(new URL(next, origin))
 }

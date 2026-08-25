@@ -1,7 +1,5 @@
-import { ModuleForm } from '@/features/product-ui/components/module-form'
-import { moduleById } from '@/features/product-ui/registry'
+import { redirect } from 'next/navigation'
 
-export default function Page() {
-  return <ModuleForm module={moduleById.hr} mode="create" />
+export default function RetiredPeopleModuleCreatePage() {
+  redirect('/people/team')
 }
-

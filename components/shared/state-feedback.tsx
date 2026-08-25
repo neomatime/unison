@@ -14,7 +14,7 @@ export function EmptyState({ search = false }: { search?: boolean }) {
 export function ErrorState() {
   const [retrying, setRetrying] = useState(false)
   if (retrying) return <LoadingSkeleton />
-  return <div className="flex min-h-72 flex-col items-center justify-center px-6 text-center"><AlertTriangle className="size-8 text-warning" /><h3 className="mt-4 font-semibold">This workspace could not load</h3><p className="mt-1 text-sm text-muted-foreground">The demo state encountered a temporary problem.</p><button type="button" onClick={() => { setRetrying(true); window.setTimeout(() => setRetrying(false), 800) }} className="mt-4 rounded-lg border border-border px-3 py-2 text-sm font-medium">Try again</button></div>
+  return <div className="flex min-h-72 flex-col items-center justify-center px-6 text-center"><AlertTriangle className="size-8 text-warning" /><h3 className="mt-4 font-semibold">This workspace could not load</h3><p className="mt-1 text-sm text-muted-foreground">A temporary problem prevented this content from loading.</p><button type="button" onClick={() => { setRetrying(true); window.setTimeout(() => setRetrying(false), 800) }} className="mt-4 rounded-lg border border-border px-3 py-2 text-sm font-medium">Try again</button></div>
 }
 
 export function PermissionState() {

@@ -36,7 +36,7 @@ const plans = [
 
 const serviceCatalogue = [
   ['UNISON', 'Business operating system workspace', 'Core'],
-  ['Atlas', 'Intelligence, insight and organizational memory', 'Advanced'],
+  ['Delivery Governance', 'Frameworks, approvals and delivery controls', 'Advanced'],
   ['LeadSense', 'Lead qualification and commercial intelligence', 'Advanced'],
   ['CRM / Client OS', 'Client relationships and lifecycle management', 'Advanced'],
   ['Automation', 'Workflow and operational automation', 'Standard'],
@@ -128,7 +128,7 @@ export function ClientSetupWorkflow() {
   const [currentStep, setCurrentStep] = useState(0)
   const [data, setData] = useState(initialData)
   const [plan, setPlan] = useState('Growth Partner')
-  const [includedServices, setIncludedServices] = useState(() => new Set(['UNISON', 'Atlas', 'LeadSense', 'CRM / Client OS', 'Automation']))
+  const [includedServices, setIncludedServices] = useState(() => new Set(['UNISON', 'Delivery Governance', 'LeadSense', 'CRM / Client OS', 'Automation']))
   const [customServices, setCustomServices] = useState<string[]>([])
   const [stakeholders, setStakeholders] = useState(initialStakeholders)
   const [stakeholderOpen, setStakeholderOpen] = useState(false)
@@ -186,7 +186,7 @@ export function ClientSetupWorkflow() {
 
       <SetupProgress currentStep={currentStep} onStep={goToStep} />
 
-      {draftSaved ? <DraftNotice onResume={() => { setDraftSaved(false); setNotice('Draft resumed.') }} onDiscard={() => { setDraftSaved(false); setNotice('Draft discarded from this browser demo.') }} /> : null}
+      {draftSaved ? <DraftNotice onResume={() => { setDraftSaved(false); setNotice('Draft resumed.') }} onDiscard={() => { setDraftSaved(false); setNotice('Draft discarded.') }} /> : null}
 
       <div className="mt-5">
         {currentStep === 0 ? <CompanyStep data={data} update={update} logoUploaded={logoUploaded} setLogoUploaded={setLogoUploaded} showErrors={showErrors} /> : null}
@@ -380,7 +380,7 @@ function ReviewStep({ data, plan, included, custom, team, template, onEdit }: { 
       <ReviewCard title="Team" onEdit={() => onEdit(4)}><div className="grid gap-3 sm:grid-cols-2"><Ownership label="Account Owner" name={team.account} /><Ownership label="Onboarding Manager" name={team.onboarding} /><Ownership label="Project Lead" name={team.project} /><Ownership label="Technology Lead" name={team.technology} /></div></ReviewCard>
       <ReviewCard title="Onboarding" onEdit={() => onEdit(5)}><ReviewGrid items={[['Start date', '30 August 2026'], ['Target launch', '30 September 2026'], ['Template', template], ['Onboarding manager', team.onboarding]]} /></ReviewCard>
     </div>
-    <div className="mt-5 flex items-start gap-3 rounded-xl border border-info/20 bg-info-soft/50 p-4 text-sm"><Info className="mt-0.5 size-4 shrink-0 text-info" /><div><p className="font-semibold">Ready to create the client workspace</p><p className="mt-1 text-muted-foreground">This prototype will show the completed provisioning state without writing to a database or triggering external workflows.</p></div></div>
+        <div className="mt-5 flex items-start gap-3 rounded-xl border border-info/20 bg-info-soft/50 p-4 text-sm"><Info className="mt-0.5 size-4 shrink-0 text-info" /><div><p className="font-semibold">Ready to create the client workspace</p><p className="mt-1 text-muted-foreground">Confirm the company, engagement, team and onboarding plan before creating the workspace.</p></div></div>
   </StepHeading>
 }
 

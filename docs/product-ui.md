@@ -1,10 +1,18 @@
 # UNISON product UI
 
-Seventeen product modules exist as routed screens. Of those, **Clients is the only module connected to the database** — its workspace, create, detail, and edit routes read and write real `clients` rows through `features/clients`, scoped to the active organization and enforced by RLS. Every other module (Projects, Tasks, Calendar, Leads, Quotes, Sales, Invoices, Expenses, Forecast, Team, HR, Leave, Knowledge, Atlas, Overview, Settings) still renders `moduleFixtures` from `features/product-ui/mocks/modules.ts` — no persistence, no API route, local-only interaction that resets on refresh. Authentication enforcement, AI calls, external integrations, and automation execution remain unimplemented outside of what Clients and the auth/tenancy flows use.
+Clients remains the only product module connected to the database: its workspace, create, detail and edit routes read and write real `clients` rows through `features/clients`, scoped to the active organization and enforced by RLS. Team now uses a dedicated front-end implementation under `features/team`; its interactions are UI-only and reset on refresh. Other unconnected modules continue to use fixture-driven front-end behavior. Authentication enforcement, AI calls, external integrations and automation execution remain outside this UI layer.
+
+## HIMARK internal provisioning
+
+HIMARK administrators have a distinct `/internal/*` workspace with its own platform, provisioning, and support navigation. It includes organisation, provisioning, tenant, subscription, support, and knowledge registers plus a six-stage client provisioning journey: Organisation → UNISON Tier → Modules → Delivery Setup → Admin & Access → Review & Provision.
+
+The wizard uses `config/unison-tiers.ts` for all entitlement calculations. UNISON Core includes Delivery and Team; Framework adds Operations; Enterprise and Strategic Enterprise include every current product module. Delivery and Team are locked on. Entitled optional modules can be disabled, while modules outside the selected tier remain unavailable. Tier downgrades reconcile activation safely and explicitly state that disabled module data is preserved.
+
+The internal workflow is a complete UI simulation only. Save Draft, organisation creation, subscription changes, invitations, sequential provisioning, failure recovery, retry, and success experiences do not persist or invoke a provisioning backend. The existing tenant-facing `Operations → Onboarding` feature is unchanged.
 
 ## Product modules
 
-The UI covers Overview, Clients, Projects, Tasks, Calendar, Leads, Quotes, Sales, Invoices, Expenses, Forecast, Team, HR, Leave, Knowledge, Atlas, and Settings.
+People contains one active module: Team. It covers the directory, departments, delivery teams, roles, project assignments, capacity, delivery availability and accountability activity. The former HR and leave workspaces are not product modules; their legacy URLs redirect to Team so old bookmarks do not expose orphan interfaces.
 
 Each applicable module has thin Next.js routes for its workspace, create form, record detail, and edit form. Shared implementations live in `features/product-ui/components`, while module behavior, fields, views, filters, tabs, and labels are declared in `features/product-ui/registry.ts`.
 
@@ -17,7 +25,7 @@ Professional fixture records for the sixteen unconnected modules are isolated in
 - Workspaces expose search, filters, sorting, export feedback, list/grid modes, view tabs, bulk selection, row actions, pagination, and populated/loading/empty/error/restricted previews.
 - Major record forms use dedicated pages with logical sections, cancel/save controls, required-field indicators, and simulated success feedback.
 - Record pages use consistent headers, ownership/status summaries, activity drawers, share/duplicate/export feedback, edit actions, and archive/deactivate confirmation. Documents, people, work items, approvals, related records, Atlas context, and activity each have dedicated tab treatments.
-- Specialized visual workspaces cover all calendar modes, project/task boards and timeline, sales pipeline and commercial collections, finance forecasts, Team/HR/Leave subviews, Knowledge home, Atlas conversations/intelligence/memory, and every Settings area.
+- Specialized visual workspaces cover all calendar modes, project/task boards and timeline, sales pipeline and commercial collections, finance forecasts, the complete Team accountability workspace, Knowledge home and every Settings area.
 - Global search, notifications, help, tenant switching, responsive navigation, profile navigation, breadcrumbs, back-navigation, loading boundaries, and fallback pages are designed.
 - Client-side route changes show a global progress line and loading status, including programmatic form redirects. Scroll containers retain wheel, keyboard, trackpad, and touch behavior while their native scrollbar tracks are visually hidden.
 

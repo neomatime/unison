@@ -1,52 +1,45 @@
 import {
+  BadgeCheck,
   BarChart3,
-  BookOpen,
-  Calendar,
-  Compass,
+  Building2,
+  FileStack,
   FileText,
   FolderKanban,
-  LayoutGrid,
-  ListChecks,
-  Plane,
+  LayoutDashboard,
   Receipt,
-  Settings,
   Target,
   TrendingUp,
-  UserCog,
+  UserPlus,
   Users,
   Wallet,
+  Workflow,
   type LucideIcon,
 } from 'lucide-react'
 
-import { modules, type ModuleCategory } from '@/config/modules'
+import { modules } from '@/config/modules'
 
 export type NavigationItem = {
-  id: string
+  id: (typeof modules)[number]['id']
   label: string
   icon: LucideIcon
   route: string
   enabled: boolean
-  active?: boolean
 }
 
 export type NavigationSection = {
-  heading?: string
+  heading: 'Delivery' | 'Operations' | 'Commercial' | 'Finance' | 'People'
   items: NavigationItem[]
 }
 
-const categoryLabels: Record<ModuleCategory, string | undefined> = {
-  operations: 'Operations',
-  commercial: 'Commercial',
-  finance: 'Finance',
-  people: 'People',
-  standalone: undefined,
-}
-
 const moduleIcons: Record<(typeof modules)[number]['id'], LucideIcon> = {
-  clients: Users,
+  overview: LayoutDashboard,
+  portfolio: FileStack,
   projects: FolderKanban,
-  tasks: ListChecks,
-  calendar: Calendar,
+  frameworks: Workflow,
+  approvals: BadgeCheck,
+  vendors: Building2,
+  clients: Users,
+  onboarding: UserPlus,
   leads: Target,
   quotes: FileText,
   sales: BarChart3,
@@ -54,42 +47,16 @@ const moduleIcons: Record<(typeof modules)[number]['id'], LucideIcon> = {
   expenses: Wallet,
   forecast: TrendingUp,
   team: Users,
-  hr: UserCog,
-  leave: Plane,
-  knowledge: BookOpen,
-  atlas: Compass,
 }
 
-const categories: ModuleCategory[] = ['operations', 'commercial', 'finance', 'people', 'standalone']
+const itemsFor = (category: (typeof modules)[number]['category']) => modules
+  .filter((module) => module.category === category && module.enabled)
+  .map((module) => ({ ...module, icon: moduleIcons[module.id] }))
 
 export const navigationSections: NavigationSection[] = [
-  {
-    items: [
-      {
-        id: 'overview',
-        label: 'Overview',
-        icon: LayoutGrid,
-        route: '/overview',
-        enabled: true,
-        active: true,
-      },
-    ],
-  },
-  ...categories.map((category) => ({
-    heading: categoryLabels[category],
-    items: modules
-      .filter((module) => module.category === category)
-      .map((module) => ({ ...module, icon: moduleIcons[module.id] })),
-  })),
-  {
-    items: [
-      {
-        id: 'settings',
-        label: 'Settings',
-        icon: Settings,
-        route: '/settings',
-        enabled: true,
-      },
-    ],
-  },
+  { heading: 'Delivery', items: itemsFor('delivery') },
+  { heading: 'Operations', items: itemsFor('operations') },
+  { heading: 'Commercial', items: itemsFor('commercial') },
+  { heading: 'Finance', items: itemsFor('finance') },
+  { heading: 'People', items: itemsFor('people') },
 ]

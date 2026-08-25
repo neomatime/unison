@@ -7,3 +7,9 @@ export async function signOutAction() {
   await supabase.auth.signOut()
   redirect('/sign-in')
 }
+
+export async function signOutInternalAction() {
+  const supabase = await createServerSupabase()
+  await supabase.auth.signOut()
+  redirect('/internal/sign-in')
+}

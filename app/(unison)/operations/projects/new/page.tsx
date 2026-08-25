@@ -1,7 +1,5 @@
-import { ModuleForm } from '@/features/product-ui/components/module-form'
-import { moduleById } from '@/features/product-ui/registry'
+import { ProjectForm } from '@/features/delivery/components/project-form'
 
 export default function Page() {
-  return <ModuleForm module={moduleById.projects} mode="create" />
+  return <ProjectForm />
 }
-

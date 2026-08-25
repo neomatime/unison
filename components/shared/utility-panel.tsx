@@ -48,8 +48,8 @@ function HelpContent() {
       <span><span className="block text-sm font-semibold">{title}</span><span className="text-xs text-muted-foreground">{description}</span></span>
     </button>)}
     <div className="mt-6 rounded-xl bg-muted/60 p-4">
-      <p className="text-sm font-semibold">{selected || 'Product UI demonstration'}</p>
-      <p className="mt-1 text-xs leading-5 text-muted-foreground">{selected ? `${selected} is ready as a designed demo state. Production content can be connected without changing this flow.` : 'This environment uses local mock state while preserving every intended interaction.'}</p>
+      <p className="text-sm font-semibold">{selected || 'UNISON workspace help'}</p>
+      <p className="mt-1 text-xs leading-5 text-muted-foreground">{selected ? `${selected} is ready for review in your workspace.` : 'Choose a topic to explore guidance for the current workspace.'}</p>
     </div>
   </div>
 }
@@ -60,7 +60,7 @@ function NotificationContent() {
     ['Invoice INV-1327 is overdue', 'Finance · 12 min ago'],
     ['Northstar project moved to At Risk', 'Projects · 38 min ago'],
     ['Expense awaiting your approval', 'Finance · 1h ago'],
-    ['Atlas generated 3 new insights', 'Atlas · 2h ago'],
+    ['Governance gate requires attention', 'Delivery · 2h ago'],
   ]
   return <div>
     <div className="flex items-center justify-between"><p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Today</p><button type="button" onClick={() => setRead(notifications.map(() => true))} className="text-xs font-medium text-brand">Mark all read</button></div>
@@ -78,7 +78,7 @@ function SearchContent({ onClose }: { onClose: () => void }) {
     ['Clients', 'Meridian Advisory', '/operations/clients/meridian-advisory'],
     ['Projects', 'Northstar Brand Transformation', '/operations/projects/northstar-rebrand'],
     ['Invoices', 'INV-1327', '/finance/invoices/inv-1327'],
-    ['Knowledge', 'Client Onboarding Playbook', '/knowledge/client-onboarding-playbook'],
+    ['Frameworks', 'Client Onboarding Framework', '/delivery/frameworks/client-onboarding'],
   ].filter((item) => item.join(' ').toLowerCase().includes(query.toLowerCase())), [query])
   return <div>
     <label className="relative block"><Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" /><input autoFocus value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search records, people and knowledge..." className="h-11 w-full rounded-xl border border-border bg-background pr-3 pl-9 text-sm outline-none focus:border-ring" /></label>

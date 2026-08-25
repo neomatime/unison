@@ -7,6 +7,7 @@ import { DetailTile, SummaryTile } from '@/components/ui/record-tiles'
 import { StatusBadge } from '@/components/ui/status-badge'
 import { formatDate } from '@/lib/utils'
 import { archiveClientAction } from '../actions/archive-client'
+import { ClientRelationshipWorkspace } from './client-relationship-workspace'
 import type { ClientRecord } from '../queries/get-client'
 
 function statusTone(status: string): 'brand' | 'warning' | 'info' | 'neutral' {
@@ -97,5 +98,6 @@ export function ClientDetail({ client, confirmArchive, archiveError }: { client:
         </div>
       </aside>
     </div>
+    {!archived ? <ClientRelationshipWorkspace clientName={client.name} /> : null}
   </>
 }

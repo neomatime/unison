@@ -1,6 +1,5 @@
-import { OverviewScreen } from '@/features/overview/components/overview-screen'
+import { DeliveryOverviewScreen } from '@/features/delivery/components/delivery-overview-screen'
 
 export default function OverviewPage() {
-  return <OverviewScreen />
+  return <DeliveryOverviewScreen />
 }
-

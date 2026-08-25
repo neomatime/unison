@@ -80,11 +80,11 @@ export const kpiCards: KpiCard[] = [
     tone: 'brand',
   },
   {
-    id: 'ai',
-    label: 'AI Insights',
+    id: 'governance',
+    label: 'Governance Alerts',
     kind: 'icon',
     value: '3',
-    caption: 'New insights',
+    caption: 'Open alerts',
     icon: Lightbulb,
     tone: 'warning',
   },
@@ -111,7 +111,7 @@ export const priorities: Priority[] = [
   { id: 'p2', title: 'Review Q2 marketing spend', meta: 'Due today' },
   { id: 'p3', title: 'Client meeting with Growthpoint', meta: '10:00 AM', urgent: true },
   { id: 'p4', title: 'Approve 3 invoices', meta: 'Due today' },
-  { id: 'p5', title: 'Review Atlas insights', meta: 'Due today' },
+  { id: 'p5', title: 'Review delivery risks', meta: 'Due today' },
 ]
 
 export type { ProjectStatus } from '@/config/statuses'
@@ -128,7 +128,7 @@ export const projects: Project[] = [
   { id: 'pr1', name: 'LGNDRY.CO Rebrand', initials: 'L', progress: 75, status: 'On Track' },
   { id: 'pr2', name: 'Growthpoint Campaign', initials: 'G', progress: 60, status: 'On Track' },
   { id: 'pr3', name: 'HIMARK Platform', initials: 'H', progress: 40, status: 'At Risk' },
-  { id: 'pr4', name: 'Atlas AI Development', initials: 'A', progress: 90, status: 'On Track' },
+  { id: 'pr4', name: 'Delivery Controls Upgrade', initials: 'D', progress: 90, status: 'On Track' },
 ]
 
 export type ActivityItem = {
@@ -153,7 +153,7 @@ export type Insight = {
   tone: 'brand' | 'info' | 'warning'
 }
 
-export const atlasInsights: Insight[] = [
+export const deliveryRisks: Insight[] = [
   {
     id: 'i1',
     title: 'Revenue is up 18% this month, driven by Growthpoint campaign.',
@@ -195,5 +195,5 @@ export const recentActivity: RecentActivity[] = [
   { id: 'r2', title: 'Proposal sent to Growthpoint Properties', time: '15m ago', icon: 'proposal' },
   { id: 'r3', title: 'New lead: Velocity Ventures', time: '1h ago', icon: 'lead' },
   { id: 'r4', title: 'Project task completed: Wireframes', time: '2h ago', icon: 'task' },
-  { id: 'r5', title: 'Atlas insight generated', time: '2h ago', icon: 'insight' },
+  { id: 'r5', title: 'Governance exception recorded', time: '2h ago', icon: 'insight' },
 ]

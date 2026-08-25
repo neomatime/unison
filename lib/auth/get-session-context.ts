@@ -56,5 +56,5 @@ export const getSessionContext = cache(async function getSessionContext() {
     cookieOrganizationId: cookieStore.get(ACTIVE_ORG_COOKIE)?.value,
   })
 
-  return { user, organizations, ...context }
+  return { user, organizations, memberships, ...context }
 })

@@ -1,7 +1,5 @@
-import { ModuleForm } from '@/features/product-ui/components/module-form'
-import { moduleById } from '@/features/product-ui/registry'
+import { TeamMemberForm } from '@/features/team/components/team-member-form'
 
 export default function Page() {
-  return <ModuleForm module={moduleById.team} mode="create" />
+  return <TeamMemberForm mode="invite" />
 }
-
