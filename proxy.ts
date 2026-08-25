@@ -2,6 +2,7 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import { authEntryPathFor, INTERNAL_HOME_PATH, INTERNAL_SIGN_IN_PATH } from '@/lib/auth/auth-entry'
 import { AUTH_UNAVAILABLE_ERROR, isAuthServiceUnavailable } from '@/lib/auth/auth-unavailable'
+import { readSupabasePublicEnv } from '@/lib/env'
 
 const PUBLIC_PATHS = ['/', '/sign-in', '/forgot-password']
 const AUTH_ENTRY_PATHS = ['/sign-in', '/forgot-password']
@@ -20,9 +21,17 @@ function matchesPath(path: string, entry: string): boolean {
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request })
 
+  // Read through the env module rather than asserting non-null here. The `!`
+  // this replaces claimed a guarantee nothing provided: with the variables
+  // absent, undefined reached the Supabase client and every route in the app
+  // returned a 500 quoting Supabase's dashboard, which names neither the
+  // variable nor the fact that it is unset. readSupabasePublicEnv says which
+  // one is missing and where to put it.
+  const env = readSupabasePublicEnv(process.env)
+
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+    env.SUPABASE_URL,
+    env.SUPABASE_PUBLISHABLE_KEY,
     {
       cookies: {
         getAll: () => request.cookies.getAll(),
