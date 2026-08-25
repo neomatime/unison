@@ -6,6 +6,13 @@ import type { ShellUser } from '@/components/layout/shell-context'
 import { getSessionContext } from '@/lib/auth/get-session-context'
 import { NoMembershipError } from '@/lib/auth/errors'
 
+// Never prerendered, for the same reason as the internal layout: this resolves
+// the caller's session from request cookies. Most pages beneath it read
+// searchParams and so are dynamic anyway, but that is a property of each page
+// rather than of this layout, and it stops being true the moment someone adds
+// a page that takes no parameters.
+export const dynamic = 'force-dynamic'
+
 export default async function UnisonLayout({ children }: { children: React.ReactNode }) {
   try {
     const { user, organization, organizations, role } = await getSessionContext()
