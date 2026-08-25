@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 
 import { AppShell } from '@/components/layout/app-shell'
 import type { ShellUser } from '@/components/layout/shell-context'
+import { resolveDisplayName } from '@/lib/auth/display-name'
 import { getSessionContext } from '@/lib/auth/get-session-context'
 import { NoMembershipError } from '@/lib/auth/errors'
 
@@ -21,7 +22,7 @@ export default async function UnisonLayout({ children }: { children: React.React
     // to the client — the full user object (app_metadata, identities, factors, ...)
     // has no business in browser JavaScript.
     const shellUser: ShellUser = {
-      displayName: user.user_metadata?.full_name ?? user.email ?? 'Unknown user',
+      displayName: resolveDisplayName(user),
       email: user.email ?? null,
       avatarUrl: user.user_metadata?.avatar_url ?? null,
     }

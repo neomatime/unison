@@ -31,9 +31,11 @@ export async function signInWithMicrosoftAction(formData: FormData) {
     provider: 'azure',
     options: {
       redirectTo: callbackUrl.toString(),
-      // email is not in Azure's default scope set and the claim function
-      // needs a verified address to match a domain against.
-      scopes: 'email',
+      // Neither is in Azure's default scope set. `email` is what the claim
+      // function matches a domain against. `profile` is what carries the `name`
+      // claim: without it Microsoft returns no name at all, Supabase stores no
+      // full_name, and the shell has nothing to show but the address.
+      scopes: 'profile email',
     },
   })
 
