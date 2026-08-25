@@ -13,6 +13,17 @@ import { readAppUrl } from '@/lib/env'
  * no exit. So this signs them out and rejects cleanly. That also means a
  * removed employee does not retain a session inside the app.
  */
+/**
+ * The user-facing copy is identical for every failure, so in development the
+ * cause is also carried on the URL. A dev server that has already exited takes
+ * its console with it, and the address bar is the one place the reason survives
+ * that. Never attached in production, where the log is the record.
+ */
+function signInFailure(origin: string, reason: string): NextResponse {
+  const debug = process.env.NODE_ENV === 'production' ? '' : `&reason=${encodeURIComponent(reason)}`
+  return NextResponse.redirect(`${origin}/sign-in?error=microsoft${debug}`)
+}
+
 export async function GET(request: NextRequest) {
   const url = new URL(request.url)
   const code = url.searchParams.get('code')
@@ -28,11 +39,11 @@ export async function GET(request: NextRequest) {
   const providerError = url.searchParams.get('error')
   if (providerError) {
     console.warn('[auth/callback] provider returned an error:', providerError, url.searchParams.get('error_description') ?? '')
-    return NextResponse.redirect(`${origin}/sign-in?error=microsoft`)
+    return signInFailure(origin, `provider:${providerError}`)
   }
   if (!code) {
     console.warn('[auth/callback] no authorization code on the callback URL')
-    return NextResponse.redirect(`${origin}/sign-in?error=microsoft`)
+    return signInFailure(origin, 'no-code')
   }
 
   const supabase = await createServerSupabase()
@@ -44,8 +55,13 @@ export async function GET(request: NextRequest) {
     // different host (the dev server's LAN address rather than localhost), a
     // different browser, or cleared cookies. It fails without reaching Supabase
     // at all, so nothing shows up in the project's auth logs to explain it.
-    console.warn('[auth/callback] code exchange failed:', exchangeError.code ?? exchangeError.name, '—', exchangeError.message)
-    return NextResponse.redirect(`${origin}/sign-in?error=microsoft`)
+    const reason = exchangeError.code ?? exchangeError.name
+    // The verifier is host-scoped, so when it is missing the useful facts are
+    // which origin this callback ran on and what the browser actually sent.
+    const verifierCookies = request.cookies.getAll().map((c) => c.name).filter((n) => n.includes('code-verifier'))
+    console.warn('[auth/callback] code exchange failed:', reason, '—', exchangeError.message)
+    console.warn('[auth/callback] callback origin:', url.origin, '| redirecting to:', origin, '| verifier cookies present:', verifierCookies.length ? verifierCookies.join(', ') : 'none')
+    return signInFailure(origin, reason)
   }
 
   const { data: organizationId, error: claimError } = await supabase.rpc('claim_directory_membership')
