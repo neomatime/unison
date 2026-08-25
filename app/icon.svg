@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="UNISON">
+  <!-- The mark keeps its own white field rather than going transparent: a tab
+       strip may be light or dark, and the navy U disappears against a dark one. -->
+  <rect width="256" height="256" rx="56" fill="#ffffff" />
+  <!-- The U is one outline: down the outer left, round the bowl, up the outer
+       right to the angled cut, back down the inner right, round the inner bowl
+       and up the inner left. Outer radius 53 and inner radius 29 keep the
+       stroke an even 24 the whole way round. -->
+  <path
+    d="M75 58 L75 140 A53 53 0 0 0 181 140 L181 86 L157 104 L157 140 A29 29 0 0 1 99 140 L99 58 Z"
+    fill="#14223c"
+  />
+  <!-- The accent repeats the angle of that cut, separated by a slice of the
+       field so the two read as one gesture interrupted rather than two shapes. -->
+  <path d="M157 94 L181 76 L181 58 L157 76 Z" fill="#1257f5" />
+</svg>
