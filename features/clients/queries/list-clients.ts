@@ -5,11 +5,14 @@ import type { MockRecord } from '@/features/product-ui/types'
 
 const PAGE_SIZE = 25
 
-// ilike treats % and _ as wildcards and \ as its escape character — escape
-// all three so a search for e.g. "50% Off" or "big_corp" matches the
-// literal text instead of silently matching more or fewer rows.
+// ilike treats % and _ as wildcards and \ as its escape character, and
+// PostgREST rewrites * to % inside a like/ilike filter value before Postgres
+// sees it — escape all four so a search for e.g. "50% Off", "big_corp" or
+// "Acme*" matches the literal text instead of silently matching more rows.
+// See features/delivery/queries/list-projects-helpers.ts for the same rule and
+// the one case it cannot fix (a literal asterisk reaches Postgres as '%').
 function escapeLikePattern(value: string) {
-  return value.replace(/[\\%_]/g, (match) => `\\${match}`)
+  return value.replace(/[\\%_*]/g, (match) => `\\${match}`)
 }
 
 export async function listClients(params: { q?: string; status?: string; sort?: string; page?: number }) {
@@ -42,7 +45,10 @@ export async function listClients(params: { q?: string; status?: string; sort?: 
     contact: row.contact_name ?? '—',
     service: row.service ?? '—',
     health: row.health,
-    projects: '—', // No projects table yet; not fabricated as 0.
+    // public.projects exists now, but this query does not count it: a per-row
+    // count needs an aggregate embed, and a wrong or missing count is worse
+    // than an honest dash. Not fabricated as 0.
+    projects: '—',
   }))
 
   return { records, total: count ?? 0, page, pageSize: PAGE_SIZE }

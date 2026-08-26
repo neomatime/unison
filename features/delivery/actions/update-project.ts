@@ -17,7 +17,6 @@ export async function updateProjectAction(id: string, _prev: { error?: string } 
     framework_id: parsed.data.frameworkId,
     phase_id: parsed.data.phaseId,
     client_id: parsed.data.clientId,
-    owner_id: parsed.data.ownerId,
     status: parsed.data.status,
     health: parsed.data.health,
     progress: parsed.data.progress,

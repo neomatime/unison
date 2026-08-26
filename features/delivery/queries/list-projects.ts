@@ -4,8 +4,6 @@ import { createServerSupabase } from '@/lib/supabase/server'
 import type { CollectionRecord } from '@/features/product-ui/components/record-collection-workspace'
 import { escapeLikePattern, sortColumn } from './list-projects-helpers'
 
-export { escapeLikePattern, sortColumn }
-
 const PAGE_SIZE = 25
 
 export async function listProjects(params: { q?: string; status?: string; sort?: string; page?: number }) {
@@ -35,7 +33,13 @@ export async function listProjects(params: { q?: string; status?: string; sort?:
   const records: CollectionRecord[] = (data ?? []).map((row) => ({
     id: row.id,
     name: row.name,
-    status: row.status,
+    // The register's badge column is the one whose id is 'status', and the
+    // projects config labels it "Health" -- RecordCollectionWorkspace renders
+    // exactly that cell through HealthBadge. So the health value has to travel
+    // in `status`, as the mock mapper this query replaced also did. Sending
+    // row.status here would put 'Active'/'On Hold' under a Health heading, and
+    // healthStyles has no entry for either, so every badge would render grey.
+    status: row.health,
     health: row.health,
     // CollectionRecord requires this; the existing screen used the framework
     // name as the row's supporting line, so it keeps doing so.
