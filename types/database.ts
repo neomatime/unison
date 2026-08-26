@@ -12,7 +12,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
+    PostgrestVersion: "14.17"
   }
   public: {
     Tables: {
@@ -121,6 +121,79 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "clients_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      framework_phases: {
+        Row: {
+          framework_id: string
+          id: string
+          name: string
+          organization_id: string
+          position: number
+        }
+        Insert: {
+          framework_id: string
+          id?: string
+          name: string
+          organization_id: string
+          position: number
+        }
+        Update: {
+          framework_id?: string
+          id?: string
+          name?: string
+          organization_id?: string
+          position?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "framework_phases_framework_fkey"
+            columns: ["framework_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "frameworks"
+            referencedColumns: ["id", "organization_id"]
+          },
+        ]
+      }
+      frameworks: {
+        Row: {
+          archived_at: string | null
+          created_at: string
+          id: string
+          name: string
+          organization_id: string
+          type: string | null
+          updated_at: string
+          version: string | null
+        }
+        Insert: {
+          archived_at?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          organization_id: string
+          type?: string | null
+          updated_at?: string
+          version?: string | null
+        }
+        Update: {
+          archived_at?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          organization_id?: string
+          type?: string | null
+          updated_at?: string
+          version?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "frameworks_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
@@ -242,6 +315,92 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      projects: {
+        Row: {
+          archived_at: string | null
+          client_id: string | null
+          created_at: string
+          due_date: string | null
+          framework_id: string
+          health: string
+          id: string
+          name: string
+          next_gate: string | null
+          notes: string | null
+          organization_id: string
+          owner_id: string | null
+          phase_id: string | null
+          progress: number
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          archived_at?: string | null
+          client_id?: string | null
+          created_at?: string
+          due_date?: string | null
+          framework_id: string
+          health?: string
+          id?: string
+          name: string
+          next_gate?: string | null
+          notes?: string | null
+          organization_id: string
+          owner_id?: string | null
+          phase_id?: string | null
+          progress?: number
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          archived_at?: string | null
+          client_id?: string | null
+          created_at?: string
+          due_date?: string | null
+          framework_id?: string
+          health?: string
+          id?: string
+          name?: string
+          next_gate?: string | null
+          notes?: string | null
+          organization_id?: string
+          owner_id?: string | null
+          phase_id?: string | null
+          progress?: number
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "projects_client_fkey"
+            columns: ["client_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id", "organization_id"]
+          },
+          {
+            foreignKeyName: "projects_framework_fkey"
+            columns: ["framework_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "frameworks"
+            referencedColumns: ["id", "organization_id"]
+          },
+          {
+            foreignKeyName: "projects_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "projects_phase_fkey"
+            columns: ["framework_id", "phase_id"]
+            isOneToOne: false
+            referencedRelation: "framework_phases"
+            referencedColumns: ["framework_id", "id"]
+          },
+        ]
       }
     }
     Views: {
