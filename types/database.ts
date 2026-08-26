@@ -419,6 +419,25 @@ export type Database = {
         }[]
       }
       is_member_of: { Args: { org: string }; Returns: boolean }
+      provision_organization: {
+        Args: {
+          p_admin_email: string
+          p_expires_at: string
+          p_name: string
+          p_slug: string
+          p_token_hash: string
+        }
+        Returns: string
+      }
+      reissue_invitation: {
+        Args: {
+          p_email: string
+          p_expires_at: string
+          p_organization_id: string
+          p_token_hash: string
+        }
+        Returns: undefined
+      }
       rls_test_give_azure_identity: {
         Args: { target_email: string; target_user_id: string }
         Returns: undefined
