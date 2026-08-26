@@ -92,6 +92,12 @@ In one transaction:
    expires_at)`.
 5. Write `audit_events` rows for the organisation and the invitation.
 
+Step 5 is explicit because neither table has an audit trigger — `organizations`
+and `invitations` carry only `set_updated_at`. `frameworks` and
+`framework_phases` do have `record_audit_event` triggers, so steps 3's rows
+audit themselves and must not be recorded twice. `delete_organization()` writes
+its own audit row for exactly this reason.
+
 All five together, so a tenant can never exist without frameworks or without a
 way in. Step 3 also closes the gap recorded in `docs/follow-ups.md`: because
 `projects.framework_id` is `not null`, an organisation with no frameworks meets
@@ -110,11 +116,15 @@ reissue_invitation(
 security definer, set search_path = ''
 ```
 
-Same authorisation check. Expires any pending invitation for that address by
-setting its `expires_at` to `now()`, then inserts a fresh one. Expiring rather
-than deleting keeps the audit trail of what was issued and when, and it is the
-check `accept_invitation` already performs, so a superseded token stops working
-without any new logic.
+Same authorisation check. Sets any pending invitation for that address to
+`status = 'expired'`, then inserts a fresh one. Expiring rather than deleting
+keeps the record of what was issued and when.
+
+**It must be `status`, not `expires_at`.** `invitations_one_pending_per_email` is
+a partial unique index on `(organization_id, lower(email)) where status =
+'pending'`, so backdating `expires_at` would leave the old row still occupying
+that slot and the insert would fail with 23505. This is the same sweep
+`send-invitation.ts` performs before inserting, for the same reason.
 
 `token_hash` is `text`, not `bytea`, matching the column — `send-invitation.ts`
 stores the string `'\x' || <sha256 hex>`, and both functions must produce a hash
