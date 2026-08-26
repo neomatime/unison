@@ -1,8 +1,10 @@
--- Creating a tenant cannot be done with ordinary writes: organizations has no
--- insert policy at all, and invitations_insert requires owner of the target
--- organization -- which a HIMARK administrator provisioning a client is not.
--- One transaction, so a tenant can never exist without frameworks or without a
--- way in.
+-- The invitations audit row provision_organization() hand-writes had no
+-- organization_id key in its JSONB, so cleanup()'s delivery-events sweep
+-- (which traces orphaned rows via new_value->>organization_id, since
+-- organization_id is null on these rows post service-role insert) could never
+-- match it -- adding 'invitations' to that sweep's resource list was a no-op.
+-- Add organization_id to both hand-written audit rows so they are traceable
+-- the same way frameworks/framework_phases/projects rows already are.
 create or replace function public.provision_organization(
   p_name text,
   p_slug text,
@@ -111,11 +113,3 @@ begin
 
   return new_org;
 end $$;
-
--- Supabase grants EXECUTE on newly created functions to anon by default;
--- `revoke all ... from public` does not strip that grant, since anon is not
--- PUBLIC. delete_organization and claim_directory_membership both revoke
--- from public AND anon explicitly -- match that precedent so this function
--- is not callable unauthenticated.
-revoke execute on function public.provision_organization(text, text, text, text, timestamptz) from public, anon;
-grant execute on function public.provision_organization(text, text, text, text, timestamptz) to authenticated, service_role;

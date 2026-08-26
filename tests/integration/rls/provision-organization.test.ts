@@ -63,11 +63,23 @@ test('a HIMARK admin provisions an organization with frameworks and an owner inv
   assert.equal(otherPhases?.length, 8)
 
   const { data: invites } = await admin
-    .from('invitations').select('email, role_id, status').eq('organization_id', orgId)
+    .from('invitations')
+    .select('email, role_id, status, token_hash, expires_at, invited_by')
+    .eq('organization_id', orgId)
   assert.equal(invites?.length, 1)
   assert.equal(invites![0].role_id, 'owner')
   assert.equal(invites![0].status, 'pending')
   assert.equal(invites![0].email, payload.p_admin_email.toLowerCase())
+
+  // The token is the only way into a tenant that starts with zero
+  // memberships -- Task 3 depends on it round-tripping byte-for-byte, not
+  // just being present.
+  assert.equal(invites![0].token_hash, payload.p_token_hash)
+  assert.equal(
+    new Date(invites![0].expires_at as string).getTime(),
+    new Date(payload.p_expires_at).getTime(),
+  )
+  assert.equal(invites![0].invited_by, himarkAdmin.id)
 })
 
 test('the provisioned organization carries no email_domain', async () => {
@@ -89,6 +101,7 @@ test('an owner of another organization is refused', async () => {
   const client = await signedInClient(outsider.email, outsider.password)
   const { error } = await client.rpc('provision_organization', args('RLS Provision Outsider'))
   assert.ok(error, 'owning some organization must not confer provisioning rights')
+  assert.match(error!.message, /HIMARK administrator/i)
 })
 
 test('the provisioned organization is invisible to an outsider', async () => {
