@@ -61,10 +61,10 @@ export async function provisionOrganizationAction(
       }),
     })
   } catch {
-    revalidatePath('/internal/provisioning')
+    revalidatePath('/internal/organisations')
     return { organizationId: organizationId as string, emailFailed: true }
   }
 
-  revalidatePath('/internal/provisioning')
+  revalidatePath('/internal/organisations')
   return { organizationId: organizationId as string }
 }

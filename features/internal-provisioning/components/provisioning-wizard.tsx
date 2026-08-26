@@ -26,7 +26,7 @@ import {
   X,
 } from 'lucide-react'
 import Link from 'next/link'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { ConfirmationDialog } from '@/components/shared/confirmation-dialog'
 import { ProgressBar } from '@/components/ui/progress-bar'
@@ -39,6 +39,10 @@ import type { AccessConfiguration, DeliveryConfiguration, OrganisationConfigurat
 import { InternalPageHeader, ProvisioningStatusBadge } from './internal-primitives'
 
 const progressSteps = ['Creating organisation workspace', 'Applying tier entitlement', 'Enabling modules', 'Configuring delivery settings', 'Creating Team context', 'Applying admin/access configuration', 'Finalising tenant']
+// The success screen may only state what provision_organization actually wrote.
+// Tier, module activation and go-live are collected here and stored nowhere, so
+// they are named as unconfigured rather than reported back as achieved.
+const NOT_PERSISTED = 'Not yet configured'
 
 export function ProvisioningWizard({ provisioningId = 'new' }: { provisioningId?: string }) {
   const [wizard, setWizard] = useState<ProvisioningWizardState>(() => ({ ...initialProvisioningState, id: provisioningId === 'new' ? `draft-${Date.now()}` : provisioningId }))
@@ -52,6 +56,12 @@ export function ProvisioningWizard({ provisioningId = 'new' }: { provisioningId?
   const [progressIndex, setProgressIndex] = useState(0)
   const [submitting, setSubmitting] = useState(false)
   const [emailWarning, setEmailWarning] = useState('')
+  // Both provisioning banners render below the stage, so an operator who used
+  // the header button is looking at the top of a long page and would see
+  // nothing happen at all. Every outcome that keeps them on the stage bumps
+  // this stamp, which moves the viewport and the focus ring to the message.
+  const [noticeStamp, setNoticeStamp] = useState(0)
+  const noticeRef = useRef<HTMLDivElement>(null)
 
   const stepIndex = provisioningSteps.findIndex((step) => step.id === wizard.currentStep)
   const counts = getEnabledCounts(wizard.activeModules)
@@ -65,6 +75,12 @@ export function ProvisioningWizard({ provisioningId = 'new' }: { provisioningId?
     const timer = window.setTimeout(() => setProgressIndex((value) => value + 1), 720)
     return () => window.clearTimeout(timer)
   }, [progressIndex, screen])
+
+  useEffect(() => {
+    if (!noticeStamp) return
+    noticeRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    noticeRef.current?.focus()
+  }, [noticeStamp])
 
   useEffect(() => {
     const beforeUnload = (event: BeforeUnloadEvent) => { if (dirty) event.preventDefault() }
@@ -126,15 +142,29 @@ export function ProvisioningWizard({ provisioningId = 'new' }: { provisioningId?
     const formData = new FormData()
     formData.set('name', wizard.organisation.name)
     formData.set('adminEmail', wizard.access.primaryAdmin.email)
-    const result = await provisionOrganizationAction(undefined, formData)
+    let result: Awaited<ReturnType<typeof provisionOrganizationAction>>
+    try {
+      result = await provisionOrganizationAction(undefined, formData)
+    } catch {
+      // The action can still throw after its RPC has committed -- reading the
+      // app URL and resolving the session both happen afterwards. Leaving the
+      // buttons disabled on "Provisioning…" would hide a tenant that probably
+      // exists, so this is reported the way an email failure is.
+      setSubmitting(false)
+      setDirty(false)
+      setEmailWarning(`Provisioning ${wizard.organisation.name} failed after the request was sent. The organisation may already have been created — check the organisations register before trying again, and if it is there, reissue the invitation with reissue_invitation rather than provisioning a second time.`)
+      setNoticeStamp(Date.now())
+      return
+    }
     setSubmitting(false)
-    if (result.error) { setValidation(result.error); return }
+    if (result.error) { setValidation(result.error); setNoticeStamp(Date.now()); return }
     if (result.emailFailed) {
       // The organisation exists and the invitation is pending, but the raw
       // token died with that request. Retrying here would only collide on the
       // name, so this is not a success and not a retry.
       setDirty(false)
       setEmailWarning(`${wizard.organisation.name} was created, but the invitation email to ${wizard.access.primaryAdmin.email} could not be sent. The invitation link cannot be recovered — reissue it with reissue_invitation.`)
+      setNoticeStamp(Date.now())
       return
     }
     setDirty(false)
@@ -158,8 +188,7 @@ export function ProvisioningWizard({ provisioningId = 'new' }: { provisioningId?
       {wizard.currentStep === 'review' ? <ReviewStage wizard={wizard} counts={counts} onProvision={startProvisioning} busy={submitting} /> : null}
     </div>
 
-    {validation ? <div role="alert" className="mt-5 flex items-start gap-3 rounded-xl border border-danger/20 bg-danger-soft p-4 text-sm text-danger"><AlertTriangle className="mt-0.5 size-4 shrink-0" />{validation}</div> : null}
-    {emailWarning ? <div role="alert" className="mt-5 flex items-start gap-3 rounded-xl border border-warning/25 bg-warning-soft p-4 text-sm text-warning"><AlertTriangle className="mt-0.5 size-4 shrink-0" />{emailWarning}</div> : null}
+    <div ref={noticeRef} tabIndex={-1} className="outline-none">{validation ? <div role="alert" className="mt-5 flex items-start gap-3 rounded-xl border border-danger/20 bg-danger-soft p-4 text-sm text-danger"><AlertTriangle className="mt-0.5 size-4 shrink-0" />{validation}</div> : null}{emailWarning ? <div role="alert" className="mt-5 flex items-start gap-3 rounded-xl border border-warning/25 bg-warning-soft p-4 text-sm text-warning"><AlertTriangle className="mt-0.5 size-4 shrink-0" />{emailWarning}</div> : null}</div>
     <footer className="sticky bottom-4 z-30 mt-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card/95 p-4 shadow-xl backdrop-blur"><button type="button" onClick={() => setCancelOpen(true)} className="text-sm font-semibold text-muted-foreground hover:text-foreground">Cancel</button><p className="hidden text-xs text-muted-foreground lg:block">{wizard.draftStatus} · Stage {stepIndex + 1} of {provisioningSteps.length}</p><div className="ml-auto flex gap-2">{stepIndex > 0 ? <button type="button" onClick={() => goToStep(stepIndex - 1)} className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2.5 text-sm font-semibold"><ArrowLeft className="size-4" />Back</button> : null}{wizard.currentStep !== 'review' ? <button type="button" onClick={() => goToStep(stepIndex + 1)} className="inline-flex items-center gap-2 rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-white">Save & Continue<ArrowRight className="size-4" /></button> : <button type="button" onClick={startProvisioning} disabled={submitting} className="inline-flex items-center gap-2 rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"><Rocket className="size-4" />{submitting ? 'Provisioning…' : 'Provision UNISON'}</button>}</div></footer>
 
     <ConfirmationDialog open={cancelOpen} title="Leave client provisioning?" description={dirty ? 'You have unsaved changes. Save the draft before leaving or discard the current changes.' : 'Return to the provisioning register?'} confirmLabel={dirty ? 'Discard Changes' : 'Leave Setup'} onCancel={() => setCancelOpen(false)} onConfirm={() => window.location.assign('/internal/provisioning')} />
@@ -216,7 +245,7 @@ function ProvisioningProgress({ organisation, tier, progressIndex, failed, onFai
 
 function ProvisioningSuccess({ wizard, onReview }: { wizard: ProvisioningWizardState; onReview: () => void }) {
   const [inviteOpen, setInviteOpen] = useState(false)
-  return <div className="mx-auto max-w-4xl py-8"><section className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm"><div className="bg-sidebar px-8 py-10 text-white"><span className="flex size-14 items-center justify-center rounded-2xl bg-white/10 text-success-soft"><CheckCircle2 className="size-8" /></span><p className="mt-6 text-xs font-semibold tracking-[0.14em] text-white/65 uppercase">Provisioning Complete</p><h1 className="mt-2 text-3xl font-bold">UNISON Workspace Ready</h1><p className="mt-2 text-sm text-white/70">{wizard.organisation.name} is configured and ready for controlled access.</p></div><div className="grid gap-4 p-7 sm:grid-cols-2 lg:grid-cols-5">{[['Organisation', wizard.organisation.name], ['Tier', getTier(wizard.selectedTier).label], ['Modules Enabled', String(wizard.activeModules.length)], ['Primary Admin', wizard.access.primaryAdmin.name], ['Target Go-Live', formatDate(wizard.organisation.goLive)]].map(([label, value]) => <div key={label}><p className="text-[0.65rem] font-semibold text-muted-foreground uppercase">{label}</p><p className="mt-1 text-sm font-bold">{value}</p></div>)}</div><div className="flex flex-wrap justify-end gap-2 border-t border-border p-6"><Link href="/internal/organisations" className="rounded-lg border border-border px-4 py-2.5 text-sm font-semibold">Return to Organisations</Link><button type="button" onClick={onReview} className="rounded-lg border border-border px-4 py-2.5 text-sm font-semibold">View Provisioning Summary</button><button type="button" onClick={() => setInviteOpen(true)} className="rounded-lg border border-border px-4 py-2.5 text-sm font-semibold">Invite Users</button><Link href="/overview" className="rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-white">Open Tenant</Link></div></section>{inviteOpen ? <div className="fixed inset-0 z-[90] flex items-center justify-center bg-foreground/30 p-4" onMouseDown={() => setInviteOpen(false)}><section role="dialog" aria-modal="true" aria-label="Invite initial users" onMouseDown={(event) => event.stopPropagation()} className="w-full max-w-lg rounded-2xl border border-border bg-card p-6 shadow-2xl"><h2 className="text-lg font-bold">Invite Initial Users</h2><p className="mt-2 text-sm text-muted-foreground">{wizard.access.users.length + 1} configured users are ready to receive workspace invitations.</p><div className="mt-5 divide-y divide-border">{[wizard.access.primaryAdmin, ...wizard.access.users].map((user) => <div key={user.id} className="py-3"><p className="text-sm font-semibold">{user.name}</p><p className="text-xs text-muted-foreground">{user.email}</p></div>)}</div><div className="mt-5 flex justify-end gap-2"><button type="button" onClick={() => setInviteOpen(false)} className="rounded-lg border border-border px-4 py-2 text-sm font-semibold">Close</button><button type="button" onClick={() => setInviteOpen(false)} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white">Prepare Invitations</button></div></section></div> : null}</div>
+  return <div className="mx-auto max-w-4xl py-8"><section className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm"><div className="bg-sidebar px-8 py-10 text-white"><span className="flex size-14 items-center justify-center rounded-2xl bg-white/10 text-success-soft"><CheckCircle2 className="size-8" /></span><p className="mt-6 text-xs font-semibold tracking-[0.14em] text-white/65 uppercase">Provisioning Complete</p><h1 className="mt-2 text-3xl font-bold">UNISON Workspace Ready</h1><p className="mt-2 text-sm text-white/70">{wizard.organisation.name} exists and its primary administrator has been invited.</p></div><div className="grid gap-4 p-7 sm:grid-cols-2 lg:grid-cols-5">{[['Organisation', wizard.organisation.name], ['Tier', NOT_PERSISTED], ['Modules Enabled', NOT_PERSISTED], ['Primary Admin', wizard.access.primaryAdmin.email], ['Target Go-Live', NOT_PERSISTED]].map(([label, value]) => <div key={label}><p className="text-[0.65rem] font-semibold text-muted-foreground uppercase">{label}</p><p className={`mt-1 text-sm font-bold ${value === NOT_PERSISTED ? 'text-muted-foreground' : ''}`}>{value}</p></div>)}</div><p className="px-7 pb-2 text-xs text-muted-foreground">Only the organisation and its primary administrator were saved. Tier, modules and go-live were collected by this wizard but are not stored anywhere yet, so they are not claimed here.</p><div className="flex flex-wrap justify-end gap-2 border-t border-border p-6"><Link href="/internal/organisations" className="rounded-lg border border-border px-4 py-2.5 text-sm font-semibold">Return to Organisations</Link><button type="button" onClick={onReview} className="rounded-lg border border-border px-4 py-2.5 text-sm font-semibold">View Provisioning Summary</button><button type="button" onClick={() => setInviteOpen(true)} className="rounded-lg border border-border px-4 py-2.5 text-sm font-semibold">Invite Users</button><Link href="/overview" className="rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-white">Open Tenant</Link></div></section>{inviteOpen ? <div className="fixed inset-0 z-[90] flex items-center justify-center bg-foreground/30 p-4" onMouseDown={() => setInviteOpen(false)}><section role="dialog" aria-modal="true" aria-label="Invite initial users" onMouseDown={(event) => event.stopPropagation()} className="w-full max-w-lg rounded-2xl border border-border bg-card p-6 shadow-2xl"><h2 className="text-lg font-bold">Invite Initial Users</h2><p className="mt-2 text-sm text-muted-foreground">{wizard.access.users.length + 1} configured users are ready to receive workspace invitations.</p><div className="mt-5 divide-y divide-border">{[wizard.access.primaryAdmin, ...wizard.access.users].map((user) => <div key={user.id} className="py-3"><p className="text-sm font-semibold">{user.name}</p><p className="text-xs text-muted-foreground">{user.email}</p></div>)}</div><div className="mt-5 flex justify-end gap-2"><button type="button" onClick={() => setInviteOpen(false)} className="rounded-lg border border-border px-4 py-2 text-sm font-semibold">Close</button><button type="button" onClick={() => setInviteOpen(false)} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white">Prepare Invitations</button></div></section></div> : null}</div>
 }
 
 function StageLayout({ title, description, children, aside }: { title: string; description: string; children: React.ReactNode; aside: React.ReactNode }) { return <div className="grid gap-5 xl:grid-cols-[1fr_320px]"><StageCard title={title} description={description}>{children}</StageCard><aside>{aside}</aside></div> }

@@ -217,12 +217,24 @@ test('internal navigation exposes only HIMARK platform operations', () => {
   for (const tenantModule of ['Portfolio', 'Projects', 'Frameworks', 'Clients', 'Leads', 'Finance', 'Team']) assert.doesNotMatch(sidebar, new RegExp(`label: '${tenantModule}'`))
 })
 
-test('client provisioning wizard includes every designed stage and terminal state', () => {
+test('client provisioning wizard includes every designed stage and provisions for real', () => {
   const wizard = readFileSync(join(workspace, 'features', 'internal-provisioning', 'components', 'provisioning-wizard.tsx'), 'utf8')
   const data = readFileSync(join(workspace, 'features', 'internal-provisioning', 'data.ts'), 'utf8')
   for (const stage of ['Organisation', 'UNISON Tier', 'Modules', 'Delivery Setup', 'Admin & Access', 'Review & Provision']) assert.match(`${wizard}\n${data}`, new RegExp(stage))
-  for (const capability of ['Save Draft', 'Save & Continue', 'beforeunload', 'Not Included', 'Locked', 'Provision UNISON', 'Provisioning Failed', 'Retry Failed Step', 'Back to Review', 'UNISON Workspace Ready']) assert.match(wizard, new RegExp(capability))
-  for (const progressStep of ['Creating organisation workspace', 'Applying tier entitlement', 'Enabling modules', 'Configuring delivery settings', 'Creating Team context', 'Applying admin/access configuration', 'Finalising tenant']) assert.match(wizard, new RegExp(progressStep))
+  for (const capability of ['Save Draft', 'Save & Continue', 'beforeunload', 'Not Included', 'Locked', 'Provision UNISON', 'UNISON Workspace Ready']) assert.match(wizard, new RegExp(capability))
+  // The simulated seven-step progress screen and its 'Provisioning Failed' /
+  // 'Retry Failed Step' state are no longer reachable: submit calls the server
+  // action instead. Pinning those strings here would have enforced the presence
+  // of code nothing can reach, so this now pins the real behaviour instead.
+  assert.match(wizard, /provisionOrganizationAction\(undefined, formData\)/)
+  for (const outcome of [/result\.error/, /result\.emailFailed/, /setScreen\('success'\)/]) assert.match(wizard, outcome)
+  assert.match(wizard, /reissue_invitation/, 'an email failure must name its recovery')
+  // Nothing the database does not hold may be reported back as achieved.
+  assert.match(wizard, /const NOT_PERSISTED = 'Not yet configured'/)
+  // Submit sends a real invitation email to whatever these two fields hold, so
+  // the wizard must not arrive pre-loaded with a plausible provisioning target.
+  assert.match(data, /organisation: \{\s+name: '',/, 'the organisation name must start empty')
+  assert.match(data, /primaryAdmin: \{ id: 'admin-1', name: '', email: '',/, 'the primary admin must start empty')
 })
 
 test('internal registers provide non-destructive operational actions and tier impact review', () => {

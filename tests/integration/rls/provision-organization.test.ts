@@ -110,6 +110,42 @@ test('the provisioned organization is invisible to an outsider', async () => {
   assert.deepEqual(data, [], 'a new tenant must not leak to other organizations')
 })
 
+test('a HIMARK admin lists the tenants their own RLS hides from them', async () => {
+  const client = await signedInClient(himarkAdmin.email, himarkAdmin.password)
+
+  // The premise: organizations_select is is_member_of(id), and a HIMARK
+  // administrator is not a member of the tenants they provision. A plain
+  // select must come back empty, or the function has nothing to do.
+  const { data: direct } = await client.from('organizations').select('id').eq('id', provisioned[0])
+  assert.deepEqual(direct, [], 'the register cannot be built from a direct select')
+
+  const { data, error } = await client.rpc('list_provisioned_organizations')
+  assert.equal(error, null)
+  const rows = (data ?? []) as Array<{ id: string; status: string; admin_email: string | null }>
+  const row = rows.find((organization) => organization.id === provisioned[0])
+  assert.ok(row, 'the provisioned tenant must reach the internal register')
+
+  const { data: invitation } = await admin
+    .from('invitations').select('email')
+    .eq('organization_id', provisioned[0]).eq('role_id', 'owner').single()
+  assert.equal(row.admin_email, invitation!.email, 'the Primary Admin column is the owner invitation')
+  assert.equal(row.status, 'active')
+})
+
+test('a HIMARK member who is not owner or admin cannot list organizations', async () => {
+  const client = await signedInClient(himarkMember.email, himarkMember.password)
+  const { error } = await client.rpc('list_provisioned_organizations')
+  assert.ok(error, 'the read counterpart must carry the same authorisation as provisioning')
+  assert.match(error.message, /HIMARK administrator/i)
+})
+
+test('an owner of another organization cannot list organizations', async () => {
+  const client = await signedInClient(outsider.email, outsider.password)
+  const { error } = await client.rpc('list_provisioned_organizations')
+  assert.ok(error, 'owning some organization must not confer sight of every tenant')
+  assert.match(error!.message, /HIMARK administrator/i)
+})
+
 test('reissue supersedes the pending invitation rather than duplicating it', async () => {
   const client = await signedInClient(himarkAdmin.email, himarkAdmin.password)
   const orgId = provisioned[0]

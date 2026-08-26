@@ -20,10 +20,16 @@ export const frameworkTemplates = [
   { name: 'Product Launch', version: 'v2.7', description: 'Cross-functional readiness for new products and services.' },
 ]
 
+// The three fields that reach the database or the outgoing invitation email --
+// organisation name, and the primary administrator's name and email -- start
+// empty on purpose. Everything else here is decorative and persists nowhere, so
+// it stays pre-filled. validateCurrent() already rejects these three when
+// blank, which is what forces the operator to name a real target rather than
+// provisioning whatever the demo data happened to say.
 export const initialProvisioningState: ProvisioningWizardState = {
   id: 'growthpoint-setup',
   organisation: {
-    name: 'Growthpoint Properties', tradingName: 'Growthpoint', code: 'GROWT-001', industry: 'Real Estate', size: '1,000–4,999', country: 'South Africa', timeZone: 'Africa/Johannesburg', businessUnit: 'Business Transformation', contactName: 'Sarah Johnson', contactEmail: 'sarah.johnson@growthpoint.co.za', contactRole: 'Business Transformation Lead', implementationOwner: 'Neo Morake', goLive: '2026-10-12', logoName: '', notes: '', tags: 'Enterprise, Property',
+    name: '', tradingName: 'Growthpoint', code: 'GROWT-001', industry: 'Real Estate', size: '1,000–4,999', country: 'South Africa', timeZone: 'Africa/Johannesburg', businessUnit: 'Business Transformation', contactName: 'Sarah Johnson', contactEmail: 'sarah.johnson@growthpoint.co.za', contactRole: 'Business Transformation Lead', implementationOwner: 'Neo Morake', goLive: '2026-10-12', logoName: '', notes: '', tags: 'Enterprise, Property',
   },
   selectedTier: 'enterprise',
   activeModules: getEntitledModuleIds('enterprise'),
@@ -31,7 +37,7 @@ export const initialProvisioningState: ProvisioningWizardState = {
     frameworks: ['Business / Technology Change', 'Automation Implementation'], primaryFramework: 'Business / Technology Change', projectVisibility: 'Organisation', healthCalculation: 'Weighted controls', evidenceAtGates: true, gateLocking: true, mandatoryBusinessCase: true, durationUnit: 'Working days', businessUnits: 'Business Transformation, Property Operations', departments: 'Delivery, Operations, Commercial, Finance', teams: 'Business Solutions, Transformation Office', vendorCadence: 'Quarterly', expiryWarning: '90 days', complianceReview: true, clientCodeFormat: 'CL-{0000}', accountOwner: 'Organisation Admin', onboardingTemplate: 'Standard Client Onboarding', onboardingOwner: 'Client Operations Lead', leadOwner: 'Commercial Lead', quoteValidity: '30 days', salesPipeline: 'Enterprise Sales', currency: 'ZAR', invoiceTerms: '30 days', forecastPeriod: 'Monthly',
   },
   access: {
-    primaryAdmin: { id: 'admin-1', name: 'Sarah Johnson', email: 'sarah.johnson@growthpoint.co.za', jobTitle: 'Business Transformation Lead', department: 'Business Transformation', team: 'Transformation Office', deliveryRole: 'Business Owner', organisationRole: 'Organisation Administrator', accessRole: 'Organisation Admin' },
+    primaryAdmin: { id: 'admin-1', name: '', email: '', jobTitle: 'Business Transformation Lead', department: 'Business Transformation', team: 'Transformation Office', deliveryRole: 'Business Owner', organisationRole: 'Organisation Administrator', accessRole: 'Organisation Admin' },
     users: [
       { id: 'user-1', name: 'James Carter', email: 'james.carter@growthpoint.co.za', jobTitle: 'Project Manager', department: 'Delivery', team: 'Business Solutions', deliveryRole: 'Project Manager', accessRole: 'Member' },
       { id: 'user-2', name: 'Tessa Williams', email: 'tessa.williams@growthpoint.co.za', jobTitle: 'Delivery Manager', department: 'Delivery', team: 'Transformation Office', deliveryRole: 'Delivery Manager', accessRole: 'Member' },
