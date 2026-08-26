@@ -120,17 +120,31 @@ test('reissue supersedes the pending invitation rather than duplicating it', asy
   assert.equal(before?.length, 1)
   const email = before![0].email
 
+  const newTokenHash = '\\x' + randomUUID().replace(/-/g, '').repeat(2)
+  const newExpiresAt = new Date(Date.now() + 7 * 86_400_000).toISOString()
   const { error } = await client.rpc('reissue_invitation', {
     p_organization_id: orgId,
     p_email: email,
-    p_token_hash: '\\x' + randomUUID().replace(/-/g, '').repeat(2),
-    p_expires_at: new Date(Date.now() + 7 * 86_400_000).toISOString(),
+    p_token_hash: newTokenHash,
+    p_expires_at: newExpiresAt,
   })
   assert.equal(error, null, 'the partial unique index must not reject the new row')
 
   const { data: pendingAfter } = await admin
-    .from('invitations').select('id').eq('organization_id', orgId).eq('status', 'pending')
+    .from('invitations')
+    .select('id, token_hash, role_id, invited_by, expires_at')
+    .eq('organization_id', orgId).eq('status', 'pending')
   assert.equal(pendingAfter?.length, 1, 'exactly one invitation may be pending per address')
+
+  // Task 3 depends on the reissued token round-tripping byte-for-byte, the
+  // same guarantee the provisioning test above pins for the original token.
+  assert.equal(pendingAfter![0].token_hash, newTokenHash)
+  assert.equal(pendingAfter![0].role_id, 'owner')
+  assert.equal(pendingAfter![0].invited_by, himarkAdmin.id)
+  assert.equal(
+    new Date(pendingAfter![0].expires_at as string).getTime(),
+    new Date(newExpiresAt).getTime(),
+  )
 
   const { data: expired } = await admin
     .from('invitations').select('id').eq('organization_id', orgId).eq('status', 'expired')
@@ -146,4 +160,41 @@ test('an outsider cannot reissue an invitation into a tenant', async () => {
     p_expires_at: new Date(Date.now() + 7 * 86_400_000).toISOString(),
   })
   assert.ok(error, 'reissue must carry the same authorisation as provisioning')
+  assert.match(error!.message, /HIMARK administrator/i)
+})
+
+test('a HIMARK member who is not owner or admin cannot reissue an invitation', async () => {
+  const client = await signedInClient(himarkMember.email, himarkMember.password)
+  const { error } = await client.rpc('reissue_invitation', {
+    p_organization_id: provisioned[0],
+    p_email: 'someone-else@client.test',
+    p_token_hash: '\\x' + randomUUID().replace(/-/g, '').repeat(2),
+    p_expires_at: new Date(Date.now() + 7 * 86_400_000).toISOString(),
+  })
+  assert.ok(error, 'a plain HIMARK member must not be able to reissue invitations')
+  assert.match(error!.message, /HIMARK administrator/i)
+})
+
+test('a HIMARK admin cannot reissue an invitation into HIMARK itself', async () => {
+  const client = await signedInClient(himarkAdmin.email, himarkAdmin.password)
+  const { error } = await client.rpc('reissue_invitation', {
+    p_organization_id: himarkId,
+    p_email: himarkAdmin.email,
+    p_token_hash: '\\x' + randomUUID().replace(/-/g, '').repeat(2),
+    p_expires_at: new Date(Date.now() + 7 * 86_400_000).toISOString(),
+  })
+  assert.ok(error, 'this recovery path must never mint an owner invitation into HIMARK itself')
+  assert.match(error!.message, /HIMARK's own organization/i)
+})
+
+test('a HIMARK admin cannot reissue an invitation for an address that was never invited', async () => {
+  const client = await signedInClient(himarkAdmin.email, himarkAdmin.password)
+  const { error } = await client.rpc('reissue_invitation', {
+    p_organization_id: provisioned[0],
+    p_email: `never-invited-${randomUUID()}@client.test`,
+    p_token_hash: '\\x' + randomUUID().replace(/-/g, '').repeat(2),
+    p_expires_at: new Date(Date.now() + 7 * 86_400_000).toISOString(),
+  })
+  assert.ok(error, 'reissue must only replace an invitation provision_organization already created')
+  assert.match(error!.message, /no prior owner invitation/i)
 })
