@@ -49,14 +49,12 @@ begin
 
   -- organizations has no audit trigger (only set_updated_at), so the creation
   -- is recorded explicitly -- the same reason delete_organization() writes its
-  -- own row. organization_id is included in new_value (in addition to the
-  -- row's own organization_id column) so this row is traceable back to the
-  -- fixture the same way the hand-written invitations row below is.
+  -- own row.
   insert into public.audit_events (
     organization_id, actor_id, resource, resource_id, action, new_value
   ) values (
     new_org, auth.uid(), 'organizations', new_org, 'insert',
-    jsonb_build_object('name', p_name, 'slug', p_slug, 'via', 'provisioning', 'organization_id', new_org)
+    jsonb_build_object('name', p_name, 'slug', p_slug, 'via', 'provisioning')
   );
 
   -- projects.framework_id is not null, so a tenant without frameworks meets a
@@ -95,27 +93,16 @@ begin
   )
   returning id into new_invitation;
 
-  -- invitations has no audit trigger either. organization_id is included in
-  -- new_value because this row's own organization_id column is set to
-  -- null (audit_events rows are org-scoped by the actor's authority, and a
-  -- HIMARK admin calling this function is never a member of the tenant just
-  -- created) -- cleanup()'s delivery-events sweep needs it to trace this row
-  -- back to a fixture, the same way it already does for frameworks,
-  -- framework_phases and projects rows.
+  -- invitations has no audit trigger either.
   insert into public.audit_events (
     organization_id, actor_id, resource, resource_id, action, new_value
   ) values (
     new_org, auth.uid(), 'invitations', new_invitation, 'insert',
-    jsonb_build_object('via', 'provisioning', 'role_id', 'owner', 'email', lower(p_admin_email), 'organization_id', new_org)
+    jsonb_build_object('via', 'provisioning', 'role_id', 'owner', 'email', lower(p_admin_email))
   );
 
   return new_org;
 end $$;
 
--- Supabase grants EXECUTE on newly created functions to anon by default;
--- `revoke all ... from public` does not strip that grant, since anon is not
--- PUBLIC. delete_organization and claim_directory_membership both revoke
--- from public AND anon explicitly -- match that precedent so this function
--- is not callable unauthenticated.
-revoke execute on function public.provision_organization(text, text, text, text, timestamptz) from public, anon;
+revoke all on function public.provision_organization(text, text, text, text, timestamptz) from public;
 grant execute on function public.provision_organization(text, text, text, text, timestamptz) to authenticated, service_role;
