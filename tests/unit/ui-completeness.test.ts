@@ -237,6 +237,40 @@ test('client provisioning wizard includes every designed stage and provisions fo
   assert.match(data, /primaryAdmin: \{ id: 'admin-1', name: '', email: '',/, 'the primary admin must start empty')
 })
 
+test('the organisations register reports only what the database holds', () => {
+  // Same rule as the wizard's success screen: nothing the database does not
+  // hold may be reported back as achieved. This register renders real
+  // organizations rows, so a local-state Suspend/Archive that flips a badge
+  // until the next refresh, and four hard-coded metric tiles above live data,
+  // are the same defect class as a fabricated success.
+  const registers = readFileSync(join(workspace, 'features', 'internal-provisioning', 'components', 'internal-registers.tsx'), 'utf8')
+  const screen = registers.slice(
+    registers.indexOf('export function OrganisationsScreen'),
+    registers.indexOf('export function TenantsScreen'),
+  )
+  assert.ok(screen.length > 0, 'OrganisationsScreen must still exist')
+  assert.doesNotMatch(screen, /setRecords|ConfirmationDialog/, 'no row action may mutate the register locally')
+  for (const action of ["'Suspend'", "'Archive'"]) {
+    assert.ok(!screen.includes(action), `${action} has no backing action, so it must not be offered`)
+  }
+  assert.doesNotMatch(screen, /<InternalMetric[^>]*value="\d/, 'metric tiles must not be literals')
+  assert.match(screen, /value=\{String\(counts\.total\)\}/, 'the tiles must be counted from the rendered rows')
+})
+
+test('the provisioning success dialog claims only the invitation that was actually sent', () => {
+  // provision_organization writes exactly one invitation: the owner invitation
+  // for the primary administrator. The dialog used to claim
+  // access.users.length + 1 people were "ready to receive workspace
+  // invitations", counting two fabricated demo people at a real external
+  // domain that data.ts pre-loaded.
+  const wizard = readFileSync(join(workspace, 'features', 'internal-provisioning', 'components', 'provisioning-wizard.tsx'), 'utf8')
+  const data = readFileSync(join(workspace, 'features', 'internal-provisioning', 'data.ts'), 'utf8')
+  assert.doesNotMatch(wizard, /configured users are ready to receive/, 'the dialog must not claim uninvited users')
+  assert.match(wizard, /One invitation was created and emailed/)
+  assert.match(data, /users: \[\],/, 'no demo user may be pre-loaded into the wizard')
+  assert.doesNotMatch(data, /james\.carter@|tessa\.williams@/, 'fabricated people at a real domain must not survive')
+})
+
 test('internal registers provide non-destructive operational actions and tier impact review', () => {
   const provisioning = readFileSync(join(workspace, 'features', 'internal-provisioning', 'components', 'provisioning-register.tsx'), 'utf8')
   const registers = readFileSync(join(workspace, 'features', 'internal-provisioning', 'components', 'internal-registers.tsx'), 'utf8')

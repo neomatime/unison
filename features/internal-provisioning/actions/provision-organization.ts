@@ -50,7 +50,13 @@ export async function provisionOrganizationAction(
 
   // The transaction has already committed. If the mail fails, the tenant exists
   // and the raw token is gone with this request — say so plainly rather than
-  // reporting a success nobody can act on. reissue_invitation is the recovery.
+  // reporting a success nobody can act on. The recovery is reissue_invitation,
+  // run by a platform operator with service-role access: migration
+  // 20260826172947 revoked execute on it from `authenticated`, so it is
+  // deliberately not something this action, or the signed-in operator who
+  // triggered it, can invoke. That grant is the cut that closed the escalation
+  // chain (a caller-chosen token hash + the pre-confirmed invited-signup path
+  // let any HIMARK admin take owner access to a tenant awaiting its admin).
   try {
     await sendEmail({
       to: parsed.data.adminEmail,

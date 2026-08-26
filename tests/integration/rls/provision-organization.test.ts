@@ -1,8 +1,35 @@
 import assert from 'node:assert/strict'
 import test, { after, before } from 'node:test'
-import { randomUUID } from 'node:crypto'
+import { createHash, randomBytes, randomUUID } from 'node:crypto'
+import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 
 import { admin, cleanup, createFixtureOrg, createFixtureUser, signedInClient } from './helpers.ts'
+
+/** The same shape provision-organization.ts and send-invitation.ts produce. */
+function hash(rawToken: string): string {
+  return '\\x' + createHash('sha256').update(rawToken).digest('hex')
+}
+
+// One sign-in per fixture user, reused across tests. Every test in this file
+// used to sign in again; GoTrue's rate limit is per project and shared with
+// the rest of the RLS suite, so a file that signs in a dozen times is what
+// tips a whole-suite run into 429s. The session is not the thing under test
+// here -- what the signed-in role may call is.
+const sessions = new Map<string, Promise<SupabaseClient>>()
+function sessionFor(user: { email: string; password: string }): Promise<SupabaseClient> {
+  const existing = sessions.get(user.email)
+  if (existing) return existing
+  const client = signedInClient(user.email, user.password)
+  sessions.set(user.email, client)
+  return client
+}
+
+/** No session at all — exactly what someone holding an invitation link has. */
+const anonymous = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+  { auth: { autoRefreshToken: false, persistSession: false } },
+)
 
 let himarkId: string
 let himarkAdmin: { id: string; email: string; password: string }
@@ -41,7 +68,7 @@ function args(name: string) {
 }
 
 test('a HIMARK admin provisions an organization with frameworks and an owner invitation', async () => {
-  const client = await signedInClient(himarkAdmin.email, himarkAdmin.password)
+  const client = await sessionFor(himarkAdmin)
   const payload = args('RLS Provision Alpha')
   const { data: orgId, error } = await client.rpc('provision_organization', payload)
   assert.equal(error, null)
@@ -91,27 +118,27 @@ test('the provisioned organization carries no email_domain', async () => {
 })
 
 test('a HIMARK member who is not owner or admin is refused', async () => {
-  const client = await signedInClient(himarkMember.email, himarkMember.password)
+  const client = await sessionFor(himarkMember)
   const { error } = await client.rpc('provision_organization', args('RLS Provision Member'))
   assert.ok(error, 'a plain member must not be able to create tenants')
   assert.match(error.message, /HIMARK administrator/i)
 })
 
 test('an owner of another organization is refused', async () => {
-  const client = await signedInClient(outsider.email, outsider.password)
+  const client = await sessionFor(outsider)
   const { error } = await client.rpc('provision_organization', args('RLS Provision Outsider'))
   assert.ok(error, 'owning some organization must not confer provisioning rights')
   assert.match(error!.message, /HIMARK administrator/i)
 })
 
 test('the provisioned organization is invisible to an outsider', async () => {
-  const client = await signedInClient(outsider.email, outsider.password)
+  const client = await sessionFor(outsider)
   const { data } = await client.from('organizations').select('id').eq('id', provisioned[0])
   assert.deepEqual(data, [], 'a new tenant must not leak to other organizations')
 })
 
 test('a HIMARK admin lists the tenants their own RLS hides from them', async () => {
-  const client = await signedInClient(himarkAdmin.email, himarkAdmin.password)
+  const client = await sessionFor(himarkAdmin)
 
   // The premise: organizations_select is is_member_of(id), and a HIMARK
   // administrator is not a member of the tenants they provision. A plain
@@ -133,21 +160,38 @@ test('a HIMARK admin lists the tenants their own RLS hides from them', async () 
 })
 
 test('a HIMARK member who is not owner or admin cannot list organizations', async () => {
-  const client = await signedInClient(himarkMember.email, himarkMember.password)
+  const client = await sessionFor(himarkMember)
   const { error } = await client.rpc('list_provisioned_organizations')
   assert.ok(error, 'the read counterpart must carry the same authorisation as provisioning')
   assert.match(error.message, /HIMARK administrator/i)
 })
 
 test('an owner of another organization cannot list organizations', async () => {
-  const client = await signedInClient(outsider.email, outsider.password)
+  const client = await sessionFor(outsider)
   const { error } = await client.rpc('list_provisioned_organizations')
   assert.ok(error, 'owning some organization must not confer sight of every tenant')
   assert.match(error!.message, /HIMARK administrator/i)
 })
 
-test('reissue supersedes the pending invitation rather than duplicating it', async () => {
-  const client = await signedInClient(himarkAdmin.email, himarkAdmin.password)
+// ---------------------------------------------------------------------------
+// reissue_invitation. Migration 20260826172947 revoked execute on it from
+// `authenticated`, leaving service_role only, because guard 2 -- "a prior
+// owner invitation already exists for this (organization, address)" -- is
+// manufactured for every tenant by provision_organization itself at creation
+// time, and so blocks nothing the product actually contains. Composed with
+// list_provisioned_organizations (which hands any HIMARK owner/admin the
+// (id, admin_email) pair for every organization), the caller-chosen
+// p_token_hash, and lib/invitations/create-invited-account.ts (which creates a
+// PRE-CONFIRMED account for the invited address with a caller-chosen
+// password), that let any HIMARK admin take owner access to any tenant whose
+// administrator had not yet signed up, without touching their mailbox.
+//
+// So the behaviour tests below drive the function through the service-role
+// client, and the authenticated ones assert the refusal now lands at the grant
+// rather than inside the function.
+// ---------------------------------------------------------------------------
+
+test('reissue supersedes the pending invitation rather than duplicating it, and the reissued token resolves', async () => {
   const orgId = provisioned[0]
 
   const { data: before } = await admin
@@ -156,9 +200,12 @@ test('reissue supersedes the pending invitation rather than duplicating it', asy
   assert.equal(before?.length, 1)
   const email = before![0].email
 
-  const newTokenHash = '\\x' + randomUUID().replace(/-/g, '').repeat(2)
+  // A real raw token, hashed exactly the way the action hashes it, so the
+  // acceptance side can be walked below rather than only the row shape.
+  const rawToken = randomBytes(32).toString('base64url')
+  const newTokenHash = hash(rawToken)
   const newExpiresAt = new Date(Date.now() + 7 * 86_400_000).toISOString()
-  const { error } = await client.rpc('reissue_invitation', {
+  const { error } = await admin.rpc('reissue_invitation', {
     p_organization_id: orgId,
     p_email: email,
     p_token_hash: newTokenHash,
@@ -176,7 +223,10 @@ test('reissue supersedes the pending invitation rather than duplicating it', asy
   // same guarantee the provisioning test above pins for the original token.
   assert.equal(pendingAfter![0].token_hash, newTokenHash)
   assert.equal(pendingAfter![0].role_id, 'owner')
-  assert.equal(pendingAfter![0].invited_by, himarkAdmin.id)
+  // invited_by is auth.uid(), and a service-role call has none. This is the
+  // shape of a genuine operator recovery now: attributable to the script, not
+  // to a signed-in HIMARK session.
+  assert.equal(pendingAfter![0].invited_by, null)
   assert.equal(
     new Date(pendingAfter![0].expires_at as string).getTime(),
     new Date(newExpiresAt).getTime(),
@@ -185,22 +235,88 @@ test('reissue supersedes the pending invitation rather than duplicating it', asy
   const { data: expired } = await admin
     .from('invitations').select('id').eq('organization_id', orgId).eq('status', 'expired')
   assert.equal(expired?.length, 1, 'the old one is expired, not deleted')
+
+  // The acceptance side, which nothing exercised before: the token a reissue
+  // mints is a working invitation link. This is why who may call the function
+  // matters -- whoever holds this raw token can create the account.
+  const { data: preview, error: previewError } = await anonymous.rpc('invitation_preview', {
+    raw_token: rawToken,
+  })
+  assert.equal(previewError, null)
+  assert.equal(preview?.length, 1, 'a reissued token must resolve for a signed-out invitee')
+  assert.equal(preview![0].email, email)
+})
+
+test('a signed-in HIMARK admin cannot call reissue_invitation at all', async () => {
+  // The grant pin. If a future `create or replace` restores execute to
+  // `authenticated`, this call stops failing at the grant and starts failing
+  // (or succeeding) inside the function, and this assertion breaks.
+  const client = await sessionFor(himarkAdmin)
+  const { error } = await client.rpc('reissue_invitation', {
+    p_organization_id: provisioned[0],
+    p_email: `admin-chosen-${randomUUID()}@client.test`,
+    p_token_hash: hash(randomBytes(32).toString('base64url')),
+    p_expires_at: new Date(Date.now() + 7 * 86_400_000).toISOString(),
+  })
+  assert.ok(error, 'reissue_invitation must be unreachable from an authenticated session')
+  assert.match(error!.message, /permission denied for function reissue_invitation/i)
+})
+
+test('a HIMARK admin cannot reissue into a foreign existing organisation', async () => {
+  // The escalation walk, end to end. provisioned[0] is a tenant this admin
+  // provisioned; outsiderOrg is an organisation they have no relationship with
+  // at all. list_provisioned_organizations hands them its id, and before the
+  // revoke, a self-chosen token hash plus the signed-out invited-signup path
+  // was the whole attack.
+  const client = await sessionFor(himarkAdmin)
+
+  // Premise: it really is foreign -- their own RLS cannot see it.
+  const { data: visible } = await client.from('organizations').select('id').eq('id', outsiderOrg)
+  assert.deepEqual(visible, [], 'the fixture must be an organisation the admin has no role in')
+
+  const rawToken = randomBytes(32).toString('base64url')
+  const { error } = await client.rpc('reissue_invitation', {
+    p_organization_id: outsiderOrg,
+    p_email: outsider.email,
+    p_token_hash: hash(rawToken),
+    p_expires_at: new Date(Date.now() + 7 * 86_400_000).toISOString(),
+  })
+  assert.ok(error, 'a HIMARK admin must not be able to mint an invitation into a foreign tenant')
+  assert.match(error!.message, /permission denied for function reissue_invitation/i)
+
+  // Second layer, in case the grant is ever restored: guard 2 refuses an
+  // organisation with no prior owner invitation.
+  const { error: serviceError } = await admin.rpc('reissue_invitation', {
+    p_organization_id: outsiderOrg,
+    p_email: outsider.email,
+    p_token_hash: hash(rawToken),
+    p_expires_at: new Date(Date.now() + 7 * 86_400_000).toISOString(),
+  })
+  assert.ok(serviceError)
+  assert.match(serviceError!.message, /no prior owner invitation/i)
+
+  // Nothing was written either way, and no token the attacker chose resolves.
+  const { data: invitations } = await admin
+    .from('invitations').select('id').eq('organization_id', outsiderOrg)
+  assert.deepEqual(invitations, [], 'no invitation may exist in an organisation nobody invited into')
+  const { data: preview } = await anonymous.rpc('invitation_preview', { raw_token: rawToken })
+  assert.deepEqual(preview, [], 'a token the caller chose must never become a working link')
 })
 
 test('an outsider cannot reissue an invitation into a tenant', async () => {
-  const client = await signedInClient(outsider.email, outsider.password)
+  const client = await sessionFor(outsider)
   const { error } = await client.rpc('reissue_invitation', {
     p_organization_id: provisioned[0],
     p_email: 'someone@client.test',
     p_token_hash: '\\x' + randomUUID().replace(/-/g, '').repeat(2),
     p_expires_at: new Date(Date.now() + 7 * 86_400_000).toISOString(),
   })
-  assert.ok(error, 'reissue must carry the same authorisation as provisioning')
-  assert.match(error!.message, /HIMARK administrator/i)
+  assert.ok(error, 'reissue must not be reachable from an ordinary tenant session')
+  assert.match(error!.message, /permission denied for function reissue_invitation/i)
 })
 
 test('a HIMARK member who is not owner or admin cannot reissue an invitation', async () => {
-  const client = await signedInClient(himarkMember.email, himarkMember.password)
+  const client = await sessionFor(himarkMember)
   const { error } = await client.rpc('reissue_invitation', {
     p_organization_id: provisioned[0],
     p_email: 'someone-else@client.test',
@@ -208,12 +324,11 @@ test('a HIMARK member who is not owner or admin cannot reissue an invitation', a
     p_expires_at: new Date(Date.now() + 7 * 86_400_000).toISOString(),
   })
   assert.ok(error, 'a plain HIMARK member must not be able to reissue invitations')
-  assert.match(error!.message, /HIMARK administrator/i)
+  assert.match(error!.message, /permission denied for function reissue_invitation/i)
 })
 
-test('a HIMARK admin cannot reissue an invitation into HIMARK itself', async () => {
-  const client = await signedInClient(himarkAdmin.email, himarkAdmin.password)
-  const { error } = await client.rpc('reissue_invitation', {
+test('reissue cannot target HIMARK itself, even through the service role', async () => {
+  const { error } = await admin.rpc('reissue_invitation', {
     p_organization_id: himarkId,
     p_email: himarkAdmin.email,
     p_token_hash: '\\x' + randomUUID().replace(/-/g, '').repeat(2),
@@ -223,9 +338,8 @@ test('a HIMARK admin cannot reissue an invitation into HIMARK itself', async () 
   assert.match(error!.message, /HIMARK's own organization/i)
 })
 
-test('a HIMARK admin cannot reissue an invitation for an address that was never invited', async () => {
-  const client = await signedInClient(himarkAdmin.email, himarkAdmin.password)
-  const { error } = await client.rpc('reissue_invitation', {
+test('reissue refuses an address that was never invited', async () => {
+  const { error } = await admin.rpc('reissue_invitation', {
     p_organization_id: provisioned[0],
     p_email: `never-invited-${randomUUID()}@client.test`,
     p_token_hash: '\\x' + randomUUID().replace(/-/g, '').repeat(2),
@@ -234,3 +348,48 @@ test('a HIMARK admin cannot reissue an invitation for an address that was never 
   assert.ok(error, 'reissue must only replace an invitation provision_organization already created')
   assert.match(error!.message, /no prior owner invitation/i)
 })
+
+// ---------------------------------------------------------------------------
+// p_expires_at is caller-chosen on both write paths. Unclamped, a year-3000
+// value is an owner invitation that never lapses, and a backdated one is a
+// tenant whose only invitation is already dead while still occupying the
+// invitations_one_pending_per_email slot. Both functions clamp it to
+// (now(), now() + 30 days], errcode 22023.
+// ---------------------------------------------------------------------------
+
+for (const [label, offsetMs] of [['in the past', -86_400_000], ['more than 30 days ahead', 31 * 86_400_000]] as const) {
+  test(`provision_organization refuses an expiry ${label}`, async () => {
+    const client = await sessionFor(himarkAdmin)
+    const payload = { ...args('RLS Provision Expiry'), p_expires_at: new Date(Date.now() + offsetMs).toISOString() }
+    const { data, error } = await client.rpc('provision_organization', payload)
+    assert.ok(error, 'a malformed expiry must not produce a tenant')
+    assert.equal(error!.code, '22023')
+    assert.equal(data, null)
+
+    // The whole function is one transaction, so a rejected expiry must leave
+    // no organisation behind to be cleaned up.
+    const { data: orphan } = await admin
+      .from('organizations').select('id').eq('slug', payload.p_slug)
+    assert.deepEqual(orphan, [], 'the rejection must roll back the organisation too')
+  })
+
+  test(`reissue_invitation refuses an expiry ${label}`, async () => {
+    const { data: pending } = await admin
+      .from('invitations').select('email').eq('organization_id', provisioned[0]).eq('status', 'pending')
+    const { error } = await admin.rpc('reissue_invitation', {
+      p_organization_id: provisioned[0],
+      p_email: pending![0].email,
+      p_token_hash: '\\x' + randomUUID().replace(/-/g, '').repeat(2),
+      p_expires_at: new Date(Date.now() + offsetMs).toISOString(),
+    })
+    assert.ok(error, 'a malformed expiry must not produce an invitation')
+    assert.equal(error!.code, '22023')
+
+    // And the invitation that was already pending is untouched -- a rejected
+    // reissue must not expire the live link on its way out.
+    const { data: after } = await admin
+      .from('invitations').select('email').eq('organization_id', provisioned[0]).eq('status', 'pending')
+    assert.equal(after?.length, 1)
+    assert.equal(after![0].email, pending![0].email)
+  })
+}

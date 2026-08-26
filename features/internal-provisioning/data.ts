@@ -38,10 +38,14 @@ export const initialProvisioningState: ProvisioningWizardState = {
   },
   access: {
     primaryAdmin: { id: 'admin-1', name: '', email: '', jobTitle: 'Business Transformation Lead', department: 'Business Transformation', team: 'Transformation Office', deliveryRole: 'Business Owner', organisationRole: 'Organisation Administrator', accessRole: 'Organisation Admin' },
-    users: [
-      { id: 'user-1', name: 'James Carter', email: 'james.carter@growthpoint.co.za', jobTitle: 'Project Manager', department: 'Delivery', team: 'Business Solutions', deliveryRole: 'Project Manager', accessRole: 'Member' },
-      { id: 'user-2', name: 'Tessa Williams', email: 'tessa.williams@growthpoint.co.za', jobTitle: 'Delivery Manager', department: 'Delivery', team: 'Transformation Office', deliveryRole: 'Delivery Manager', accessRole: 'Member' },
-    ],
+    // Empty for the same reason the three fields above it are: these are
+    // addresses. The two demo people who used to sit here were fabricated
+    // names at a real external domain -- residue of the pre-filled-target
+    // defect -- and the success dialog presented them as "ready to receive
+    // workspace invitations" when only the administrator was ever invited.
+    // Nothing in this slice invites anyone but the primary administrator, so
+    // the operator adds initial users themselves or the list stays empty.
+    users: [],
     departments: ['Business Transformation', 'Delivery', 'Operations'], teams: ['Transformation Office', 'Business Solutions'], roles: ['Delivery Manager', 'Project Manager', 'Business Analyst', 'Business Owner'], defaultAccess: 'Member', guestAccess: false, restrictedProjects: true, ssoRequired: true, mfaRequired: true,
   },
   currentStep: 'organisation',
