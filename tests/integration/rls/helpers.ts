@@ -200,7 +200,15 @@ export async function cleanup(organizationIds: string[], userIds: string[]) {
       .or(`old_value->>organization_id.eq.${id},new_value->>organization_id.eq.${id}`)
     if (clientEventsError) errors.push(clientEventsError)
 
-    const auditIds = [...(orgEvent ?? []), ...(clientEvents ?? [])].map((row) => row.id as string)
+    const { data: deliveryEvents, error: deliveryEventsError } = await admin
+      .from('audit_events')
+      .select('id')
+      .is('organization_id', null)
+      .in('resource', ['frameworks', 'framework_phases'])
+      .or(`old_value->>organization_id.eq.${id},new_value->>organization_id.eq.${id}`)
+    if (deliveryEventsError) errors.push(deliveryEventsError)
+
+    const auditIds = [...(orgEvent ?? []), ...(clientEvents ?? []), ...(deliveryEvents ?? [])].map((row) => row.id as string)
     if (auditIds.length > 0) {
       const { error: auditDeleteError } = await admin.from('audit_events').delete().in('id', auditIds)
       if (auditDeleteError) errors.push(auditDeleteError)
