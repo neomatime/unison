@@ -125,3 +125,10 @@ of rows; misleading at scale.
 Atlas has no model provider, retrieval, or prompt system. Automation has no engine, scheduler or
 queue. File storage, realtime subscriptions and notification persistence are all unimplemented.
 Fifteen of the sixteen product modules still render mock fixtures.
+
+## New tenants have no delivery frameworks
+
+`projects.framework_id` is `not null`, and the seed migration only covered
+organizations that existed when it ran. Provisioning a new tenant must create
+that organization's frameworks and phases, or the first thing a new customer
+meets at /operations/projects/new is a form they cannot submit.

@@ -145,6 +145,12 @@ test('protected sign-in and client data paths remain connected', () => {
   assert.match(readFileSync(join(unisonRoot, 'operations', 'clients', '[clientId]', 'edit', 'page.tsx'), 'utf8'), /updateClientAction/)
 })
 
+test('the projects route reads from the database, not the delivery mocks', () => {
+  const source = readFileSync('app/(unison)/operations/projects/page.tsx', 'utf8')
+  assert.match(source, /listProjects/)
+  assert.doesNotMatch(source, /features\/delivery\/data/)
+})
+
 test('main sign-in uses the centered secure workspace experience', () => {
   const screen = readFileSync(join(workspace, 'features', 'auth-ui', 'auth-screen.tsx'), 'utf8')
   for (const copy of [
