@@ -27,18 +27,28 @@ create table public.projects (
   -- A plain phase_id FK would let a project on Client Onboarding sit in the
   -- Build phase, since both are valid phase rows. This makes that
   -- unrepresentable instead of relying on application code to check.
+  --
+  -- The column list on `set null` is load-bearing: a bare `on delete set
+  -- null` nulls every column in the composite key, which here would include
+  -- framework_id -- a NOT NULL column -- and abort the delete with a
+  -- not-null violation instead of degrading gracefully. Naming (phase_id)
+  -- restricts the null-out to just that column.
   constraint projects_phase_fkey
     foreign key (framework_id, phase_id)
-    references public.framework_phases (framework_id, id) on delete set null,
+    references public.framework_phases (framework_id, id) on delete set null (phase_id),
 
   -- Tenant isolation, not tidiness. The RLS insert check validates only
   -- projects.organization_id; it does not verify that client_id belongs to the
   -- same organisation. Without this, a crafted insert can hold a live
   -- cross-tenant reference. client_id is nullable and MATCH SIMPLE skips the
   -- check when it is null, which is exactly right for internal work.
+  --
+  -- Same reasoning as projects_phase_fkey above: the column list on `set
+  -- null` is load-bearing, restricting the null-out to client_id so
+  -- organization_id (NOT NULL) is left untouched.
   constraint projects_client_fkey
     foreign key (client_id, organization_id)
-    references public.clients (id, organization_id) on delete set null,
+    references public.clients (id, organization_id) on delete set null (client_id),
 
   constraint projects_framework_fkey
     foreign key (framework_id, organization_id)

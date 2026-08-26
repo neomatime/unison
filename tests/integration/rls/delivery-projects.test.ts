@@ -75,6 +75,7 @@ test('a project cannot sit in a phase from a different framework', async () => {
     organization_id: orgA, name: 'Wrong phase', framework_id: frameworkA, phase_id: otherFrameworkPhase,
   })
   assert.ok(error, 'phase from another framework must be refused')
+  assert.match(error.message, /foreign key|violates/i)
 })
 
 test('progress outside 0-100 is refused', async () => {
@@ -99,4 +100,66 @@ test('a member cannot read another organization\'s projects', async () => {
   const client = await signedInClient(userA.email, userA.password)
   const { data } = await client.from('projects').select('id').eq('id', theirs.id)
   assert.deepEqual(data, [], 'org B project must be invisible')
+})
+
+// The following two tests use the admin (service-role) client to perform the
+// delete: clients and framework_phases carry no delete policy, so a
+// signed-in member cannot delete either -- only the service role can. That
+// makes these fixture-shaped rather than RLS-shaped tests, but they are the
+// only way to exercise projects_client_fkey / projects_phase_fkey's
+// on-delete behaviour at all.
+//
+// Both guard against the bug fixed in migration
+// 20260826111259_delivery_projects_set_null_columns.sql: a bare
+// `on delete set null` on a composite foreign key nulls every column in the
+// key, not just the one that pointed at the deleted row. Against the
+// original (uncorrected) constraints, the delete below would itself fail
+// with a not-null violation -- projects.organization_id / projects.framework_id
+// are NOT NULL -- rather than the project surviving with just the one column
+// nulled.
+
+test('deleting the referenced client nulls only client_id, leaving organization_id intact', async () => {
+  const { data: client, error: clientError } = await admin
+    .from('clients')
+    .insert({ organization_id: orgA, name: 'Org A Client For Deletion', status: 'Active', health: 'Healthy' })
+    .select('id').single()
+  if (clientError) throw clientError
+
+  const { data: project, error: projectError } = await admin
+    .from('projects')
+    .insert({ organization_id: orgA, name: 'Project With Client', framework_id: frameworkA, client_id: client.id })
+    .select('id').single()
+  if (projectError) throw projectError
+
+  const { error: deleteError } = await admin.from('clients').delete().eq('id', client.id)
+  assert.equal(deleteError, null, 'deleting the client must not fail with a not-null violation')
+
+  const { data: after, error: afterError } = await admin
+    .from('projects').select('client_id, organization_id').eq('id', project.id).single()
+  if (afterError) throw afterError
+  assert.equal(after.client_id, null, 'client_id must be nulled')
+  assert.equal(after.organization_id, orgA, 'organization_id must survive untouched')
+})
+
+test('deleting the referenced phase nulls only phase_id, leaving framework_id intact', async () => {
+  const { data: phase, error: phaseError } = await admin
+    .from('framework_phases')
+    .insert({ framework_id: frameworkA, organization_id: orgA, name: 'Discovery', position: 2 })
+    .select('id').single()
+  if (phaseError) throw phaseError
+
+  const { data: project, error: projectError } = await admin
+    .from('projects')
+    .insert({ organization_id: orgA, name: 'Project With Phase', framework_id: frameworkA, phase_id: phase.id })
+    .select('id').single()
+  if (projectError) throw projectError
+
+  const { error: deleteError } = await admin.from('framework_phases').delete().eq('id', phase.id)
+  assert.equal(deleteError, null, 'deleting the phase must not fail with a not-null violation')
+
+  const { data: after, error: afterError } = await admin
+    .from('projects').select('phase_id, framework_id').eq('id', project.id).single()
+  if (afterError) throw afterError
+  assert.equal(after.phase_id, null, 'phase_id must be nulled')
+  assert.equal(after.framework_id, frameworkA, 'framework_id must survive untouched')
 })
