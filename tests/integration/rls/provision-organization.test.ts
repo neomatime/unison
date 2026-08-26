@@ -109,3 +109,41 @@ test('the provisioned organization is invisible to an outsider', async () => {
   const { data } = await client.from('organizations').select('id').eq('id', provisioned[0])
   assert.deepEqual(data, [], 'a new tenant must not leak to other organizations')
 })
+
+test('reissue supersedes the pending invitation rather than duplicating it', async () => {
+  const client = await signedInClient(himarkAdmin.email, himarkAdmin.password)
+  const orgId = provisioned[0]
+
+  const { data: before } = await admin
+    .from('invitations').select('id, email, status')
+    .eq('organization_id', orgId).eq('status', 'pending')
+  assert.equal(before?.length, 1)
+  const email = before![0].email
+
+  const { error } = await client.rpc('reissue_invitation', {
+    p_organization_id: orgId,
+    p_email: email,
+    p_token_hash: '\\x' + randomUUID().replace(/-/g, '').repeat(2),
+    p_expires_at: new Date(Date.now() + 7 * 86_400_000).toISOString(),
+  })
+  assert.equal(error, null, 'the partial unique index must not reject the new row')
+
+  const { data: pendingAfter } = await admin
+    .from('invitations').select('id').eq('organization_id', orgId).eq('status', 'pending')
+  assert.equal(pendingAfter?.length, 1, 'exactly one invitation may be pending per address')
+
+  const { data: expired } = await admin
+    .from('invitations').select('id').eq('organization_id', orgId).eq('status', 'expired')
+  assert.equal(expired?.length, 1, 'the old one is expired, not deleted')
+})
+
+test('an outsider cannot reissue an invitation into a tenant', async () => {
+  const client = await signedInClient(outsider.email, outsider.password)
+  const { error } = await client.rpc('reissue_invitation', {
+    p_organization_id: provisioned[0],
+    p_email: 'someone@client.test',
+    p_token_hash: '\\x' + randomUUID().replace(/-/g, '').repeat(2),
+    p_expires_at: new Date(Date.now() + 7 * 86_400_000).toISOString(),
+  })
+  assert.ok(error, 'reissue must carry the same authorisation as provisioning')
+})
