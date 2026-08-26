@@ -212,3 +212,19 @@ not blocking, and none of them is reachable until the write path is wired.
 Also worth handling when the detail page becomes writable: its duplicate dialog
 and document-upload control still resolve to local success states, the same way
 the archive control does.
+
+## Provisioning collects more than it persists
+
+The wizard gathers initial users, departments, teams, delivery roles, and
+toggles for guest access, restricted projects, SSO-required and MFA-required.
+Only the organisation and its primary admin are saved. The toggles in
+particular describe enforcement that exists nowhere in the codebase — a tenant
+provisioned with "MFA Required" on is not enforcing anything.
+
+Either persist and enforce them, or remove them from the wizard so it stops
+implying a guarantee.
+
+The provisioning register at /internal/provisioning still lists mock drafts.
+Its rows carry tier, modules, go-live and a numeric progress bar, none of which
+exist now that provisioning creates an organisation directly. Either model a
+draft entity or retire that register in favour of /internal/organisations.

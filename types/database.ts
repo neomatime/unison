@@ -419,6 +419,17 @@ export type Database = {
         }[]
       }
       is_member_of: { Args: { org: string }; Returns: boolean }
+      list_provisioned_organizations: {
+        Args: never
+        Returns: {
+          admin_email: string
+          created_at: string
+          id: string
+          name: string
+          slug: string
+          status: string
+        }[]
+      }
       provision_organization: {
         Args: {
           p_admin_email: string
