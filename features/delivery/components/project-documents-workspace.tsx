@@ -5,12 +5,10 @@ import { useState } from 'react'
 
 import { RecordCollectionWorkspace, type CollectionRecord } from '@/features/product-ui/components/record-collection-workspace'
 
-const documents: CollectionRecord[] = [
-  { id:'doc-uat-plan',name:'UAT Test Plan.pdf',context:'Testing evidence',type:'PDF',classification:'Project Evidence',linked:'UAT Sign-off Gate',version:'v3.0',owner:'Naledi Maseko',status:'Current',size:'2.4 MB',updated:'Today' },
-  { id:'doc-requirements',name:'Requirements Baseline.xlsx',context:'Approved requirement set',type:'XLSX',classification:'Requirements',linked:'Requirement Baseline v2',version:'v2.1',owner:'Thabo Mokoena',status:'Approved',size:'1.8 MB',updated:'Yesterday' },
-  { id:'doc-popia',name:'POPIA Impact Assessment.docx',context:'Regulatory evidence',type:'DOCX',classification:'Compliance',linked:'POPIA Approval',version:'v1.4',owner:'Mia Daniels',status:'In Review',size:'860 KB',updated:'3 days ago' },
-  { id:'doc-design',name:'Solution Design.pdf',context:'Approved solution architecture',type:'PDF',classification:'Design Artefact',linked:'Design Authority',version:'v4.0',owner:'Lethabo Nkosi',status:'Current',size:'5.6 MB',updated:'7 days ago' },
-]
+// This workspace sits on a real project's detail page, and there is no
+// documents table behind it yet. Sample files would read as that project's own
+// controlled evidence, so it renders empty until documents are stored.
+const documents: CollectionRecord[] = []
 
 export function ProjectDocumentsWorkspace() {
   const [uploadOpen,setUploadOpen]=useState(false)
