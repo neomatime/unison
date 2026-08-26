@@ -9,6 +9,7 @@ let userA: { id: string; email: string; password: string }
 let frameworkA: string
 let phaseA: string
 let otherFrameworkPhase: string
+let frameworkB: string
 let clientB: string
 
 before(async () => {
@@ -38,6 +39,15 @@ before(async () => {
   if (otherPhaseError) throw otherPhaseError
   otherFrameworkPhase = otherPhase.id
 
+  // Org B's own framework. The cross-organisation write tests below use it so
+  // that the composite framework FK is satisfied and RLS is the only thing
+  // left to refuse the write -- otherwise those tests would still pass with
+  // the policies removed.
+  const { data: fwB, error: fwBError } = await admin
+    .from('frameworks').insert({ organization_id: orgB, name: 'B Write Framework' }).select('id').single()
+  if (fwBError) throw fwBError
+  frameworkB = fwB.id
+
   const { data: client, error: clientError } = await admin
     .from('clients')
     .insert({ organization_id: orgB, name: 'Org B Client', status: 'Active', health: 'Healthy' })
@@ -47,7 +57,10 @@ before(async () => {
 })
 
 after(async () => {
-  await cleanup([orgA, orgB], [userA.id])
+  // Guarded exactly as every other RLS file guards it: `after` runs even when
+  // `before` threw partway through setup, and an unguarded userA.id throws
+  // here instead of running cleanup(), leaking fixtures into a shared database.
+  await cleanup([orgA, orgB].filter(Boolean), [userA?.id].filter(Boolean))
 })
 
 test('a member can create a project in their own organization', async () => {
@@ -100,6 +113,80 @@ test('a member cannot read another organization\'s projects', async () => {
   const client = await signedInClient(userA.email, userA.password)
   const { data } = await client.from('projects').select('id').eq('id', theirs.id)
   assert.deepEqual(data, [], 'org B project must be invisible')
+})
+
+// projects is the only table on this branch with a user-facing write path, so
+// each of the three write verbs gets its own assertion. All three use org B's
+// own framework, so every foreign key on the row is satisfied and the policy
+// is the only thing that can refuse the statement: drop or loosen
+// projects_insert / projects_update, or add a delete policy, and exactly one
+// of these fails.
+
+test('a member cannot insert a project into another organization', async () => {
+  const client = await signedInClient(userA.email, userA.password)
+  const { error } = await client.from('projects').insert({
+    organization_id: orgB, name: 'Smuggled Into B', framework_id: frameworkB,
+  })
+  assert.ok(error, 'insert into another org must be refused by projects_insert')
+  assert.match(error.message, /row-level security|policy|permission/i)
+})
+
+test('a member cannot update another organization\'s project', async () => {
+  const { data: theirs, error: insertError } = await admin
+    .from('projects')
+    .insert({ organization_id: orgB, name: 'Org B Untouchable', framework_id: frameworkB })
+    .select('id').single()
+  if (insertError) throw insertError
+
+  const client = await signedInClient(userA.email, userA.password)
+  // projects_update's `using` clause hides the row, so PostgREST reports no
+  // error -- it matched nothing. The proof is that the row did not change.
+  await client.from('projects').update({ name: 'Hijacked' }).eq('id', theirs.id)
+
+  const { data: after, error: afterError } = await admin
+    .from('projects').select('name').eq('id', theirs.id).single()
+  if (afterError) throw afterError
+  assert.equal(after.name, 'Org B Untouchable', 'org B project must be unchanged')
+})
+
+test('a member cannot move their own project into another organization', async () => {
+  const { data: own, error: insertError } = await admin
+    .from('projects')
+    .insert({ organization_id: orgA, name: 'Stays In A', framework_id: frameworkA })
+    .select('id').single()
+  if (insertError) throw insertError
+
+  const client = await signedInClient(userA.email, userA.password)
+  // framework_id moves with the row so projects_framework_fkey still holds
+  // (both columns point at org B). Only projects_update's `with check` stands
+  // between this statement and a row that has left its tenant.
+  const { error } = await client
+    .from('projects')
+    .update({ organization_id: orgB, framework_id: frameworkB })
+    .eq('id', own.id)
+  assert.ok(error, 'moving a row into another org must be refused by the update policy\'s with check')
+
+  const { data: after, error: afterError } = await admin
+    .from('projects').select('organization_id').eq('id', own.id).single()
+  if (afterError) throw afterError
+  assert.equal(after.organization_id, orgA, 'the project must still belong to org A')
+})
+
+test('no delete policy exists, so projects cannot be deleted', async () => {
+  // The design argues deletion is "enforced by absence, not convention" --
+  // which is what makes archiveProjectAction the only way to retire a project.
+  // This is the assertion that keeps that true.
+  const { data: own, error: insertError } = await admin
+    .from('projects')
+    .insert({ organization_id: orgA, name: 'Deletable?', framework_id: frameworkA })
+    .select('id').single()
+  if (insertError) throw insertError
+
+  const client = await signedInClient(userA.email, userA.password)
+  await client.from('projects').delete().eq('id', own.id)
+
+  const { data: still } = await admin.from('projects').select('id').eq('id', own.id)
+  assert.equal(still?.length, 1, 'row must survive: no delete policy grants this')
 })
 
 // The following two tests use the admin (service-role) client to perform the

@@ -23,7 +23,10 @@ before(async () => {
 })
 
 after(async () => {
-  await cleanup([orgA, orgB], [userA.id])
+  // Guarded exactly as every other RLS file guards it: `after` runs even when
+  // `before` threw partway through setup, and an unguarded userA.id throws
+  // here instead of running cleanup(), leaking fixtures into a shared database.
+  await cleanup([orgA, orgB].filter(Boolean), [userA?.id].filter(Boolean))
 })
 
 test('a member cannot read another organization\'s frameworks', async () => {
