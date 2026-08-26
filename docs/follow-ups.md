@@ -193,3 +193,22 @@ Nothing in the UI writes to `public.projects`. Specifically, still to do:
   *after* the escape, so `\*` reaches Postgres as a literal `%`. The unbounded
   failure is closed (a search for `*` no longer matches every row); matching a
   literal asterisk needs an operator other than `ilike`.
+
+## Projects: three minors the review recorded but the fix wave did not log
+
+Surfaced by the final whole-branch review of `feat/delivery-projects`. Real but
+not blocking, and none of them is reachable until the write path is wired.
+
+- `projectInputSchema.notes` caps at 500 characters while `projects.notes` is an
+  unbounded `text` column. The schema is stricter than the database for no
+  stated reason; pick one and make them agree.
+- `dueDate` is validated only as "non-empty string" and passed straight to a
+  `date` column, so a malformed value becomes a Postgres error rather than a
+  field-level message.
+- `updateProjectAction` and `archiveProjectAction` do not call `.select()`, so
+  they cannot tell "updated one row" from "matched none". A wrong or
+  already-archived id reports success.
+
+Also worth handling when the detail page becomes writable: its duplicate dialog
+and document-upload control still resolve to local success states, the same way
+the archive control does.
