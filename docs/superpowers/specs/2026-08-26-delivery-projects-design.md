@@ -51,6 +51,13 @@ reassignment when someone is offboarded. The cost is accepted: an owner must be
 someone invited to the workspace. Free text was rejected because typos become
 permanent data, which is what `clients` already avoided.
 
+> **Corrected 2026-08-26.** "An owner must be someone invited to the workspace"
+> is not enforced anywhere — no composite key, no membership check, no RLS
+> predicate, no trigger. `owner_id` is the one foreign key on `projects` that is
+> not tenant-scoped. The column stays; accepting a value for it from user input
+> does not, until an org-scoped owner reference exists. See the withdrawal note
+> under Success criteria.
+
 **`status`, `health` and `progress` are stored and manually set**, matching the
 `clients` precedent rather than deriving them. Derivation can come later without
 changing the column.
@@ -193,7 +200,49 @@ Integration tests under `tests/integration/rls/`, following the existing ones:
 
 ## Success criteria
 
-`/operations/projects` reads from Postgres with search, filter, sort and
+> **Corrected 2026-08-26, after the whole-branch review.** As written, this
+> paragraph describes a slice with a working write path. What shipped is a
+> read-only register. The original text is kept below, struck through, rather
+> than edited away, so the claim and the outcome can be compared.
+
+~~`/operations/projects` reads from Postgres with search, filter, sort and
 pagination agreeing with the record count; a project can be created, edited and
 archived; the delivery mocks are no longer imported by any project route; RLS
-tests pass; `tsc` and the full suite are green.
+tests pass; `tsc` and the full suite are green.~~
+
+**As delivered.** `/operations/projects` reads real rows from Postgres through
+`listProjects`, and `/operations/projects/[projectId]` renders the record it
+names through `getProject`, 404ing when the id does not resolve inside the
+caller's organisation. Every field the database does not hold renders as `—`.
+The schema — composite tenant-scoped foreign keys, RLS on all three tables, no
+delete policy, audit and `updated_at` triggers, the frameworks seed — is
+complete and covered by `tests/integration/rls/`. `tsc`, `pnpm test`,
+`pnpm build` and `pnpm test:rls` are green.
+
+**Not delivered, and deferred to the next slice.** No project can be created,
+edited or archived through the UI. `createProjectAction`, `updateProjectAction`
+and `archiveProjectAction` are written, and the policies they depend on
+(`projects_insert`, `projects_update`, and the absence of a delete policy) are
+asserted in `tests/integration/rls/delivery-projects.test.ts` — but no form
+calls them. The create and edit routes still render a local-state wizard, and
+the register's own create/edit/archive controls still mutate a `useState` array.
+Server-side search, filter, sort and pagination exist in `listProjects` but are
+unreachable: nothing in the UI sets the query string, so the register's own
+controls operate on the first page of results only, and its footer count is
+that slice rather than the true total.
+
+Two consequences worth stating plainly, because they are the shape of a
+read-only slice and not defects to be fixed piecemeal: the "New Project"
+wizard reports success and writes nothing, and the metric cards above the
+register are still fixed mock figures that will contradict an empty or small
+register until they are connected.
+
+**The `owner_id` claim is withdrawn for now.** This document asserted that "an
+owner must be someone invited to the workspace". Nothing enforced it —
+`projects.owner_id` references `auth.users(id)` with no tenant-scoped composite
+key, no membership check and no RLS predicate behind it. Rather than ship a
+user-controlled write to an un-tenant-scoped foreign key that nothing reads
+back, `ownerId` was removed from `projectInputSchema` and from both actions.
+The column stays in the schema. Reinstate the input only together with an
+org-scoped owner reference — a membership check, or a composite key through
+`memberships` — which is what would make the original claim true.

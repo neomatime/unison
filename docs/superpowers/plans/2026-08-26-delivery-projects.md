@@ -1046,8 +1046,51 @@ git commit -m "feat(delivery): read projects from the database"
 
 ## Done when
 
-- `/operations/projects` reads from Postgres; search, filter, sort and pagination agree with the record count
-- a project can be created, edited and archived through the UI
-- no project route imports `features/delivery/data.ts`
-- `pnpm test:rls` passes, including the cross-tenant `client_id` and wrong-framework phase rejections
-- `npx tsc --noEmit`, `pnpm test` and `pnpm build` are all green
+> **Corrected 2026-08-26, after the whole-branch review.** The criteria below
+> were written for a slice that included the write path. This plan's own tasks
+> never wired one: no task asks any form to call a server action, so the branch
+> could satisfy every step and still not do what these criteria claim. The
+> original wording is kept verbatim, with each line marked, so the difference
+> between what was claimed and what shipped stays visible.
+
+- **True.** `/operations/projects` reads from Postgres
+- **Not delivered.** ~~search, filter, sort and pagination agree with the record count~~ —
+  `listProjects` implements all four server-side, but nothing drives them: the
+  page discards `total`, `page` and `pageSize`, and `RecordCollectionWorkspace`
+  searches, filters and pages in local state over the 25 rows it was handed.
+  No URL can set `?q=`. Rows past the first page of the server query are
+  unreachable from the UI (finding F5)
+- **Not delivered.** ~~a project can be created, edited and archived through the UI~~ —
+  `createProjectAction`, `updateProjectAction` and `archiveProjectAction` exist
+  and their policies are covered by `tests/integration/rls/delivery-projects.test.ts`,
+  but no form calls any of them. `/operations/projects/new` and
+  `/operations/projects/[projectId]/edit` render a wizard whose submit handler
+  sets local state, and the register's own create/edit/archive controls call
+  `setRecords`. Nothing in the UI writes to `public.projects` (findings F2, F8)
+- **Partly true.** ~~no project route imports `features/delivery/data.ts`~~ — the
+  three route files do not, and neither does the register or the detail screen
+  any more. `features/delivery/components/project-form.tsx`, which the `new`
+  and `edit` routes render, still imports the mock `frameworks` array to
+  populate its framework picker
+- **True.** `pnpm test:rls` passes, including the cross-tenant `client_id` and wrong-framework phase rejections
+- **True.** `npx tsc --noEmit`, `pnpm test` and `pnpm build` are all green
+
+### What this branch actually delivers
+
+A **read-only projects register**, plus the whole database half of the slice:
+
+- `public.frameworks`, `public.framework_phases` and `public.projects`, with
+  composite tenant-scoped foreign keys, RLS on all three, no delete policy,
+  audit and `updated_at` triggers, and the frameworks seed
+- `listProjects` and `getProject`, both org-scoped
+- `/operations/projects` rendering real rows, and
+  `/operations/projects/[projectId]` rendering the real record it names, 404ing
+  when the id does not resolve in the caller's organisation
+- three server actions that are written and whose database-level behaviour is
+  tested, waiting on a caller
+
+**Next slice:** wire the write path — replace the wizard with a form that posts
+to `createProjectAction` / `updateProjectAction`, point the detail page's
+archive at `archiveProjectAction`, drive the register from the URL so the
+server-side search and pagination are reachable, and stop the register mutating
+records in local state.

@@ -132,3 +132,64 @@ Fifteen of the sixteen product modules still render mock fixtures.
 organizations that existed when it ran. Provisioning a new tenant must create
 that organization's frameworks and phases, or the first thing a new customer
 meets at /operations/projects/new is a form they cannot submit.
+
+## Projects shipped read-only; the write path is the next slice
+
+`feat/delivery-projects` delivers a **read-only** projects register. Both routes
+read real rows — `/operations/projects` through `listProjects`, and
+`/operations/projects/[projectId]` through `getProject`, which 404s when the id
+does not resolve inside the caller's organisation. The schema half is complete:
+composite tenant-scoped foreign keys, RLS on all three tables, no delete policy,
+audit and `updated_at` triggers, the frameworks seed, and RLS tests covering
+cross-organisation select, insert and update plus the absence of a delete.
+
+Nothing in the UI writes to `public.projects`. Specifically, still to do:
+
+- **Wire the three server actions.** `createProjectAction`, `updateProjectAction`
+  and `archiveProjectAction` are written, and the policies they depend on are
+  tested at the database level, but they have no callers.
+  `/operations/projects/new` and `/operations/projects/[projectId]/edit` render
+  a four-step wizard whose submit handler sets local state, has no `name`
+  attributes on its fields, and shows a "Project created" panel having written
+  nothing. `features/delivery/components/project-form.tsx` also still populates
+  its framework picker from the mock `frameworks` array in
+  `features/delivery/data.ts`, not from `public.frameworks`.
+- **Stop the register mutating records in local state.**
+  `RecordCollectionWorkspace` seeds `useState(config.records)` and its archive,
+  duplicate, restore and create/edit panel all call `setRecords`. Pointed at
+  real rows, an archive appears to succeed and is gone on the next page load.
+  Its Status field also offers `Planning`, `On Track` and `At Risk`, none of
+  which the zod enum or `projects_status_check` accepts.
+- **Drive the register from the URL.** `listProjects` implements search, filter,
+  sort and pagination server-side; the page discards `total`, `page` and
+  `pageSize`, and nothing in the app can set `?q=`. The footer count is
+  therefore the current slice, not the true total, and rows past the first page
+  of the server query are unreachable. Follow the clients precedent
+  (`ModuleWorkspace` + `useRouter` + a `<form name="q">`).
+- **Reinstate an owner, org-scoped.** `ownerId` was removed from
+  `projectInputSchema` and both actions: `projects.owner_id` references
+  `auth.users(id)` with nothing tenant-scoping it, so a crafted submit could
+  write a live cross-tenant user reference that RLS hides today and the planned
+  "my projects" query would read tomorrow. The column remains. Reinstate the
+  input alongside a membership check or a composite key through `memberships`.
+- **Connect or hide the metric cards.** `/operations/projects` renders six fixed
+  figures ("Active Projects 36", "At Risk 7") above a register that reads the
+  real table, and three summary panels below it. Leaving them mock was
+  deliberate — zeros would state something false — but against a real, empty
+  table they contradict the data directly beneath them.
+- **Give the route its boundaries.** `app/(unison)/operations/clients/` has both
+  `error.tsx` and `loading.tsx`; `app/(unison)/operations/projects/` has
+  neither, so a transient database error escalates to the root full-page
+  fallback and the route streams with no skeleton.
+- **`archived_at` on frameworks is never filtered.** An archived framework's
+  name still renders in the register through the embed.
+- **`pnpm test:rls` is flaky under parallel execution.** Runs intermittently fail
+  with `PGRST303: JWT issued at future` — Supabase-side `iat` skew, not a
+  machine clock problem, and unrelated to this branch. Re-running a file on its
+  own passes. Both new RLS files now carry the `.filter(Boolean)` cleanup guard
+  that the other six have, so a transient failure no longer leaks fixtures.
+- **A literal `*` cannot be searched for.** `escapeLikePattern` escapes `\`, `%`,
+  `_` and `*`, but PostgREST rewrites `*` to `%` inside a like/ilike value
+  *after* the escape, so `\*` reaches Postgres as a literal `%`. The unbounded
+  failure is closed (a search for `*` no longer matches every row); matching a
+  literal asterisk needs an operator other than `ilike`.
