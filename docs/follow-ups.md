@@ -228,3 +228,55 @@ The provisioning register at /internal/provisioning still lists mock drafts.
 Its rows carry tier, modules, go-live and a numeric progress bar, none of which
 exist now that provisioning creates an organisation directly. Either model a
 draft entity or retire that register in favour of /internal/organisations.
+
+## Provisioning: two Important items found after merge
+
+From the post-merge review of the client-tenant-provisioning work. Neither is
+exploitable while HIMARK has a single member; both become real the moment a
+second HIMARK owner or admin exists.
+
+**1. `provision_organization` still accepts a caller-chosen token hash.**
+
+The intended path already withholds the token: `provisionOrganizationAction`
+generates it server-side and returns only `{ organizationId }`, so an operator
+driving the wizard never sees it. The `authenticated` grant is what reopens the
+hole, by letting the same operator skip the action and call the RPC directly
+with a `p_token_hash` of their choosing.
+
+The attack is not "an operator can enter a tenant they created" — that is
+ordinary operator authority. It is that they can provision with
+`p_admin_email` set to an address they do not control, then open the invitation
+signed out: `createInvitedAccount` mints a **pre-confirmed, platform-wide auth
+identity** for that address with a password they choose. The organisation is a
+decoy; the account is the prize, and the real owner of that address can never
+register under it afterwards. That breaks the invariant
+`create-invited-account.ts` rests on — that presenting the token proves control
+of the address — for every address, not just within one tenant.
+
+`send-invitation.ts` never lets an inviter choose a token. Neither should this.
+
+Bounded fix: revoke `execute` from `authenticated`, add an explicit actor
+parameter, and call it from the action with the service role. Note this
+collides with the `service-role-boundary` test, which currently forbids
+`lib/supabase/admin.ts` in a request path — that rule needs revisiting, or a
+different mechanism, and the decision should be deliberate rather than
+incidental.
+
+**2. `Edit Internal Metadata` in the Organisations register discards input.**
+
+It opens a drawer over a real tenant's fields with a "Save Metadata" button
+whose only handler is `onClose`. Typed changes vanish with no signal, and the
+drawer closing reads as confirmation. This is worse than the Suspend/Archive
+theatre removed in the same wave: that flipped a badge which reverted on
+refresh, so the lie was visible.
+
+Remove the action until it has a backing mutation, and pin its absence.
+
+**Smaller, same review:** `ui-completeness.test.ts` now matches `/Suspend/`
+against a comment rather than TenantsScreen's markup, so the tripwire would
+survive deleting the thing it guards; service-role reissue writes
+`invited_by` and `actor_id` as null, leaving the only supported recovery path
+unattributable; the review step still promises UNISON "will enable all modules
+included in the selected tier" above a checklist ticking "Team configured" over
+zero users; and `sessionFor` in the RLS helpers caches rejected promises, so one
+rate-limit cascades into every later test for that user.
