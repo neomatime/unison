@@ -3,6 +3,9 @@ import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import test from 'node:test'
 
+import { modules as moduleDefinitions } from '../../config/modules.ts'
+import { lockedModuleIds } from '../../config/unison-tiers.ts'
+
 const workspace = process.cwd()
 const unisonRoot = join(workspace, 'app', '(unison)')
 const internalRoot = join(workspace, 'app', '(internal)', 'internal')
@@ -323,4 +326,25 @@ test('global fallback and loading screens exist', () => {
     join(workspace, 'app', '(onboarding)', 'loading.tsx'),
     join(workspace, 'components', 'shared', 'navigation-loading.tsx'),
   ]) assert.ok(existsSync(file), `${file} is missing`)
+})
+
+test('every module a tier can withhold is guarded by its own layout', () => {
+  // The failure mode is forgetting a guard on a new module, which fails open —
+  // the module would simply be reachable on every tier. Locked modules need no
+  // guard: no tier can withhold Delivery or Team.
+  const gated = moduleDefinitions
+    .filter((module) => !(lockedModuleIds as readonly string[]).includes(module.id))
+    .map((module) => ({ id: module.id, dir: join(unisonRoot, module.route.replace(/^\//, '')) }))
+
+  assert.equal(gated.length, 8, 'expected exactly the Operations, Commercial and Finance modules')
+
+  for (const { id, dir } of gated) {
+    const layout = join(dir, 'layout.tsx')
+    assert.ok(existsSync(layout), `${id} has no guard layout at ${layout}`)
+    assert.match(
+      readFileSync(layout, 'utf8'),
+      new RegExp(`moduleId="${id}"`),
+      `${id}'s layout must gate on its own module id`,
+    )
+  }
 })
