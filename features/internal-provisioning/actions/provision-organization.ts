@@ -18,6 +18,7 @@ export async function provisionOrganizationAction(
     name: formData.get('name'),
     adminEmail: formData.get('adminEmail'),
     slug: formData.get('slug') ?? undefined,
+    tier: formData.get('tier') ?? undefined,
   })
   if (!parsed.success) return { error: parsed.error.issues[0].message }
 
@@ -37,6 +38,7 @@ export async function provisionOrganizationAction(
     p_admin_email: parsed.data.adminEmail,
     p_token_hash: tokenHash,
     p_expires_at: expiresAt,
+    p_tier: parsed.data.tier,
   })
 
   if (error) {

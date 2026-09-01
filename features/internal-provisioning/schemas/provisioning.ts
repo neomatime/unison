@@ -17,6 +17,7 @@ export const provisioningInputSchema = z
     name: z.string().trim().min(1, 'Organisation name is required.').max(200),
     adminEmail: z.string().trim().email('Enter a valid administrator email address.'),
     slug: z.string().optional(),
+    tier: z.enum(['core', 'framework', 'enterprise', 'strategic-enterprise']).default('core'),
   })
   .transform((value) => ({
     ...value,

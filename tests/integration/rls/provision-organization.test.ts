@@ -393,3 +393,37 @@ for (const [label, offsetMs] of [['in the past', -86_400_000], ['more than 30 da
     assert.equal(after![0].email, pending![0].email)
   })
 }
+
+test('an organization provisioned without a tier is core', async () => {
+  // The column defaults to the smallest entitlement so a mistake withholds
+  // access rather than granting it.
+  const client = await signedInClient(himarkAdmin.email, himarkAdmin.password)
+  const { data: orgId, error } = await client.rpc('provision_organization', args('RLS Tier Default'))
+  assert.equal(error, null)
+  provisioned.push(orgId as string)
+
+  const { data } = await admin.from('organizations').select('tier').eq('id', orgId).single()
+  assert.equal(data?.tier, 'core')
+})
+
+test('an explicit tier is stored', async () => {
+  const client = await signedInClient(himarkAdmin.email, himarkAdmin.password)
+  const { data: orgId, error } = await client.rpc('provision_organization', {
+    ...args('RLS Tier Enterprise'),
+    p_tier: 'enterprise',
+  })
+  assert.equal(error, null)
+  provisioned.push(orgId as string)
+
+  const { data } = await admin.from('organizations').select('tier').eq('id', orgId).single()
+  assert.equal(data?.tier, 'enterprise')
+})
+
+test('an unknown tier is refused', async () => {
+  const client = await signedInClient(himarkAdmin.email, himarkAdmin.password)
+  const { error } = await client.rpc('provision_organization', {
+    ...args('RLS Tier Bogus'),
+    p_tier: 'platinum',
+  })
+  assert.ok(error, 'an unrecognised tier must not create an organization')
+})
