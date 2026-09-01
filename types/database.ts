@@ -439,6 +439,7 @@ export type Database = {
       }
       provision_organization: {
         Args: {
+          p_actor_id: string
           p_admin_email: string
           p_expires_at: string
           p_name: string

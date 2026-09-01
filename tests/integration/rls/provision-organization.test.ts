@@ -64,13 +64,24 @@ function args(name: string) {
     p_admin_email: `admin-${randomUUID()}@client.test`,
     p_token_hash: '\\x' + randomUUID().replace(/-/g, '').repeat(2),
     p_expires_at: new Date(Date.now() + 7 * 86_400_000).toISOString(),
+    p_actor_id: himarkAdmin.id,
   }
 }
 
-test('a HIMARK admin provisions an organization with frameworks and an owner invitation', async () => {
+test('a signed-in HIMARK admin cannot call provision_organization at all', async () => {
+  // The grant pin, and the whole point of this change. Before it, this call
+  // succeeded with a caller-chosen p_token_hash and a p_admin_email the caller
+  // did not control, which made it a platform-wide account takeover via the
+  // pre-confirmed signed-out invited-signup path.
   const client = await sessionFor(himarkAdmin)
+  const { error } = await client.rpc('provision_organization', args('RLS Provision Denied'))
+  assert.ok(error, 'provisioning must be unreachable from an authenticated session')
+  assert.match(error!.message, /permission denied for function provision_organization/i)
+})
+
+test('a HIMARK admin provisions an organization with frameworks and an owner invitation', async () => {
   const payload = args('RLS Provision Alpha')
-  const { data: orgId, error } = await client.rpc('provision_organization', payload)
+  const { data: orgId, error } = await admin.rpc('provision_organization', payload)
   assert.equal(error, null)
   assert.ok(orgId)
   provisioned.push(orgId as string)
@@ -97,16 +108,26 @@ test('a HIMARK admin provisions an organization with frameworks and an owner inv
   assert.equal(invites![0].role_id, 'owner')
   assert.equal(invites![0].status, 'pending')
   assert.equal(invites![0].email, payload.p_admin_email.toLowerCase())
-
-  // The token is the only way into a tenant that starts with zero
-  // memberships -- Task 3 depends on it round-tripping byte-for-byte, not
-  // just being present.
   assert.equal(invites![0].token_hash, payload.p_token_hash)
   assert.equal(
     new Date(invites![0].expires_at as string).getTime(),
     new Date(payload.p_expires_at).getTime(),
   )
+
+  // Attribution is now the parameter, not auth.uid(). Under the service role
+  // auth.uid() is null, so without p_actor_id every provisioned tenant would
+  // record that an owner invitation was minted and not by whom.
   assert.equal(invites![0].invited_by, himarkAdmin.id)
+})
+
+test('the provisioning audit rows name the actor', async () => {
+  const { data: events } = await admin
+    .from('audit_events').select('resource, actor_id')
+    .eq('organization_id', provisioned[0]).in('resource', ['organizations', 'invitations'])
+  assert.equal(events?.length, 2, 'the organisation and its owner invitation are both recorded')
+  for (const event of events!) {
+    assert.equal(event.actor_id, himarkAdmin.id, `${event.resource} must be attributable`)
+  }
 })
 
 test('the provisioned organization carries no email_domain', async () => {
@@ -117,16 +138,31 @@ test('the provisioned organization carries no email_domain', async () => {
   assert.equal(data?.email_domain, null)
 })
 
-test('a HIMARK member who is not owner or admin is refused', async () => {
-  const client = await sessionFor(himarkMember)
-  const { error } = await client.rpc('provision_organization', args('RLS Provision Member'))
+test('a null actor is refused', async () => {
+  const payload = { ...args('RLS Provision No Actor'), p_actor_id: null }
+  const { data, error } = await admin.rpc('provision_organization', payload)
+  assert.ok(error, 'an unattributable provision must not create a tenant')
+  assert.equal(error!.code, '22023')
+  assert.equal(data, null)
+
+  const { data: orphan } = await admin
+    .from('organizations').select('id').eq('slug', payload.p_slug)
+  assert.deepEqual(orphan, [], 'the rejection must roll back the organisation too')
+})
+
+test('a HIMARK member who is not owner or admin is refused, even through the service role', async () => {
+  // Before this change service_role skipped the authorisation check entirely.
+  // Once service_role is the ONLY caller, that bypass would have meant no
+  // check at all, so it was removed in the same migration.
+  const payload = { ...args('RLS Provision Member'), p_actor_id: himarkMember.id }
+  const { error } = await admin.rpc('provision_organization', payload)
   assert.ok(error, 'a plain member must not be able to create tenants')
   assert.match(error.message, /HIMARK administrator/i)
 })
 
-test('an owner of another organization is refused', async () => {
-  const client = await sessionFor(outsider)
-  const { error } = await client.rpc('provision_organization', args('RLS Provision Outsider'))
+test('an owner of another organization is refused, even through the service role', async () => {
+  const payload = { ...args('RLS Provision Outsider'), p_actor_id: outsider.id }
+  const { error } = await admin.rpc('provision_organization', payload)
   assert.ok(error, 'owning some organization must not confer provisioning rights')
   assert.match(error!.message, /HIMARK administrator/i)
 })
@@ -359,9 +395,8 @@ test('reissue refuses an address that was never invited', async () => {
 
 for (const [label, offsetMs] of [['in the past', -86_400_000], ['more than 30 days ahead', 31 * 86_400_000]] as const) {
   test(`provision_organization refuses an expiry ${label}`, async () => {
-    const client = await sessionFor(himarkAdmin)
     const payload = { ...args('RLS Provision Expiry'), p_expires_at: new Date(Date.now() + offsetMs).toISOString() }
-    const { data, error } = await client.rpc('provision_organization', payload)
+    const { data, error } = await admin.rpc('provision_organization', payload)
     assert.ok(error, 'a malformed expiry must not produce a tenant')
     assert.equal(error!.code, '22023')
     assert.equal(data, null)
@@ -397,8 +432,7 @@ for (const [label, offsetMs] of [['in the past', -86_400_000], ['more than 30 da
 test('an organization provisioned without a tier is core', async () => {
   // The column defaults to the smallest entitlement so a mistake withholds
   // access rather than granting it.
-  const client = await sessionFor(himarkAdmin)
-  const { data: orgId, error } = await client.rpc('provision_organization', args('RLS Tier Default'))
+  const { data: orgId, error } = await admin.rpc('provision_organization', args('RLS Tier Default'))
   assert.equal(error, null)
   provisioned.push(orgId as string)
 
@@ -407,8 +441,7 @@ test('an organization provisioned without a tier is core', async () => {
 })
 
 test('an explicit tier is stored', async () => {
-  const client = await sessionFor(himarkAdmin)
-  const { data: orgId, error } = await client.rpc('provision_organization', {
+  const { data: orgId, error } = await admin.rpc('provision_organization', {
     ...args('RLS Tier Enterprise'),
     p_tier: 'enterprise',
   })
@@ -420,9 +453,8 @@ test('an explicit tier is stored', async () => {
 })
 
 test('an unknown tier is refused', async () => {
-  const client = await sessionFor(himarkAdmin)
   const payload = { ...args('RLS Tier Bogus'), p_tier: 'platinum' }
-  const { data, error } = await client.rpc('provision_organization', payload)
+  const { data, error } = await admin.rpc('provision_organization', payload)
   // Pinned to the in-function guard's own message, not just any error --
   // the column's check constraint would refuse 'platinum' too, but only the
   // in-function check names p_tier as the fault. If that guard were ever

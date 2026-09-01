@@ -2,7 +2,7 @@
 import { createHash, randomBytes } from 'node:crypto'
 import { revalidatePath } from 'next/cache'
 import { readAppUrl } from '@/lib/env'
-import { createServerSupabase } from '@/lib/supabase/server'
+import { createAdminSupabase } from '@/lib/supabase/admin'
 import { sendEmail } from '@/lib/email/send-email'
 import { invitationTemplate } from '@/lib/email/templates/invitation'
 import { getSessionContext } from '@/lib/auth/get-session-context'
@@ -28,16 +28,26 @@ export async function provisionOrganizationAction(
   const tokenHash = '\\x' + createHash('sha256').update(rawToken).digest('hex')
   const expiresAt = new Date(Date.now() + EXPIRY_DAYS * 86_400_000).toISOString()
 
-  const supabase = await createServerSupabase()
+  // Resolved before the call, not after: the function now requires a named
+  // actor, and it comes from the session rather than from formData so a
+  // crafted submit cannot choose who the audit trail blames.
+  const { user } = await getSessionContext()
 
-  // Called through the caller's own session, not the service key, so the
-  // function's own authorisation check is the real gate.
+  // The service role, deliberately. provision_organization is service-role only
+  // as of migration 20260901150000_provision_organization_actor: an authenticated
+  // caller could otherwise skip this action and choose their own p_token_hash. The
+  // authorisation is not lost, it moved into the function, which checks
+  // has_role_for against p_actor_id on every call. See
+  // tests/unit/service-role-boundary.test.ts for why this import is allowed.
+  const supabase = createAdminSupabase()
+
   const { data: organizationId, error } = await supabase.rpc('provision_organization', {
     p_name: parsed.data.name,
     p_slug: parsed.data.slug,
     p_admin_email: parsed.data.adminEmail,
     p_token_hash: tokenHash,
     p_expires_at: expiresAt,
+    p_actor_id: user.id,
     p_tier: parsed.data.tier,
   })
 
@@ -48,7 +58,6 @@ export async function provisionOrganizationAction(
   }
 
   const appUrl = readAppUrl(process.env)
-  const { user } = await getSessionContext()
 
   // The transaction has already committed. If the mail fails, the tenant exists
   // and the raw token is gone with this request — say so plainly rather than
