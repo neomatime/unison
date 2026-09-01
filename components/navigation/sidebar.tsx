@@ -8,6 +8,7 @@ import { useState } from 'react'
 import { cn, getInitials } from '@/lib/utils'
 import { useShellContext } from '@/components/layout/shell-context'
 import { useNavigationSections } from '@/components/layout/navigation-context'
+import { moduleIcons } from '@/config/navigation'
 import { InitialAvatar } from '@/components/ui/initial-avatar'
 import { roles } from '@/config/roles'
 import { signOutAction } from '@/features/auth-ui/actions/sign-out'
@@ -51,6 +52,10 @@ export function Sidebar() {
             )}
             <ul className="flex flex-col gap-0.5">
               {section.items.map((item) => {
+                // Resolved here rather than carried on the item: the sections
+                // come from a Server Component and an icon is a function, which
+                // cannot cross the RSC boundary.
+                const Icon = moduleIcons[item.id]
                 const isActive = item.route === '/overview'
                   ? pathname === '/' || pathname === '/overview'
                   : pathname.startsWith(item.route)
@@ -67,7 +72,7 @@ export function Sidebar() {
                         : 'text-sidebar-foreground hover:bg-sidebar-active/60 hover:text-sidebar-active-foreground',
                     )}
                   >
-                    <item.icon className="size-[1.125rem] shrink-0" strokeWidth={1.75} />
+                    <Icon className="size-[1.125rem] shrink-0" strokeWidth={1.75} />
                     <span className={cn(collapsed && 'sr-only')}>{item.label}</span>
                   </Link>
                 </li>
