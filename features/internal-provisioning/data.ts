@@ -26,13 +26,21 @@ export const frameworkTemplates = [
 // it stays pre-filled. validateCurrent() already rejects these three when
 // blank, which is what forces the operator to name a real target rather than
 // provisioning whatever the demo data happened to say.
+//
+// selectedTier belongs to the first group too, and must stay the smallest tier.
+// The wizard now sends it on every submit, so the fail-safe defaults behind it
+// (the organizations.tier column default and the action's zod .default('core'))
+// are unreachable from this path -- whatever sits here is what an operator who
+// clicks through the Tier stage without choosing provisions. Starting at 'core'
+// keeps the property the tier column was added for: a slip withholds access
+// instead of granting it.
 export const initialProvisioningState: ProvisioningWizardState = {
   id: 'growthpoint-setup',
   organisation: {
     name: '', tradingName: 'Growthpoint', code: 'GROWT-001', industry: 'Real Estate', size: '1,000–4,999', country: 'South Africa', timeZone: 'Africa/Johannesburg', businessUnit: 'Business Transformation', contactName: 'Sarah Johnson', contactEmail: 'sarah.johnson@growthpoint.co.za', contactRole: 'Business Transformation Lead', implementationOwner: 'Neo Morake', goLive: '2026-10-12', logoName: '', notes: '', tags: 'Enterprise, Property',
   },
-  selectedTier: 'enterprise',
-  activeModules: getEntitledModuleIds('enterprise'),
+  selectedTier: 'core',
+  activeModules: getEntitledModuleIds('core'),
   delivery: {
     frameworks: ['Business / Technology Change', 'Automation Implementation'], primaryFramework: 'Business / Technology Change', projectVisibility: 'Organisation', healthCalculation: 'Weighted controls', evidenceAtGates: true, gateLocking: true, mandatoryBusinessCase: true, durationUnit: 'Working days', businessUnits: 'Business Transformation, Property Operations', departments: 'Delivery, Operations, Commercial, Finance', teams: 'Business Solutions, Transformation Office', vendorCadence: 'Quarterly', expiryWarning: '90 days', complianceReview: true, clientCodeFormat: 'CL-{0000}', accountOwner: 'Organisation Admin', onboardingTemplate: 'Standard Client Onboarding', onboardingOwner: 'Client Operations Lead', leadOwner: 'Commercial Lead', quoteValidity: '30 days', salesPipeline: 'Enterprise Sales', currency: 'ZAR', invoiceTerms: '30 days', forecastPeriod: 'Monthly',
   },

@@ -13,8 +13,10 @@ export function ModuleNotAvailable({ moduleId, tier }: { moduleId: UnisonModuleI
   const current = getTier(tier)
   const upgrade = lowestTierIncluding(moduleId)
 
+  // A plain wrapper, not <main>: this renders inside AppShell's <main>, and
+  // nesting one inside the other is invalid HTML and a second landmark.
   return (
-    <main className="flex min-h-[60vh] items-center justify-center px-6">
+    <div className="flex min-h-[60vh] items-center justify-center px-6">
       <section className="max-w-md rounded-xl border border-border bg-card p-8 text-center shadow-sm">
         <p className="text-xs font-semibold tracking-[0.09em] text-muted-foreground uppercase">Not included</p>
         <h1 className="mt-2 text-2xl font-semibold text-foreground">
@@ -34,6 +36,6 @@ export function ModuleNotAvailable({ moduleId, tier }: { moduleId: UnisonModuleI
           Back to Overview
         </Link>
       </section>
-    </main>
+    </div>
   )
 }

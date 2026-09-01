@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import test from 'node:test'
 
 import { modules as moduleDefinitions } from '../../config/modules.ts'
-import { lockedModuleIds } from '../../config/unison-tiers.ts'
+import { lockedModuleIds, unisonTiers } from '../../config/unison-tiers.ts'
 
 const workspace = process.cwd()
 const unisonRoot = join(workspace, 'app', '(unison)')
@@ -232,8 +232,14 @@ test('client provisioning wizard includes every designed stage and provisions fo
   assert.match(wizard, /provisionOrganizationAction\(undefined, formData\)/)
   for (const outcome of [/result\.error/, /result\.emailFailed/, /setScreen\('success'\)/]) assert.match(wizard, outcome)
   assert.match(wizard, /reissue_invitation/, 'an email failure must name its recovery')
-  // Nothing the database does not hold may be reported back as achieved.
+  // Nothing the database does not hold may be reported back as achieved, and
+  // nothing it does hold may be reported as unconfigured. Modules and go-live
+  // are still stored nowhere; tier is stored, so the success screen must show
+  // the tier the tenant was actually provisioned on.
   assert.match(wizard, /const NOT_PERSISTED = 'Not yet configured'/)
+  assert.match(wizard, /\['Tier', getTier\(wizard\.selectedTier\)\.label\]/, 'the success screen must show the provisioned tier')
+  assert.doesNotMatch(wizard, /\['Tier', NOT_PERSISTED\]/, 'tier is stored, so it may not be reported as unconfigured')
+  assert.doesNotMatch(wizard, /Tier, modules and go-live were collected by this wizard but are not stored/, 'the success paragraph must not deny that tier was stored')
   // Submit sends a real invitation email to whatever these two fields hold, so
   // the wizard must not arrive pre-loaded with a plausible provisioning target.
   assert.match(data, /organisation: \{\s+name: '',/, 'the organisation name must start empty')
@@ -250,6 +256,22 @@ test('the selected tier reaches the database, not just the wizard state', () => 
   // in an error to say so.
   const wizard = readFileSync(join(workspace, 'features', 'internal-provisioning', 'components', 'provisioning-wizard.tsx'), 'utf8')
   assert.match(wizard, /formData\.set\('tier', wizard\.selectedTier\)/, 'the selected tier must be sent to provisionOrganizationAction')
+})
+
+test('an operator who never chooses a tier provisions the smallest entitlement', () => {
+  // Because the wizard always sends wizard.selectedTier, the two fail-safe
+  // defaults behind it -- organizations.tier's `default 'core'` and the
+  // action's zod `.default('core')` -- are unreachable from the only production
+  // path that creates an organisation. Whatever data.ts pre-selects is what an
+  // operator provisions if they click through the Tier stage without touching
+  // it, and validateCurrent() does not force a choice. Pinning it to the
+  // smallest tier keeps a slip withholding access rather than granting it, and
+  // stops a future edit to these demo defaults silently re-granting the largest
+  // tier. unisonTiers is ordered smallest to largest.
+  const smallest = unisonTiers[0].id
+  const data = readFileSync(join(workspace, 'features', 'internal-provisioning', 'data.ts'), 'utf8')
+  assert.match(data, new RegExp(`selectedTier: '${smallest}',`), `the wizard must start on ${smallest}, the smallest entitlement`)
+  assert.match(data, new RegExp(`activeModules: getEntitledModuleIds\\('${smallest}'\\),`), 'the pre-activated modules must match the pre-selected tier')
 })
 
 test('the organisations register reports only what the database holds', () => {

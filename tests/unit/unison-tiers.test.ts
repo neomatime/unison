@@ -13,10 +13,17 @@ test('Framework adds Operations to Core', () => {
   assert.deepEqual(getEntitledModuleIds('framework'), [...deliveryAndTeam, 'clients', 'onboarding'])
 })
 
-test('Enterprise and Strategic Enterprise include the full current product', () => {
-  const enterprise = getEntitledModuleIds('enterprise')
-  assert.deepEqual(getEntitledModuleIds('strategic-enterprise'), enterprise)
-  assert.deepEqual(enterprise, [...deliveryAndTeam, 'clients', 'onboarding', 'leads', 'quotes', 'sales', 'invoices', 'expenses', 'forecast'])
+test('Enterprise includes the full current product', () => {
+  assert.deepEqual(getEntitledModuleIds('enterprise'), [...deliveryAndTeam, 'clients', 'onboarding', 'leads', 'quotes', 'sales', 'invoices', 'expenses', 'forecast'])
+})
+
+test('Strategic Enterprise currently receives the full Enterprise module set', () => {
+  // TEMPORARY, not a product rule. Strategic Enterprise is the
+  // client-configured tier; it receives the Enterprise set only until the
+  // Strategic tenant-configuration layer is implemented. When that layer lands,
+  // delete this assertion -- it is a placeholder being retired, not a rule
+  // being broken.
+  assert.deepEqual(getEntitledModuleIds('strategic-enterprise'), getEntitledModuleIds('enterprise'))
 })
 
 test('Delivery and Team are locked while modules outside entitlement cannot activate', () => {

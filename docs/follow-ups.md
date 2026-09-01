@@ -272,7 +272,7 @@ refresh, so the lie was visible.
 
 Remove the action until it has a backing mutation, and pin its absence.
 
-**Smaller, same review:** `ui-completeness.test.ts` now matches `/Suspend/`
+**Smaller, same review (provisioning):** `ui-completeness.test.ts` now matches `/Suspend/`
 against a comment rather than TenantsScreen's markup, so the tripwire would
 survive deleting the thing it guards; service-role reissue writes
 `invited_by` and `actor_id` as null, leaving the only supported recovery path
@@ -280,3 +280,94 @@ unattributable; the review step still promises UNISON "will enable all modules
 included in the selected tier" above a checklist ticking "Team configured" over
 zero users; and `sessionFor` in the RLS helpers caches rejected promises, so one
 rate-limit cascades into every later test for that user.
+
+## Tier is real now: three surfaces still describe it as decorative
+
+From the final whole-branch review of `feat/tier-entitlement` (2026-09-01),
+recorded rather than built — each needs its own change, and the fix wave was
+scoped to the wizard, the migration comments and the wording constraint.
+
+`feat/tier-entitlement` made `organizations.tier` a real column, written at
+provisioning and read per request to decide which modules a tenant's navigation
+and routes expose. Before it, tier was a wizard concept that persisted nowhere,
+which is why each of the three items below was tolerable when it was written and
+is not now.
+
+**1. Settings → Modules shows every withheld module to every tenant, as an
+enabled toggle (Important).** `features/product-ui/components/special-workspaces.tsx`
+(`ModuleSettings`, around the hard-coded module list) declares
+`Clients, Onboarding, Leads, Quotes, Sales, Invoices, Expenses, Forecast` all
+`true`, rendered as switched-on toggles labelled "Available to HIMARK members".
+`/settings` is reachable from `components/navigation/sidebar.tsx` on every tier —
+correctly, since `settings` is not a module in `config/modules.ts` and is not
+gated. So a Core tenant whose sidebar correctly shows only Delivery and People
+can reach, in two clicks, a screen presenting eight modules they are not billed
+for as active parts of their workspace; clicking a toggle updates local state and
+changes nothing.
+
+This is not an enforcement hole — nothing there links into a withheld module and
+typing the URL still meets the not-available page — but it is a customer-visible
+contradiction of the entitlement on the one screen whose whole subject is which
+modules the tenant has. **It is the same class of claim the navigation work just
+moved away from:** `config/navigation.ts` used to build a module surface from a
+static list instead of from the tenant's entitlement, and this branch converted
+it to `entitledModuleIds()` without sweeping for the second instance.
+
+Fix: build `ModuleSettings` from `useNavigationSections()` (or from a
+server-passed entitled set), or remove the Modules view until per-tenant module
+activation exists. Note that `special-workspaces.tsx` is also the file carrying
+the uncommitted Atlas/HR cleanup — whoever commits that will be editing
+`ModuleSettings` anyway.
+
+**2. No surface anywhere shows a tenant's actual tier (Important).**
+`features/internal-provisioning/queries/list-organizations.ts` hard-codes
+`tier: '—'` and its doc comment still says tier "has no backing column", which
+was true before this branch and is false now. `/internal/organisations` is the
+only screen that renders real `organizations` rows, so the register and its
+detail drawer both show a dash. An operator who suspects a tenant is on the
+wrong tier has to query the database directly.
+
+Not a one-line fix: the RPC `list_provisioned_organizations()` returns
+`TABLE(id, name, slug, status, created_at, admin_email)`, so surfacing tier needs
+a migration adding it to that function (append-only — a new `create or replace`,
+and the return type changes, so it must be dropped and recreated with its grants
+reapplied: `authenticated` and `service_role`, no `anon`). **Minimum before
+anyone relies on that comment:** correct the comment so it names tier as a real
+column deliberately not yet surfaced. Surfacing it properly is the fast-follow.
+
+**3. "Change Tier" mutates React state only (Important).**
+`features/internal-provisioning/components/internal-registers.tsx` — the
+`Change Tier` row action in `TenantsScreen` and `SubscriptionsScreen`, its
+`TierChangeDialog`, and the `onConfirm` handlers that call only `setRecords(...)`.
+The dialog previews the module impact through `getEntitledModuleIds` and, on
+confirm, updates a local array: the badge and module count change and the
+database does not. The rows are demo objects from
+`features/internal-provisioning/data.ts`, which is why it was tolerable while
+tier was decorative.
+
+Failure it now enables: a tenant reports missing modules, an operator uses
+Change Tier → UNISON Enterprise on `/internal/subscriptions`, sees the row update
+and the impact preview confirm the new module set, and tells the client it is
+done. Nothing changed, and the next page load reverts the badge. This is the
+pattern `OrganisationsScreen`'s own header comment says was removed from that
+screen for being "the same defect class as a fabricated success".
+
+Tier-change-from-the-UI is deliberately out of scope for the entitlement slice —
+that is a fine decision. Fix: remove the Change Tier action from both screens
+(matching what `OrganisationsScreen` did with Suspend/Archive), or label the
+dialog explicitly as a preview that does not apply, until the tier-change slice
+lands. Both screens are pinned by `ui-completeness.test.ts`'s "internal registers
+provide non-destructive operational actions and tier impact review", which
+asserts `Change Tier` is present — that assertion has to move with the change.
+
+**Also noticed, same class, not fixed:** `docs/product-ui.md` still says the
+internal workflow "is a complete UI simulation only" and that organisation
+creation does "not persist or invoke a provisioning backend". Provisioning
+persists; only the parts listed in `docs/internal-provisioning.md`'s persistence
+boundary do not.
+
+**Unclosed verification, not a defect:** no signed-in run of a withheld module
+has ever happened — HIMARK is `strategic-enterprise`, so it sees everything. The
+cheapest close: set one throwaway organisation in `unison-uat` to `tier = 'core'`,
+sign in as a member, and check the sidebar and `/finance/invoices`. That one pass
+also exercises the wizard's `core` default and the not-available page's label.

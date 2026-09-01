@@ -8,36 +8,12 @@ import {
   unisonTiers,
 } from '../../config/unison-tiers.ts'
 
-const DELIVERY = ['overview', 'portfolio', 'projects', 'frameworks', 'approvals', 'vendors']
-
-test('Core is the Delivery modules plus Team', () => {
-  assert.deepEqual(getEntitledModuleIds('core').sort(), [...DELIVERY, 'team'].sort())
-})
-
-test('Framework adds Clients and Onboarding to Core', () => {
-  assert.deepEqual(
-    getEntitledModuleIds('framework').sort(),
-    [...DELIVERY, 'team', 'clients', 'onboarding'].sort(),
-  )
-})
-
-test('Enterprise adds Commercial and Finance to Framework', () => {
-  assert.deepEqual(
-    getEntitledModuleIds('enterprise').sort(),
-    [...DELIVERY, 'team', 'clients', 'onboarding', 'leads', 'quotes', 'sales', 'invoices', 'expenses', 'forecast'].sort(),
-  )
-})
-
-test('Strategic Enterprise currently receives the full Enterprise module set', () => {
-  // TEMPORARY, not a product rule. Strategic Enterprise is the client-configured
-  // tier; it receives the Enterprise set only until the Strategic
-  // tenant-configuration layer exists. Delete this assertion when that lands —
-  // it is a placeholder being retired, not a rule being broken.
-  assert.deepEqual(
-    getEntitledModuleIds('strategic-enterprise').sort(),
-    getEntitledModuleIds('enterprise').sort(),
-  )
-})
+// The per-tier module sets are asserted once, in tests/unit/unison-tiers.test.ts,
+// which is named for the config module that defines them and already covers the
+// rest of its helpers. They were duplicated here in a second style; two files
+// failing for one regression with different messages is how the two copies of
+// the Strategic Enterprise assertion drifted apart in wording. This file keeps
+// only what unison-tiers.test.ts does not assert.
 
 test('every locked module is in every tier', () => {
   for (const tier of unisonTiers) {
