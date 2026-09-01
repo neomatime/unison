@@ -7,6 +7,7 @@ import { Menu, ChevronDown } from 'lucide-react'
 import { useState } from 'react'
 import { cn, getInitials } from '@/lib/utils'
 import { useShellContext } from '@/components/layout/shell-context'
+import { useNavigationSections } from '@/components/layout/navigation-context'
 import { InitialAvatar } from '@/components/ui/initial-avatar'
 import { roles } from '@/config/roles'
 import { signOutAction } from '@/features/auth-ui/actions/sign-out'
@@ -15,7 +16,8 @@ export function Sidebar() {
   const pathname = usePathname()
   const [collapsed, setCollapsed] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
-  const { user, organization, role, navigationSections } = useShellContext()
+  const { user, organization, role } = useShellContext()
+  const navigationSections = useNavigationSections()
   const displayName = user.displayName
   const avatarUrl = user.avatarUrl
   const roleLabel = roles.find((definition) => definition.id === role)?.label ?? role

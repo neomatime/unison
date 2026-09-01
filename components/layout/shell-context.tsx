@@ -2,7 +2,6 @@
 
 import { createContext, useContext } from 'react'
 import type React from 'react'
-import type { NavigationSection } from '@/config/navigation'
 import type { Organization } from '@/types/tenancy'
 
 /**
@@ -24,7 +23,6 @@ export type ShellContextValue = {
   organization: Organization
   organizations: Organization[]
   role: string
-  navigationSections: NavigationSection[]
 }
 
 const ShellContext = createContext<ShellContextValue | null>(null)
