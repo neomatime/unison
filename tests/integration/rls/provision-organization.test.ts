@@ -281,6 +281,7 @@ test('reissue supersedes the pending invitation rather than duplicating it, and 
     p_email: email,
     p_token_hash: newTokenHash,
     p_expires_at: newExpiresAt,
+    p_actor_id: himarkAdmin.id,
   })
   assert.equal(error, null, 'the partial unique index must not reject the new row')
 
@@ -294,10 +295,10 @@ test('reissue supersedes the pending invitation rather than duplicating it, and 
   // same guarantee the provisioning test above pins for the original token.
   assert.equal(pendingAfter![0].token_hash, newTokenHash)
   assert.equal(pendingAfter![0].role_id, 'owner')
-  // invited_by is auth.uid(), and a service-role call has none. This is the
-  // shape of a genuine operator recovery now: attributable to the script, not
-  // to a signed-in HIMARK session.
-  assert.equal(pendingAfter![0].invited_by, null)
+  // A service-role call has no auth.uid(), so before p_actor_id this was null:
+  // the only supported recovery path recorded that an owner invitation was
+  // minted and not by whom. An operator running the script now names themselves.
+  assert.equal(pendingAfter![0].invited_by, himarkAdmin.id)
   assert.equal(
     new Date(pendingAfter![0].expires_at as string).getTime(),
     new Date(newExpiresAt).getTime(),
@@ -328,6 +329,7 @@ test('a signed-in HIMARK admin cannot call reissue_invitation at all', async () 
     p_email: `admin-chosen-${randomUUID()}@client.test`,
     p_token_hash: hash(randomBytes(32).toString('base64url')),
     p_expires_at: new Date(Date.now() + 7 * 86_400_000).toISOString(),
+    p_actor_id: himarkAdmin.id,
   })
   assert.ok(error, 'reissue_invitation must be unreachable from an authenticated session')
   assert.match(error!.message, /permission denied for function reissue_invitation/i)
@@ -351,6 +353,7 @@ test('a HIMARK admin cannot reissue into a foreign existing organisation', async
     p_email: outsider.email,
     p_token_hash: hash(rawToken),
     p_expires_at: new Date(Date.now() + 7 * 86_400_000).toISOString(),
+    p_actor_id: himarkAdmin.id,
   })
   assert.ok(error, 'a HIMARK admin must not be able to mint an invitation into a foreign tenant')
   assert.match(error!.message, /permission denied for function reissue_invitation/i)
@@ -362,6 +365,7 @@ test('a HIMARK admin cannot reissue into a foreign existing organisation', async
     p_email: outsider.email,
     p_token_hash: hash(rawToken),
     p_expires_at: new Date(Date.now() + 7 * 86_400_000).toISOString(),
+    p_actor_id: himarkAdmin.id,
   })
   assert.ok(serviceError)
   assert.match(serviceError!.message, /no prior owner invitation/i)
@@ -381,6 +385,7 @@ test('an outsider cannot reissue an invitation into a tenant', async () => {
     p_email: 'someone@client.test',
     p_token_hash: '\\x' + randomUUID().replace(/-/g, '').repeat(2),
     p_expires_at: new Date(Date.now() + 7 * 86_400_000).toISOString(),
+    p_actor_id: himarkAdmin.id,
   })
   assert.ok(error, 'reissue must not be reachable from an ordinary tenant session')
   assert.match(error!.message, /permission denied for function reissue_invitation/i)
@@ -393,6 +398,7 @@ test('a HIMARK member who is not owner or admin cannot reissue an invitation', a
     p_email: 'someone-else@client.test',
     p_token_hash: '\\x' + randomUUID().replace(/-/g, '').repeat(2),
     p_expires_at: new Date(Date.now() + 7 * 86_400_000).toISOString(),
+    p_actor_id: himarkAdmin.id,
   })
   assert.ok(error, 'a plain HIMARK member must not be able to reissue invitations')
   assert.match(error!.message, /permission denied for function reissue_invitation/i)
@@ -404,6 +410,7 @@ test('reissue cannot target HIMARK itself, even through the service role', async
     p_email: himarkAdmin.email,
     p_token_hash: '\\x' + randomUUID().replace(/-/g, '').repeat(2),
     p_expires_at: new Date(Date.now() + 7 * 86_400_000).toISOString(),
+    p_actor_id: himarkAdmin.id,
   })
   assert.ok(error, 'this recovery path must never mint an owner invitation into HIMARK itself')
   assert.match(error!.message, /HIMARK's own organization/i)
@@ -415,9 +422,40 @@ test('reissue refuses an address that was never invited', async () => {
     p_email: `never-invited-${randomUUID()}@client.test`,
     p_token_hash: '\\x' + randomUUID().replace(/-/g, '').repeat(2),
     p_expires_at: new Date(Date.now() + 7 * 86_400_000).toISOString(),
+    p_actor_id: himarkAdmin.id,
   })
   assert.ok(error, 'reissue must only replace an invitation provision_organization already created')
   assert.match(error!.message, /no prior owner invitation/i)
+})
+
+test('reissue refuses an actor who is not a HIMARK administrator', async () => {
+  // Same bypass removal as provision_organization: service_role used to skip
+  // the check, which is only safe while it is not the sole caller.
+  const { data: pending } = await admin
+    .from('invitations').select('email').eq('organization_id', provisioned[0]).eq('status', 'pending')
+  const { error } = await admin.rpc('reissue_invitation', {
+    p_organization_id: provisioned[0],
+    p_email: pending![0].email,
+    p_token_hash: '\\x' + randomUUID().replace(/-/g, '').repeat(2),
+    p_expires_at: new Date(Date.now() + 7 * 86_400_000).toISOString(),
+    p_actor_id: outsider.id,
+  })
+  assert.ok(error, 'an operator script must still name a HIMARK administrator')
+  assert.match(error!.message, /HIMARK administrator/i)
+})
+
+test('reissue refuses a null actor', async () => {
+  const { data: pending } = await admin
+    .from('invitations').select('email').eq('organization_id', provisioned[0]).eq('status', 'pending')
+  const { error } = await admin.rpc('reissue_invitation', {
+    p_organization_id: provisioned[0],
+    p_email: pending![0].email,
+    p_token_hash: '\\x' + randomUUID().replace(/-/g, '').repeat(2),
+    p_expires_at: new Date(Date.now() + 7 * 86_400_000).toISOString(),
+    p_actor_id: null,
+  })
+  assert.ok(error, 'an unattributable reissue must not mint an invitation')
+  assert.equal(error!.code, '22023')
 })
 
 // ---------------------------------------------------------------------------
@@ -451,6 +489,7 @@ for (const [label, offsetMs] of [['in the past', -86_400_000], ['more than 30 da
       p_email: pending![0].email,
       p_token_hash: '\\x' + randomUUID().replace(/-/g, '').repeat(2),
       p_expires_at: new Date(Date.now() + offsetMs).toISOString(),
+      p_actor_id: himarkAdmin.id,
     })
     assert.ok(error, 'a malformed expiry must not produce an invitation')
     assert.equal(error!.code, '22023')

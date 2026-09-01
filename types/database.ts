@@ -451,6 +451,7 @@ export type Database = {
       }
       reissue_invitation: {
         Args: {
+          p_actor_id: string
           p_email: string
           p_expires_at: string
           p_organization_id: string
