@@ -3,9 +3,9 @@ import test from 'node:test'
 import { resolveSessionContext } from '../../lib/auth/session-context.ts'
 import type { Organization, OrganizationMembership } from '../../types/tenancy.ts'
 
-const himark: Organization = { id: 'org-1', name: 'HIMARK', slug: 'himark', status: 'active', createdAt: '' }
-const acme: Organization = { id: 'org-2', name: 'Acme', slug: 'acme', status: 'active', createdAt: '' }
-const suspendedOrg: Organization = { id: 'org-3', name: 'Suspended Co', slug: 'suspended-co', status: 'suspended', createdAt: '' }
+const himark: Organization = { id: 'org-1', name: 'HIMARK', slug: 'himark', status: 'active', createdAt: '', tier: 'core' }
+const acme: Organization = { id: 'org-2', name: 'Acme', slug: 'acme', status: 'active', createdAt: '', tier: 'core' }
+const suspendedOrg: Organization = { id: 'org-3', name: 'Suspended Co', slug: 'suspended-co', status: 'suspended', createdAt: '', tier: 'core' }
 const membership: OrganizationMembership = {
   id: 'm-1', organizationId: 'org-1', userId: 'user-1', roleId: 'owner', status: 'active', createdAt: '',
 }

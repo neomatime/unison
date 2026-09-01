@@ -1,3 +1,5 @@
+import type { UnisonTierId } from '@/config/unison-tiers'
+
 export type OrganizationId = string
 export type UserId = string
 
@@ -11,6 +13,7 @@ export type Organization = {
   slug: string
   status: OrganizationStatus
   createdAt: string
+  tier: UnisonTierId
 }
 
 export type OrganizationMembership = {

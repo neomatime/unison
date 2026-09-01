@@ -14,6 +14,7 @@ export const himarkTenant = {
   slug: 'himark',
   status: 'active',
   createdAt: '2026-08-10T00:00:00.000Z',
+  tier: 'strategic-enterprise',
   enabledModuleIds: [],
 } as const satisfies BootstrapTenant
 

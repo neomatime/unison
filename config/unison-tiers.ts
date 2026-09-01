@@ -49,6 +49,11 @@ export const unisonTiers = [
     includedGroups: ['delivery', 'people', 'operations', 'commercial', 'finance'],
     moduleIds: fullModules,
   },
+  // Strategic Enterprise is the client-configured tier. It currently receives the
+  // full Enterprise module set until the Strategic tenant-configuration layer is
+  // implemented — a temporary implementation state, not a product rule. When that
+  // layer lands, a Strategic tenant's modules come from its own configuration
+  // rather than from this fixed list.
   {
     id: 'strategic-enterprise',
     label: 'Strategic Enterprise',
@@ -86,4 +91,13 @@ export function getModuleEntitlement(tierId: UnisonTierId, moduleId: UnisonModul
 
 export function getEnabledCounts(activeModules: readonly UnisonModuleId[]) {
   return Object.fromEntries(moduleGroups.map((group) => [group.id, group.moduleIds.filter((moduleId) => activeModules.includes(moduleId)).length])) as Record<ModuleGroupId, number>
+}
+
+/**
+ * The cheapest tier that includes a module — what the not-available page offers
+ * as the upgrade target. `unisonTiers` is ordered smallest to largest, so this is
+ * a find rather than a mapping anyone has to keep in step.
+ */
+export function lowestTierIncluding(moduleId: UnisonModuleId): UnisonTier | undefined {
+  return unisonTiers.find((tier) => (tier.moduleIds as readonly UnisonModuleId[]).includes(moduleId))
 }

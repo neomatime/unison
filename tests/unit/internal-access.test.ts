@@ -4,8 +4,8 @@ import test from 'node:test'
 import { resolveInternalAccess } from '../../lib/auth/internal-access.ts'
 import type { Organization, OrganizationMembership } from '../../types/tenancy.ts'
 
-const himark: Organization = { id: 'org-himark', name: 'HIMARK', slug: 'himark', status: 'active', createdAt: '2026-01-01' }
-const client: Organization = { id: 'org-client', name: 'Client', slug: 'client', status: 'active', createdAt: '2026-01-02' }
+const himark: Organization = { id: 'org-himark', name: 'HIMARK', slug: 'himark', status: 'active', createdAt: '2026-01-01', tier: 'core' }
+const client: Organization = { id: 'org-client', name: 'Client', slug: 'client', status: 'active', createdAt: '2026-01-02', tier: 'core' }
 
 function membership(organizationId: string, roleId: string, status: OrganizationMembership['status'] = 'active'): OrganizationMembership {
   return { id: `${organizationId}-${roleId}`, organizationId, userId: 'user-1', roleId, status, createdAt: '2026-01-03' }

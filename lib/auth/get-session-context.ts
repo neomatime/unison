@@ -27,7 +27,7 @@ export const getSessionContext = cache(async function getSessionContext() {
 
   const { data: rows, error } = await supabase
     .from('memberships')
-    .select('id, organization_id, user_id, role_id, status, created_at, organizations(id, name, slug, status, created_at)')
+    .select('id, organization_id, user_id, role_id, status, created_at, organizations(id, name, slug, status, created_at, tier)')
     .eq('user_id', user.id)
     .eq('status', 'active')
   if (error) throw error
@@ -46,6 +46,7 @@ export const getSessionContext = cache(async function getSessionContext() {
     slug: row.organizations.slug,
     status: row.organizations.status as Organization['status'],
     createdAt: row.organizations.created_at,
+    tier: row.organizations.tier as Organization['tier'],
   }))
 
   const cookieStore = await cookies()
