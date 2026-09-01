@@ -19,3 +19,10 @@ node_modules
 tsconfig.tsbuildinfo
 .codex-*.log
 supabase/.temp/
+
+# Credential scratch files. A `git add -A` once staged "unison client value.txt"
+# — the Entra app secret in plaintext — and only GitHub push protection stopped
+# it reaching the remote. Secrets belong in .env.local, never in a loose file.
+*value.txt
+*secret*.txt
+*credential*.txt
