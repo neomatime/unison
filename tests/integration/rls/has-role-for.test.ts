@@ -56,12 +56,20 @@ test('membership of another organization does not carry over', async () => {
 test('a suspended membership does not match', async () => {
   // The whole point of resolving membership live rather than from a JWT claim
   // is that revocation takes effect on the next call, not on the next login.
-  await admin.from('memberships').update({ status: 'suspended' })
+  //
+  // Both updates below assert error === null. A silent no-op (e.g. blocked by
+  // a trigger) would otherwise leave the row unchanged while the assertions
+  // below still read as "the predicate is wrong" instead of "the update never
+  // took" -- exactly the failure mode that made the coOwner fixture necessary
+  // in the first place (see the comment above).
+  const { error: suspendError } = await admin.from('memberships').update({ status: 'suspended' })
     .eq('organization_id', orgId).eq('user_id', owner.id)
+  assert.equal(suspendError, null)
   assert.equal(await hasRoleFor(orgId, owner.id, ['owner', 'admin']), false)
 
-  await admin.from('memberships').update({ status: 'active' })
+  const { error: reactivateError } = await admin.from('memberships').update({ status: 'active' })
     .eq('organization_id', orgId).eq('user_id', owner.id)
+  assert.equal(reactivateError, null)
   assert.equal(await hasRoleFor(orgId, owner.id, ['owner', 'admin']), true)
 })
 
