@@ -5,7 +5,6 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Menu, ChevronDown } from 'lucide-react'
 import { useState } from 'react'
-import { navigationSections } from '@/config/navigation'
 import { cn, getInitials } from '@/lib/utils'
 import { useShellContext } from '@/components/layout/shell-context'
 import { InitialAvatar } from '@/components/ui/initial-avatar'
@@ -16,7 +15,7 @@ export function Sidebar() {
   const pathname = usePathname()
   const [collapsed, setCollapsed] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
-  const { user, organization, role } = useShellContext()
+  const { user, organization, role, navigationSections } = useShellContext()
   const displayName = user.displayName
   const avatarUrl = user.avatarUrl
   const roleLabel = roles.find((definition) => definition.id === role)?.label ?? role

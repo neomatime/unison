@@ -7,6 +7,7 @@ import { useState } from 'react'
 import { Sidebar } from '@/components/navigation/sidebar'
 import { NavigationLoading } from '@/components/shared/navigation-loading'
 import { ShellProvider, type ShellUser } from '@/components/layout/shell-context'
+import type { NavigationSection } from '@/config/navigation'
 import type { Organization } from '@/types/tenancy'
 
 type AppShellProps = {
@@ -14,13 +15,14 @@ type AppShellProps = {
   organization: Organization
   organizations: Organization[]
   role: string
+  navigationSections: NavigationSection[]
   children: React.ReactNode
 }
 
-export function AppShell({ user, organization, organizations, role, children }: AppShellProps) {
+export function AppShell({ user, organization, organizations, role, navigationSections, children }: AppShellProps) {
   const [navigationOpen, setNavigationOpen] = useState(false)
   return (
-    <ShellProvider value={{ user, organization, organizations, role }}>
+    <ShellProvider value={{ user, organization, organizations, role, navigationSections }}>
       <div className="flex h-screen overflow-hidden bg-sidebar">
         <NavigationLoading />
         <div className="hidden lg:block"><Sidebar /></div>

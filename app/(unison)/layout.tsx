@@ -3,6 +3,8 @@ import { redirect } from 'next/navigation'
 
 import { AppShell } from '@/components/layout/app-shell'
 import type { ShellUser } from '@/components/layout/shell-context'
+import { navigationSectionsFor } from '@/config/navigation'
+import { entitledModuleIds } from '@/lib/auth/entitlement'
 import { resolveDisplayName } from '@/lib/auth/display-name'
 import { getSessionContext } from '@/lib/auth/get-session-context'
 import { NoMembershipError } from '@/lib/auth/errors'
@@ -27,8 +29,10 @@ export default async function UnisonLayout({ children }: { children: React.React
       avatarUrl: user.user_metadata?.avatar_url ?? null,
     }
 
+    const navigationSections = navigationSectionsFor(await entitledModuleIds())
+
     return (
-      <AppShell user={shellUser} organization={organization} organizations={organizations} role={role}>
+      <AppShell user={shellUser} organization={organization} organizations={organizations} role={role} navigationSections={navigationSections}>
         {children}
       </AppShell>
     )

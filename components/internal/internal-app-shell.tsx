@@ -11,7 +11,7 @@ import type { Organization } from '@/types/tenancy'
 
 export function InternalAppShell({ user, organization, organizations, role, children }: { user: ShellUser; organization: Organization; organizations: Organization[]; role: string; children: React.ReactNode }) {
   const [navigationOpen, setNavigationOpen] = useState(false)
-  return <ShellProvider value={{ user, organization, organizations, role }}>
+  return <ShellProvider value={{ user, organization, organizations, role, navigationSections: [] }}>
     <div className="flex h-screen overflow-hidden bg-sidebar">
       <NavigationLoading />
       <div className="hidden lg:block"><InternalSidebar /></div>
