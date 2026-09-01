@@ -7,14 +7,21 @@ import type { DeliveryHealth } from '../data'
 
 export function MetricCard({ label, value, detail, icon: Icon }: { label: string; value: string; detail: string; icon?: LucideIcon }) {
   return <article className="rounded-xl border border-border bg-card px-4 py-4 shadow-[0_1px_2px_rgb(16_32_46_/_0.04)]">
-    <div className="flex items-start justify-between gap-3"><p className="text-[0.675rem] font-semibold tracking-[0.09em] text-muted-foreground uppercase">{label}</p>{Icon ? <Icon className="size-4 text-muted-foreground" /> : null}</div>
+    {/* The label block reserves two lines whether or not it needs them. Without
+        it, a label that wraps ("Outstanding approvals") pushes its own value down
+        a line while its neighbours' values stay put, and the row of numbers sits
+        on three different baselines. */}
+    <div className="flex min-h-8 items-start justify-between gap-3"><p className="text-[0.675rem] font-semibold tracking-[0.09em] text-muted-foreground uppercase">{label}</p>{Icon ? <Icon className="size-4 text-muted-foreground" /> : null}</div>
     <p className="mt-3 text-2xl font-bold tracking-tight text-foreground">{value}</p>
     <p className="mt-1 text-xs text-muted-foreground">{detail}</p>
   </article>
 }
 
 export function MetricGrid({ items }: { items: ReadonlyArray<readonly [string, string, string]> }) {
-  return <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-8">{items.map(([label, value, detail]) => <MetricCard key={label} label={label} value={value} detail={detail} />)}</div>
+  // Four across at most. Eight forced every card to ~150px, which is what made
+  // the longer labels wrap in the first place — and eight equally weighted
+  // figures tell a reader nothing about which of them matters.
+  return <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{items.map(([label, value, detail]) => <MetricCard key={label} label={label} value={value} detail={detail} />)}</div>
 }
 
 export function SectionCard({ title, description, action, children, className }: { title: string; description?: string; action?: ReactNode; children: ReactNode; className?: string }) {
