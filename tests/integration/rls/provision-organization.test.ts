@@ -397,7 +397,7 @@ for (const [label, offsetMs] of [['in the past', -86_400_000], ['more than 30 da
 test('an organization provisioned without a tier is core', async () => {
   // The column defaults to the smallest entitlement so a mistake withholds
   // access rather than granting it.
-  const client = await signedInClient(himarkAdmin.email, himarkAdmin.password)
+  const client = await sessionFor(himarkAdmin)
   const { data: orgId, error } = await client.rpc('provision_organization', args('RLS Tier Default'))
   assert.equal(error, null)
   provisioned.push(orgId as string)
@@ -407,7 +407,7 @@ test('an organization provisioned without a tier is core', async () => {
 })
 
 test('an explicit tier is stored', async () => {
-  const client = await signedInClient(himarkAdmin.email, himarkAdmin.password)
+  const client = await sessionFor(himarkAdmin)
   const { data: orgId, error } = await client.rpc('provision_organization', {
     ...args('RLS Tier Enterprise'),
     p_tier: 'enterprise',
@@ -420,10 +420,18 @@ test('an explicit tier is stored', async () => {
 })
 
 test('an unknown tier is refused', async () => {
-  const client = await signedInClient(himarkAdmin.email, himarkAdmin.password)
-  const { error } = await client.rpc('provision_organization', {
-    ...args('RLS Tier Bogus'),
-    p_tier: 'platinum',
-  })
+  const client = await sessionFor(himarkAdmin)
+  const payload = { ...args('RLS Tier Bogus'), p_tier: 'platinum' }
+  const { data, error } = await client.rpc('provision_organization', payload)
+  // Pinned to the in-function guard's own message, not just any error --
+  // the column's check constraint would refuse 'platinum' too, but only the
+  // in-function check names p_tier as the fault. If that guard were ever
+  // deleted, this assertion (not just "an error occurred") would catch it.
   assert.ok(error, 'an unrecognised tier must not create an organization')
+  assert.match(error!.message, /p_tier must be a known UNISON tier/)
+  assert.equal(data, null)
+
+  const { data: orphan } = await admin
+    .from('organizations').select('id').eq('slug', payload.p_slug)
+  assert.deepEqual(orphan, [], 'the rejection must leave no organisation behind')
 })

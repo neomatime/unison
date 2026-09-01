@@ -237,6 +237,18 @@ test('client provisioning wizard includes every designed stage and provisions fo
   assert.match(data, /primaryAdmin: \{ id: 'admin-1', name: '', email: '',/, 'the primary admin must start empty')
 })
 
+test('the selected tier reaches the database, not just the wizard state', () => {
+  // wizard.selectedTier is collected across the whole wizard but is local
+  // state until it is put into the FormData submitted to
+  // provisionOrganizationAction. Without this line the action's own
+  // `formData.get('tier') ?? undefined` falls through to the zod
+  // `.default('core')` -- every UI-provisioned tenant silently becomes Core
+  // regardless of what tier the operator selected, with nothing on screen or
+  // in an error to say so.
+  const wizard = readFileSync(join(workspace, 'features', 'internal-provisioning', 'components', 'provisioning-wizard.tsx'), 'utf8')
+  assert.match(wizard, /formData\.set\('tier', wizard\.selectedTier\)/, 'the selected tier must be sent to provisionOrganizationAction')
+})
+
 test('the organisations register reports only what the database holds', () => {
   // Same rule as the wizard's success screen: nothing the database does not
   // hold may be reported back as achieved. This register renders real

@@ -142,6 +142,7 @@ export function ProvisioningWizard({ provisioningId = 'new' }: { provisioningId?
     const formData = new FormData()
     formData.set('name', wizard.organisation.name)
     formData.set('adminEmail', wizard.access.primaryAdmin.email)
+    formData.set('tier', wizard.selectedTier)
     let result: Awaited<ReturnType<typeof provisionOrganizationAction>>
     try {
       result = await provisionOrganizationAction(undefined, formData)
