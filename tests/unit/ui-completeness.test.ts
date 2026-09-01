@@ -287,9 +287,13 @@ test('the organisations register reports only what the database holds', () => {
   )
   assert.ok(screen.length > 0, 'OrganisationsScreen must still exist')
   assert.doesNotMatch(screen, /setRecords|ConfirmationDialog/, 'no row action may mutate the register locally')
-  for (const action of ["'Suspend'", "'Archive'"]) {
+  for (const action of ["'Suspend'", "'Archive'", "'Edit Internal Metadata'"]) {
     assert.ok(!screen.includes(action), `${action} has no backing action, so it must not be offered`)
   }
+  // The drawer opened editable and its Save button only closed it, so typed
+  // changes vanished while the close read as confirmation. Nothing in this
+  // screen may open an editable drawer until a mutation backs it.
+  assert.doesNotMatch(screen, /open\(record, true\)/, 'no row action may open an editable drawer here')
   assert.doesNotMatch(screen, /<InternalMetric[^>]*value="\d/, 'metric tiles must not be literals')
   assert.match(screen, /value=\{String\(counts\.total\)\}/, 'the tiles must be counted from the rendered rows')
 })

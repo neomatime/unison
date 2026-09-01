@@ -272,6 +272,13 @@ refresh, so the lie was visible.
 
 Remove the action until it has a backing mutation, and pin its absence.
 
+**Update: item 2 removed 2026-09-01.** `Edit Internal Metadata` is gone from
+`OrganisationsScreen` and its absence is pinned. The identical defect survives
+one screen over: `SubscriptionsScreen`'s `Update Subscription` opens the same
+editable drawer with the same close-only Save. It is over demo rows rather than
+real ones, which is the only reason it is less severe. The tier spec is already
+editing that screen to remove `Change Tier` and should take it.
+
 **Smaller, same review (provisioning):** `ui-completeness.test.ts` now matches `/Suspend/`
 against a comment rather than TenantsScreen's markup, so the tripwire would
 survive deleting the thing it guards; service-role reissue writes
