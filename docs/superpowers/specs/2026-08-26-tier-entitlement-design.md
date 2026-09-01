@@ -5,11 +5,13 @@
 
 ## Why
 
-UNISON sells four editions. `config/unison-tiers.ts` already encodes them
-correctly — Core is the six Delivery modules plus Team, Framework adds Clients
-and Onboarding, Enterprise adds Commercial and Finance, Strategic Enterprise
-carries full entitlement — and `lockedModuleIds` already matches the rule that
-Delivery and Team are in every tier.
+UNISON sells four editions. `config/unison-tiers.ts` already encodes the three
+standardised ones correctly — Core is the six Delivery modules plus Team,
+Framework adds Clients and Onboarding, Enterprise adds Commercial and Finance —
+and `lockedModuleIds` already matches the rule that Delivery and Team are in
+every tier. Strategic Enterprise is the client-configured tier; it currently
+receives the full Enterprise module set until the Strategic tenant-configuration
+layer is implemented.
 
 Nothing outside the internal provisioning screens reads any of it. There is no
 tier column on `organizations`, `config/navigation.ts` builds one static sidebar
@@ -28,6 +30,25 @@ Stated by the product owner, and already reflected in `unison-tiers.ts`:
   on.
 - HR and Atlas are removed from the product.
 - UNISON remains one multi-tenant application.
+
+### Strategic Enterprise is not permanently equal to Enterprise
+
+This slice gives Strategic Enterprise the same module set as Enterprise. That is
+a **temporary implementation state, not a product rule.**
+
+Strategic Enterprise currently receives the full Enterprise module set until the
+Strategic tenant-configuration layer is implemented. Once it exists, a Strategic
+tenant's modules — and later its workflows, frameworks, governance rules, roles,
+permissions, integrations and organisation structure — come from that tenant's
+own configuration rather than from a fixed tier map.
+
+Nothing in this slice may encode "Strategic equals Enterprise" as a permanent
+fact. The wording must survive being read a year from now by someone deciding
+whether a Strategic client can differ: the answer is yes, and the reason it does
+not differ today is that the layer which would let it does not exist yet.
+
+That constraint applies to the spec, to `config/unison-tiers.ts`, and to the
+tests, all of which must say *currently* rather than state an equality.
 
 Architecture principle: **tier entitlement → tenant configuration / module
 activation → user permissions.** This spec builds the first layer and the
@@ -182,8 +203,13 @@ Unit tests:
 
 - each tier's module set matches the product rules exactly — Core is the six
   Delivery modules plus Team; Framework adds `clients` and `onboarding`;
-  Enterprise adds `leads`, `quotes`, `sales`, `invoices`, `expenses`, `forecast`;
-  Strategic Enterprise equals Enterprise
+  Enterprise adds `leads`, `quotes`, `sales`, `invoices`, `expenses`, `forecast`
+- Strategic Enterprise **currently receives the full Enterprise module set until
+  the Strategic tenant-configuration layer is implemented.** The test is named
+  and commented that way rather than asserting the two tiers are equal, because
+  the assertion will be deleted when that layer lands — and a test named
+  "Strategic Enterprise equals Enterprise" would read as a rule being broken
+  rather than a placeholder being retired.
 - every module in `lockedModuleIds` is present in all four tiers
 - `lowestTierIncluding` returns Framework for `clients` and Enterprise for
   `invoices`, and never returns a tier that excludes the module
