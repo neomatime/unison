@@ -74,9 +74,35 @@ test('a signed-in HIMARK admin cannot call provision_organization at all', async
   // did not control, which made it a platform-wide account takeover via the
   // pre-confirmed signed-out invited-signup path.
   const client = await sessionFor(himarkAdmin)
-  const { error } = await client.rpc('provision_organization', args('RLS Provision Denied'))
+  const payload = args('RLS Provision Denied')
+  const { data, error } = await client.rpc('provision_organization', payload)
+  // If the authenticated grant is ever restored, this call stops failing at
+  // the grant and starts *succeeding* -- the assertion below fails, but the
+  // fixture it just created must still be swept, or a regression that turns
+  // this test red also leaks "RLS Provision Denied" and its frameworks into
+  // the shared database on every run until someone notices.
+  if (data) provisioned.push(data as string)
   assert.ok(error, 'provisioning must be unreachable from an authenticated session')
   assert.match(error!.message, /permission denied for function provision_organization/i)
+})
+
+test('a 6-argument call cannot resurrect the old signature', async () => {
+  // Pins the absence of the pre-actor overload. p_token_hash stays a caller
+  // choice deliberately (see the migration's own header comment), so the only
+  // thing standing between an authenticated caller and the original account-
+  // takeover primitive is that the 6-arg signature no longer exists at all --
+  // not just that it is unreachable. A resurrected
+  // (text,text,text,text,timestamptz,text) overload, even one still granted
+  // only to service_role, would make every other spec in this file green
+  // while `authenticated` regained a path if that grant were also restored,
+  // because PostgREST resolves on argument names, and every other spec here
+  // always supplies p_actor_id.
+  const client = await sessionFor(himarkAdmin)
+  const { p_actor_id, ...sixArgs } = args('RLS Provision Old Signature')
+  const { data, error } = await client.rpc('provision_organization', sixArgs)
+  if (data) provisioned.push(data as string)
+  assert.ok(error, 'the six-argument signature must not resolve to anything')
+  assert.equal(error!.code, 'PGRST202')
 })
 
 test('a HIMARK admin provisions an organization with frameworks and an owner invitation', async () => {
@@ -121,12 +147,21 @@ test('a HIMARK admin provisions an organization with frameworks and an owner inv
 })
 
 test('the provisioning audit rows name the actor', async () => {
+  // Covers all four resources a provision writes audit_events for, not just
+  // the two hand-written inserts. frameworks and framework_phases are
+  // recorded by record_audit_event() triggers, not by this function's own
+  // inserts, and under a bare service-role call auth.uid() -- what that
+  // trigger attributes to -- is null. A spec that filtered to only
+  // ['organizations', 'invitations'] could not see fifty-two unattributable
+  // rows (six frameworks + forty-six phases) per tenant; this one can.
   const { data: events } = await admin
     .from('audit_events').select('resource, actor_id')
-    .eq('organization_id', provisioned[0]).in('resource', ['organizations', 'invitations'])
-  assert.equal(events?.length, 2, 'the organisation and its owner invitation are both recorded')
+    .eq('organization_id', provisioned[0])
+    .in('resource', ['organizations', 'invitations', 'frameworks', 'framework_phases'])
+  assert.equal(events?.length, 1 + 1 + 6 + 46, 'organisation + invitation + 6 frameworks + 46 phases')
   for (const event of events!) {
-    assert.equal(event.actor_id, himarkAdmin.id, `${event.resource} must be attributable`)
+    assert.notStrictEqual(event.actor_id, null, `${event.resource} must not be unattributable`)
+    assert.equal(event.actor_id, himarkAdmin.id, `${event.resource} must be attributable to the actor who provisioned`)
   }
 })
 
