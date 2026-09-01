@@ -23,7 +23,10 @@ Dependencies flow down this diagram. Route files stay thin, shared UI does not i
 - `/commercial/*` covers Leads, Quotes, and Sales.
 - `/finance/*` covers Invoices, Expenses, and Forecast.
 - `/people/team` is the only active People workspace. Team owns delivery roles, assignments, capacity, availability and accountability activity; retired `/people/hr/*` and `/people/leave/*` URLs redirect to Team for bookmark compatibility.
-- `/knowledge`, `/atlas`, and `/settings` provide standalone workspaces.
+- `/knowledge` and `/settings` provide standalone workspaces. Atlas has been
+  removed from the product: it is absent from the module registry, the
+  navigation and every tier, and `ui-completeness.test.ts` asserts it stays that
+  way. Its empty placeholder directories are gone too.
 - Every product module has workspace, create, record detail, and edit routes.
 - Authentication and onboarding routes cover tenant sign-in, dedicated HIMARK internal sign-in, password recovery, invitation acceptance, email verification, and organization creation/joining. There is no sign-up route — UNISON is invite-only, so `app/(auth)/sign-up/` was removed as unreachable.
 - `/auth/callback` completes Microsoft (Entra ID) sign-in: it exchanges the OAuth code for a session and calls `claim_directory_membership()`.
