@@ -61,13 +61,16 @@ export async function provisionOrganizationAction(
 
   // The transaction has already committed. If the mail fails, the tenant exists
   // and the raw token is gone with this request — say so plainly rather than
-  // reporting a success nobody can act on. The recovery is reissue_invitation,
-  // run by a platform operator with service-role access: migration
-  // 20260826172947 revoked execute on it from `authenticated`, so it is
-  // deliberately not something this action, or the signed-in operator who
-  // triggered it, can invoke. That grant is the cut that closed the escalation
-  // chain (a caller-chosen token hash + the pre-confirmed invited-signup path
-  // let any HIMARK admin take owner access to a tenant awaiting its admin).
+  // reporting a success nobody can act on. The recovery is still
+  // reissue_invitation, run out of band by a platform operator with an
+  // explicit actor. What is no longer true: this action cannot invoke it
+  // "by design". Migration 20260826172947 revoked execute from
+  // `authenticated`, but this action now runs as createAdminSupabase(), i.e.
+  // service_role — exactly the grant reissue_invitation requires. Nothing
+  // stops this file from calling it. The boundary that made it unreachable
+  // from here is gone; what remains is that nothing here does call it, and a
+  // maintainer who adds such a call is making a real authorisation decision,
+  // not tripping over a closed door.
   try {
     await sendEmail({
       to: parsed.data.adminEmail,

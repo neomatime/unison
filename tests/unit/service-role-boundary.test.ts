@@ -4,9 +4,31 @@ import { join, relative, sep } from 'node:path'
 import test from 'node:test'
 
 function walk(dir: string): string[] {
+  // Tolerate a root that doesn't exist rather than throwing ENOENT, so a
+  // directory removed later makes this test fail legibly (a root silently
+  // scanning zero files, surfaced by the "roots" list itself) instead of
+  // erroring out before it gets to assert anything.
+  if (!existsSync(dir)) return []
   return readdirSync(dir).flatMap((entry) => {
     const full = join(dir, entry)
     return statSync(full).isDirectory() ? walk(full) : full.endsWith('.ts') || full.endsWith('.tsx') ? [full] : []
+  })
+}
+
+// Files sitting directly in the repository root — not walked into any
+// subdirectory. proxy.ts lives here: it is Next 16's middleware, runs on
+// essentially every request including unauthenticated ones, and sits outside
+// every root below (features/lib/app/components/config/types/hooks), which is
+// exactly why it went unscanned until now and is the highest-value place to
+// smuggle in a service-role client. This is a flat listing rather than a
+// walk, so it never descends into node_modules, .next, .superpowers,
+// supabase, scripts, tests, or docs — none of that is application request-path
+// code, and tests/scripts already construct their own service-role clients
+// deliberately (see the known-gaps note below).
+function rootFiles(dir: string): string[] {
+  return readdirSync(dir).flatMap((entry) => {
+    const full = join(dir, entry)
+    return !statSync(full).isDirectory() && (full.endsWith('.ts') || full.endsWith('.tsx')) ? [full] : []
   })
 }
 
@@ -21,6 +43,14 @@ function walk(dir: string): string[] {
  *
  * Adding an entry here is a deliberate act. Each one needs a reason that says
  * why RLS cannot express the authorisation instead.
+ *
+ * Known gaps this test does not close, by design rather than oversight:
+ * it is a static regex over `import`/`from` text, so it cannot see a dynamic
+ * `await import('@/lib/supabase/admin')`; and it only catches the shared
+ * `lib/supabase/admin.ts` factory, not a file that builds its own service-role
+ * client straight from `readSupabaseSecretKey` (as `tests/integration/rls/
+ * helpers.ts` and `scripts/grant-owner.ts` both do deliberately, outside
+ * application request paths). Recorded in docs/follow-ups.md.
  */
 export const SERVICE_ROLE_REQUEST_PATHS = [
   // Creates the auth identity for an invited address. Runs signed out, so there
@@ -33,9 +63,8 @@ export const SERVICE_ROLE_REQUEST_PATHS = [
 ]
 
 test('only allowlisted request paths import the service-role client', () => {
-  const roots = ['features', 'lib', 'app', 'components']
-  const offenders = roots
-    .flatMap((root) => walk(join(process.cwd(), root)))
+  const roots = ['features', 'lib', 'app', 'components', 'config', 'types', 'hooks']
+  const offenders = [...roots.flatMap((root) => walk(join(process.cwd(), root))), ...rootFiles(process.cwd())]
     .filter((file) => /from ['"](@\/lib\/supabase\/admin|.*\/lib\/supabase\/admin)['"]/.test(readFileSync(file, 'utf8')))
     .map((file) => relative(process.cwd(), file).split(sep).join('/'))
     .filter((file) => !SERVICE_ROLE_REQUEST_PATHS.includes(file))
