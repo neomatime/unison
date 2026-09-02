@@ -492,3 +492,34 @@ service-role client directly from `readSupabaseSecretKey` — which
 deliberately, outside any application request path. Neither gap is exploited
 today; both are worth closing if this test is ever relied on as the sole
 guard rather than one layer of it.
+
+### Minor — carried out of the execution ledger rather than fixed
+
+Each was raised by a task review on this branch, judged not worth a fix round,
+and triaged by the final review as safe to ship. They are recorded here because
+the ledger that held them is deleted with the workspace, and a finding that
+survives only in a deleted file was never really recorded.
+
+- **The null-actor guard runs before the authorisation check** in both
+  `provision_organization` and `reissue_invitation` (`p_actor_id is null` ->
+  `22023`, ahead of `has_role_for`). This literally inverts the branch's own
+  stated rule that authorisation precedes parameter validation. It is not an
+  oracle: `22023` answers a question about the call's shape and reveals nothing
+  about any organisation, and every caller must already hold `service_role` to
+  reach either branch. The defect is in the rule's wording, which should say
+  authorisation precedes validation *that could reveal state about an
+  organisation*. Worth correcting the next time that phrasing is reused.
+- **`reissue_invitation`'s audit-row comment** lost its cross-reference to
+  `20260826153239`, where the `organization_id`-inside-`new_value` pattern was
+  first introduced. Correct as written, but a thinner trail for the next reader
+  tracing why the duplication exists.
+- **Two UI pins are coupled to exact spelling.** `ui-completeness.test.ts` pins
+  row actions as `label: 'X'` and the removed editable drawer as
+  `/open\(record, true\)/`. Renaming the local `open` helper, or reordering its
+  arguments, defangs the second silently without changing behaviour. This is the
+  same fragility class as the `/Suspend/` pin that this branch fixed — the
+  mechanism is better than matching bare prose, but it is still text matching,
+  not an AST check.
+- **The `Edit Internal Metadata` removal note** (above) names the screen and the
+  action but not the surviving line. It is `SubscriptionsScreen`'s
+  `Update Subscription`, which calls `open(record, true)`.
