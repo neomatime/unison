@@ -287,9 +287,13 @@ test('the organisations register reports only what the database holds', () => {
   )
   assert.ok(screen.length > 0, 'OrganisationsScreen must still exist')
   assert.doesNotMatch(screen, /setRecords|ConfirmationDialog/, 'no row action may mutate the register locally')
-  for (const action of ["'Suspend'", "'Archive'"]) {
+  for (const action of ["'Suspend'", "'Archive'", "'Edit Internal Metadata'"]) {
     assert.ok(!screen.includes(action), `${action} has no backing action, so it must not be offered`)
   }
+  // The drawer opened editable and its Save button only closed it, so typed
+  // changes vanished while the close read as confirmation. Nothing in this
+  // screen may open an editable drawer until a mutation backs it.
+  assert.doesNotMatch(screen, /open\(record, true\)/, 'no row action may open an editable drawer here')
   assert.doesNotMatch(screen, /<InternalMetric[^>]*value="\d/, 'metric tiles must not be literals')
   assert.match(screen, /value=\{String\(counts\.total\)\}/, 'the tiles must be counted from the rendered rows')
 })
@@ -311,8 +315,24 @@ test('the provisioning success dialog claims only the invitation that was actual
 test('internal registers provide non-destructive operational actions and tier impact review', () => {
   const provisioning = readFileSync(join(workspace, 'features', 'internal-provisioning', 'components', 'provisioning-register.tsx'), 'utf8')
   const registers = readFileSync(join(workspace, 'features', 'internal-provisioning', 'components', 'internal-registers.tsx'), 'utf8')
-  for (const action of ['Continue Setup', 'Duplicate Setup', 'Pause', 'Resume', 'Archive']) assert.match(provisioning, new RegExp(action))
-  for (const action of ['View Tenant', 'View Provisioning', 'Manage Subscription', 'Change Tier', 'Module Impact', 'Data is not deleted when a module is disabled', 'Update Subscription', 'Suspend']) assert.match(registers, new RegExp(action))
+
+  // Matched as `label: 'X'`, which only a row action produces. Matching the bare
+  // name against the whole file meant a comment satisfied the assertion: this
+  // test passed with TenantsScreen's Suspend action deleted, because the phrase
+  // "local-state Suspend/Archive" survives in a comment thirty lines above.
+  const rowAction = (label: string) => new RegExp(`label: '${label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}'`)
+
+  for (const action of ['Continue Setup', 'Duplicate Setup', 'Pause', 'Resume', 'Archive']) {
+    assert.match(provisioning, rowAction(action), `${action} must be offered as a row action`)
+  }
+  for (const action of ['View Tenant', 'View Provisioning', 'Manage Subscription', 'Change Tier', 'Update Subscription', 'Suspend']) {
+    assert.match(registers, rowAction(action), `${action} must be offered as a row action`)
+  }
+
+  // Copy rather than row actions, so these stay whole-file matches.
+  for (const copy of ['Module Impact', 'Data is not deleted when a module is disabled']) {
+    assert.match(registers, new RegExp(copy))
+  }
 })
 
 test('tier configuration is the single HR-free, Atlas-free entitlement source', () => {

@@ -6,7 +6,9 @@ import type { Database } from '@/types/database'
 /**
  * Service-role client. Bypasses RLS entirely.
  * Bootstrap, invitation dispatch, and admin scripts ONLY.
- * Never import this from anything under features/ — a test enforces that.
+ * Only the request paths in SERVICE_ROLE_REQUEST_PATHS
+ * (tests/unit/service-role-boundary.test.ts) may import this. Adding one is a
+ * deliberate edit to that list, with a reason.
  */
 export function createAdminSupabase() {
   const env = readSupabasePublicEnv(process.env)

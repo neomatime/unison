@@ -262,6 +262,17 @@ collides with the `service-role-boundary` test, which currently forbids
 different mechanism, and the decision should be deliberate rather than
 incidental.
 
+**Resolved 2026-09-01, deliberately.** `provisionOrganizationAction` now calls
+`createAdminSupabase()` and the migration above dropped and recreated
+`provision_organization` with `execute` revoked from `authenticated` and
+granted only to `service_role`. The collision was not avoided, it was decided:
+`tests/unit/service-role-boundary.test.ts` no longer forbids the admin client
+outright, it allowlists specific request-path files by name in
+`SERVICE_ROLE_REQUEST_PATHS`, each with a comment explaining why RLS cannot
+express the authorisation and pinned by a test asserting the allowlist is
+exactly the known set. `features/internal-provisioning/actions/
+provision-organization.ts` is one of the two entries.
+
 **2. `Edit Internal Metadata` in the Organisations register discards input.**
 
 It opens a drawer over a real tenant's fields with a "Save Metadata" button
@@ -271,6 +282,13 @@ theatre removed in the same wave: that flipped a badge which reverted on
 refresh, so the lie was visible.
 
 Remove the action until it has a backing mutation, and pin its absence.
+
+**Update: item 2 removed 2026-09-01.** `Edit Internal Metadata` is gone from
+`OrganisationsScreen` and its absence is pinned. The identical defect survives
+one screen over: `SubscriptionsScreen`'s `Update Subscription` opens the same
+editable drawer with the same close-only Save. It is over demo rows rather than
+real ones, which is the only reason it is less severe. The tier spec is already
+editing that screen to remove `Change Tier` and should take it.
 
 **Smaller, same review (provisioning):** `ui-completeness.test.ts` now matches `/Suspend/`
 against a comment rather than TenantsScreen's markup, so the tripwire would
@@ -371,3 +389,137 @@ has ever happened — HIMARK is `strategic-enterprise`, so it sees everything. T
 cheapest close: set one throwaway organisation in `unison-uat` to `tier = 'core'`,
 sign in as a member, and check the sidebar and `/finance/invoices`. That one pass
 also exercises the wizard's `core` default and the not-available page's label.
+
+## Final review of feat/provisioning-security-cut (2026-09-02)
+
+The branch itself was found sound: it closes the RPC route into
+`provision_organization` and correctly narrows a real hole. Two items below are
+about what it did *not* close, and were pre-existing before this branch as well.
+A third records a boundary-test gap this fix wave closed, plus the gaps that
+remain by design.
+
+### Critical, pre-existing — the token-choosing primitive is still open
+
+`authenticated` holds `INSERT` on `public.invitations`. The `invitations_insert`
+policy's check is `has_role(organization_id, array['owner']) OR
+(has_role(organization_id, array['admin']) AND role_id <> 'owner')`. Nothing in
+that check, or anywhere else, constrains `token_hash` or `email`.
+
+The chain: a legitimate owner of *their own* tenant inserts an invitation row
+with `email` set to an address they do not control and `token_hash` set to the
+sha256 of a token they chose — this exact insert is performed from a signed-in
+owner's session in `tests/integration/rls/accept-invitation.test.ts` (around
+lines 41-48), asserting no error, as ordinary test setup rather than an
+exploit. They sign out and open `/accept-invitation?token=<their token>`.
+`invitation_preview` is granted to `anon` and matches on token hash alone.
+`signUpFromInvitationAction` calls `lib/invitations/create-invited-account.ts`,
+which calls `admin.auth.admin.createUser({ email, password, email_confirm:
+true })` — a **pre-confirmed, platform-wide auth identity** for an address the
+caller does not control. The real owner of that address can then never
+register.
+
+This is pre-existing, and `feat/provisioning-security-cut` does not regress
+it — the branch strictly narrows the surface by closing the RPC route (see
+"Provisioning: two Important items found after merge" above, item 1). But the
+population who can reach this primitive — **every tenant owner, in every
+tenant** — is larger than the population that item closed (a second HIMARK
+owner or admin), so this branch must not be read as having closed the
+primitive itself, only one route to it.
+
+The escalation stops short of HIMARK: `claim_directory_membership()` requires
+an `auth.identities` row with `provider = 'azure'` whose email matches, so a
+minted identity cannot be walked into the HIMARK tenant that way.
+
+The already-deferred slice — "make invited signup require email verification",
+scoped out of this branch's design as repairing the same invariant from the
+other end (see `docs/superpowers/specs/2026-09-01-provisioning-security-cut-design.md`,
+"Out of scope, deliberately") — should be **re-scoped** to cover the
+token-choosing end too: constraining or trigger-guarding
+`invitations.token_hash` on the `authenticated` insert path, not only adding
+verification inside `createInvitedAccount`. Fixing only the read end
+(verification) still lets an owner mint a hostile invitation row; fixing only
+the write end still lets a caller-supplied token be trusted without proof of
+address control. Both ends of the same invariant need closing.
+
+### Important — `delete_organization` keeps the anti-pattern this branch removed from its siblings
+
+`supabase/migrations/20260816232306_deletable_organizations.sql` guards
+`delete_organization` with `if auth.role() is distinct from 'service_role' and
+not public.has_role(target_org, array['owner'])` and writes `actor_id =
+auth.uid()`. It is granted to `authenticated, service_role`. Now that a
+request path (`provisionOrganizationAction`, and any future one) legitimately
+holds a service-role client, that path can call `delete_organization` on any
+organisation with no actor check and no attribution — `auth.uid()` is null
+under `service_role`, so the audit row it writes records that *someone*
+deleted the organisation, not who. This is the same class of gap
+`provision_organization` had before `20260901150000_provision_organization_actor`
+added `p_actor_id`; `delete_organization` needs the same treatment: an explicit
+actor parameter, required and checked, the same way provisioning now works.
+
+**Correcting a claim that might otherwise get written here:** it is not true
+that a provisioned-but-unaccepted tenant cannot be deleted through any
+supported path. It can — the `service_role` bypass
+(`auth.role() is distinct from 'service_role'`) means
+`admin.rpc('delete_organization', { target_org: id })` succeeds regardless of
+membership, and `tests/integration/rls/helpers.ts`'s `cleanup()` already relies
+on exactly this, on every RLS run. The real residual is narrower: there is no
+operator-facing tool for it (nothing in `/internal/organisations` calls
+`delete_organization`), and the deletion it does allow is unattributed.
+
+### Important — boundary test widened to cover the repo root, `config/`, `types/` and `hooks/`
+
+`tests/unit/service-role-boundary.test.ts` scanned `['features', 'lib', 'app',
+'components']` and missed `proxy.ts` entirely. `proxy.ts` sits at the
+repository root and is Next 16's middleware — it runs on essentially every
+request, including unauthenticated ones, making it the highest-value place to
+smuggle in a service-role client, and the old scan looked straight past it.
+`config/`, `types/` and `hooks/` were also unscanned. Fixed in this fix wave:
+the roots list now includes `config`, `types` and `hooks`; a separate
+non-recursive `rootFiles()` scan covers files sitting directly in the
+repository root (naming `proxy.ts` in a comment) without descending into
+`node_modules`, `.next`, `.superpowers`, `supabase`, `scripts`, `tests` or
+`docs`; and `walk()` now tolerates a root directory that does not exist,
+returning `[]` instead of throwing `ENOENT`, so a removed root makes the test
+fail legibly rather than error out.
+
+Two detection gaps remain, by design, and are now called out in a comment in
+the test file rather than left implicit: the scan is a static regex over
+`import`/`from` text, so it cannot see a dynamic `await
+import('@/lib/supabase/admin')`; and it only catches the shared
+`lib/supabase/admin.ts` factory, not a file that constructs its own
+service-role client directly from `readSupabaseSecretKey` — which
+`tests/integration/rls/helpers.ts` and `scripts/grant-owner.ts` both already do
+deliberately, outside any application request path. Neither gap is exploited
+today; both are worth closing if this test is ever relied on as the sole
+guard rather than one layer of it.
+
+### Minor — carried out of the execution ledger rather than fixed
+
+Each was raised by a task review on this branch, judged not worth a fix round,
+and triaged by the final review as safe to ship. They are recorded here because
+the ledger that held them is deleted with the workspace, and a finding that
+survives only in a deleted file was never really recorded.
+
+- **The null-actor guard runs before the authorisation check** in both
+  `provision_organization` and `reissue_invitation` (`p_actor_id is null` ->
+  `22023`, ahead of `has_role_for`). This literally inverts the branch's own
+  stated rule that authorisation precedes parameter validation. It is not an
+  oracle: `22023` answers a question about the call's shape and reveals nothing
+  about any organisation, and every caller must already hold `service_role` to
+  reach either branch. The defect is in the rule's wording, which should say
+  authorisation precedes validation *that could reveal state about an
+  organisation*. Worth correcting the next time that phrasing is reused.
+- **`reissue_invitation`'s audit-row comment** lost its cross-reference to
+  `20260826153239`, where the `organization_id`-inside-`new_value` pattern was
+  first introduced. Correct as written, but a thinner trail for the next reader
+  tracing why the duplication exists.
+- **Two UI pins are coupled to exact spelling.** `ui-completeness.test.ts` pins
+  row actions as `label: 'X'` and the removed editable drawer as
+  `/open\(record, true\)/`. Renaming the local `open` helper, or reordering its
+  arguments, defangs the second silently without changing behaviour. This is the
+  same fragility class as the `/Suspend/` pin that this branch fixed — the
+  mechanism is better than matching bare prose, but it is still text matching,
+  not an AST check.
+- **The `Edit Internal Metadata` removal note** (above) names the screen and the
+  action but not the surviving line. It is `SubscriptionsScreen`'s
+  `Update Subscription`, which calls `open(record, true)`.

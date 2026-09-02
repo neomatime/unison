@@ -414,6 +414,10 @@ export type Database = {
       claim_directory_membership: { Args: never; Returns: string }
       delete_organization: { Args: { target_org: string }; Returns: undefined }
       has_role: { Args: { org: string; roles: string[] }; Returns: boolean }
+      has_role_for: {
+        Args: { actor: string; org: string; roles: string[] }
+        Returns: boolean
+      }
       invitation_preview: {
         Args: { raw_token: string }
         Returns: {
@@ -435,6 +439,7 @@ export type Database = {
       }
       provision_organization: {
         Args: {
+          p_actor_id: string
           p_admin_email: string
           p_expires_at: string
           p_name: string
@@ -446,6 +451,7 @@ export type Database = {
       }
       reissue_invitation: {
         Args: {
+          p_actor_id: string
           p_email: string
           p_expires_at: string
           p_organization_id: string
