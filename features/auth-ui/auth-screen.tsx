@@ -16,18 +16,32 @@ const copy: Record<AuthKind, { title: string; description: string; action: strin
   'sign-in': { title: 'Welcome back', description: 'Sign in to continue to your HIMARK workspace.', action: 'Sign in' },
   forgot: { title: 'Reset your password', description: 'Enter your work email and we’ll prepare a reset link.', action: 'Continue' },
   reset: { title: 'Choose a new password', description: 'Use a strong password you have not used before.', action: 'Update password' },
-  accept: { title: 'Join HIMARK', description: 'You have been invited to the HIMARK organization in UNISON.', action: 'Accept invitation' },
+  // Deliberately does not name an organization. This used to read "Join HIMARK"
+  // for every invitation to every tenant, so a client administrator being
+  // onboarded to their own workspace was told they were joining HIMARK — on the
+  // first screen they ever see. The real name is passed in as organizationName
+  // and overrides this; these strings are the fallback for a token that no
+  // longer resolves, where naming any organization would be a guess.
+  accept: { title: 'Accept your invitation', description: 'You have been invited to a workspace in UNISON.', action: 'Accept invitation' },
   verify: { title: 'Verify your email', description: 'Check your inbox to finish setting up your UNISON account.', action: 'Resend email' },
   'create-organization': { title: 'Create an organization', description: 'Set up a new tenant workspace for your business.', action: 'Create organization' },
   'join-organization': { title: 'Join an organization', description: 'Enter the invitation code supplied by your administrator.', action: 'Join organization' },
 }
 
-export function AuthScreen({ kind, next, token, message }: { kind: AuthKind; next?: string; token?: string; message?: string }) {
+export function AuthScreen({ kind, next, token, message, organizationName }: { kind: AuthKind; next?: string; token?: string; message?: string; organizationName?: string }) {
   const [completion, setCompletion] = useState<CompletionMethod>(null)
   const [passwordVisible, setPasswordVisible] = useState(false)
   const [signInState, signInFormAction, signInPending] = useActionState(signInAction, undefined)
   const [acceptState, acceptFormAction, acceptPending] = useActionState(acceptInvitationAction, undefined)
-  const content = copy[kind]
+  // The invitation names the tenant; the generic copy above is only for when
+  // the token no longer resolves and there is nothing truthful to name.
+  const content = kind === 'accept' && organizationName
+    ? {
+        ...copy.accept,
+        title: `Join ${organizationName}`,
+        description: `You have been invited to the ${organizationName} organization in UNISON.`,
+      }
+    : copy[kind]
   const usesPassword = ['sign-in', 'reset'].includes(kind)
   const organization = ['create-organization', 'join-organization'].includes(kind)
   const isSignIn = kind === 'sign-in'
