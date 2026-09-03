@@ -80,7 +80,24 @@ export async function provisionOrganizationAction(
         invitedBy: user.email ?? 'HIMARK',
       }),
     })
-  } catch {
+  } catch (sendError) {
+    // Logged, not swallowed. This branch used to be a bare `catch {}`, which
+    // discarded the cause at the one moment it was known: production reported
+    // that the invitation could not be sent and refused to say why, and the
+    // tenant it had already created could not be onboarded because the raw
+    // token goes with the request. Diagnosing it meant guessing at which
+    // environment variable was missing.
+    //
+    // The message is what distinguishes the cases that matter — a MissingEnvError
+    // naming a GRAPH_ variable (misconfigured deployment) from a Graph API
+    // rejection (a real delivery problem) — so it is the thing worth recording.
+    // Nothing here is secret: lib/email reads its credentials lazily and
+    // MissingEnvError carries only the variable's name, never its value.
+    console.error('[provisioning] invitation email failed', {
+      organizationId,
+      name: sendError instanceof Error ? sendError.name : typeof sendError,
+      message: sendError instanceof Error ? sendError.message : String(sendError),
+    })
     revalidatePath('/internal/organisations')
     return { organizationId: organizationId as string, emailFailed: true }
   }
