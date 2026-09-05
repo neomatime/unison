@@ -12,20 +12,25 @@ export async function updateProjectAction(id: string, _prev: { error?: string } 
   const { organization } = await getSessionContext()
   const supabase = await createServerSupabase()
 
-  const { error } = await supabase.from('projects').update({
+  const { data, error } = await supabase.from('projects').update({
     name: parsed.data.name,
     framework_id: parsed.data.frameworkId,
     phase_id: parsed.data.phaseId,
     client_id: parsed.data.clientId,
+    owner_id: parsed.data.ownerId,
     status: parsed.data.status,
     health: parsed.data.health,
     progress: parsed.data.progress,
     next_gate: parsed.data.nextGate,
     due_date: parsed.data.dueDate,
     notes: parsed.data.notes,
-  }).eq('id', id).eq('organization_id', organization.id)
+  }).eq('id', id).eq('organization_id', organization.id).select('id')
 
   if (error) return { error: 'The project could not be saved.' }
+  // Without .select() an update matching no rows is indistinguishable from one
+  // that saved: RLS and the organisation filter both express "not yours" as
+  // zero rows, not as an error, so a wrong id reported success.
+  if (!data?.length) return { error: 'That project no longer exists, or is not yours to edit.' }
 
   revalidatePath('/operations/projects')
   revalidatePath(`/operations/projects/${id}`)
