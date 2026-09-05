@@ -5,6 +5,8 @@ import test from 'node:test'
 
 import { modules as moduleDefinitions } from '../../config/modules.ts'
 import { lockedModuleIds, unisonTiers } from '../../config/unison-tiers.ts'
+import { moduleFixtures } from '../../features/product-ui/mocks/modules.ts'
+import { productModules } from '../../features/product-ui/registry.ts'
 
 const workspace = process.cwd()
 const unisonRoot = join(workspace, 'app', '(unison)')
@@ -437,4 +439,167 @@ test('the projects register reports only what the database holds', () => {
   for (const passed of ['total', 'pageSize', 'initialQuery', 'connected']) {
     assert.match(page, new RegExp(passed), `the register must receive ${passed} from the server`)
   }
+})
+
+// Pulls the `{ Label: 'key', 'Two Word Label': 'key' }` alias map out of a
+// source file by name. Values here are always bare lowercase/camelCase
+// identifiers with no nested braces, so a non-greedy scan to the first `}`
+// is a complete parse, not just an approximation -- there's nothing inside
+// the map these two files build that this could mis-parse.
+function extractAliasMap(source: string, constName: string): Record<string, string> {
+  const declaration = source.match(new RegExp(`const ${constName}: Record<string, string> = \\{([^}]*)\\}`))
+  assert.ok(declaration, `${constName} literal not found -- this test is out of sync with the source it checks`)
+  const entries: Record<string, string> = {}
+  for (const pair of declaration[1].matchAll(/(?:'((?:[^'\\]|\\.)*)'|([A-Za-z][A-Za-z0-9]*))\s*:\s*'((?:[^'\\]|\\.)*)'/g)) {
+    entries[pair[1] ?? pair[2]] = pair[3]
+  }
+  return entries
+}
+
+// Pulls the top-level keys out of a connected query's `(data ?? []).map((row)
+// => ({ ... }))` mapper by reading the source between that call and the
+// function's `return {`. Every mapper this repo has today puts one key per
+// line at 4-space indent and never returns a key from a nested object
+// literal, so matching lines that start with exactly 4 spaces then a bare
+// identifier and a colon captures precisely the returned shape, not an
+// approximation of it -- but it depends on that formatting continuing to
+// hold, which nothing enforces beyond this comment and a lint/format rule.
+function extractMapperKeys(source: string): Set<string> {
+  const start = source.indexOf('.map((row) => ({')
+  const end = source.indexOf('return {', start)
+  assert.ok(start !== -1 && end !== -1, 'query mapper shape not found -- this test is out of sync with the source it checks')
+  const body = source.slice(start, end)
+  const keys = new Set<string>()
+  for (const match of body.matchAll(/^ {4}(\w+):/gm)) keys.add(match[1])
+  return keys
+}
+
+test('every registry column resolves to a key its records actually carry', () => {
+  // module-workspace.tsx's Cell() silently rendered '—' for every 'Next Gate'
+  // row because its alias map had no entry for that label and the fallback
+  // (`column.toLowerCase()`) doesn't match the mapper's camelCase `nextGate`
+  // key. Nothing that runs `tsc` or a text-scanning test would catch that: the
+  // column renders, just always empty. This test resolves every column label
+  // in every registry module definition the same way the real UI does, and
+  // fails if the result is not a key the module's records actually carry.
+  //
+  // Two different components read `module.columns` against a record, each
+  // with its own alias map and fallback (confirmed by grepping every page
+  // under app/(unison) for which one it imports):
+  //   - ModuleWorkspace (module-workspace.tsx) renders Clients, Projects,
+  //     Tasks, Calendar, Knowledge and Settings, via `aliases[column] ??
+  //     column.toLowerCase()`.
+  //   - DomainModuleWorkspace (domain-module-workspace.tsx) renders Leads,
+  //     Quotes, Sales, Invoices, Expenses and Forecast. It resolves each
+  //     column to a `{ id, label }` pair via `fieldAliases[column] ??
+  //     column.toLowerCase().replaceAll(' ', '')` and hands that off to
+  //     record-collection-workspace.tsx (not modified here, only read), which
+  //     renders `record[column.id]` with no further fallback -- confirmed by
+  //     reading that file, so DomainModuleWorkspace's resolution is the whole
+  //     story for these six modules.
+  //
+  // Record keys come from whichever side is authoritative for that module:
+  // the query mapper for a connected module (Projects, Clients), the fixture
+  // record for everything else.
+  //
+  // What this does NOT cover: Onboarding and Team have their own bespoke
+  // screens (OnboardingScreen, TeamScreen) that never read `module.columns`
+  // at all, so there is no key-resolution mechanism to check their column
+  // lists against, and they are excluded below rather than checked against a
+  // mechanism they don't use. If either is ever pointed at one of the two
+  // shared workspaces above, its columns need checking by hand the way this
+  // task had to -- this test will not have exercised that path.
+  const moduleWorkspaceSource = readFileSync(join(workspace, 'features', 'product-ui', 'components', 'module-workspace.tsx'), 'utf8')
+  const domainWorkspaceSource = readFileSync(join(workspace, 'features', 'product-ui', 'components', 'domain-module-workspace.tsx'), 'utf8')
+  const moduleAliases = extractAliasMap(moduleWorkspaceSource, 'aliases')
+  const domainAliases = extractAliasMap(domainWorkspaceSource, 'fieldAliases')
+
+  // moduleFixtures still has 'projects' and 'clients' entries left over from
+  // before they were connected to the database, but neither page reads them
+  // any more (both pass live query results to ModuleWorkspace instead) -- so
+  // those two fixture entries must not be allowed to override the query
+  // mappers below, which are what the live pages actually render.
+  const recordKeysByModule: Record<string, Set<string>> = {}
+  for (const [id, records] of Object.entries(moduleFixtures)) {
+    recordKeysByModule[id] = new Set(records.flatMap((record) => Object.keys(record)))
+  }
+  recordKeysByModule.projects = extractMapperKeys(readFileSync(join(workspace, 'features', 'delivery', 'queries', 'list-projects.ts'), 'utf8'))
+  recordKeysByModule.clients = extractMapperKeys(readFileSync(join(workspace, 'features', 'clients', 'queries', 'list-clients.ts'), 'utf8'))
+
+  const moduleWorkspaceModules = new Set(['clients', 'projects', 'tasks', 'calendar', 'knowledge', 'settings'])
+  const domainWorkspaceModules = new Set(['leads', 'quotes', 'sales', 'invoices', 'expenses', 'forecast'])
+
+  let checked = 0
+  for (const module of productModules) {
+    const usesModuleWorkspace = moduleWorkspaceModules.has(module.id)
+    const usesDomainWorkspace = domainWorkspaceModules.has(module.id)
+    if (!usesModuleWorkspace && !usesDomainWorkspace) continue // Onboarding, Team: see comment above
+
+    const keys = recordKeysByModule[module.id]
+    assert.ok(keys, `no record source (query mapper or fixture) found for module '${module.id}'`)
+
+    for (const [index, column] of module.columns.entries()) {
+      // The first (primary) column never goes through this resolution in
+      // either component: ModuleWorkspace's Cell() renders `record.name`
+      // outright for it regardless of the label (module-workspace.tsx:133,
+      // `if (primary) return <Link ...>{record.name}</Link>`), and
+      // record-collection-workspace.tsx falls back to `record.name` for it
+      // (`record[column.id] ?? record.name`). So a mismatched first-column
+      // alias -- Clients' own 'Client' column resolves to 'client', which its
+      // connected records don't carry -- is real but inert, not the class of
+      // bug this test exists to catch. Checking it here would fail on that
+      // inert case instead of a load-bearing one.
+      if (index === 0) continue
+
+      const resolved = usesModuleWorkspace
+        ? moduleAliases[column] ?? column.toLowerCase()
+        : domainAliases[column] ?? column.toLowerCase().replaceAll(' ', '')
+      assert.ok(keys.has(resolved), `${module.id}'s '${column}' column resolves to record key '${resolved}', which its records do not carry -- the cell will render '—' for every row`)
+      checked += 1
+    }
+  }
+  assert.ok(checked >= 60, `expected to have checked columns across all 12 wired modules, only checked ${checked}`)
+})
+
+test('the projects register renders a real Next Gate value instead of always dashing it out', () => {
+  // This does not render the component -- module-workspace.tsx is a 'use
+  // client' component with JSX, which this plain node:test file has no
+  // renderer for. Instead it exercises the exact resolution the component's
+  // own `recordValue()` performs (`aliases[column] ?? column.toLowerCase()`,
+  // then `record[key] ?? '—'`), against a record shaped exactly like
+  // list-projects.ts's real mapper output, so this fails the same way the
+  // shipped bug did: silently, by falling through to the '—' fallback.
+  const source = readFileSync(join(workspace, 'features', 'product-ui', 'components', 'module-workspace.tsx'), 'utf8')
+  const aliases = extractAliasMap(source, 'aliases')
+  assert.match(source, /return record\[aliases\[column\] \?\? column\.toLowerCase\(\)\] \?\? '—'/, 'recordValue\'s resolution logic changed shape -- this test is out of sync with it')
+
+  const resolvedKey = aliases['Next Gate'] ?? 'next gate'.toLowerCase()
+  const projectRecord = { id: 'proj-1', name: 'Meridian Growth Programme', status: 'On Track', owner: 'Amara Dlamini', updated: '28 Aug 2026', nextGate: 'Governance Sign-off', due: '28 Aug 2026' } as Record<string, string>
+  const rendered = projectRecord[resolvedKey] ?? '—'
+
+  assert.notEqual(rendered, '—', `'Next Gate' resolved to '${resolvedKey}', which this real-shaped project record does not carry -- every row would dash out`)
+  assert.equal(rendered, 'Governance Sign-off')
+})
+
+test('the projects register renders Health through the colour badge, not plain text', () => {
+  // Same caveat as above: this exercises Cell()'s branch condition directly
+  // rather than rendering JSX. The bug was that 'Health' was absent from the
+  // set of column labels that route through <StatusBadge>, so real On
+  // Track/At Risk/Critical values rendered as a plain <span> -- present, but
+  // uncoloured. This pins that 'Health' is now in that set.
+  const source = readFileSync(join(workspace, 'features', 'product-ui', 'components', 'module-workspace.tsx'), 'utf8')
+  const cellBody = source.slice(source.indexOf('function Cell('), source.indexOf('function statusTone('))
+  assert.ok(cellBody.length > 0, 'Cell() not found -- this test is out of sync with the source it checks')
+
+  const badgeColumns = new Set([...cellBody.matchAll(/column === '([^']+)'/g)].map((match) => match[1]))
+  assert.ok(badgeColumns.has('Health'), "'Health' must route through <StatusBadge>, the same as 'Status'/'Risk'/'Client Health'/'Stage'")
+
+  // And confirm the badge-or-not decision itself, not just that the string is
+  // present somewhere in the file: build the exact condition from the source
+  // and evaluate it the way Cell() does.
+  const conditionSource = cellBody.match(/if \((column === '[^)]+)\) return <StatusBadge/)?.[1]
+  assert.ok(conditionSource, 'badge condition not found in the expected shape')
+  // eslint-disable-next-line no-new-func -- evaluating the exact extracted boolean expression, not arbitrary input
+  const isBadgeColumn = new Function('column', `return (${conditionSource})`) as (column: string) => boolean
+  assert.equal(isBadgeColumn('Health'), true, "column === 'Health' must satisfy Cell()'s badge condition")
 })
