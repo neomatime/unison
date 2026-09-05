@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test, { after, before } from 'node:test'
 
-import { admin, cleanup, createFixtureOrg, createFixtureUser } from './helpers.ts'
+import { admin, cleanup, createFixtureOrg, createFixtureUser, signedInClient } from './helpers.ts'
 
 let orgId: string
 let owner: { id: string; email: string; password: string }
@@ -9,6 +9,10 @@ let coOwner: { id: string; email: string; password: string }
 let outsiderOrg: string
 let outsider: { id: string; email: string; password: string }
 let frameworkId: string
+// Declared at module scope (not inside the test body) so `after` can always
+// reach it for cleanup, even if the test that creates it fails before its own
+// teardown runs -- see the "deleting a membership..." spec below.
+let doomed: { id: string; email: string; password: string } | undefined
 
 before(async () => {
   orgId = await createFixtureOrg('project-owner')
@@ -30,7 +34,7 @@ before(async () => {
 after(async () => {
   await cleanup(
     [orgId, outsiderOrg].filter(Boolean),
-    [owner?.id, coOwner?.id, outsider?.id].filter(Boolean) as string[],
+    [owner?.id, coOwner?.id, outsider?.id, doomed?.id].filter(Boolean) as string[],
   )
 })
 
@@ -77,7 +81,7 @@ test('deleting a membership nulls the owner and leaves organization_id intact', 
   // This is the assertion that catches a missing column list on
   // `on delete set null`: without it Postgres nulls organization_id too, which
   // is `not null`, and the delete fails instead of nulling one column.
-  const doomed = await createFixtureUser(orgId, 'member')
+  doomed = await createFixtureUser(orgId, 'member')
   const { data: project, error } = await insertProject(doomed.id)
   assert.equal(error, null)
 
@@ -90,10 +94,16 @@ test('deleting a membership nulls the owner and leaves organization_id intact', 
   assert.equal(after!.owner_id, null)
   assert.equal(after!.organization_id, orgId, 'organization_id must survive the null')
 
-  await admin.auth.admin.deleteUser(doomed.id)
+  // No ad-hoc deleteUser call here -- `doomed` is cleaned up by the module's
+  // `after()` hook regardless of whether the assertions above pass or throw.
 })
 
-test('list_organization_members returns members with names and statuses', async () => {
+// Exercises the service_role bypass (parity with list_provisioned_organizations,
+// see supabase/migrations/20260826163312_list_provisioned_organizations.sql):
+// service_role already holds the GoTrue Admin API, so this raises no
+// privilege ceiling. It does NOT exercise `authenticated` -- see the next
+// test for that, which is the role every production caller actually uses.
+test('list_organization_members returns members with names and statuses (service-role bypass)', async () => {
   const { data, error } = await admin.rpc('list_organization_members', { p_organization_id: orgId })
   assert.equal(error, null)
   const rows = (data ?? []) as Array<{ user_id: string; email: string; status: string }>
@@ -103,17 +113,25 @@ test('list_organization_members returns members with names and statuses', async 
   assert.ok(rows.every((row) => typeof row.status === 'string'))
 })
 
+// The production caller (listOrganizationMembers(), later tasks) always runs
+// as `authenticated` through a signed-in session, never through service_role.
+// This is the spec that actually proves is_member_of(), the grant to
+// `authenticated`, and the `revoke ... from public, anon` are all wired
+// correctly -- the service-role spec above cannot catch a regression in any
+// of those, because it never reaches is_member_of() at all.
+test('a signed-in member can list their own organisation members', async () => {
+  const client = await signedInClient(owner.email, owner.password)
+  const { data, error } = await client.rpc('list_organization_members', { p_organization_id: orgId })
+  assert.equal(error, null)
+  const rows = (data ?? []) as Array<{ user_id: string; email: string; status: string }>
+  const found = rows.find((row) => row.user_id === owner.id)
+  assert.ok(found, 'the owner must appear in their own organisation')
+  assert.equal(found!.email, owner.email)
+  assert.ok(rows.every((row) => typeof row.status === 'string'))
+})
+
 test('list_organization_members refuses an organisation the caller is not in', async () => {
-  const { createClient } = await import('@supabase/supabase-js')
-  const client = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
-    { auth: { autoRefreshToken: false, persistSession: false } },
-  )
-  const { error: signInError } = await client.auth.signInWithPassword({
-    email: outsider.email, password: outsider.password,
-  })
-  assert.equal(signInError, null)
+  const client = await signedInClient(outsider.email, outsider.password)
 
   const { error } = await client.rpc('list_organization_members', { p_organization_id: orgId })
   assert.ok(error, 'membership of another organisation must not be readable')
