@@ -20,8 +20,12 @@ export type OrganizationMember = {
  * filters to active, and the register needs the name of an owner whose
  * membership has since been removed.
  *
- * Display names are resolved with the same helper the shell uses, so a person
- * is named identically wherever they appear.
+ * Display names are resolved with the same helper the shell uses
+ * (`resolveDisplayName`), which checks `full_name` first and `name` second.
+ * `list_organization_members` (migration 20260905200000) now selects
+ * `coalesce(full_name, name)` from `raw_user_meta_data` for the same reason,
+ * so a member is named identically here and in the shell regardless of which
+ * of those two keys their provider populated.
  */
 export async function listOrganizationMembers(): Promise<OrganizationMember[]> {
   const { organization } = await getSessionContext()

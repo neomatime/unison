@@ -29,11 +29,14 @@ export async function createProjectAction(_prev: { error?: string } | undefined,
 
   // Everything the database can still refuse here is a caller mistake, not a
   // server fault, so it reads as a refusal rather than a crash. What is left
-  // after zod: the composite foreign keys (a client or framework from another
-  // organisation, a phase from another framework) and due_date, which zod
-  // accepts as any non-empty string and Postgres rejects if it is not a date.
-  // The copy names those four and nothing else.
-  if (error) return { error: 'The project could not be created. Check the client, framework, phase and due date.' }
+  // after zod: the four composite foreign keys — a client, framework, phase,
+  // or owner named from another organisation (projects_client_fkey,
+  // projects_framework_fkey, the phase/framework pairing, and
+  // projects_owner_fkey from migration 20260905180000). due_date is no longer
+  // among them: optionalDate validates it before it reaches Postgres, so a bad
+  // date is refused as a field error, never as this branch. The copy names
+  // the four fields that can actually land here and nothing else.
+  if (error) return { error: 'The project could not be created. Check the client, framework, phase and owner.' }
 
   revalidatePath('/operations/projects')
   redirect(`/operations/projects/${data.id}`)

@@ -130,6 +130,31 @@ test('a signed-in member can list their own organisation members', async () => {
   assert.ok(rows.every((row) => typeof row.status === 'string'))
 })
 
+// Covers the fix for the docstring overstatement flagged in Task 2 review:
+// list_organization_members used to select only raw_user_meta_data->>'full_name',
+// so a member whose provider populated `name` but not `full_name` would come
+// back with a null name here while lib/auth/display-name.ts's
+// resolveDisplayName() (used by the shell) still finds `name` and shows it --
+// two different names for the same person. Migration 20260905200000 makes the
+// function select coalesce(full_name, name), matching resolveDisplayName's own
+// precedence.
+test('a member named only by the "name" claim is still named, not blank', async () => {
+  const named = await createFixtureUser(orgId, 'member')
+  const { error: metadataError } = await admin.auth.admin.updateUserById(named.id, {
+    user_metadata: { name: 'Given Name' },
+  })
+  assert.equal(metadataError, null)
+
+  const { data, error } = await admin.rpc('list_organization_members', { p_organization_id: orgId })
+  assert.equal(error, null)
+  const rows = (data ?? []) as Array<{ user_id: string; full_name: string | null }>
+  const found = rows.find((row) => row.user_id === named.id)
+  assert.ok(found, 'the member must appear in their own organisation')
+  assert.equal(found!.full_name, 'Given Name')
+
+  await admin.auth.admin.deleteUser(named.id)
+})
+
 test('list_organization_members refuses an organisation the caller is not in', async () => {
   const client = await signedInClient(outsider.email, outsider.password)
 
