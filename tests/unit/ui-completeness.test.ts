@@ -135,6 +135,30 @@ test('project records include requirements, traceability, document management, a
   }
 })
 
+test('the project detail screen offers no archive-state control with no backing action', () => {
+  // Archive now posts to the real archiveProjectAction and redirects away.
+  // The "Restore project" button that used to sit beside it did only
+  // setArchived(false) -- pure client state, never touched the server -- so a
+  // user who clicked it saw the full editing UI reappear and reasonably
+  // believed the project was live again, when it would silently revert on the
+  // next load. That is worse than the old theatre (which was at least
+  // internally consistent), so the control was removed rather than wired to a
+  // restoreProjectAction that does not exist and is out of scope here. This
+  // pins the removal: no clickable control on this screen may flip archive
+  // state through local state alone.
+  const project = readFileSync(join(workspace, 'features', 'delivery', 'components', 'project-detail-screen.tsx'), 'utf8')
+  assert.doesNotMatch(project, /setArchived/, 'no local archive-state setter may exist on this screen -- archive state comes only from the database')
+  assert.doesNotMatch(project, />Restore project</, 'a "Restore project" control has no backing action and must not be offered')
+
+  // And the one archive control that does exist must submit the real form
+  // (not just open a dialog that only flips local state), and must be gated
+  // behind a confirmation -- archiving is a single click with no in-UI undo
+  // once "Restore" is gone, so a bare unconfirmed submit button would be a new
+  // hazard the two changes combine to create.
+  assert.match(project, /action=\{archiveProjectAction\}/, 'the archive form must post to the real server action')
+  assert.match(project, /ConfirmationDialog[\s\S]*?onConfirm=\{[^}]*requestSubmit/, 'archiving must be confirmed before the real form submits')
+})
+
 test('navigation follows the delivery-focused product structure', () => {
   const navigation = readFileSync(join(workspace, 'config', 'navigation.ts'), 'utf8')
   const modules = readFileSync(join(workspace, 'config', 'modules.ts'), 'utf8')
