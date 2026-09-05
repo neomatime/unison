@@ -1,5 +1,11 @@
 # UNISON architecture
 
+> **Read `docs/product-principles.md` first.** It holds the product north star —
+> *minimise the coordination tax of project management* — and governs every
+> feature decision recorded here and in `docs/delivery-items.md` and
+> `docs/project-dependencies.md`. Where a requirement and that document
+> disagree, the principle wins and the requirement changes.
+
 UNISON is a multi-tenant Business Operating System built with the Next.js App Router, backed by a Supabase Postgres project. HIMARK is the bootstrap organization, seeded into the database by migration, and all current product fixtures and the Clients module are scoped to that tenant context.
 
 ## Dependency direction
