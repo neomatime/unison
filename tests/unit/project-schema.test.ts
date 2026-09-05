@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import test from 'node:test'
 
 import { projectInputSchema } from '../../features/delivery/schemas/project.ts'
@@ -82,4 +84,28 @@ test('notes are not capped shorter than the column allows', () => {
   // reason, so a long note was refused by the form and accepted by the database.
   const parsed = projectInputSchema.safeParse({ ...base, notes: 'x'.repeat(2000) })
   assert.equal(parsed.success, true)
+})
+
+test('every form field name agrees with a projectInputSchema key, in both directions', () => {
+  // ProjectForm used to render four steps of inputs with no `name` attribute at
+  // all, so the form submitted nothing while the UI still said "Project
+  // created". The replacement form is correct today, but nothing stops a typo'd
+  // `name` or a silently-dropped field from reintroducing that exact failure:
+  // TypeScript cannot check a string literal against a zod key, the server
+  // action's `Object.fromEntries(formData)` just won't see the field,
+  // `safeParse` either falls back to a default or rejects on a different field,
+  // and the rest of the suite stays green. This test is the guard that would
+  // have caught the original defect, kept alive against the next edit.
+  const source = readFileSync(
+    join(process.cwd(), 'features', 'delivery', 'components', 'project-form.tsx'),
+    'utf8',
+  )
+  const formFieldNames = new Set([...source.matchAll(/\bname="([^"]+)"/g)].map((match) => match[1]))
+  const schemaKeys = new Set(Object.keys(projectInputSchema.shape))
+
+  const missingFromSchema = [...formFieldNames].filter((name) => !schemaKeys.has(name))
+  const missingFromForm = [...schemaKeys].filter((key) => !formFieldNames.has(key))
+
+  assert.deepEqual(missingFromSchema, [], 'a form field name has no matching projectInputSchema key (typo or renamed schema field)')
+  assert.deepEqual(missingFromForm, [], 'a projectInputSchema key is never rendered as a form field (silently dropped from the form)')
 })
