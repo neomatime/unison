@@ -1,4 +1,5 @@
-import { ProjectsScreen } from '@/features/delivery/components/projects-screen'
+import { ModuleWorkspace } from '@/features/product-ui/components/module-workspace'
+import { moduleById } from '@/features/product-ui/registry'
 import { listProjects } from '@/features/delivery/queries/list-projects'
 
 export default async function Page({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
@@ -9,7 +10,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
   const parsedPage = typeof params.page === 'string' ? Number(params.page) : undefined
   const page = parsedPage !== undefined && Number.isInteger(parsedPage) && parsedPage > 0 ? parsedPage : undefined
 
-  const { records } = await listProjects({ q, status, sort, page })
+  const { records, total, page: resolvedPage, pageSize } = await listProjects({ q, status, sort, page })
 
-  return <ProjectsScreen records={records} />
+  return <ModuleWorkspace module={moduleById.projects} records={records} connected initialQuery={q} total={total} page={resolvedPage} pageSize={pageSize} />
 }

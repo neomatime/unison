@@ -407,3 +407,34 @@ test('every module a tier can withhold is guarded by its own layout', () => {
     )
   }
 })
+
+test('the projects register reports only what the database holds', () => {
+  // Six hard-coded metric cards ("Active Projects 36", "At Risk 7") sat above a
+  // register of real rows, and three hard-coded summary panels below it. The
+  // delivery overview already carries real counts; a register is a register.
+  assert.ok(
+    !existsSync(join(workspace, 'features', 'delivery', 'components', 'projects-screen.tsx')),
+    'ProjectsScreen carried fabricated metrics above real rows and must not return',
+  )
+  assert.ok(
+    !existsSync(join(workspace, 'features', 'delivery', 'components', 'project-form.tsx')) ||
+      !readFileSync(join(workspace, 'features', 'delivery', 'components', 'project-form.tsx'), 'utf8').includes('setComplete'),
+    'the four-step wizard reported success without writing; it must not return',
+  )
+
+  const registry = readFileSync(join(workspace, 'features', 'product-ui', 'registry.ts'), 'utf8')
+  const projects = registry.slice(registry.indexOf("id: 'projects'"), registry.indexOf("id: 'onboarding'"))
+  assert.ok(projects.length > 0, 'the projects definition must still exist')
+  for (const invented of ['Neo Morake', 'Amara Dlamini', 'LGNDRY.CO', 'Growthpoint Properties', 'Pioneertown']) {
+    assert.ok(!projects.includes(invented), `${invented} is fabricated data and must not be offered`)
+  }
+  // projects_status_check accepts Active / On Hold / Complete / Cancelled.
+  for (const rejected of ['Planning', 'On Track']) {
+    assert.ok(!projects.includes(`'${rejected}'`), `${rejected} is not a status the database accepts`)
+  }
+
+  const page = readFileSync(join(workspace, 'app', '(unison)', 'operations', 'projects', 'page.tsx'), 'utf8')
+  for (const passed of ['total', 'pageSize', 'initialQuery', 'connected']) {
+    assert.match(page, new RegExp(passed), `the register must receive ${passed} from the server`)
+  }
+})
