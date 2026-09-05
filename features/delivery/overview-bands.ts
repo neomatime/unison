@@ -37,13 +37,18 @@ export type AttentionRow = {
   health: string
   phase: string
   framework: string
-  due: string
+  client: string
+  nextGate: string | null
+  targetDate: string | null
+  targetDateLabel: string
+  note: string | null
 }
 
 export type DeliveryOverview = {
   activeProjects: number
-  atRisk: number
-  gatesDue: number
+  healthCounts: Record<HealthBand, number>
+  projectDatesDue: number
+  projectDatesDueThisWeek: number
   /** Share of active projects on track, or null when there are none to divide by. */
   portfolioHealth: number | null
   /** The framework the lifecycle chart describes. */
@@ -51,4 +56,20 @@ export type DeliveryOverview = {
   columns: PhaseColumn[]
   /** Active projects in the At Risk or Critical bands, worst first. */
   attention: AttentionRow[]
+}
+
+/**
+ * Database dates are stored as date-only ISO strings. Comparing them at UTC
+ * midnight avoids moving a project into another day when environments use
+ * different time zones.
+ */
+export function isDateWithinDays(value: string | null, start: string, days: number) {
+  if (!value) return false
+
+  const startDate = new Date(`${start}T00:00:00Z`)
+  const endDate = new Date(startDate)
+  endDate.setUTCDate(endDate.getUTCDate() + days)
+  const candidate = new Date(`${value}T00:00:00Z`)
+
+  return candidate >= startDate && candidate <= endDate
 }

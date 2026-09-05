@@ -23,17 +23,17 @@ export function Sidebar() {
   const avatarUrl = user.avatarUrl
   const roleLabel = roles.find((definition) => definition.id === role)?.label ?? role
   return (
-    <aside className={cn('flex h-full shrink-0 flex-col bg-sidebar text-sidebar-foreground transition-[width]', collapsed ? 'w-20' : 'w-64')}>
+    <aside className={cn('flex h-full shrink-0 flex-col bg-tenant-sidebar text-tenant-sidebar-foreground transition-[width]', collapsed ? 'w-20' : 'w-64')}>
       {/* Brand */}
       <div className={cn('flex items-center justify-between py-5', collapsed ? 'px-6' : 'px-6')}>
-        <span className={cn('text-xl font-bold tracking-[0.2em] text-sidebar-active-foreground', collapsed && 'hidden')}>
+        <span className={cn('text-xl font-bold tracking-[0.2em] text-tenant-sidebar-foreground', collapsed && 'hidden')}>
           UNISON
         </span>
         <button
           type="button"
           onClick={() => setCollapsed((value) => !value)}
           aria-label="Collapse sidebar"
-          className="text-sidebar-muted transition-colors hover:text-sidebar-active-foreground"
+          className="text-tenant-sidebar-muted transition-colors hover:text-tenant-sidebar-foreground"
         >
           <Menu className="size-5" />
         </button>
@@ -44,7 +44,7 @@ export function Sidebar() {
         {navigationSections.map((section, sectionIndex) => (
           <div key={section.heading ?? `section-${sectionIndex}`} className="mb-2">
             {section.heading ? (
-              <p className={cn('px-3 pt-4 pb-2 text-[0.6875rem] font-semibold tracking-[0.12em] text-sidebar-muted uppercase', collapsed && 'sr-only')}>
+              <p className={cn('px-3 pt-4 pb-2 text-[0.6875rem] font-semibold tracking-[0.12em] text-tenant-sidebar-muted uppercase', collapsed && 'sr-only')}>
                 {section.heading}
               </p>
             ) : (
@@ -68,8 +68,8 @@ export function Sidebar() {
                     className={cn(
                       'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
                       isActive
-                        ? 'bg-sidebar-active text-sidebar-active-foreground'
-                        : 'text-sidebar-foreground hover:bg-sidebar-active/60 hover:text-sidebar-active-foreground',
+                        ? 'bg-tenant-sidebar-active text-tenant-sidebar-foreground'
+                        : 'text-tenant-sidebar-foreground hover:bg-tenant-sidebar-hover hover:text-tenant-sidebar-foreground',
                     )}
                   >
                     <Icon className="size-[1.125rem] shrink-0" strokeWidth={1.75} />
@@ -83,12 +83,12 @@ export function Sidebar() {
       </nav>
 
       {/* User */}
-      <div className="relative border-t border-sidebar-border px-3 py-3">
+      <div className="relative border-t border-tenant-sidebar-border px-3 py-3">
         <button
           type="button"
           onClick={() => setProfileOpen((value) => !value)}
           aria-expanded={profileOpen}
-          className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left transition-colors hover:bg-sidebar-active/60"
+          className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left transition-colors hover:bg-tenant-sidebar-hover"
         >
           {avatarUrl ? (
             <Image
@@ -102,12 +102,12 @@ export function Sidebar() {
             <InitialAvatar initials={getInitials(displayName)} className="size-10 rounded-full" />
           )}
           <span className={cn('min-w-0 flex-1', collapsed && 'sr-only')}>
-            <span className="block truncate text-sm font-semibold text-sidebar-active-foreground">
+            <span className="block truncate text-sm font-semibold text-tenant-sidebar-foreground">
               {displayName}
             </span>
-            <span className="block truncate text-xs text-sidebar-muted">{roleLabel}</span>
+            <span className="block truncate text-xs text-tenant-sidebar-muted">{roleLabel}</span>
           </span>
-          <ChevronDown className={cn('size-4 shrink-0 text-sidebar-muted', collapsed && 'hidden')} />
+          <ChevronDown className={cn('size-4 shrink-0 text-tenant-sidebar-muted', collapsed && 'hidden')} />
         </button>
         {profileOpen ? <div className={cn('absolute bottom-full z-50 mb-2 rounded-xl border border-border bg-card p-2 text-foreground shadow-xl', collapsed ? 'left-2 w-52' : 'right-3 left-3')}><p className="px-2 py-2 text-xs font-semibold text-muted-foreground">{displayName} · {organization.name}</p><Link href="/people/team" className="block rounded-lg px-2 py-2 text-sm hover:bg-muted">View profile</Link><Link href="/settings" className="block rounded-lg px-2 py-2 text-sm hover:bg-muted">Organization settings</Link><form action={signOutAction}><button type="submit" className="block w-full rounded-lg px-2 py-2 text-left text-sm text-destructive hover:bg-muted">Sign out</button></form></div> : null}
       </div>

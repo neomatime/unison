@@ -12,12 +12,13 @@ type WorkspaceHeaderProps = {
   title: string
   description?: string
   parent?: { label: string; href: string }
+  breadcrumbLabel?: string
   action?: string
   actionHref?: string
   actions?: React.ReactNode
 }
 
-export function WorkspaceHeader({ category, title, description, parent, action, actionHref, actions }: WorkspaceHeaderProps) {
+export function WorkspaceHeader({ category, title, description, parent, breadcrumbLabel, action, actionHref, actions }: WorkspaceHeaderProps) {
   const [panel, setPanel] = useState<UtilityPanelKind | null>(null)
   return <>
     <header className="mb-6">
@@ -27,7 +28,7 @@ export function WorkspaceHeader({ category, title, description, parent, action, 
             <Link href="/overview" className="hover:text-foreground">UNISON</Link>
             <span>/</span><span>{category}</span>
             {parent ? <><span>/</span><Link href={parent.href} className="hover:text-foreground">{parent.label}</Link></> : null}
-            <span>/</span><span className="text-foreground">{title}</span>
+            <span>/</span><span className="text-foreground">{breadcrumbLabel ?? title}</span>
           </nav>
           <h1 className="text-3xl font-bold tracking-tight text-foreground">{title}</h1>
           {description ? <p className="mt-1.5 max-w-3xl text-sm text-muted-foreground">{description}</p> : null}

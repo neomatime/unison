@@ -47,6 +47,14 @@
   --color-sidebar-active-foreground: var(--sidebar-active-foreground);
   --color-sidebar-border: var(--sidebar-border);
 
+  /* Tenant shell navigation */
+  --color-tenant-sidebar: var(--tenant-sidebar);
+  --color-tenant-sidebar-foreground: var(--tenant-sidebar-foreground);
+  --color-tenant-sidebar-muted: var(--tenant-sidebar-muted);
+  --color-tenant-sidebar-active: var(--tenant-sidebar-active);
+  --color-tenant-sidebar-hover: var(--tenant-sidebar-hover);
+  --color-tenant-sidebar-border: var(--tenant-sidebar-border);
+
   /* Chart tokens */
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
