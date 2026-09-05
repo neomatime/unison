@@ -224,6 +224,26 @@ provisioned with "MFA Required" on is not enforcing anything.
 Either persist and enforce them, or remove them from the wizard so it stops
 implying a guarantee.
 
+**Resolved for the access settings, 2026-09-05: removed, not persisted.** The
+whole Access Settings block is gone — Default User Access, Guest Access,
+Restricted Project Access, SSO Required and MFA Required — along with its fields
+on `AccessConfiguration` and its seeds in `data.ts`. Removal rather than
+enforcement was the right half of that choice because none of the five had a
+mechanism behind it anywhere in the product, so "persist and enforce" was not a
+small fix; it was five unbuilt features. `docs/product-principles.md` §2 makes
+this the default answer for half-built forms — challenge the feature, do not
+finish it — and `docs/first-buyer-readiness.md` §8 makes it urgent, because a
+security control that enforces nothing is what an enterprise buyer's due
+diligence finds. `ui-completeness.test.ts` now pins the absence of all five in
+the markup **and** of their fields on the type, since reinstating the field is
+what makes the control possible again. The pin was verified by reinstating
+`mfaRequired` and watching it fail.
+
+**Still open in this section:** initial users, departments, teams and delivery
+roles are still collected and still persist nothing. They are not security
+claims, so they are less urgent than the toggles were, but the same question
+applies — persist them or stop collecting them.
+
 The provisioning register at /internal/provisioning still lists mock drafts.
 Its rows carry tier, modules, go-live and a numeric progress bar, none of which
 exist now that provisioning creates an organisation directly. Either model a

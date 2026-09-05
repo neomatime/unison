@@ -54,7 +54,7 @@ export const initialProvisioningState: ProvisioningWizardState = {
     // Nothing in this slice invites anyone but the primary administrator, so
     // the operator adds initial users themselves or the list stays empty.
     users: [],
-    departments: ['Business Transformation', 'Delivery', 'Operations'], teams: ['Transformation Office', 'Business Solutions'], roles: ['Delivery Manager', 'Project Manager', 'Business Analyst', 'Business Owner'], defaultAccess: 'Member', guestAccess: false, restrictedProjects: true, ssoRequired: true, mfaRequired: true,
+    departments: ['Business Transformation', 'Delivery', 'Operations'], teams: ['Transformation Office', 'Business Solutions'], roles: ['Delivery Manager', 'Project Manager', 'Business Analyst', 'Business Owner'],
   },
   currentStep: 'organisation',
   draftStatus: 'Unsaved',

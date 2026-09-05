@@ -65,11 +65,14 @@ export type AccessConfiguration = {
   departments: string[]
   teams: string[]
   roles: string[]
-  defaultAccess: string
-  guestAccess: boolean
-  restrictedProjects: boolean
-  ssoRequired: boolean
-  mfaRequired: boolean
+  // No access-settings fields here, deliberately. The wizard used to collect
+  // Default User Access, Guest Access, Restricted Project Access, SSO Required
+  // and MFA Required. None of them was persisted or enforced anywhere: a tenant
+  // provisioned with "MFA Required" on enforced no MFA. They are removed rather
+  // than carried, because a control that claims a security guarantee it does not
+  // deliver is worse than an absent one — an absent control is a roadmap
+  // conversation, a fake one is a trust failure in the area enterprise buyers
+  // audit hardest. Reintroduce each only alongside the enforcement behind it.
 }
 
 export type ProvisioningWizardState = {

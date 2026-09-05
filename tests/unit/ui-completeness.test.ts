@@ -232,6 +232,23 @@ test('client provisioning wizard includes every designed stage and provisions fo
   assert.match(wizard, /provisionOrganizationAction\(undefined, formData\)/)
   for (const outcome of [/result\.error/, /result\.emailFailed/, /setScreen\('success'\)/]) assert.match(wizard, outcome)
   assert.match(wizard, /reissue_invitation/, 'an email failure must name its recovery')
+
+  // The wizard collected Default User Access, Guest Access, Restricted Project
+  // Access, SSO Required and MFA Required, and provision_organization persists
+  // none of them — a tenant provisioned with "MFA Required" on enforced no MFA.
+  // A control claiming a security guarantee it does not deliver is worse than an
+  // absent one: absence is a roadmap conversation, a fake toggle is a trust
+  // failure in the area enterprise buyers audit hardest. Each may return only
+  // with the enforcement behind it, which is why this pins the type as well as
+  // the markup — reinstating the field is what makes the control possible again.
+  const provisioningTypes = readFileSync(join(workspace, 'features', 'internal-provisioning', 'types.ts'), 'utf8')
+  for (const control of ['Access Settings', 'Default User Access', 'Guest Access', 'Restricted Project Access', 'SSO Required', 'MFA Required']) {
+    assert.ok(!wizard.includes(control), `"${control}" enforces nothing, so it must not be offered`)
+  }
+  for (const field of ['defaultAccess', 'guestAccess', 'restrictedProjects', 'ssoRequired', 'mfaRequired']) {
+    assert.ok(!provisioningTypes.includes(`${field}:`), `${field} is unenforced state; it must not be reinstated without enforcement`)
+    assert.ok(!data.includes(`${field}:`), `${field} must not be seeded into the wizard's initial state`)
+  }
   // Nothing the database does not hold may be reported back as achieved, and
   // nothing it does hold may be reported as unconfigured. Modules and go-live
   // are still stored nowhere; tier is stored, so the success screen must show
