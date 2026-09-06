@@ -82,6 +82,28 @@ test('an archived prerequisite is Blocked even with no date at all', () => {
   assert.match(result.reason, /archived/i)
 })
 
+test('a cancelled prerequisite is Blocked even when its date is still in the near future', () => {
+  // The case that pins the precedence. With the date checks running first this
+  // would read At Risk, which understates a prerequisite that can never arrive.
+  const result = deriveDependencyStatus(
+    requirement({ requiredByDate: '2026-09-20' }),
+    prerequisite({ status: 'Cancelled' }),
+    TODAY,
+  )
+  assert.equal(result.status, 'Blocked')
+  assert.match(result.reason, /cancelled/i)
+})
+
+test('an archived prerequisite is Blocked even when its date is still in the near future', () => {
+  const result = deriveDependencyStatus(
+    requirement({ requiredByDate: '2026-09-20' }),
+    prerequisite({ archived: true }),
+    TODAY,
+  )
+  assert.equal(result.status, 'Blocked')
+  assert.match(result.reason, /archived/i)
+})
+
 test('a satisfied requirement stays Satisfied even when the date has passed', () => {
   // Lateness cannot un-satisfy a met requirement.
   const result = deriveDependencyStatus(
