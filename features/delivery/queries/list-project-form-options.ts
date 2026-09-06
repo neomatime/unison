@@ -2,7 +2,7 @@ import 'server-only'
 import { getSessionContext } from '@/lib/auth/get-session-context'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { listOrganizationMembers } from '@/features/memberships/queries/list-organization-members'
-import { selectClientOptions, selectOwnerOptions, selectPhaseOptions } from '../form-options'
+import { selectClientOptions, selectFrameworkOptions, selectOwnerOptions, selectPhaseOptions } from '../form-options'
 
 export type ProjectFormOptions = {
   frameworks: Array<{ id: string; name: string }>
@@ -19,16 +19,25 @@ export type ProjectFormOptions = {
  * framework changes. A round trip per change would cost more than the data.
  */
 export async function listProjectFormOptions(
-  current: { ownerId?: string | null; clientId?: string | null; phaseId?: string | null } = {},
+  current: {
+    ownerId?: string | null
+    clientId?: string | null
+    phaseId?: string | null
+    frameworkId?: string | null
+  } = {},
 ): Promise<ProjectFormOptions> {
   const { organization } = await getSessionContext()
   const supabase = await createServerSupabase()
 
   const [frameworks, phases, clients, members] = await Promise.all([
-    // An archived framework must not be offered. archived_at was never filtered
-    // here, so an archived framework's name still reached the register.
-    supabase.from('frameworks').select('id, name')
-      .eq('organization_id', organization.id).is('archived_at', null).order('name'),
+    // archived_at is selected and filtered in selectFrameworkOptions rather
+    // than in SQL, because the project's own framework must survive the
+    // filter when it has since been archived. Dropping it from the options
+    // left the controlled <select> in ProjectForm with a value matching no
+    // option, which a required select refuses to submit — see
+    // selectFrameworkOptions for the full failure chain.
+    supabase.from('frameworks').select('id, name, archived_at')
+      .eq('organization_id', organization.id).order('name'),
     supabase.from('framework_phases').select('id, name, framework_id, archived_at')
       .eq('organization_id', organization.id).order('position'),
     // archived_at is selected and filtered in selectClientOptions rather than in
@@ -45,7 +54,7 @@ export async function listProjectFormOptions(
   if (clients.error) throw clients.error
 
   return {
-    frameworks: frameworks.data ?? [],
+    frameworks: selectFrameworkOptions(frameworks.data ?? [], current.frameworkId),
     phases: selectPhaseOptions(
       (phases.data ?? []).map((row) => ({
         id: row.id, name: row.name, frameworkId: row.framework_id, archived_at: row.archived_at,

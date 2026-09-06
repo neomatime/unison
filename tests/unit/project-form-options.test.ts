@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { selectClientOptions, selectOwnerOptions, selectPhaseOptions } from '../../features/delivery/form-options.ts'
+import { selectClientOptions, selectFrameworkOptions, selectOwnerOptions, selectPhaseOptions } from '../../features/delivery/form-options.ts'
 
 const ACTIVE = { userId: 'u-active', displayName: 'Active Member', status: 'active' }
 const REMOVED = { userId: 'u-removed', displayName: 'Departed Member', status: 'removed' }
@@ -68,6 +68,39 @@ test('an archived current client is retained and labelled', () => {
 test('an open current client is offered once, not duplicated', () => {
   assert.deepEqual(selectClientOptions([OPEN_CLIENT, ARCHIVED_CLIENT], 'c-open'), [
     { id: 'c-open', name: 'Open Client' },
+  ])
+})
+
+const OPEN_FRAMEWORK = { id: 'f-open', name: 'Open Framework', archived_at: null }
+const ARCHIVED_FRAMEWORK = { id: 'f-archived', name: 'Archived Framework', archived_at: '2026-09-01T00:00:00Z' }
+
+test('the framework picker excludes archived frameworks when they are not the current one', () => {
+  assert.deepEqual(selectFrameworkOptions([OPEN_FRAMEWORK, ARCHIVED_FRAMEWORK]), [
+    { id: 'f-open', name: 'Open Framework' },
+  ])
+})
+
+test('an archived current framework is retained and labelled', () => {
+  // The defect this guards: ProjectForm's framework <select> is controlled and
+  // required, so a value matching no option leaves nothing selected — not even
+  // a fallback empty option — and the browser refuses to submit the form.
+  const options = selectFrameworkOptions([OPEN_FRAMEWORK, ARCHIVED_FRAMEWORK], 'f-archived')
+
+  assert.deepEqual(options, [
+    { id: 'f-open', name: 'Open Framework' },
+    { id: 'f-archived', name: 'Archived Framework (archived)' },
+  ])
+})
+
+test('an open current framework is offered once, not duplicated', () => {
+  assert.deepEqual(selectFrameworkOptions([OPEN_FRAMEWORK, ARCHIVED_FRAMEWORK], 'f-open'), [
+    { id: 'f-open', name: 'Open Framework' },
+  ])
+})
+
+test('a framework id matching no framework invents no option', () => {
+  assert.deepEqual(selectFrameworkOptions([OPEN_FRAMEWORK], 'f-nobody'), [
+    { id: 'f-open', name: 'Open Framework' },
   ])
 })
 

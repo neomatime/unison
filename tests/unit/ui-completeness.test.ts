@@ -727,6 +727,12 @@ test('the frameworks module reads the database rather than a fixture', () => {
   assert.ok(!detail.includes('Phases & Gates'), 'gates do not exist; the tab is Phases')
 
   assert.ok(!data.includes('export const frameworks'), 'the frameworks fixture must not survive alongside the real query')
+  // This checks data.ts only. `deliveryPhases` was not deleted — it was
+  // relocated verbatim to portfolio-screen.tsx as `illustrativePhases`, still
+  // rendered by PhaseStepper under a portfolio heading with hardcoded counts.
+  // That fixture belongs to the portfolio slice, not this one; do not read a
+  // pass here as evidence that a global phase list no longer exists anywhere
+  // in the app.
   assert.ok(!data.includes('export const deliveryPhases'), 'a single global phase list is meaningless once each framework carries its own')
 })
 

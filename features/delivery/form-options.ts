@@ -72,6 +72,34 @@ export function selectClientOptions(
   return [...open, { id: retained.id, name: `${retained.name} (archived)` }]
 }
 
+export type SelectableFramework = { id: string; name: string; archived_at: string | null }
+
+/**
+ * Unarchived frameworks, plus the project's current framework when it has
+ * since been archived. Identical reasoning to selectClientOptions:
+ * `frameworkId` is required and rendered as a controlled `<select>` in
+ * ProjectForm, so a missing option does not fall back to an empty choice —
+ * `selectedIndex` becomes -1, the field renders blank, and a `required`
+ * select with nothing selected refuses to submit. Editing any other field on
+ * the project became impossible, and the only escape (choosing a different
+ * framework) re-filtered the phase list and silently nulled phase_id too.
+ */
+export function selectFrameworkOptions(
+  frameworks: ReadonlyArray<SelectableFramework>,
+  currentFrameworkId?: string | null,
+): EntityOption[] {
+  const open = frameworks
+    .filter((framework) => framework.archived_at === null)
+    .map((framework) => ({ id: framework.id, name: framework.name }))
+
+  if (!currentFrameworkId || open.some((option) => option.id === currentFrameworkId)) return open
+
+  const retained = frameworks.find((framework) => framework.id === currentFrameworkId)
+  if (!retained) return open
+
+  return [...open, { id: retained.id, name: `${retained.name} (archived)` }]
+}
+
 export type SelectablePhase = { id: string; name: string; frameworkId: string; archived_at: string | null }
 export type PhaseOption = { id: string; name: string; frameworkId: string }
 

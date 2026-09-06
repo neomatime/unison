@@ -67,7 +67,7 @@ export function FrameworkDetailScreen({ framework }: { framework: FrameworkDetai
       title={archived ? 'Restore framework?' : 'Archive framework?'}
       description={archived
         ? `${framework.name} will be available for new projects again.`
-        : `${framework.name} will no longer be available for new projects. Existing projects will retain their applied version.`}
+        : `${framework.name} will no longer be available for new projects. Existing projects keep this framework and are unaffected.`}
       confirmLabel={archived ? 'Restore framework' : 'Archive framework'}
       onCancel={() => setConfirmOpen(false)}
       onConfirm={() => { setConfirmOpen(false); formRef.current?.requestSubmit() }}

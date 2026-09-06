@@ -1,6 +1,7 @@
 import 'server-only'
 import { getSessionContext } from '@/lib/auth/get-session-context'
 import { createServerSupabase } from '@/lib/supabase/server'
+import { isUuid } from '@/lib/utils'
 
 export type FrameworkPhase = {
   id: string
@@ -38,6 +39,11 @@ export type FrameworkDetail = {
  * page is where one is unarchived, so it must be reachable by URL.
  */
 export async function getFramework(frameworkId: string): Promise<FrameworkDetail | null> {
+  // A malformed id is a miss, not a fault — see isUuid. The detail route
+  // already guards this itself (with the fuller comment); guarding here too
+  // means the edit route, and any future caller, inherits it for free.
+  if (!isUuid(frameworkId)) return null
+
   const { organization } = await getSessionContext()
   const supabase = await createServerSupabase()
 
