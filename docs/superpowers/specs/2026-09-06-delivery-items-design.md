@@ -32,9 +32,19 @@ risks, dependency graphs, requirements coverage, defect status and traceability
 health. The direction names all seven explicitly, and the provisioning MFA toggle
 is the precedent for why an unbacked field is worse than an absent one.
 
-Nothing here touches user stories, sprints, story points, branches or CI/CD.
-The boundary test from the direction: *would an engineer open UNISON daily to do
-their job?* If yes, we have built Azure DevOps.
+Nothing here touches user stories, tasks, sprints, story points, branches or
+CI/CD. The boundary test from the direction: *would an engineer open UNISON
+daily to do their job?* If yes, we have built Azure DevOps.
+
+The full exclusion list, unchanged and not to be quietly relaxed during
+implementation: user stories, tasks, sprints, story points, testing status,
+linked test cases, linked risks, dependency graphs, requirements coverage,
+defect status, traceability health, phase transition history.
+
+**Sequencing is unchanged** by anything in this spec: Projects write path →
+Frameworks write path → **Delivery Items** → Project Dependencies and
+Prerequisites → Requirements → Traceability → Integrations. This slice is the
+third of those and does not borrow from the fourth.
 
 ## Making a third level unrepresentable
 
@@ -43,28 +53,54 @@ The direction is explicit that the depth cap is a schema rule, not a convention,
 application-side validation. Three constraints carry it:
 
 ```sql
-check (level in (1, 2))
+level int not null check (level in (1, 2)),
 
-check (
-  (level = 1 and parent_id is null and parent_level is null)
-  or
-  (level = 2 and parent_id is not null and parent_level = 1)
-)
+-- Generated, never written by the application. This is the column that lets a
+-- foreign key say "the parent is a level-1 item", which no single-column key
+-- can express.
+parent_level int generated always as (case when parent_id is null then null else 1 end) stored,
+
+check ((level = 1 and parent_id is null) or (level = 2 and parent_id is not null)),
 
 foreign key (parent_id, parent_level, project_id)
   references public.delivery_items (id, level, project_id)
 ```
 
-The composite key is doing three jobs at once: the parent must exist, it must be
-**level 1** (because `parent_level` is pinned to 1 by the check above), and it
-must belong to the **same project**. A level-2 item parented to another level-2
-item cannot be written — Postgres refuses it. This is the same discipline as
-`projects_owner_fkey`, and its target needs `unique (id, level, project_id)` on
-`delivery_items`.
+The composite key does three jobs at once: the parent must exist, must be
+**level 1**, and must belong to the **same project**. Its target needs
+`unique (id, level, project_id)` on `delivery_items`.
 
-`parent_level` is redundant data, and that is the point: it is the column that
-lets a foreign key express "the parent is a level-1 item", which no single-column
-key can say.
+**`parent_level` is a generated column, which removes the boilerplate cost of
+the redundancy.** This was probed against the live database before being
+specified — a scratch table with exactly these constraints, seven insert
+scenarios, then dropped:
+
+| Attempt | Result |
+| --- | --- |
+| level 1, no parent | accepted |
+| level 2 under a level 1 | accepted |
+| **level 3** | refused `23514` |
+| **level 2 under a level 2** | refused `23503` |
+| level 1 *with* a parent | refused `23514` |
+| level 2 with no parent | refused `23514` |
+| parent in another project | refused `23503` |
+
+Postgres accepts a stored generated column in a composite foreign key, and the
+invariant holds in every direction. The practical cost the addendum asked to
+weigh comes out near zero: the application never writes `parent_level`, so
+inserts and updates carry no extra field, server actions gain no branch, and the
+generated type is one nullable integer nobody sets. The only additions are one
+unique index and a column comment explaining why the column exists.
+
+**The alternative considered and rejected:** two tables, `level_1_items` and
+`level_2_items`, which makes a third level unrepresentable without any redundant
+column. It was rejected because it duplicates every shared column, doubles the
+RLS policies and server actions, turns every read into a union, and contradicts
+the direction's own model — "a Delivery Item has a **level**", one entity, not
+two. That is more boilerplate than the generated column, not less.
+
+Application-side validation and a trigger were both ruled out by the direction
+itself, which requires the cap to be structural.
 
 **On parent deletion:** `no action`. There is no delete policy on this table —
 archive only — so this is a backstop against a direct database delete leaving an
@@ -132,9 +168,40 @@ claims may not.
 
 ### Status and health
 
-Health reuses `PROJECT_HEALTHS` unchanged — On Track, Healthy, Watch, At Risk,
-Critical — because a delivery item's health means the same thing as a project's
-and a second vocabulary would invite drift.
+**Health is four values: Healthy, Watch, At Risk, Critical.** "On Track" is
+deliberately not offered at Delivery Item level.
+
+This was challenged rather than inherited, and the evidence is that `On Track`
+and `Healthy` are already duplicates in this codebase:
+
+- `delivery-primitives.tsx:35-36` styles them identically —
+  `bg-emerald-50 text-emerald-800` for both.
+- `overview-bands.ts` collapses them into a single band, `On Track / Healthy`,
+  with a comment saying the grouping is intentional.
+- Nothing anywhere branches on the difference. Two values, one meaning.
+
+At Delivery Item level the overlap is worse than at project level, because
+`status` already carries the schedule dimension — Not Started, In Progress,
+**Blocked**, Complete — and a target date carries the rest. "On Track" is a
+statement about schedule; an item that is Blocked is by definition not on track,
+so offering both invites a row that reads `Blocked · On Track`. "Healthy" makes
+no schedule claim, so status and health stay orthogonal: **status says where the
+work is, health says what condition it is in.**
+
+Dropping "On Track" rather than "Healthy" is the choice that removes the
+ambiguity instead of relocating it.
+
+**This is a narrowing, not a divergent vocabulary.** All four values are members
+of `PROJECT_HEALTHS`, and `bandFor()` already maps every one of them correctly,
+so a delivery item's health aggregates through the existing briefing bands with
+no new mapping and no drift. The cost, stated plainly: a project may read
+`On Track` while an item beneath it reads `Healthy`, and they mean the same
+thing. That is the price of removing the duplicate, and it is smaller than
+carrying an overlap into a new table.
+
+Note the existing fixture register on the Delivery tab already offered four
+values rather than five — it used `On Track` where this spec uses `Healthy`. The
+count was right; the word was the one that collides with status.
 
 Status gets its own list: **Not Started, In Progress, Blocked, Complete.**
 `PROJECT_STATUSES` was not reused because "On Hold" and "Cancelled" describe a
@@ -191,6 +258,26 @@ Both pickers here inherit it:
 functions; these reuse them rather than adding a fifth and sixth copy. If a
 sixth optional foreign key ever reaches a form, retention is not optional.
 
+### A retained archived phase must say so on the record, not only in the picker
+
+Retention keeps the data honest. It must not make the *display* dishonest: an
+item still sitting in a phase its framework has since archived must show that,
+rather than rendering the phase as though it were current.
+
+```
+Current phase
+Test
+Archived in framework
+```
+
+The second line is a restrained qualifier in muted text, not a badge, a warning
+colour or an alert — the phase is a legitimate recorded state, not an error, and
+treating it as a problem would overstate it. It appears wherever the item's phase
+is shown: the Delivery tab row and the item's own detail.
+
+No schema supports this; `framework_phases.archived_at` already carries it and
+`getFramework` already reads it. This is a presentation requirement only.
+
 **Nine tabs are deleted** — Workstreams, Requirements, Documents, Processes,
 Testing, Risks, Decisions, Governance, Benefits. All nine render empty registers
 over tables that do not exist, which `project-detail-screen.tsx` admits in a code
@@ -200,6 +287,39 @@ that is now real, which makes them read as more credible rather than less.
 
 Overview, Framework and Delivery remain. The roadmap those tabs sketched lives in
 `product-definition.md`, which is where a roadmap belongs.
+
+**Three tabs must read as the deliberate product surface, not as nine missing
+ones.** A tab strip built for twelve and carrying three looks stripped; the same
+three, spaced and weighted for three, look focused. So the strip is re-laid out
+rather than merely shortened — sized to its contents instead of scrolling,
+with the surrounding header carrying enough context that the page reads as
+complete on arrival. No placeholder tabs, no "coming soon", no greyed-out
+entries: an absent capability is a roadmap conversation, and a disabled tab is
+the same unbacked claim in a duller colour.
+
+The test is that a first-time viewer should not be able to tell that tabs were
+removed.
+
+### Room for causal context, without claiming it now
+
+§11 of `product-definition.md` sets the visibility principle — *what → why →
+impact → owner → intervention required* — and Delivery Items are where that will
+eventually be answered below project level.
+
+Nothing in this slice implements any of it, and no field, column or label may
+hint at it. But the row and detail must not be *shaped* so that adding it later
+means a redesign:
+
+- the row renders from a single item view-model rather than positional cells, so
+  a later "why" line is an addition to that model, not a re-cut of the table
+- the detail is a section stack, not a fixed two-column grid, so a future
+  cause-and-impact block is one more section
+- the phase qualifier introduced above is the first instance of the pattern —
+  a secondary line beneath a primary value — and later causal context reuses that
+  shape rather than inventing a second one
+
+This is a layout constraint, not scope. If it starts to look like scope in
+implementation, it has been misread: build the six fields and nothing else.
 
 ## Testing
 
@@ -218,7 +338,13 @@ Overview, Framework and Delivery remain. The roadmap those tabs sketched lives i
 **Unit tests:**
 
 - the level/parent rules in the zod schema, matching the database's
-- `DELIVERY_ITEM_STATUSES` and the check constraint offer the same values
+- `DELIVERY_ITEM_STATUSES` and `DELIVERY_ITEM_HEALTHS` each offer exactly what
+  their check constraint accepts, and no more
+- `DELIVERY_ITEM_HEALTHS` does not contain `On Track`, and every value it does
+  contain is a member of `PROJECT_HEALTHS` and is handled by `bandFor()` — the
+  test that keeps the narrowing a narrowing rather than a fork
+- an item whose phase is archived renders the qualifier; one whose phase is
+  active does not
 - an unset framework label renders "Level 1", not an invented default
 - the owner and phase pickers retain an item's own removed owner and archived
   phase, and offer neither to a different item — the fifth instance of that
@@ -236,7 +362,19 @@ each. The tab shows the hierarchy. A third level cannot be created through the
 UI or by a crafted submit. A phase from another framework cannot be set.
 Archiving a parent with live children is refused with a message; archiving a
 childless item works and is reversible. Framework labels appear where set and
-fall back to "Level 1" / "Level 2" where not.
+fall back to "Level 1" / "Level 2" where not. An item whose phase has since been
+archived says so on the record rather than showing it as current.
+
+**And the criterion that is not a checklist item:** *a project with Delivery
+Items reads as a coherent governed-delivery surface, not a generic nested work
+tracker.* The structure, ownership, progress and governance context should be
+what the screen is obviously for. If it reads as a place to manage sprints or
+tasks, the slice has failed even with every other criterion met — and the
+boundary test from the direction applies: would an engineer open this daily to
+do their job? If yes, we have built Azure DevOps.
+
+The three remaining project tabs should look like the current product, not like
+the remains of a larger one.
 
 `tsc`, `pnpm test`, `pnpm test:rls` and `pnpm build` green from a clean tree.
 
