@@ -124,12 +124,30 @@ test('shared register UI covers CRUD, archived records, export, import, and tabl
   ]) assert.match(register, new RegExp(capability, 'i'), `${capability} control is missing from the shared register`)
 })
 
-test('project records include requirements, traceability, document management, and upload states', () => {
-  const project = readFileSync(join(workspace, 'features', 'delivery', 'components', 'project-detail-screen.tsx'), 'utf8')
+// The test that used to sit here ('project records include requirements,
+// traceability, document management, and upload states') pinned eight tabs on
+// the project detail screen -- Requirements, Traceability, Documents,
+// Processes, Testing, Risks, Decisions, Benefits -- against a regex that
+// matched anywhere in the file, including residual matches from
+// DuplicateProjectDialog's fabricated checkbox list (Requirements, Documents).
+// Workstreams was never guarded by this test; the new 'no tab without a
+// table' guard covers it instead. Delivery Items gave the screen a third tab
+// that is real (backed by delivery_items), and this task's own
+// project-detail-screen.tsx now carries exactly three tabs -- Overview,
+// Framework, Delivery -- with those eight fabricated ones removed. Guarding
+// their presence would mean guarding a capability that was never real and is
+// now gone by design, so that half was removed rather than adapted or
+// neutered; 'the project detail page offers no tab without a table behind it'
+// below pins the removal instead.
+//
+// ProjectDocumentsWorkspace itself was not deleted, though -- it is no longer
+// mounted on the project screen, but it is still mounted on the vendor,
+// onboarding and client screens (vendor-profile-screen.tsx,
+// onboarding-detail-screen.tsx, client-relationship-workspace.tsx), so its
+// upload states still guard something real, just no longer scoped to
+// "project records". That half is kept below under its own name.
+test('the shared document-upload workspace still offers its upload states', () => {
   const documents = readFileSync(join(workspace, 'features', 'delivery', 'components', 'project-documents-workspace.tsx'), 'utf8')
-  for (const capability of ['Requirements', 'Traceability', 'Documents', 'Processes', 'Testing', 'Risks', 'Decisions', 'Benefits']) {
-    assert.match(project, new RegExp(capability), `${capability} project workspace is missing`)
-  }
   for (const state of ['progress', 'Cancel', 'Retry', 'Remove', 'duplicate', 'unsupported', 'classification']) {
     assert.match(documents, new RegExp(state, 'i'), `${state} document-upload state is missing`)
   }
@@ -767,4 +785,87 @@ test('the frameworks wizard that wrote nothing is gone', () => {
   for (const step of ['Framework Basics', 'Artefacts & Roles', 'Controls & Metrics']) {
     assert.ok(!form.includes(step), `"${step}" collects data for a domain with no table`)
   }
+})
+
+test('the project detail page offers no tab without a table behind it', () => {
+  // Nine tabs rendered empty registers over tables that do not exist, which the
+  // file itself admitted in a comment. The Frameworks slice deleted five
+  // equivalent tabs; leaving these would put nine unbacked claims beside a tab
+  // that is now real, which makes them read as more credible, not less.
+  const screen = readFileSync(join(workspace, 'features', 'delivery', 'components', 'project-detail-screen.tsx'), 'utf8')
+
+  const tabsMatch = screen.match(/const tabs\s*=\s*\[([^\]]*)\]/)
+  assert.ok(tabsMatch, 'the tabs array was not found in the expected shape')
+  const tabs = [...tabsMatch[1].matchAll(/'([^']+)'/g)].map((match) => match[1])
+  assert.deepEqual(tabs, ['Overview', 'Framework', 'Delivery'])
+
+  for (const gone of ['Workstreams', 'Requirements', 'Documents', 'Processes', 'Testing', 'Risks', 'Decisions', 'Benefits', 'Governance']) {
+    // Matched as a quoted string anywhere in the file, not just inside the
+    // tabs array literal above -- that array only proves what the tab strip
+    // renders today. This loop exists for the other half: a fabricated name
+    // resurfacing anywhere else in the file (a checkbox list, a menu, a
+    // placeholder) reads the same as the tab returning. A bare `'name'` match
+    // is quote-style sensitive (`"${gone}"` or a template literal would slip
+    // past it), so this matches the word on its own regardless of the quote
+    // character around it.
+    assert.ok(!new RegExp(`\\b${gone}\\b`).test(screen), `the ${gone} tab has no table behind it and must not return`)
+  }
+
+  // The same six fabricated names the registry was scrubbed of survived here
+  // one file away, because that guard slices registry.ts only.
+  for (const invented of ['Neo Morake', 'Amara Dlamini', 'Thabo Mokoena', 'Naledi Maseko', 'Lethabo Nkosi', 'Mia Daniels']) {
+    assert.ok(!screen.includes(invented), `"${invented}" is a fabricated person and must not survive`)
+  }
+})
+
+test('nothing offers a third delivery-item level', () => {
+  // The depth cap is structural in the database. This pins the UI half: the
+  // level is derived from where the user clicked, never chosen, so no control
+  // can offer a third.
+  const form = readFileSync(join(workspace, 'features', 'delivery', 'components', 'delivery-item-form.tsx'), 'utf8')
+  assert.match(form, /name="level"[^>]*type="hidden"|type="hidden"[^>]*name="level"/, 'level must be a hidden input, not a control')
+  assert.ok(!/'3'/.test(form), 'no level 3 may appear anywhere in the form')
+
+  const schema = readFileSync(join(workspace, 'features', 'delivery', 'schemas', 'delivery-item.ts'), 'utf8')
+  assert.match(schema, /z\.enum\(\['1', '2'\]\)/, 'the schema must accept only levels 1 and 2')
+})
+
+test('an archived current phase is disclosed rather than shown as current', () => {
+  // Retention keeps the data honest; this keeps the display honest. An item
+  // still in a phase its framework has archived must say so.
+  const panel = readFileSync(join(workspace, 'features', 'delivery', 'components', 'delivery-items-panel.tsx'), 'utf8')
+  assert.match(panel, /phaseArchived/, 'the panel must read the phaseArchived flag')
+  assert.ok(panel.includes('Archived in framework'), 'the qualifier text must be present')
+})
+
+test('the delivery-item edit dialog wires its own owner and phase into the picker-options request', () => {
+  // This is the fifth and sixth instance of the picker-retention defect (see
+  // selectOwnerOptions / selectPhaseOptions in project-form-options.test.ts,
+  // which guard the pure functions but predate this branch and know nothing
+  // about delivery items). What has never been guarded is the *wiring* that
+  // makes those functions apply to a delivery item: openEdit must pass this
+  // item's own ownerId and phaseId to getDeliveryItemFormOptionsAction, and
+  // listDeliveryItemFormOptions must forward them into both selectors.
+  //
+  // Deleting the second argument at the call site (so edit calls
+  // getDeliveryItemFormOptionsAction(projectId) alone, falling back to the
+  // default `{}`) keeps tsc, every unit test and every RLS spec green while
+  // silently reintroducing the defect: opening Edit on an item whose owner
+  // has since been removed pre-selects "Unassigned", and saving any unrelated
+  // field writes owner_id: null over the record of who was accountable. This
+  // is derived from the call site itself, not restated as a fixed string, so
+  // reordering the two keys or reformatting the call cannot defeat it -- only
+  // actually dropping the wiring can.
+  const panel = readFileSync(join(workspace, 'features', 'delivery', 'components', 'delivery-items-panel.tsx'), 'utf8')
+  const editCall = panel.match(/getDeliveryItemFormOptionsAction\(\s*projectId\s*,\s*(\{[^}]*\})\s*\)/)
+  assert.ok(editCall, 'openEdit must call getDeliveryItemFormOptionsAction with a second argument carrying the item\'s current owner and phase -- openCreate\'s call (projectId alone) does not count')
+  assert.match(editCall[1], /ownerId\s*:\s*item\.ownerId/, 'the edit call must forward the item\'s own ownerId, not omit it')
+  assert.match(editCall[1], /phaseId\s*:\s*item\.currentPhaseId/, 'the edit call must forward the item\'s own currentPhaseId, not omit it')
+
+  const query = readFileSync(join(workspace, 'features', 'delivery', 'queries', 'list-project-form-options.ts'), 'utf8')
+  const wiringStart = query.indexOf('export async function listDeliveryItemFormOptions')
+  assert.ok(wiringStart !== -1, 'listDeliveryItemFormOptions not found')
+  const wiring = query.slice(wiringStart)
+  assert.match(wiring, /selectPhaseOptions\(\s*[\s\S]*?,\s*current\.phaseId\s*,?\s*\)/, 'listDeliveryItemFormOptions must forward current.phaseId into selectPhaseOptions, not drop it')
+  assert.match(wiring, /selectOwnerOptions\(\s*members\s*,\s*current\.ownerId\s*\)/, 'listDeliveryItemFormOptions must forward current.ownerId into selectOwnerOptions, not drop it')
 })

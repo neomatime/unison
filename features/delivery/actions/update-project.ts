@@ -26,6 +26,17 @@ export async function updateProjectAction(id: string, _prev: { error?: string } 
     notes: parsed.data.notes,
   }).eq('id', id).eq('organization_id', organization.id).select('id')
 
+  // projects has four outgoing foreign keys that can raise 23503 on this same
+  // update -- projects_client_fkey, projects_phase_fkey, projects_owner_fkey
+  // and projects_framework_fkey -- plus delivery_items_project_framework_fkey
+  // firing from the referencing side when delivery items exist under the
+  // current framework. Only the message names which one actually fired, so
+  // inspect it rather than assuming framework_id is always the cause -- a
+  // stale client or a phase from the wrong framework must not be blamed on
+  // delivery items.
+  if (error?.code === '23503' && error.message.includes('delivery_items_project_framework_fkey')) {
+    return { error: 'This project has delivery items recorded under its current framework, so the framework cannot be changed. Archive them first.' }
+  }
   if (error) return { error: 'The project could not be saved.' }
   // Without .select() an update matching no rows is indistinguishable from one
   // that saved: RLS and the organisation filter both express "not yours" as

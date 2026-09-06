@@ -26,6 +26,8 @@ export type FrameworkDetail = {
   type: string | null
   version: string | null
   archivedAt: string | null
+  level1Label: string | null
+  level2Label: string | null
   /** Every phase, archived included, in stored order. */
   phases: FrameworkPhase[]
   projects: FrameworkProject[]
@@ -49,7 +51,7 @@ export async function getFramework(frameworkId: string): Promise<FrameworkDetail
 
   const { data: framework, error } = await supabase
     .from('frameworks')
-    .select('id, name, type, version, archived_at')
+    .select('id, name, type, version, archived_at, level_1_label, level_2_label')
     .eq('id', frameworkId)
     .eq('organization_id', organization.id)
     .maybeSingle()
@@ -79,6 +81,8 @@ export async function getFramework(frameworkId: string): Promise<FrameworkDetail
     type: framework.type,
     version: framework.version,
     archivedAt: framework.archived_at,
+    level1Label: framework.level_1_label,
+    level2Label: framework.level_2_label,
     phases: (phases.data ?? []).map((row) => ({
       id: row.id,
       name: row.name,

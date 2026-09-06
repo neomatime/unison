@@ -15,6 +15,8 @@ export async function updateFrameworkAction(id: string, _prev: { error?: string 
   const { data, error } = await supabase.from('frameworks').update({
     name: parsed.data.name,
     type: parsed.data.type,
+    level_1_label: parsed.data.level1Label,
+    level_2_label: parsed.data.level2Label,
   }).eq('id', id).eq('organization_id', organization.id).select('id')
 
   if (error?.code === '23505') return { error: 'A framework with that name already exists.' }

@@ -16,6 +16,8 @@ export async function createFrameworkAction(_prev: { error?: string } | undefine
     organization_id: organization.id,
     name: parsed.data.name,
     type: parsed.data.type,
+    level_1_label: parsed.data.level1Label,
+    level_2_label: parsed.data.level2Label,
   }).select('id').single()
 
   // frameworks_name_unique is (organization_id, name), and two frameworks

@@ -686,3 +686,56 @@ execution ledger and the review report before that workspace was deleted.
 - **Two migrations where one would have done**, again: the first was applied
   before its comment was found to be wrong, and the log is append-only. The
   correction lives in `20260906130000`. Same precedent as `20260905190000`.
+
+## Final review of feat/delivery-items (2026-09-06)
+
+The slice built the two-level Delivery Item hierarchy, framework-supplied level
+terminology, and reduced the project detail page to its three real tabs. Carried
+out of the execution ledger and the review report before that workspace was
+deleted.
+
+### The lesson worth keeping, not just the fixes
+
+**The picker-retention defect has now been found five times** — owner, client
+(PR #2), phase (Frameworks slice), framework (that slice's final review), and
+delivery items. The shape never changes: an HTML `select` whose `defaultValue`
+matches no option falls back to its first, so saving an unrelated field writes
+`null` over a recorded value. All the retention functions live together in
+`features/delivery/form-options.ts`, and there is now a source-derived guard on
+the delivery-items wiring. **If a sixth optional foreign key reaches a form,
+retention is not optional and a guard is not optional either.**
+
+**A validator that throws becomes a 500, not a field error.** The signed-in run
+caught `optionalDate` returning a 500 on a blank date, because its refine ran
+before the optional branch and used `.toISOString()`, which throws on an Invalid
+Date. `project.ts` already had the correct shape — optional first, `Date.UTC`
+component comparison that returns false. Every unit test passed while the bug was
+live, because none submitted an empty date. When adding a validator, copy the
+proven one; when testing one, test the empty case.
+
+### Open — real, low reachability
+
+- **`createDeliveryItemAction` has no archived-parent check**, though
+  `setDeliveryItemArchivedAction` refuses the mirror case on restore. Two tabs
+  open, archive the parent in one, click Add in the other, and a live level-2
+  item is written under an archived parent. Benign in effect — the tree nests it
+  and it stays reachable — but the write side is not as closed as it was
+  described. Either add the check or correct the description.
+- **Edit is offered on archived delivery items**, while the same page hides Edit
+  on an archived *project*. Two archive semantics on one screen: the save
+  succeeds and changes nothing the user can act on.
+- **Delivery rows render raw ISO dates** (`2026-09-30`) where every other surface
+  on the same page renders `30 Sep 2026` with `timeZone: 'UTC'` pinned. Reuse the
+  existing `dateOnlyFormat`; do not reintroduce an unpinned `toLocaleDateString`,
+  which is the bug the project page's own comment documents.
+- **`listOrganizationMembers` is called twice per project-detail render** — once
+  by the page, once by `listDeliveryItems`, even when a project has no items.
+  `getSessionContext` is already `cache()`d; wrapping this the same way fixes it
+  everywhere at once.
+
+### Known limit of a new guard
+
+The delivery-items retention guard slices the query source from its match to
+end-of-file rather than to the enclosing function's closing brace. It works
+because that function is currently last in the file; a function appended after it
+could let the regex match an unrelated call and silently weaken the guard.
