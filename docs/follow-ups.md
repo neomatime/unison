@@ -543,3 +543,84 @@ survives only in a deleted file was never really recorded.
 - **The `Edit Internal Metadata` removal note** (above) names the screen and the
   action but not the surviving line. It is `SubscriptionsScreen`'s
   `Update Subscription`, which calls `open(record, true)`.
+
+## Final review of feat/projects-write-path (2026-09-06)
+
+The slice shipped across three PRs — #1 (write path and briefing UI), #2 (the
+Critical), #3 (fifteen findings). Carried out of the execution ledger and the
+review report before that workspace was deleted, so the undone work survives it.
+
+### Not fixed — a design-token decision, not a defect
+
+- **`delivery-primitives.tsx` uses literal palette classes, not semantic
+  tokens.** Ten health styles read `bg-emerald-50 text-emerald-800` where
+  `--success-soft` / `--danger-soft` / `--warning-soft` / `--info-soft` exist in
+  `tokens.css`, are surfaced in `globals.css` and are consumed by twelve other
+  component files. This file is the only opt-out, so the delivery family's
+  badges will not follow a token retune or a dark theme (`globals.css` already
+  declares `@custom-variant dark`). It was done to hit specific contrast, which
+  is a fair goal reached by the wrong lever: move the chosen values into the
+  tokens, or add `-strong` steps, then restore the semantic classes.
+  `delivery-briefing-ui.test.ts` pins `bg-amber-100` and `bg-red-700` and would
+  need updating with it.
+- **Two badge components disagree about the same data.** `HealthBadge`
+  (delivery) and `StatusBadge` (`ModuleWorkspace`) both render project health
+  from the same column, in different vocabularies — At Risk is token amber on
+  the register and literal amber elsewhere. #3 fixed the part that was a safety
+  problem (Critical rendering grey) by giving `StatusBadge` a `danger` tone;
+  unifying the two components is the remaining half.
+
+### Not fixed — real, low reachability
+
+- **An overdue project date appears in no list.** `overdueProjectDates` counts
+  `due_date < today`, while `upcomingProjectDates` filters to a window starting
+  today. So the briefing states "3 overdue project target dates" in its focus
+  list and offers no way to click through to them. The most urgent dates are the
+  only ones with no drill-in.
+- **Fabricated person names survive in `project-detail-screen.tsx`.** The array
+  `['Neo Morake','Amara Dlamini','Thabo Mokoena','Naledi Maseko','Lethabo Nkosi','Mia Daniels']`
+  feeds the Owner select of every nested register. The identical names were
+  removed from `registry.ts` because "fiction left in source is
+  indistinguishable from intent to the next reader", and `ui-completeness.test.ts`
+  pins their absence — but the pin slices only `registry.ts`. Those panels have
+  `records: []` so nothing renders today; remove the array when the registers get
+  real data, and widen the guard's scan to `features/delivery/components/`.
+- **An archived framework blocks the edit form.** Same shape as the Critical #2
+  fixed for owner and client, but it fails loudly rather than silently:
+  `frameworkId` is `required`, so the select matches no option and the form
+  refuses to submit rather than writing a null. Deliberately left out of #2 to
+  keep that fix tight.
+- **`project-owner.test.ts:128`** discards the error from its post-delete re-read
+  and shadows the `after` hook imported from `node:test`. The shadow is inert —
+  the hook is registered at module load and the shadow is block-scoped — but if
+  the re-read fails, the assertion throws a `TypeError` instead of naming the
+  query failure.
+
+### Known limits of the guards, recorded rather than fixed
+
+- **The column guard checks resolution and count, not correctness.** It asserts
+  every declared column resolves to a key the records carry, and that no module
+  declares more columns than its table renders. It cannot check that a column
+  resolves to the *right* key — that class of bug (Tasks' 'Project' column
+  rendering the task's own name) was found by reading, not by the guard.
+- **Badge omission is a literal-string pin.** `Health` is asserted to satisfy
+  `Cell()`'s badge condition by name. "Should this value be a badge?" has no
+  derivable source of truth the way `record[key]` has, so generalising it would
+  mean inventing a registry field for "this column is a status" — a bigger
+  change than the bug justifies.
+- **The archive pin derives names from the `useActionState` destructure** rather
+  than matching a literal, so renaming cannot silently detach the form from the
+  action. It still cannot express "no control may flip archive state through
+  local state alone"; that needs a renderer and a behavioural test, and is
+  better revisited when `restoreProjectAction` exists.
+
+### Ruled acceptable, deliberately
+
+- The edit route has no archived guard, so an archived project is editable via a
+  remembered URL. Low reachability, no data loss, and archive is currently
+  reversible only outside the UI anyway.
+- `isDateWithinDays` being end-exclusive means a date exactly 30 days out falls
+  in neither the upcoming window nor the overdue count. That is a correct window
+  definition — "the next 30 days" is today plus 29 — not a bug.
+- Four `create or replace` migrations for one function is the honest cost of the
+  append-only rule, not a defect to collapse.
