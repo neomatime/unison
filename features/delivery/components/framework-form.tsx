@@ -42,7 +42,10 @@ export function FrameworkForm({
     </Link>
 
     <form action={formAction} className="mx-auto max-w-3xl space-y-5">
-      <FormSection title="Framework" description="What this methodology is called, and what kind it is.">
+      <FormSection
+        title="Framework"
+        description='What this methodology is called, and what kind it is. Delivery items use these words for their two levels. Leave blank to use "Level 1" and "Level 2".'
+      >
         <TextField name="name" label="Framework name" required defaultValue={framework?.name} />
         <EntitySelectField
           name="type"
@@ -60,6 +63,8 @@ export function FrameworkForm({
             <p className="mt-1.5 flex min-h-11 items-center text-sm text-muted-foreground">{framework?.version ?? '—'}</p>
           </div>
         ) : null}
+        <TextField name="level1Label" label="Level 1 term" defaultValue={framework?.level1Label ?? undefined} placeholder="Epic" />
+        <TextField name="level2Label" label="Level 2 term" defaultValue={framework?.level2Label ?? undefined} placeholder="Feature" />
       </FormSection>
 
       <FormError message={state?.error} />

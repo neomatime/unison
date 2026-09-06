@@ -27,6 +27,7 @@ export function TextField({
   type = 'text',
   required,
   defaultValue,
+  placeholder,
   className,
 }: {
   name: string
@@ -34,6 +35,7 @@ export function TextField({
   type?: string
   required?: boolean
   defaultValue?: string | null
+  placeholder?: string
   className?: string
 }) {
   return (
@@ -44,6 +46,7 @@ export function TextField({
         type={type}
         required={required}
         defaultValue={defaultValue ?? ''}
+        placeholder={placeholder}
         className={fieldClasses}
       />
     </label>
