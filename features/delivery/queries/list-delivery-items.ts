@@ -43,10 +43,12 @@ export async function listDeliveryItems(projectId: string): Promise<DeliveryItem
     // 'Former member' covers an owner whose membership row was deleted outright
     // rather than marked removed -- the same fallback list-projects.ts uses.
     ownerName: row.owner_id ? names.get(row.owner_id) ?? 'Former member' : 'Unassigned',
+    ownerId: row.owner_id,
     status: row.status,
     health: row.health,
     phaseName: row.framework_phases?.name ?? null,
     phaseArchived: Boolean(row.framework_phases?.archived_at),
+    currentPhaseId: row.current_phase_id,
     startDate: row.start_date,
     targetDate: row.target_date,
     archivedAt: row.archived_at,

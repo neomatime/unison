@@ -13,11 +13,20 @@ export type DeliveryItem = {
   description: string | null
   /** Resolved name, or 'Unassigned' / 'Former member'. Never a raw uuid. */
   ownerName: string
+  /**
+   * The raw id ownerName was resolved from. Carried alongside it, rather than
+   * instead of it, because the edit form needs the id to preselect the owner
+   * picker -- a resolved name cannot do that, and re-deriving the id from the
+   * name would be a lookup the wrong way round.
+   */
+  ownerId: string | null
   status: string
   health: string
   phaseName: string | null
   /** Drives the "Archived in framework" qualifier. The component does no lookup. */
   phaseArchived: boolean
+  /** The raw id phaseName was resolved from, for the same reason as ownerId. */
+  currentPhaseId: string | null
   startDate: string | null
   targetDate: string | null
   archivedAt: string | null

@@ -7,10 +7,12 @@ import type { DeliveryItemRow } from '../../features/delivery/delivery-item-tree
 const BASE: Omit<DeliveryItemRow, 'id' | 'level' | 'parentId' | 'name' | 'archivedAt'> = {
   description: null,
   ownerName: 'Unassigned',
+  ownerId: null,
   status: 'Not Started',
   health: 'Healthy',
   phaseName: 'Design',
   phaseArchived: false,
+  currentPhaseId: null,
   startDate: null,
   targetDate: null,
 }

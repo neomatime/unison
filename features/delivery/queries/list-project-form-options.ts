@@ -67,3 +67,56 @@ export async function listProjectFormOptions(
     members: selectOwnerOptions(members, current.ownerId),
   }
 }
+
+export type DeliveryItemFormOptions = {
+  members: Array<{ id: string; name: string }>
+  phases: Array<{ id: string; name: string; frameworkId: string }>
+}
+
+/**
+ * The delivery-item form's two pickers, scoped to one project's own framework.
+ *
+ * Only that framework's phases are fetched — unlike listProjectFormOptions,
+ * which loads every framework's phases because the project form lets the user
+ * change frameworks and filters client-side. A delivery item's framework is
+ * fixed to its project's (delivery_items_project_framework_fkey), so there is
+ * nothing to filter and no reason to fetch phases that could never be chosen.
+ *
+ * This is the fifth and sixth instance of the retention rule — see
+ * selectOwnerOptions and selectPhaseOptions for why `current` is not optional
+ * in spirit even though it is optional in the type: a picker that drops the
+ * item's own recorded owner or phase turns the next unrelated edit into a
+ * silent `null` write.
+ */
+export async function listDeliveryItemFormOptions(
+  projectId: string,
+  current: { ownerId?: string | null; phaseId?: string | null } = {},
+): Promise<DeliveryItemFormOptions> {
+  const { organization } = await getSessionContext()
+  const supabase = await createServerSupabase()
+
+  const { data: project, error: projectError } = await supabase
+    .from('projects').select('framework_id')
+    .eq('id', projectId).eq('organization_id', organization.id).maybeSingle()
+  if (projectError) throw projectError
+  if (!project) throw new Error('That project no longer exists, or is not yours.')
+
+  const [phases, members] = await Promise.all([
+    supabase.from('framework_phases').select('id, name, framework_id, archived_at')
+      .eq('organization_id', organization.id)
+      .eq('framework_id', project.framework_id)
+      .order('position'),
+    listOrganizationMembers(),
+  ])
+  if (phases.error) throw phases.error
+
+  return {
+    phases: selectPhaseOptions(
+      (phases.data ?? []).map((row) => ({
+        id: row.id, name: row.name, frameworkId: row.framework_id, archived_at: row.archived_at,
+      })),
+      current.phaseId,
+    ),
+    members: selectOwnerOptions(members, current.ownerId),
+  }
+}
