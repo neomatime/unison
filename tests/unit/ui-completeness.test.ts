@@ -125,18 +125,20 @@ test('shared register UI covers CRUD, archived records, export, import, and tabl
 })
 
 // The test that used to sit here ('project records include requirements,
-// traceability, document management, and upload states') pinned nine tabs on
+// traceability, document management, and upload states') pinned eight tabs on
 // the project detail screen -- Requirements, Traceability, Documents,
-// Processes, Testing, Risks, Decisions, Benefits, Workstreams -- against a
-// regex that matched anywhere in the file, including the screen's own comment
-// admitting none of them had a table behind it. Delivery Items gave the
-// screen a third tab that is real (backed by delivery_items), and this task's
-// own project-detail-screen.tsx now carries exactly three tabs -- Overview,
-// Framework, Delivery -- with the nine fabricated ones removed. Guarding their
-// presence would mean guarding a capability that was never real and is now
-// gone by design, so that half was removed rather than adapted or neutered;
-// 'the project detail page offers no tab without a table behind it' below
-// pins the removal instead.
+// Processes, Testing, Risks, Decisions, Benefits -- against a regex that
+// matched anywhere in the file, including residual matches from
+// DuplicateProjectDialog's fabricated checkbox list (Requirements, Documents).
+// Workstreams was never guarded by this test; the new 'no tab without a
+// table' guard covers it instead. Delivery Items gave the screen a third tab
+// that is real (backed by delivery_items), and this task's own
+// project-detail-screen.tsx now carries exactly three tabs -- Overview,
+// Framework, Delivery -- with those eight fabricated ones removed. Guarding
+// their presence would mean guarding a capability that was never real and is
+// now gone by design, so that half was removed rather than adapted or
+// neutered; 'the project detail page offers no tab without a table behind it'
+// below pins the removal instead.
 //
 // ProjectDocumentsWorkspace itself was not deleted, though -- it is no longer
 // mounted on the project screen, but it is still mounted on the vendor,
