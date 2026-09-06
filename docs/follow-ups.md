@@ -739,3 +739,40 @@ The delivery-items retention guard slices the query source from its match to
 end-of-file rather than to the enclosing function's closing brace. It works
 because that function is currently last in the file; a function appended after it
 could let the regex match an unrelated call and silently weaken the guard.
+
+## From the delivery-items-in-the-briefing slice (2026-09-06)
+
+Raised by the final whole-branch review, deliberately deferred rather than
+widened into that slice. None blocks merge.
+
+**The `delivery_items` select is unbounded.** `features/delivery/queries/delivery-overview.ts`
+fetches every unarchived item for the organisation with no `.limit()`, and the repo
+sets no `max_rows`; hosted PostgREST caps at 1000 rows by default. This is the first
+org-wide select in the codebase over a table that can realistically pass 1000 rows.
+Past that cap every number in both new briefing surfaces silently under-reports —
+the same quiet-wrongness class the slice was written to remove. Fix with
+`count: 'exact', head: true` aggregates, or a disclosed cap. Do this before any
+tenant records delivery items at scale.
+
+**Items that all lack a phase render an axis of zeroes.** `features/delivery/item-briefing.ts`
+gates the empty distribution on `inFramework.length === 0`, not on "nothing was
+placed". Five in-framework items all carrying no phase — plausible, since
+`currentPhaseId` is optional — produces a chart of zero-height columns and an
+aria-label reading "0 delivery items across N phases". The footnote does carry the
+truth, so this is not dishonest, but the spec's own words describe the state:
+an axis of zeroes states it less clearly than a sentence. Consider gating on
+placed items.
+
+**Nothing reconciles the panel's two printed numbers.** `sum(itemPhaseColumns[].total)
++ itemsWithoutPhaseCount` must equal `leadingFrameworkItemCount`, and no assertion
+enforces it. It holds today only because the `framework_phases` fetch in
+`delivery-overview.ts` is unfiltered. Add an `archived_at is null` filter there — a
+natural-looking future change — and items in archived phases vanish from every column
+while the footnote still counts them: the footnote says 10, the columns sum to 7, and
+nothing explains the 3. `positionNarrative` in `overview-bands.ts` throws on exactly
+this class of drift; this module should too.
+
+**Minor test-guard fragility.** The briefing guards in
+`tests/unit/delivery-briefing-ui.test.ts` slice component source between `function`
+keywords, so each slice captures interstitial code past its target function body.
+Harmless today — no asserted token collides — but a known limitation of the approach.
