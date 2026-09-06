@@ -26,6 +26,14 @@ export async function updateProjectAction(id: string, _prev: { error?: string } 
     notes: parsed.data.notes,
   }).eq('id', id).eq('organization_id', organization.id).select('id')
 
+  // delivery_items_project_framework_fkey: changing framework_id while
+  // delivery items exist under the current framework raises a foreign-key
+  // violation, because those items' phases belong to the old framework and
+  // would be meaningless under the new one. Named here so it reads as a
+  // deliberate refusal rather than the generic save-failed message below.
+  if (error?.code === '23503') {
+    return { error: 'This project has delivery items recorded under its current framework, so the framework cannot be changed. Archive them first.' }
+  }
   if (error) return { error: 'The project could not be saved.' }
   // Without .select() an update matching no rows is indistinguishable from one
   // that saved: RLS and the organisation filter both express "not yours" as
