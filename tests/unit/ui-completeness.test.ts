@@ -799,8 +799,16 @@ test('the project detail page offers no tab without a table behind it', () => {
   const tabs = [...tabsMatch[1].matchAll(/'([^']+)'/g)].map((match) => match[1])
   assert.deepEqual(tabs, ['Overview', 'Framework', 'Delivery'])
 
-  for (const gone of ['Workstreams', 'Requirements', 'Processes', 'Testing', 'Risks', 'Decisions', 'Benefits']) {
-    assert.ok(!screen.includes(`'${gone}'`), `the ${gone} tab has no table behind it and must not return`)
+  for (const gone of ['Workstreams', 'Requirements', 'Documents', 'Processes', 'Testing', 'Risks', 'Decisions', 'Benefits', 'Governance']) {
+    // Matched as a quoted string anywhere in the file, not just inside the
+    // tabs array literal above -- that array only proves what the tab strip
+    // renders today. This loop exists for the other half: a fabricated name
+    // resurfacing anywhere else in the file (a checkbox list, a menu, a
+    // placeholder) reads the same as the tab returning. A bare `'name'` match
+    // is quote-style sensitive (`"${gone}"` or a template literal would slip
+    // past it), so this matches the word on its own regardless of the quote
+    // character around it.
+    assert.ok(!new RegExp(`\\b${gone}\\b`).test(screen), `the ${gone} tab has no table behind it and must not return`)
   }
 
   // The same six fabricated names the registry was scrubbed of survived here
@@ -828,4 +836,36 @@ test('an archived current phase is disclosed rather than shown as current', () =
   const panel = readFileSync(join(workspace, 'features', 'delivery', 'components', 'delivery-items-panel.tsx'), 'utf8')
   assert.match(panel, /phaseArchived/, 'the panel must read the phaseArchived flag')
   assert.ok(panel.includes('Archived in framework'), 'the qualifier text must be present')
+})
+
+test('the delivery-item edit dialog wires its own owner and phase into the picker-options request', () => {
+  // This is the fifth and sixth instance of the picker-retention defect (see
+  // selectOwnerOptions / selectPhaseOptions in project-form-options.test.ts,
+  // which guard the pure functions but predate this branch and know nothing
+  // about delivery items). What has never been guarded is the *wiring* that
+  // makes those functions apply to a delivery item: openEdit must pass this
+  // item's own ownerId and phaseId to getDeliveryItemFormOptionsAction, and
+  // listDeliveryItemFormOptions must forward them into both selectors.
+  //
+  // Deleting the second argument at the call site (so edit calls
+  // getDeliveryItemFormOptionsAction(projectId) alone, falling back to the
+  // default `{}`) keeps tsc, every unit test and every RLS spec green while
+  // silently reintroducing the defect: opening Edit on an item whose owner
+  // has since been removed pre-selects "Unassigned", and saving any unrelated
+  // field writes owner_id: null over the record of who was accountable. This
+  // is derived from the call site itself, not restated as a fixed string, so
+  // reordering the two keys or reformatting the call cannot defeat it -- only
+  // actually dropping the wiring can.
+  const panel = readFileSync(join(workspace, 'features', 'delivery', 'components', 'delivery-items-panel.tsx'), 'utf8')
+  const editCall = panel.match(/getDeliveryItemFormOptionsAction\(\s*projectId\s*,\s*(\{[^}]*\})\s*\)/)
+  assert.ok(editCall, 'openEdit must call getDeliveryItemFormOptionsAction with a second argument carrying the item\'s current owner and phase -- openCreate\'s call (projectId alone) does not count')
+  assert.match(editCall[1], /ownerId\s*:\s*item\.ownerId/, 'the edit call must forward the item\'s own ownerId, not omit it')
+  assert.match(editCall[1], /phaseId\s*:\s*item\.currentPhaseId/, 'the edit call must forward the item\'s own currentPhaseId, not omit it')
+
+  const query = readFileSync(join(workspace, 'features', 'delivery', 'queries', 'list-project-form-options.ts'), 'utf8')
+  const wiringStart = query.indexOf('export async function listDeliveryItemFormOptions')
+  assert.ok(wiringStart !== -1, 'listDeliveryItemFormOptions not found')
+  const wiring = query.slice(wiringStart)
+  assert.match(wiring, /selectPhaseOptions\(\s*[\s\S]*?,\s*current\.phaseId\s*,?\s*\)/, 'listDeliveryItemFormOptions must forward current.phaseId into selectPhaseOptions, not drop it')
+  assert.match(wiring, /selectOwnerOptions\(\s*members\s*,\s*current\.ownerId\s*\)/, 'listDeliveryItemFormOptions must forward current.ownerId into selectOwnerOptions, not drop it')
 })
