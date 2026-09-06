@@ -4,6 +4,13 @@
 `docs/` — where a feature requirement and this principle disagree, this wins,
 and the requirement is the thing that changes.
 
+**One document sits beside it, not under it.**
+[`product-definition.md`](product-definition.md) (locked 2026-09-06) states what
+UNISON *is* — category, boundaries, operating loop. This document states *how*
+it must be built. On scope and category, the definition governs; on build
+discipline, this does. The two agree today: the north star below is restated
+verbatim as §5 of the definition.
+
 ## North star
 
 > **UNISON should minimise the coordination tax of project management.**
