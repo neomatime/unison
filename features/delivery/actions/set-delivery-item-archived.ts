@@ -35,7 +35,7 @@ export async function setDeliveryItemArchivedAction(_prev: { error?: string } | 
   } else {
     // Mirror of the children check above. Archiving a parent while a child
     // stays live, then restoring that child, was the exact sequence that
-    // left list-delivery-items.ts's tree assembly with a live level-2 item
+    // left delivery-item-tree.ts's tree assembly with a live level-2 item
     // under an archived parent -- a state the read side now has to surface
     // as an orphan rather than silently drop. Refusing it here, on restore,
     // is what keeps that state from being reachable through the product in
