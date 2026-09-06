@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useActionState } from 'react'
 
 import { WorkspaceHeader } from '@/components/shared/workspace-header'
-import { FieldLabel, SelectField, TextField } from '@/components/ui/form-fields'
+import { EntitySelectField, FieldLabel, TextField } from '@/components/ui/form-fields'
 import { FormError, FormFooter, FormSection } from '@/components/ui/form-layout'
 import type { FrameworkDetail } from '../queries/get-framework'
 // Imported, not redeclared: the same array frameworkInputSchema builds its
@@ -13,6 +13,10 @@ import { FRAMEWORK_TYPES } from '../schemas/framework'
 
 type ActionState = { error?: string } | undefined
 type FrameworkFormAction = (prevState: ActionState, formData: FormData) => Promise<ActionState>
+
+// EntitySelectField wants { id, name } options; a framework type's id and
+// display name are the same string, so this is a straight map.
+const FRAMEWORK_TYPE_OPTIONS = FRAMEWORK_TYPES.map((type) => ({ id: type, name: type }))
 
 export function FrameworkForm({
   mode,
@@ -40,7 +44,13 @@ export function FrameworkForm({
     <form action={formAction} className="mx-auto max-w-3xl space-y-5">
       <FormSection title="Framework" description="What this methodology is called, and what kind it is.">
         <TextField name="name" label="Framework name" required defaultValue={framework?.name} />
-        <SelectField name="type" label="Type" options={FRAMEWORK_TYPES} defaultValue={framework?.type ?? FRAMEWORK_TYPES[0]} />
+        <EntitySelectField
+          name="type"
+          label="Type"
+          options={FRAMEWORK_TYPE_OPTIONS}
+          defaultValue={framework?.type ?? null}
+          emptyLabel="Not set"
+        />
         {/* Read-only: a free-text version field with no version history behind
             it would be a claim this slice does not keep. On create there is no
             version yet, so the field is absent entirely rather than shown blank. */}
