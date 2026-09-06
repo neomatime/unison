@@ -2,31 +2,20 @@ import 'server-only'
 import { getSessionContext } from '@/lib/auth/get-session-context'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { listOrganizationMembers } from '@/features/memberships/queries/list-organization-members'
+import { assembleDeliveryItemTree } from '../delivery-item-tree'
+import type { DeliveryItem, DeliveryItemNode, DeliveryItemRow } from '../delivery-item-tree'
 
-export type DeliveryItem = {
-  id: string
-  level: 1 | 2
-  name: string
-  description: string | null
-  /** Resolved name, or 'Unassigned' / 'Former member'. Never a raw uuid. */
-  ownerName: string
-  status: string
-  health: string
-  phaseName: string | null
-  /** Drives the "Archived in framework" qualifier. The component does no lookup. */
-  phaseArchived: boolean
-  startDate: string | null
-  targetDate: string | null
-  archivedAt: string | null
-}
-
-export type DeliveryItemNode = DeliveryItem & { children: DeliveryItem[] }
+export type { DeliveryItem, DeliveryItemNode }
 
 /**
  * The project's delivery items as a two-level tree.
  *
  * Two levels is a schema guarantee (delivery_items_parent_fkey), so this
  * assembles one pass of parents and one of children rather than recursing.
+ *
+ * Fetches archived rows too -- unlike a plain listing, the tree assembly
+ * needs to know whether a child's level-1 parent is archived, not just
+ * whether the parent is present. See assembleDeliveryItemTree for why.
  */
 export async function listDeliveryItems(projectId: string): Promise<DeliveryItemNode[]> {
   const { organization } = await getSessionContext()
@@ -37,7 +26,6 @@ export async function listDeliveryItems(projectId: string): Promise<DeliveryItem
       .select('id, level, parent_id, name, description, owner_id, status, health, start_date, target_date, archived_at, current_phase_id, framework_phases(name, archived_at)')
       .eq('project_id', projectId)
       .eq('organization_id', organization.id)
-      .is('archived_at', null)
       .order('level')
       .order('name'),
     listOrganizationMembers(),
@@ -45,9 +33,11 @@ export async function listDeliveryItems(projectId: string): Promise<DeliveryItem
   if (rows.error) throw rows.error
 
   const names = new Map(members.map((member) => [member.userId, member.displayName]))
-  const map = (row: (typeof rows.data)[number]): DeliveryItem => ({
+  const map = (row: (typeof rows.data)[number]): DeliveryItemRow => ({
     id: row.id,
+    // Trusted cast: delivery_items_level_check constrains level to (1, 2).
     level: row.level as 1 | 2,
+    parentId: row.parent_id,
     name: row.name,
     description: row.description,
     // 'Former member' covers an owner whose membership row was deleted outright
@@ -56,15 +46,11 @@ export async function listDeliveryItems(projectId: string): Promise<DeliveryItem
     status: row.status,
     health: row.health,
     phaseName: row.framework_phases?.name ?? null,
-    phaseArchived: row.framework_phases?.archived_at !== null && row.framework_phases?.archived_at !== undefined,
+    phaseArchived: Boolean(row.framework_phases?.archived_at),
     startDate: row.start_date,
     targetDate: row.target_date,
     archivedAt: row.archived_at,
   })
 
-  const all = rows.data ?? []
-  return all.filter((row) => row.level === 1).map((parent) => ({
-    ...map(parent),
-    children: all.filter((row) => row.parent_id === parent.id).map(map),
-  }))
+  return assembleDeliveryItemTree((rows.data ?? []).map(map))
 }
