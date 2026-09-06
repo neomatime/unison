@@ -4,7 +4,9 @@ import {
   CalendarDays,
   CheckCircle2,
   Clock3,
+  Layers,
   Milestone,
+  OctagonX,
   ShieldAlert,
   UserRoundX,
   type LucideIcon,
@@ -118,6 +120,20 @@ function KeyFocusList({ overview }: { overview: DeliveryOverview }) {
       detail: ownershipOrGateGap > 0
         ? `${overview.unassignedOwnerCount} without an owner and ${overview.missingNextGateCount} without a recorded next gate.`
         : 'Every active project has an owner and a recorded next gate.',
+    },
+    {
+      icon: overview.blockedItemCount > 0 ? OctagonX : overview.activeItemCount > 0 ? CheckCircle2 : Layers,
+      tone: overview.blockedItemCount > 0 ? 'danger' : overview.activeItemCount > 0 ? 'success' : 'brand',
+      title: overview.blockedItemCount > 0
+        ? `${overview.blockedItemCount} delivery ${plural('item', overview.blockedItemCount)} blocked across ${overview.blockedItemProjectCount} ${plural('project', overview.blockedItemProjectCount)}`
+        : overview.activeItemCount > 0
+          ? 'No delivery items are blocked'
+          : 'No delivery items are recorded',
+      detail: overview.blockedItemCount > 0
+        ? 'Blocked is the one delivery-item status with no project-level equivalent.'
+        : overview.activeItemCount > 0
+          ? `None of the ${overview.activeItemCount} recorded delivery ${plural('item', overview.activeItemCount)} is currently blocked.`
+          : 'Blocked work cannot be reported until delivery items are recorded against active projects.',
     },
   ]
 
@@ -287,10 +303,10 @@ export function DeliveryHorizon({ overview }: { overview: DeliveryOverview }) {
         <UpcomingKeyDates rows={overview.upcomingProjectDates} />
         <PhaseDistribution
           activeProjects={overview.activeProjects}
-          columns={overview.columns}
+          itemColumns={overview.itemPhaseColumns}
           frameworkName={overview.framework?.name ?? null}
-          frameworkProjectCount={overview.lifecycleProjectCount}
-          unassignedPhaseCount={overview.lifecycleUnassignedPhaseCount}
+          itemCount={overview.leadingFrameworkItemCount}
+          itemsWithoutPhaseCount={overview.itemsWithoutPhaseCount}
         />
         <TopRisksDependencies />
       </div>
@@ -334,20 +350,20 @@ function UpcomingKeyDates({ rows }: { rows: UpcomingProjectDate[] }) {
 
 function PhaseDistribution({
   activeProjects,
-  columns,
+  itemColumns,
   frameworkName,
-  frameworkProjectCount,
-  unassignedPhaseCount,
+  itemCount,
+  itemsWithoutPhaseCount,
 }: {
   activeProjects: number
-  columns: PhaseColumn[]
+  itemColumns: PhaseColumn[]
   frameworkName: string | null
-  frameworkProjectCount: number
-  unassignedPhaseCount: number
+  itemCount: number
+  itemsWithoutPhaseCount: number
 }) {
-  const totalAssigned = columns.reduce((total, column) => total + column.total, 0)
+  const totalAssigned = itemColumns.reduce((total, column) => total + column.total, 0)
   const segmentColors = ['#6f86a3', '#83a8d4', '#64a6ea', '#3f8fe5', '#85baf0', '#a7caef', '#c4d9ee', '#dce6ef']
-  const coloredColumns = columns.map((column, index) => ({
+  const coloredColumns = itemColumns.map((column, index) => ({
     ...column,
     color: segmentColors[index % segmentColors.length],
   }))
@@ -355,21 +371,27 @@ function PhaseDistribution({
   return (
     <div className="border-b border-border p-5 sm:p-6 min-[1360px]:border-r min-[1360px]:border-b-0">
       <h3 className="text-xs font-semibold tracking-[0.08em] text-[var(--briefing-muted)] uppercase">Delivery by phase</h3>
-      {columns.length === 0 ? (
+      {itemColumns.length === 0 ? (
         <BriefingEmptyState
           icon={Milestone}
-          title={activeProjects === 0 ? 'No active lifecycle yet' : 'No lifecycle phases available'}
+          title={activeProjects === 0
+            ? 'No active lifecycle yet'
+            : itemCount > 0
+              ? 'No lifecycle phases available'
+              : 'No delivery items recorded'}
           description={activeProjects === 0
             ? 'Active projects will appear here when delivery begins.'
-            : frameworkName
-              ? `${frameworkName} has no configured phase sequence to display.`
-              : 'No active project is connected to a delivery framework.'}
+            : frameworkName === null
+              ? 'No active project is connected to a delivery framework.'
+              : itemCount > 0
+                ? `${frameworkName} has no configured phase sequence to display.`
+                : `No delivery items are recorded against ${frameworkName} projects yet.`}
         />
       ) : (
         <>
           <div
             role="img"
-            aria-label={`${totalAssigned} projects assigned across ${columns.length} phases in ${frameworkName}`}
+            aria-label={`${totalAssigned} delivery ${plural('item', totalAssigned)} across ${itemColumns.length} phases in ${frameworkName}`}
             className="mt-5 flex h-4 overflow-hidden rounded-md bg-muted"
           >
             {coloredColumns.filter((column) => column.total > 0).map((column) => (
@@ -393,8 +415,8 @@ function PhaseDistribution({
             ))}
           </dl>
           <p className="mt-4 border-t border-border pt-3 text-xs leading-5 text-[var(--briefing-muted)]">
-            {frameworkProjectCount} of {activeProjects} active projects use {frameworkName}.
-            {unassignedPhaseCount > 0 ? ` ${unassignedPhaseCount} ${plural('project', unassignedPhaseCount)} ${unassignedPhaseCount === 1 ? 'has' : 'have'} no phase assigned.` : ''}
+            {itemCount} delivery {plural('item', itemCount)} across {frameworkName}.
+            {itemsWithoutPhaseCount > 0 ? ` ${itemsWithoutPhaseCount} ${plural('item', itemsWithoutPhaseCount)} ${itemsWithoutPhaseCount === 1 ? 'has' : 'have'} no phase recorded.` : ''}
           </p>
         </>
       )}

@@ -86,7 +86,7 @@ test('briefing status labels, secondary copy and phase colors stay accessible an
   assert.match(deliveryPrimitives, /'At Risk':\s*'bg-amber-[^']+ text-amber-[^']+'/)
   assert.match(deliveryPrimitives, /Critical:\s*'bg-red-[^']+ text-white'/)
 
-  assert.match(overviewComponents, /const coloredColumns = columns\.map/)
+  assert.match(overviewComponents, /const coloredColumns = itemColumns\.map/)
   assert.match(overviewComponents, /backgroundColor: column\.color/)
   assert.doesNotMatch(overviewComponents, /columns\.filter\([^)]*\)\.map\(\(column, index\)/)
 })
