@@ -32,11 +32,17 @@ export async function addFrameworkPhaseAction(_prev: { error?: string } | undefi
     position: nextPosition,
   })
 
-  // framework_phases_name_unique is (framework_id, name). A concurrent add
-  // targeting the same next position would instead trip
-  // framework_phases_position_unique (framework_id, position); that is not
-  // handled specially here -- see the report for why.
-  if (error?.code === '23505') return { error: 'A phase with that name already exists in this framework.' }
+  // Two distinct unique constraints can raise 23505 here, and only the
+  // message names which one actually fired -- read-then-insert is not atomic,
+  // so a concurrent add to the same framework can compute the same
+  // nextPosition and trip framework_phases_position_unique even though the
+  // name is fine. Do not report a name collision for that case.
+  if (error?.code === '23505') {
+    if (error.message.includes('framework_phases_position_unique')) {
+      return { error: 'Another phase was added to this framework at the same moment. Try again.' }
+    }
+    return { error: 'A phase with that name already exists in this framework.' }
+  }
   if (error) return { error: 'The phase could not be added.' }
 
   revalidatePath(`/delivery/frameworks/${frameworkId}`)

@@ -22,7 +22,11 @@ export async function renameFrameworkPhaseAction(_prev: { error?: string } | und
     .eq('organization_id', organization.id)
     .select('id')
 
-  // framework_phases_name_unique is (framework_id, name).
+  // This UPDATE only sets `name`, never `position`, so the only unique
+  // constraint it can trip is framework_phases_name_unique (framework_id,
+  // name) -- framework_phases_position_unique (framework_id, position) is
+  // keyed on a column this statement never writes. Unlike add-framework-phase,
+  // there is no second 23505 cause to disambiguate here.
   if (error?.code === '23505') return { error: 'A phase with that name already exists in this framework.' }
   if (error) return { error: 'The phase could not be renamed.' }
   if (!data?.length) return { error: 'That phase no longer exists, or is not yours to edit.' }
