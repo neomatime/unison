@@ -101,6 +101,59 @@ test('a project cannot be its own prerequisite', async () => {
   assert.match(error!.message, /circular dependency/)
 })
 
+test('the no-self-prerequisite CHECK constraint independently rejects a self-edge', async () => {
+  // The test above pins the real user-facing behaviour: the cycle-guard
+  // trigger intercepts every self-edge before
+  // project_dependencies_no_self_check (a plain CHECK constraint) is ever
+  // reached, because BEFORE ROW triggers fire before CHECK constraints. That
+  // means the assertion above passes whether or not the constraint still
+  // exists -- it was the only test exercising it, so a dropped or broken
+  // constraint would go unnoticed.
+  //
+  // This test proves the constraint independently by removing the trigger
+  // that would otherwise shadow it, the same technique the Step 5 proof in
+  // task-2-report.md used by hand. It goes through
+  // rls_test_set_project_dependencies_cycle_guard() -- a SECURITY DEFINER
+  // bridge restricted to service_role (migration
+  // 20260907110000_rls_test_toggle_dependency_cycle_guard.sql) -- because
+  // supabase-js talks to this project only through PostgREST, which has no
+  // DDL surface for the admin client to drop or recreate a trigger directly.
+  //
+  // The trigger is restored in `finally` no matter what happens above it, so
+  // a failing assertion here can never leave the live database unguarded,
+  // and its restoration is itself verified with a real insert before the
+  // test ends, so a botched recreation cannot pass silently.
+  const disabled = await admin.rpc('rls_test_set_project_dependencies_cycle_guard', { enabled: false })
+  assert.equal(disabled.error, null)
+
+  try {
+    const { error } = await admin.from('project_dependencies')
+      .insert(edge({ prerequisite_project_id: projectA })).select('id').single()
+
+    assert.ok(error, 'a self-edge must still be refused with the trigger gone')
+    assert.equal(error!.code, '23514')
+    assert.match(error!.message, /project_dependencies_no_self_check/)
+  } finally {
+    const restored = await admin.rpc('rls_test_set_project_dependencies_cycle_guard', { enabled: true })
+    assert.equal(restored.error, null)
+  }
+
+  // The trigger must be back and actually working, not just recreated in
+  // name -- prove it with the same two-hop cycle shape the dedicated test
+  // below exercises, on a self-edge that only the trigger (not the
+  // constraint) is positioned to catch this way.
+  const first = await admin.from('project_dependencies').insert(edge()).select('id').single()
+  assert.equal(first.error, null)
+
+  const { error: reversedError } = await admin.from('project_dependencies')
+    .insert(edge({ dependent_project_id: projectB, prerequisite_project_id: projectA }))
+    .select('id').single()
+  assert.ok(reversedError, 'the cycle guard trigger must be reinstated and working')
+  assert.match(reversedError!.message, /circular dependency/)
+
+  await admin.from('project_dependencies').delete().eq('id', first.data!.id)
+})
+
 test('a cross-tenant prerequisite is unrepresentable', async () => {
   const { error } = await admin.from('project_dependencies')
     .insert(edge({ prerequisite_project_id: outsiderProject })).select('id').single()
