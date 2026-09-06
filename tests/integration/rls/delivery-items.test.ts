@@ -69,7 +69,9 @@ async function insertItem(client: Awaited<ReturnType<typeof signedInClient>>, ro
 test('a member creates a level 1 item and a level 2 item beneath it', async () => {
   const client = await signedInClient(member.email, member.password)
 
-  const parent = await insertItem(client, { level: 1, name: 'Parent' })
+  // current_phase_id: phaseId exercises the "Build" phase fixture created in
+  // before() -- otherwise it is assigned and never read.
+  const parent = await insertItem(client, { level: 1, name: 'Parent', current_phase_id: phaseId })
   assert.equal(parent.error, null)
 
   const child = await insertItem(client, { level: 2, name: 'Child', parent_id: parent.data![0].id })
@@ -168,4 +170,80 @@ test('a member of another organisation can neither read nor write these rows', a
     name: 'Intrusion', status: 'Not Started', health: 'Healthy', level: 1,
   }).select('id')
   assert.ok(write.error, 'an outsider must not be able to write')
+  // 42501: the with-check clause rejects the row because the stranger fails
+  // is_member_of(orgId) -- an RLS policy violation, not a generic failure.
+  assert.equal(write.error!.code, '42501')
+})
+
+test("changing a project's framework is refused once a delivery item references it, and allowed once none do", async () => {
+  // delivery_items_project_framework_fkey has no `on update cascade`
+  // (documented on the constraint itself as of migration
+  // 20260906160000_delivery_items_fix_round_1.sql): a delivery item's
+  // current_phase_id belongs to its framework's phases, so re-pointing the
+  // project at a different framework would leave those phases meaningless.
+  // The refusal is pinned here; a later task teaches updateProjectAction to
+  // explain it to users instead of surfacing the raw 23503.
+  const client = await signedInClient(member.email, member.password)
+
+  const withItem = await admin.from('projects')
+    .insert({ organization_id: orgId, name: 'DI Framework Change - With Item', status: 'Active', health: 'On Track', framework_id: frameworkId })
+    .select('id').single()
+  if (withItem.error) throw withItem.error
+
+  const withoutItem = await admin.from('projects')
+    .insert({ organization_id: orgId, name: 'DI Framework Change - Without Item', status: 'Active', health: 'On Track', framework_id: frameworkId })
+    .select('id').single()
+  if (withoutItem.error) throw withoutItem.error
+
+  const anchor = await insertItem(client, { level: 1, name: 'Anchor', project_id: withItem.data.id })
+  assert.equal(anchor.error, null)
+
+  const blocked = await client.from('projects')
+    .update({ framework_id: otherFrameworkId }).eq('id', withItem.data.id).select('id')
+  assert.ok(blocked.error, 'a project with a delivery item referencing its framework must refuse the change')
+  assert.equal(blocked.error!.code, '23503')
+
+  const allowed = await client.from('projects')
+    .update({ framework_id: otherFrameworkId }).eq('id', withoutItem.data.id).select('id')
+  assert.equal(allowed.error, null, 'a project with no delivery items must allow the same change')
+  assert.equal(allowed.data?.length, 1)
+})
+
+test('a level-1 item with live children cannot be promoted to level 2', async () => {
+  // Reparenting an item into level 2 while it still has children breaks the
+  // children's own foreign key: delivery_items_parent_fkey resolves a child's
+  // (parent_id, parent_level, project_id) against its parent's (id, level,
+  // project_id), and once the parent's level becomes 2 that tuple no longer
+  // exists at level 1. This is the UPDATE side of the depth cap that every
+  // other spec in this file only exercises via INSERT.
+  const client = await signedInClient(member.email, member.password)
+
+  const parent = await insertItem(client, { level: 1, name: 'Has Children' })
+  assert.equal(parent.error, null)
+  const child = await insertItem(client, { level: 2, name: 'Depends On Parent Staying Level 1', parent_id: parent.data![0].id })
+  assert.equal(child.error, null)
+  const otherParent = await insertItem(client, { level: 1, name: 'Would-Be New Parent' })
+  assert.equal(otherParent.error, null)
+
+  const { error } = await client.from('delivery_items')
+    .update({ level: 2, parent_id: otherParent.data![0].id })
+    .eq('id', parent.data![0].id)
+  assert.ok(error, 'a parent with live children must not be promoted to level 2')
+  assert.equal(error!.code, '23503')
+})
+
+test('parent_level cannot be written directly, because it is generated', async () => {
+  // parent_level is `generated always ... stored`. Postgres refuses any write
+  // to it regardless of RLS or application code -- this pins that the depth
+  // cap's load-bearing column is enforced by the column definition itself,
+  // not by convention.
+  const client = await signedInClient(member.email, member.password)
+  const item = await insertItem(client, { level: 1, name: 'Generated Column Guard' })
+  assert.equal(item.error, null)
+
+  const { error } = await client.from('delivery_items')
+    .update({ parent_level: 1 })
+    .eq('id', item.data![0].id)
+  assert.ok(error, 'a direct write to parent_level must be refused')
+  assert.equal(error!.code, '428C9')
 })
