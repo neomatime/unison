@@ -88,6 +88,13 @@ function KeyFocusList({ overview }: { overview: DeliveryOverview }) {
   const interventionCount = overview.attention.length
   const criticalCount = overview.healthCounts.Critical
   const ownershipOrGateGap = overview.unassignedOwnerCount + overview.missingNextGateCount
+  const blockedItemDetail = overview.blockedItemCount > 0
+    ? `${overview.blockedItemCount} of ${overview.activeItemCount} recorded delivery ${plural('item', overview.activeItemCount)} ${overview.activeItemCount === 1 ? 'is' : 'are'} blocked.`
+    : overview.activeItemCount > 0
+      ? overview.activeItemCount === 1
+        ? 'The 1 recorded delivery item is not currently blocked.'
+        : `None of the ${overview.activeItemCount} recorded delivery items are currently blocked.`
+      : 'Blocked work cannot be reported until delivery items are recorded against active projects.'
   const focusItems: FocusItem[] = [
     {
       icon: interventionCount > 0 ? AlertCircle : CheckCircle2,
@@ -129,11 +136,7 @@ function KeyFocusList({ overview }: { overview: DeliveryOverview }) {
         : overview.activeItemCount > 0
           ? 'No delivery items are blocked'
           : 'No delivery items are recorded',
-      detail: overview.blockedItemCount > 0
-        ? 'Blocked is the one delivery-item status with no project-level equivalent.'
-        : overview.activeItemCount > 0
-          ? `None of the ${overview.activeItemCount} recorded delivery ${plural('item', overview.activeItemCount)} is currently blocked.`
-          : 'Blocked work cannot be reported until delivery items are recorded against active projects.',
+      detail: blockedItemDetail,
     },
   ]
 
@@ -376,9 +379,11 @@ function PhaseDistribution({
           icon={Milestone}
           title={activeProjects === 0
             ? 'No active lifecycle yet'
-            : itemCount > 0
-              ? 'No lifecycle phases available'
-              : 'No delivery items recorded'}
+            : frameworkName === null
+              ? 'No delivery framework connected'
+              : itemCount > 0
+                ? 'No lifecycle phases available'
+                : 'No delivery items in this framework'}
           description={activeProjects === 0
             ? 'Active projects will appear here when delivery begins.'
             : frameworkName === null

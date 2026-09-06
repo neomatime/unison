@@ -90,3 +90,55 @@ test('briefing status labels, secondary copy and phase colors stay accessible an
   assert.match(overviewComponents, /backgroundColor: column\.color/)
   assert.doesNotMatch(overviewComponents, /columns\.filter\([^)]*\)\.map\(\(column, index\)/)
 })
+
+test('the phase panel cannot render a project-derived number under an item heading', () => {
+  // The panel is labelled as charting delivery items. It used to chart
+  // projects, and the failure mode this guards is the quiet one: a chart that
+  // changes its unit while keeping its heading is worse than an empty one.
+  const start = overviewComponents.indexOf('function PhaseDistribution')
+  assert.ok(start >= 0, 'PhaseDistribution was not found')
+  const next = overviewComponents.indexOf('\nfunction ', start + 1)
+  const panel = overviewComponents.slice(start, next === -1 ? undefined : next)
+
+  // activeProjects is still legitimately used to tell "no projects" from "no
+  // items", so the assertion is about what is COUNTED, not what is referenced.
+  for (const projectField of ['lifecycleProjectCount', 'frameworkProjectCount', 'active projects use']) {
+    assert.ok(!panel.includes(projectField), `the item panel must not report '${projectField}'`)
+  }
+
+  assert.match(panel, /itemColumns/, 'the panel must chart the item-derived columns')
+  assert.match(panel, /itemCount/, 'the panel must report the item count')
+
+  // The chart's aria-label is the least visible place this can go wrong: a
+  // sighted reader sees the heading and the counts, a screen-reader user gets
+  // only this string. It said "projects" before this slice.
+  const label = panel.slice(panel.indexOf('aria-label'), panel.indexOf('\n', panel.indexOf('aria-label')))
+  assert.ok(!/\bprojects\b/.test(label), `the chart's accessible label must not say projects: ${label}`)
+  assert.match(label, /item/, "the chart's accessible label must name delivery items")
+
+  // The assertions above prove PhaseDistribution's own body only ever names
+  // items. They do not prove the call site actually feeds it item-derived
+  // values -- rewriting the DeliveryHorizon call site to pass
+  // itemCount={overview.activeProjects} or project-derived columns under the
+  // same prop names would leave every assertion above green. This closes
+  // that seam by checking the wire between the query and the component, not
+  // just the component it feeds.
+  const horizonStart = overviewComponents.indexOf('function DeliveryHorizon')
+  assert.ok(horizonStart >= 0, 'DeliveryHorizon was not found')
+  const horizonNext = overviewComponents.indexOf('\nfunction ', horizonStart + 1)
+  const horizon = overviewComponents.slice(horizonStart, horizonNext === -1 ? undefined : horizonNext)
+  assert.match(horizon, /itemColumns=\{overview\.itemPhaseColumns\}/, 'DeliveryHorizon must pass the item-derived phase columns to the panel')
+  assert.match(horizon, /itemCount=\{overview\.leadingFrameworkItemCount\}/, "DeliveryHorizon must pass the leading framework's item count to the panel")
+})
+
+test('the briefing reports blocked delivery items, and can tell none from absent', () => {
+  const start = overviewComponents.indexOf('function KeyFocusList')
+  const next = overviewComponents.indexOf('\nfunction ', start + 1)
+  const panel = overviewComponents.slice(start, next === -1 ? undefined : next)
+
+  assert.match(panel, /blockedItemCount/, 'the focus list must read the blocked count')
+  assert.match(panel, /blockedItemProjectCount/, 'the focus list must name the projects those items span')
+  // Without this, "no items are blocked" gets claimed for a tenant that has
+  // recorded no items at all — the honest-zero rule.
+  assert.match(panel, /activeItemCount/, 'the focus list must tell "none blocked" from "none recorded"')
+})
