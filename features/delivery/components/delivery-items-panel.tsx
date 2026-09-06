@@ -4,6 +4,7 @@ import { useActionState, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 
 import { ConfirmationDialog } from '@/components/shared/confirmation-dialog'
+import { cn } from '@/lib/utils'
 import { setDeliveryItemArchivedAction } from '../actions/set-delivery-item-archived'
 import type { DeliveryItem, DeliveryItemNode } from '../queries/list-delivery-items'
 import { levelLabel } from '../schemas/framework'
@@ -22,7 +23,9 @@ type FrameworkLabels = { level1Label: string | null; level2Label: string | null 
  * unbacked claim the project's own rule warns against, so it is left out
  * rather than wired to nothing. Archive/Restore is included in full: it is
  * explicitly in this task's interface list and setDeliveryItemArchivedAction
- * already works end to end.
+ * already works end to end. Archived items are rendered, muted, alongside
+ * live ones (see assembleDeliveryItemTree), so Restore has a real row to act
+ * on rather than being dead code behind an item the tree never returns.
  */
 export function DeliveryItemsPanel({ projectId, items, labels }: { projectId: string; items: DeliveryItemNode[]; labels: FrameworkLabels }) {
   const level1Label = levelLabel(1, labels)
@@ -39,11 +42,11 @@ export function DeliveryItemsPanel({ projectId, items, labels }: { projectId: st
         <div className="divide-y divide-border">
           {items.map((item) => (
             <div key={item.id}>
-              {/* The top-level array can hold a level-1 parent or a live
-                  level-2 item whose parent was archived (see parentArchived
-                  below) -- the kicker reads the item's own level rather than
-                  assuming every top-level row is level 1. */}
-              <DeliveryItemRow item={item} projectId={projectId} kicker={levelLabel(item.level, labels)} />
+              {/* Every top-level entry is a level-1 item, archived or not --
+                  an archived parent is rendered with its children beneath it
+                  like any other parent, rather than being dropped in favour
+                  of promoting the children to the top level. */}
+              <DeliveryItemRow item={item} projectId={projectId} kicker={level1Label} />
               {item.children.length > 0 ? (
                 <div className="divide-y divide-border border-t border-border bg-muted/20 pl-6">
                   {item.children.map((child) => (
@@ -92,12 +95,12 @@ function DeliveryItemRow({ item, projectId, kicker }: { item: DeliveryItem; proj
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-[0.65rem] font-semibold tracking-[0.08em] text-muted-foreground uppercase">{kicker}</p>
-          <h3 className="mt-0.5 text-sm font-semibold text-foreground">{item.name}</h3>
-          {/* Same shape as the phase qualifier above: a muted line beneath the
-              row's own primary value (its name here, since there is no parent
-              name in the six required fields to attach it to). A recorded
-              state, not an error. */}
-          {item.parentArchived ? <p className="mt-0.5 text-xs text-muted-foreground">Its parent item is archived</p> : null}
+          <h3 className={cn('mt-0.5 text-sm font-semibold', archived ? 'text-muted-foreground' : 'text-foreground')}>{item.name}</h3>
+          {/* Same "primary value, muted qualifier beneath" shape as the phase
+              qualifier below: a recorded state, not an error, so no badge and
+              no warning colour -- just the name itself in muted text with a
+              muted second line naming the state. */}
+          {archived ? <p className="mt-0.5 text-xs text-muted-foreground">Archived</p> : null}
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <form ref={formRef} action={action}>
@@ -125,7 +128,7 @@ function DeliveryItemRow({ item, projectId, kicker }: { item: DeliveryItem; proj
         <ConfirmationDialog
           open={confirmOpen}
           title={`Archive ${item.name}?`}
-          description="It will be archived and hidden from the active hierarchy. Any live items beneath it must be archived or moved first."
+          description="It will be shown as archived, muted, with the rest of the hierarchy, and can be restored later. Any live items beneath it must be archived first."
           confirmLabel="Archive"
           onCancel={() => setConfirmOpen(false)}
           onConfirm={() => { setConfirmOpen(false); formRef.current?.requestSubmit() }}

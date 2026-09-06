@@ -21,62 +21,52 @@ export type DeliveryItem = {
   startDate: string | null
   targetDate: string | null
   archivedAt: string | null
-  /**
-   * True only for a live level-2 item whose level-1 parent is archived.
-   *
-   * That state is reachable -- archive a child, archive the parent, then
-   * restore the child -- and filtering archived rows out of the flat set
-   * before grouping used to make such a child vanish entirely: not shown as
-   * archived, not shown at all, unreachable in the UI. Instead of dropping
-   * it, it is promoted to a top-level entry of its own, flagged here so a
-   * later task can render a muted qualifier rather than pretending the item
-   * has no parent by design.
-   */
-  parentArchived: boolean
 }
 
 export type DeliveryItemNode = DeliveryItem & { children: DeliveryItem[] }
 
 /** A flat row as read from the database, before assembly into a tree. */
-export type DeliveryItemRow = Omit<DeliveryItem, 'parentArchived'> & { parentId: string | null }
+export type DeliveryItemRow = DeliveryItem & { parentId: string | null }
 
 /**
  * Assembles the flat row set into a two-level tree.
  *
- * The row set must include archived level-1 rows, not just live ones --
- * that's what lets a live child's parent be told apart as "archived" rather
- * than "gone". An archived level-1 row is still excluded from the returned
- * parents, exactly as before; it is kept only in the pool used to resolve
- * each child's `parentId`.
+ * Archived rows are not filtered out at either level -- an archived item is a
+ * legitimate, visible, restorable state, not a hidden one. A live child
+ * therefore always nests under its actual parent, live or archived, because
+ * that parent is always present in the returned tree. (There used to be an
+ * "orphan promotion" step here for a live child whose parent was archived,
+ * back when archived parents were dropped and such a child would otherwise
+ * vanish. Now that archived parents are rendered like any other parent, that
+ * step is dead: the child just nests where it already belongs, so it and the
+ * `parentArchived` flag it needed are gone.)
  *
- * A live level-2 child of a live parent is nested under it, as always. A
- * live level-2 child of an archived parent is returned as its own top-level
- * entry, with `children: []` and `parentArchived: true`, rather than being
- * dropped along with the parent it can no longer be filed under.
+ * Within each level, live items sort before archived ones, so the working
+ * set stays at the top and the archived tail reads as a secondary group. The
+ * row set is already ordered by name (see listDeliveryItems), and Array#sort
+ * is stable, so this only reorders live-vs-archived and leaves each group's
+ * internal order untouched.
  */
 export function assembleDeliveryItemTree(rows: ReadonlyArray<DeliveryItemRow>): DeliveryItemNode[] {
-  const level1Rows = rows.filter((row) => row.level === 1)
-  const archivedParentIds = new Set(
-    level1Rows.filter((row) => row.archivedAt !== null).map((row) => row.id),
-  )
-  const liveParents = level1Rows.filter((row) => row.archivedAt === null)
-  const liveChildren = rows.filter((row) => row.level === 2 && row.archivedAt === null)
-
-  const toDeliveryItem = (row: DeliveryItemRow, parentArchived: boolean): DeliveryItem => {
-    const { parentId: _parentId, ...item } = row
-    return { ...item, parentArchived }
+  const liveFirst = (a: DeliveryItemRow, b: DeliveryItemRow): number => {
+    if ((a.archivedAt === null) === (b.archivedAt === null)) return 0
+    return a.archivedAt === null ? -1 : 1
   }
 
-  const parentNodes: DeliveryItemNode[] = liveParents.map((parent) => ({
-    ...toDeliveryItem(parent, false),
-    children: liveChildren
+  const toDeliveryItem = (row: DeliveryItemRow): DeliveryItem => {
+    const { parentId: _parentId, ...item } = row
+    return item
+  }
+
+  const level1Rows = rows.filter((row) => row.level === 1).slice().sort(liveFirst)
+  const level2Rows = rows.filter((row) => row.level === 2)
+
+  return level1Rows.map((parent) => ({
+    ...toDeliveryItem(parent),
+    children: level2Rows
       .filter((child) => child.parentId === parent.id)
-      .map((child) => toDeliveryItem(child, false)),
+      .slice()
+      .sort(liveFirst)
+      .map(toDeliveryItem),
   }))
-
-  const orphanNodes: DeliveryItemNode[] = liveChildren
-    .filter((child) => child.parentId !== null && archivedParentIds.has(child.parentId))
-    .map((child) => ({ ...toDeliveryItem(child, true), children: [] }))
-
-  return [...parentNodes, ...orphanNodes]
 }

@@ -13,9 +13,9 @@ export type { DeliveryItem, DeliveryItemNode }
  * Two levels is a schema guarantee (delivery_items_parent_fkey), so this
  * assembles one pass of parents and one of children rather than recursing.
  *
- * Fetches archived rows too -- unlike a plain listing, the tree assembly
- * needs to know whether a child's level-1 parent is archived, not just
- * whether the parent is present. See assembleDeliveryItemTree for why.
+ * Fetches archived rows too -- archived items are shown, muted, with a
+ * working Restore, not hidden. See assembleDeliveryItemTree for how the flat
+ * row set (including archived rows at both levels) becomes the tree.
  */
 export async function listDeliveryItems(projectId: string): Promise<DeliveryItemNode[]> {
   const { organization } = await getSessionContext()
