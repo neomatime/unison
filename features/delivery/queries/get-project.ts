@@ -15,7 +15,7 @@ export async function getProject(id: string) {
   const supabase = await createServerSupabase()
   const { data, error } = await supabase
     .from('projects')
-    .select('*, frameworks(id, name), framework_phases(id, name), clients(id, name)')
+    .select('*, frameworks(id, name, level_1_label, level_2_label), framework_phases(id, name), clients(id, name)')
     .eq('organization_id', organization.id)
     .eq('id', id)
     .maybeSingle()

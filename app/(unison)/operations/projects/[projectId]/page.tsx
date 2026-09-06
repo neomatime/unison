@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 
 import { ProjectDetailScreen } from '@/features/delivery/components/project-detail-screen'
 import { getProject } from '@/features/delivery/queries/get-project'
+import { listDeliveryItems } from '@/features/delivery/queries/list-delivery-items'
 import { listOrganizationMembers } from '@/features/memberships/queries/list-organization-members'
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -37,7 +38,16 @@ export default async function Page({ params }: { params: Promise<{ projectId: st
     ? members.find((member) => member.userId === project.owner_id)?.displayName ?? 'Former member'
     : 'Unassigned'
 
-  return <ProjectDetailScreen project={{
+  // The Delivery tab's own hierarchy, plus the framework's two level labels so
+  // the tab can head level-1 and level-2 rows with the framework's own words
+  // rather than an invented default.
+  const items = await listDeliveryItems(projectId)
+  const labels = {
+    level1Label: project.frameworks?.level_1_label ?? null,
+    level2Label: project.frameworks?.level_2_label ?? null,
+  }
+
+  return <ProjectDetailScreen items={items} labels={labels} project={{
     id: project.id,
     owner: ownerName,
     name: project.name,
