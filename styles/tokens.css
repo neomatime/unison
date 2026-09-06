@@ -41,12 +41,17 @@
 
   /* Tenant workspace navigation. Kept separate from auth, internal admin and
      data-avatar surfaces that intentionally use the original navy token. */
-  --tenant-sidebar: #1c2b3a;
-  --tenant-sidebar-foreground: #f7f7f5;
-  --tenant-sidebar-muted: #9fb0ba;
-  --tenant-sidebar-active: #2e4a5a;
-  --tenant-sidebar-hover: rgb(95 129 144 / 0.22);
-  --tenant-sidebar-border: #223746;
+  --tenant-sidebar: #f6f8fa;
+  --tenant-sidebar-foreground: #1c2b3a;
+  --tenant-sidebar-muted: #5c6f82;
+  --tenant-sidebar-active: #eaf2fd;
+  --tenant-sidebar-hover: #eef3f7;
+  --tenant-sidebar-border: #e1e7ec;
+  --tenant-canvas: #fafbfc;
+
+  /* Executive briefing secondary copy. This intentionally stays scoped to the
+     briefing instead of darkening muted copy across every existing workspace. */
+  --briefing-muted: #53677c;
 
   --chart-1: oklch(0.62 0.07 156);
   --chart-2: oklch(0.76 0.13 72);

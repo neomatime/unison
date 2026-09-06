@@ -1,27 +1,32 @@
 /**
- * Shared by the server query and the client chart, so it carries no `server-only`
- * import. `HEALTH_BANDS` is a runtime value rather than a type, so importing it
- * from the query module would pull `next/headers` into the client bundle — the
- * build fails outright rather than degrading, which is the useful behaviour.
+ * Shared by the server query and presentation components, so this module must
+ * remain free of `server-only` imports.
  */
 
 /**
- * Four bands, not the five values `projects_health_check` permits. `On Track` and
- * `Healthy` share one because `healthStyles` in delivery-primitives.tsx already
- * renders them identically; splitting them in the chart would invent a
- * distinction the rest of the product does not make.
+ * The database permits both `On Track` and `Healthy`. The executive briefing
+ * intentionally groups those positive states, and the label names both so the
+ * aggregation does not silently change either record's meaning.
  */
-export type HealthBand = 'On track' | 'Watch' | 'At Risk' | 'Critical'
+export type HealthBand = 'On Track / Healthy' | 'Watch' | 'At Risk' | 'Critical'
 
-/** Ordered good to critical. The chart stacks in this order so risk always sits
- * at the top of every column and the eye can read the risk line straight across. */
-export const HEALTH_BANDS: readonly HealthBand[] = ['On track', 'Watch', 'At Risk', 'Critical']
+/** Ordered positive to critical for consistent summaries and visual stacks. */
+export const HEALTH_BANDS: readonly HealthBand[] = ['On Track / Healthy', 'Watch', 'At Risk', 'Critical']
 
 export function bandFor(health: string): HealthBand {
-  if (health === 'On Track' || health === 'Healthy') return 'On track'
-  if (health === 'Watch') return 'Watch'
-  if (health === 'At Risk') return 'At Risk'
-  return 'Critical'
+  switch (health) {
+    case 'On Track':
+    case 'Healthy':
+      return 'On Track / Healthy'
+    case 'Watch':
+      return 'Watch'
+    case 'At Risk':
+      return 'At Risk'
+    case 'Critical':
+      return 'Critical'
+    default:
+      throw new Error(`Unsupported project health: ${health}`)
+  }
 }
 
 export type PhaseColumn = {
@@ -38,38 +43,141 @@ export type AttentionRow = {
   phase: string
   framework: string
   client: string
+  owner: string
   nextGate: string | null
   targetDate: string | null
   targetDateLabel: string
   note: string | null
 }
 
+export type UpcomingProjectDate = {
+  id: string
+  name: string
+  health: string
+  dueDate: string
+  dueDateLabel: string
+  nextGate: string | null
+}
+
 export type DeliveryOverview = {
   activeProjects: number
   healthCounts: Record<HealthBand, number>
-  projectDatesDue: number
-  projectDatesDueThisWeek: number
-  /** Share of active projects on track, or null when there are none to divide by. */
+  projectDatesNext7: number
+  projectDatesNext30: number
+  overdueProjectDates: number
+  missingNextGateCount: number
+  unassignedOwnerCount: number
+  /** Share of active projects recorded as either On Track or Healthy. */
   portfolioHealth: number | null
-  /** The framework the lifecycle chart describes. */
+  /** The single framework described by the lifecycle distribution. */
   framework: { id: string; name: string } | null
+  /** Active projects belonging to the selected lifecycle framework. */
+  lifecycleProjectCount: number
+  /** Selected-framework projects that do not have a recorded phase. */
+  lifecycleUnassignedPhaseCount: number
   columns: PhaseColumn[]
-  /** Active projects in the At Risk or Critical bands, worst first. */
+  /** All active At Risk or Critical projects, in deterministic triage order. */
   attention: AttentionRow[]
+  /** Active project due dates in the end-exclusive 30-day window. */
+  upcomingProjectDates: UpcomingProjectDate[]
+}
+
+export type PositionNarrative = {
+  headline: string
+  description: string
 }
 
 /**
- * Database dates are stored as date-only ISO strings. Comparing them at UTC
- * midnight avoids moving a project into another day when environments use
- * different time zones.
+ * Builds briefing copy only from recorded project health. It deliberately
+ * avoids schedule, cause, impact, gate, decision, or dependency assertions.
+ */
+export function positionNarrative({
+  activeProjects,
+  healthCounts,
+}: Pick<DeliveryOverview, 'activeProjects' | 'healthCounts'>): PositionNarrative {
+  const countedProjects = HEALTH_BANDS.reduce((total, band) => total + healthCounts[band], 0)
+  if (countedProjects !== activeProjects) {
+    throw new Error(`Project health counts (${countedProjects}) do not match active projects (${activeProjects})`)
+  }
+
+  if (activeProjects === 0) {
+    return {
+      headline: 'No active delivery yet.',
+      description: 'Create or activate a project to begin building a live delivery briefing.',
+    }
+  }
+
+  const critical = healthCounts.Critical
+  const atRisk = healthCounts['At Risk']
+  const watch = healthCounts.Watch
+
+  if (critical > 0) {
+    const criticalCopy = markedShare(critical, activeProjects, 'Critical')
+    const atRiskCopy = atRisk > 0 ? ` ${markedShare(atRisk, activeProjects, 'At Risk')}.` : ''
+    return {
+      headline: 'Delivery requires intervention.',
+      description: `${criticalCopy}.${atRiskCopy}`,
+    }
+  }
+
+  if (atRisk > 0) {
+    return {
+      headline: 'Delivery needs focused attention.',
+      description: `${markedShare(atRisk, activeProjects, 'At Risk')}. No active project is marked Critical.`,
+    }
+  }
+
+  if (watch > 0) {
+    return {
+      headline: 'Delivery remains broadly on track.',
+      description: `${markedShare(watch, activeProjects, 'Watch')}. No active project is marked At Risk or Critical.`,
+    }
+  }
+
+  return {
+    headline: 'Delivery remains on track.',
+    description: activeProjects === 1
+      ? 'The active project is recorded as On Track or Healthy.'
+      : `All ${activeProjects} active projects are recorded as On Track or Healthy.`,
+  }
+}
+
+function markedShare(count: number, total: number, health: 'Watch' | 'At Risk' | 'Critical') {
+  return `${count} of ${total} active ${plural('project', total)} ${count === 1 ? 'is' : 'are'} marked ${health}`
+}
+
+function plural(word: string, count: number) {
+  return count === 1 ? word : `${word}s`
+}
+
+/**
+ * Database dates are date-only ISO strings. UTC-midnight arithmetic preserves
+ * the stored calendar date across server time zones. The end is exclusive, so
+ * a 7-day window contains today plus the following six dates.
  */
 export function isDateWithinDays(value: string | null, start: string, days: number) {
-  if (!value) return false
+  if (!Number.isInteger(days) || days <= 0) return false
 
-  const startDate = new Date(`${start}T00:00:00Z`)
+  const startDate = parseDateOnly(start)
+  const candidate = parseDateOnly(value)
+  if (!startDate || !candidate) return false
+
   const endDate = new Date(startDate)
   endDate.setUTCDate(endDate.getUTCDate() + days)
-  const candidate = new Date(`${value}T00:00:00Z`)
 
-  return candidate >= startDate && candidate <= endDate
+  return candidate >= startDate && candidate < endDate
+}
+
+export function isDateOverdue(value: string | null, today: string) {
+  const todayDate = parseDateOnly(today)
+  const candidate = parseDateOnly(value)
+  return Boolean(todayDate && candidate && candidate < todayDate)
+}
+
+function parseDateOnly(value: string | null) {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null
+
+  const parsed = new Date(`${value}T00:00:00Z`)
+  if (Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== value) return null
+  return parsed
 }

@@ -13,7 +13,11 @@ import { InitialAvatar } from '@/components/ui/initial-avatar'
 import { roles } from '@/config/roles'
 import { signOutAction } from '@/features/auth-ui/actions/sign-out'
 
-export function Sidebar() {
+type SidebarProps = {
+  onNavigate?: () => void
+}
+
+export function Sidebar({ onNavigate }: SidebarProps = {}) {
   const pathname = usePathname()
   const [collapsed, setCollapsed] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
@@ -23,7 +27,7 @@ export function Sidebar() {
   const avatarUrl = user.avatarUrl
   const roleLabel = roles.find((definition) => definition.id === role)?.label ?? role
   return (
-    <aside className={cn('flex h-full shrink-0 flex-col bg-tenant-sidebar text-tenant-sidebar-foreground transition-[width]', collapsed ? 'w-20' : 'w-64')}>
+    <aside className={cn('flex h-full shrink-0 flex-col border-r border-tenant-sidebar-border bg-tenant-sidebar text-tenant-sidebar-foreground transition-[width]', collapsed ? 'w-20' : 'w-64')}>
       {/* Brand */}
       <div className={cn('flex items-center justify-between py-5', collapsed ? 'px-6' : 'px-6')}>
         <span className={cn('text-xl font-bold tracking-[0.2em] text-tenant-sidebar-foreground', collapsed && 'hidden')}>
@@ -32,8 +36,8 @@ export function Sidebar() {
         <button
           type="button"
           onClick={() => setCollapsed((value) => !value)}
-          aria-label="Collapse sidebar"
-          className="text-tenant-sidebar-muted transition-colors hover:text-tenant-sidebar-foreground"
+          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          className="rounded-md text-tenant-sidebar-muted transition-colors hover:text-tenant-sidebar-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
         >
           <Menu className="size-5" />
         </button>
@@ -65,13 +69,21 @@ export function Sidebar() {
                     title={collapsed ? item.label : undefined}
                     aria-disabled={!item.enabled || undefined}
                     aria-current={isActive ? 'page' : undefined}
+                    onClick={(event) => {
+                      if (!item.enabled) {
+                        event.preventDefault()
+                        return
+                      }
+                      onNavigate?.()
+                    }}
                     className={cn(
-                      'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                      'relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand',
                       isActive
                         ? 'bg-tenant-sidebar-active text-tenant-sidebar-foreground'
-                        : 'text-tenant-sidebar-foreground hover:bg-tenant-sidebar-hover hover:text-tenant-sidebar-foreground',
+                        : 'text-tenant-sidebar-muted hover:bg-tenant-sidebar-hover hover:text-tenant-sidebar-foreground',
                     )}
                   >
+                    {isActive ? <span aria-hidden="true" className="absolute inset-y-0 -left-3 w-0.5 rounded-r-full bg-brand" /> : null}
                     <Icon className="size-[1.125rem] shrink-0" strokeWidth={1.75} />
                     <span className={cn(collapsed && 'sr-only')}>{item.label}</span>
                   </Link>
@@ -88,7 +100,7 @@ export function Sidebar() {
           type="button"
           onClick={() => setProfileOpen((value) => !value)}
           aria-expanded={profileOpen}
-          className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left transition-colors hover:bg-tenant-sidebar-hover"
+          className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left transition-colors hover:bg-tenant-sidebar-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
         >
           {avatarUrl ? (
             <Image
@@ -109,7 +121,7 @@ export function Sidebar() {
           </span>
           <ChevronDown className={cn('size-4 shrink-0 text-tenant-sidebar-muted', collapsed && 'hidden')} />
         </button>
-        {profileOpen ? <div className={cn('absolute bottom-full z-50 mb-2 rounded-xl border border-border bg-card p-2 text-foreground shadow-xl', collapsed ? 'left-2 w-52' : 'right-3 left-3')}><p className="px-2 py-2 text-xs font-semibold text-muted-foreground">{displayName} · {organization.name}</p><Link href="/people/team" className="block rounded-lg px-2 py-2 text-sm hover:bg-muted">View profile</Link><Link href="/settings" className="block rounded-lg px-2 py-2 text-sm hover:bg-muted">Organization settings</Link><form action={signOutAction}><button type="submit" className="block w-full rounded-lg px-2 py-2 text-left text-sm text-destructive hover:bg-muted">Sign out</button></form></div> : null}
+        {profileOpen ? <div className={cn('absolute bottom-full z-50 mb-2 rounded-xl border border-border bg-card p-2 text-foreground shadow-xl', collapsed ? 'left-2 w-52' : 'right-3 left-3')}><p className="px-2 py-2 text-xs font-semibold text-muted-foreground">{displayName} · {organization.name}</p><Link href="/people/team" onClick={onNavigate} className="block rounded-lg px-2 py-2 text-sm hover:bg-muted">View profile</Link><Link href="/settings" onClick={onNavigate} className="block rounded-lg px-2 py-2 text-sm hover:bg-muted">Organization settings</Link><form action={signOutAction} onSubmit={onNavigate}><button type="submit" className="block w-full rounded-lg px-2 py-2 text-left text-sm text-destructive hover:bg-muted">Sign out</button></form></div> : null}
       </div>
     </aside>
   )

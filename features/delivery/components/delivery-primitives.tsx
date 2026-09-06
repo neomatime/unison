@@ -32,22 +32,22 @@ export function SectionCard({ title, description, action, children, className }:
 }
 
 const healthStyles: Record<string, string> = {
-  'On Track': 'bg-success-soft text-success',
-  Healthy: 'bg-success-soft text-success',
-  Watch: 'bg-warning-soft text-warning',
-  'At Risk': 'bg-danger-soft text-danger',
-  Critical: 'bg-danger text-white',
-  Pending: 'bg-warning-soft text-warning',
-  'In Review': 'bg-info-soft text-info',
-  Overdue: 'bg-danger-soft text-danger',
-  Approved: 'bg-success-soft text-success',
-  Current: 'bg-success-soft text-success',
+  'On Track': 'bg-emerald-50 text-emerald-800',
+  Healthy: 'bg-emerald-50 text-emerald-800',
+  Watch: 'bg-amber-50 text-amber-800',
+  'At Risk': 'bg-amber-100 text-amber-900',
+  Critical: 'bg-red-700 text-white',
+  Pending: 'bg-amber-50 text-amber-800',
+  'In Review': 'bg-blue-50 text-blue-800',
+  Overdue: 'bg-red-50 text-red-800',
+  Approved: 'bg-emerald-50 text-emerald-800',
+  Current: 'bg-emerald-50 text-emerald-800',
 }
 
 export function HealthBadge({ children }: { children: DeliveryHealth | ReactNode }) {
   const label = String(children)
 
-  return <span className={cn('inline-flex rounded-md px-2 py-1 text-[0.6875rem] font-semibold whitespace-nowrap', healthStyles[label] ?? 'bg-muted text-muted-foreground')}>{label}</span>
+  return <span className={cn('inline-flex rounded-md px-2 py-1 text-[0.6875rem] font-semibold whitespace-nowrap', healthStyles[label] ?? 'bg-muted text-foreground')}>{label}</span>
 }
 
 export function PhaseStepper({ phases, active }: { phases: ReadonlyArray<{ name: string; projects?: number }>; active?: string }) {

@@ -54,6 +54,7 @@
   --color-tenant-sidebar-active: var(--tenant-sidebar-active);
   --color-tenant-sidebar-hover: var(--tenant-sidebar-hover);
   --color-tenant-sidebar-border: var(--tenant-sidebar-border);
+  --color-tenant-canvas: var(--tenant-canvas);
 
   /* Chart tokens */
   --color-chart-1: var(--chart-1);
