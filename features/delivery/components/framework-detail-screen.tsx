@@ -2,8 +2,7 @@
 
 import { Archive, ArrowLeft, Pencil, RotateCcw } from 'lucide-react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { useActionState, useEffect, useRef, useState } from 'react'
+import { useActionState, useRef, useState } from 'react'
 
 import { ConfirmationDialog } from '@/components/shared/confirmation-dialog'
 import { WorkspaceHeader } from '@/components/shared/workspace-header'
@@ -20,18 +19,10 @@ const tabs = ['Overview', 'Phases', 'Projects'] as const
 // tables behind them and are gone, along with the fabricated framework code,
 // invented version history and invented project list that used to live here.
 export function FrameworkDetailScreen({ framework }: { framework: FrameworkDetail }) {
-  const router = useRouter()
   const [tab, setTab] = useState<(typeof tabs)[number]>('Overview')
   const [confirmOpen, setConfirmOpen] = useState(false)
   const formRef = useRef<HTMLFormElement>(null)
-  // setFrameworkArchivedAction does not redirect -- archiving and restoring both
-  // happen from this same screen -- so once it succeeds the server-held
-  // framework record has to be re-fetched for the header and Overview tab to
-  // reflect it (the archived/restore control included).
   const [archiveState, archiveAction] = useActionState(setFrameworkArchivedAction, undefined)
-  useEffect(() => {
-    if (archiveState && !archiveState.error) router.refresh()
-  }, [archiveState, router])
 
   const archived = framework.archivedAt !== null
   const description = [framework.type, framework.version].filter(Boolean).join(' · ') || undefined
@@ -41,6 +32,10 @@ export function FrameworkDetailScreen({ framework }: { framework: FrameworkDetai
     <div className="-mt-2 mb-5 flex flex-wrap items-center justify-between gap-3">
       <Link href="/delivery/frameworks" className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground"><ArrowLeft className="size-4" />Back to Frameworks</Link>
       <div className="flex items-center gap-2">
+        {/* Duplicates the Overview tab's Status row on purpose, same as
+            project-detail-screen.tsx's header badge next to its own archive
+            control: the person reaching for Archive/Restore should see current
+            state without switching tabs first. */}
         <HealthBadge>{archived ? 'Archived' : 'Active'}</HealthBadge>
         <Link href={`/delivery/frameworks/${framework.id}/edit`} className="inline-flex h-9 items-center gap-2 rounded-lg border border-border bg-card px-3 text-xs font-semibold"><Pencil className="size-3.5" />Edit framework</Link>
         <form ref={formRef} action={archiveAction}>
