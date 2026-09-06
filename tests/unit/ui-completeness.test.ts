@@ -701,3 +701,64 @@ test('the projects register offers no view it cannot render from real records', 
     )
   }
 })
+
+test('the frameworks module reads the database rather than a fixture', () => {
+  const registerRoute = readFileSync(join(workspace, 'app', '(unison)', 'delivery', 'frameworks', 'page.tsx'), 'utf8')
+  const screen = readFileSync(join(workspace, 'features', 'delivery', 'components', 'frameworks-screen.tsx'), 'utf8')
+  const detail = readFileSync(join(workspace, 'features', 'delivery', 'components', 'framework-detail-screen.tsx'), 'utf8')
+  const data = readFileSync(join(workspace, 'features', 'delivery', 'data.ts'), 'utf8')
+
+  assert.match(registerRoute, /listFrameworks\(\)/)
+  for (const source of [screen, detail]) {
+    assert.doesNotMatch(source, /from '\.\.\/data'/, 'the frameworks screens must not read the fixture module')
+  }
+
+  // The eight metric cards were fabricated, and the three checkable against the
+  // database were all wrong: six frameworks not eleven, forty-six phases not
+  // forty-eight, and no gates or artefacts table exists at all.
+  for (const fabricated of ['Projects Covered', '91% adoption', 'Gates', 'Artefacts', '74 mandatory']) {
+    assert.ok(!screen.includes(fabricated), `"${fabricated}" is not backed by any table and must not be claimed`)
+  }
+
+  // Five tabs named domains with no tables behind them.
+  for (const tab of ['Workstreams', 'Artefacts', 'Roles', 'Controls', 'Versions']) {
+    assert.ok(!detail.includes(`'${tab}'`), `the ${tab} tab has no table behind it and must not be offered`)
+  }
+  assert.ok(!detail.includes('Phases & Gates'), 'gates do not exist; the tab is Phases')
+
+  assert.ok(!data.includes('export const frameworks'), 'the frameworks fixture must not survive alongside the real query')
+  assert.ok(!data.includes('export const deliveryPhases'), 'a single global phase list is meaningless once each framework carries its own')
+})
+
+test('a duplicate name is refused as a message, not thrown as a fault', () => {
+  // Both uniqueness constraints are reachable by ordinary use: two frameworks
+  // named "Client Onboarding" in one organisation, two phases named "Design"
+  // in one framework. Each must surface as a field-level refusal.
+  //
+  // Its limit, stated rather than discovered later: this asserts the branch
+  // exists, not that Postgres returns 23505 for these constraints. Task 9
+  // step 3 exercises that against the live database.
+  const actions = [
+    ['create-framework.ts', 'A framework with that name already exists.'],
+    ['update-framework.ts', 'A framework with that name already exists.'],
+    ['rename-framework-phase.ts', 'A phase with that name already exists in this framework.'],
+  ] as const
+
+  for (const [file, message] of actions) {
+    const source = readFileSync(join(workspace, 'features', 'delivery', 'actions', file), 'utf8')
+    assert.match(source, /error\?\.code === '23505'/, `${file} must handle a unique violation`)
+    assert.ok(source.includes(message), `${file} must name the offending field in its message`)
+  }
+})
+
+test('the frameworks wizard that wrote nothing is gone', () => {
+  // Five steps, no name attributes, submit set setSaved(true) -- the same
+  // defect the projects wizard had, with one more step. Four of its five steps
+  // collected data for domains that have no tables.
+  const form = readFileSync(join(workspace, 'features', 'delivery', 'components', 'framework-form.tsx'), 'utf8')
+  assert.doesNotMatch(form, /setSaved/, 'the form must submit to a server action, not to local state')
+  assert.match(form, /useActionState/, 'the framework form must post through a real action')
+  for (const step of ['Framework Basics', 'Artefacts & Roles', 'Controls & Metrics']) {
+    assert.ok(!form.includes(step), `"${step}" collects data for a domain with no table`)
+  }
+})

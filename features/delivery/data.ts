@@ -1,14 +1,3 @@
-export const deliveryPhases = [
-  { name: 'Initiate', projects: 4 },
-  { name: 'Discover', projects: 6 },
-  { name: 'Design', projects: 5 },
-  { name: 'Build', projects: 9 },
-  { name: 'Test', projects: 4 },
-  { name: 'Ready', projects: 3 },
-  { name: 'Deploy', projects: 2 },
-  { name: 'Measure', projects: 3 },
-] as const
-
 export type DeliveryHealth = 'On Track' | 'At Risk' | 'Critical' | 'Watch' | 'Healthy'
 
 export type DeliveryProject = {
@@ -44,27 +33,6 @@ export const deliveryMetrics = [
   ['Upcoming Go-Lives', '5', 'Next 60 days'],
   ['Portfolio Health', '82%', '+3% this month'],
 ] as const
-
-export type FrameworkRecord = {
-  id: string
-  name: string
-  type: string
-  owner: string
-  projects: number
-  version: string
-  review: string
-  updated: string
-  health: DeliveryHealth
-}
-
-export const frameworks: FrameworkRecord[] = [
-  { id: 'business-technology-change', name: 'Business / Technology Change', type: 'Enterprise', owner: 'Delivery Office', projects: 12, version: 'v3.2', review: 'Current', updated: '18 Aug 2026', health: 'Healthy' },
-  { id: 'automation-implementation', name: 'Automation Implementation', type: 'Technology', owner: 'Digital Delivery', projects: 8, version: 'v2.4', review: 'Due in 14 days', updated: '11 Aug 2026', health: 'Watch' },
-  { id: 'client-onboarding', name: 'Client Onboarding', type: 'Operations', owner: 'Client Success', projects: 6, version: 'v4.1', review: 'Current', updated: '04 Aug 2026', health: 'On Track' },
-  { id: 'regulatory-change', name: 'Regulatory Change', type: 'Compliance', owner: 'Risk & Compliance', projects: 4, version: 'v2.8', review: 'Review required', updated: '22 Jul 2026', health: 'At Risk' },
-  { id: 'digital-transformation', name: 'Digital Transformation', type: 'Enterprise', owner: 'Transformation Office', projects: 9, version: 'v5.0', review: 'Current', updated: '19 Aug 2026', health: 'Healthy' },
-  { id: 'product-launch', name: 'Product Launch', type: 'Commercial', owner: 'Growth Office', projects: 3, version: 'v1.9', review: 'Draft update', updated: '29 Jul 2026', health: 'Watch' },
-]
 
 export type VendorRecord = {
   id: string

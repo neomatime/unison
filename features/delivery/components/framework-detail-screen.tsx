@@ -9,6 +9,7 @@ import { WorkspaceHeader } from '@/components/shared/workspace-header'
 import { setFrameworkArchivedAction } from '@/features/delivery/actions/set-framework-archived'
 import type { FrameworkDetail, FrameworkProject } from '@/features/delivery/queries/get-framework'
 import { HealthBadge, SectionCard } from './delivery-primitives'
+import { FrameworkPhaseEditor } from './framework-phase-editor'
 
 const tabs = ['Overview', 'Phases', 'Projects'] as const
 
@@ -59,7 +60,7 @@ export function FrameworkDetailScreen({ framework }: { framework: FrameworkDetai
       {tabs.map((item) => <button type="button" key={item} onClick={() => setTab(item)} className={`whitespace-nowrap border-b-2 px-3 py-3 text-sm font-medium ${tab === item ? 'border-brand text-brand' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>{item}</button>)}
     </nav>
     <div className="mt-5">
-      {tab === 'Overview' ? <Overview framework={framework} /> : tab === 'Phases' ? <PhasesPlaceholder /> : <ProjectsTab projects={framework.projects} />}
+      {tab === 'Overview' ? <Overview framework={framework} /> : tab === 'Phases' ? <FrameworkPhaseEditor frameworkId={framework.id} phases={framework.phases} /> : <ProjectsTab projects={framework.projects} />}
     </div>
     <ConfirmationDialog
       open={confirmOpen}
@@ -88,14 +89,6 @@ function Overview({ framework }: { framework: FrameworkDetail }) {
     <dl className="divide-y divide-border">
       {rows.map(([label, value]) => <div key={label} className="flex items-start justify-between gap-4 px-5 py-3"><dt className="text-xs font-medium text-muted-foreground">{label}</dt><dd className="text-sm font-semibold">{value}</dd></div>)}
     </dl>
-  </SectionCard>
-}
-
-// Task 8 replaces this body with FrameworkPhaseEditor; nothing that looks like a
-// working control belongs here in the meantime.
-function PhasesPlaceholder() {
-  return <SectionCard title="Phases" description="The phases this framework's projects move through.">
-    <div className="p-5 text-sm text-muted-foreground">Phase management is not available on this screen yet.</div>
   </SectionCard>
 }
 
