@@ -2,6 +2,7 @@ import 'server-only'
 import { getSessionContext } from '@/lib/auth/get-session-context'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { listOrganizationMembers } from '@/features/memberships/queries/list-organization-members'
+import { selectClientOptions, selectOwnerOptions } from '../form-options'
 
 export type ProjectFormOptions = {
   frameworks: Array<{ id: string; name: string }>
@@ -17,7 +18,9 @@ export type ProjectFormOptions = {
  * phases is under fifty rows — and the form filters them client-side when the
  * framework changes. A round trip per change would cost more than the data.
  */
-export async function listProjectFormOptions(): Promise<ProjectFormOptions> {
+export async function listProjectFormOptions(
+  current: { ownerId?: string | null; clientId?: string | null } = {},
+): Promise<ProjectFormOptions> {
   const { organization } = await getSessionContext()
   const supabase = await createServerSupabase()
 
@@ -28,8 +31,12 @@ export async function listProjectFormOptions(): Promise<ProjectFormOptions> {
       .eq('organization_id', organization.id).is('archived_at', null).order('name'),
     supabase.from('framework_phases').select('id, name, framework_id')
       .eq('organization_id', organization.id).order('position'),
-    supabase.from('clients').select('id, name')
-      .eq('organization_id', organization.id).is('archived_at', null).order('name'),
+    // archived_at is selected and filtered in selectClientOptions rather than in
+    // SQL, because the project's own client must survive the filter when it has
+    // since been archived. Dropping it from the options silently nulled
+    // client_id on the next edit.
+    supabase.from('clients').select('id, name, archived_at')
+      .eq('organization_id', organization.id).order('name'),
     listOrganizationMembers(),
   ])
 
@@ -40,10 +47,9 @@ export async function listProjectFormOptions(): Promise<ProjectFormOptions> {
   return {
     frameworks: frameworks.data ?? [],
     phases: (phases.data ?? []).map((row) => ({ id: row.id, name: row.name, frameworkId: row.framework_id })),
-    clients: clients.data ?? [],
-    // Only active members are offered. An existing owner who has since been
-    // removed still displays on the record; they are simply not a new choice.
-    members: members.filter((member) => member.status === 'active')
-      .map((member) => ({ id: member.userId, name: member.displayName })),
+    clients: selectClientOptions(clients.data ?? [], current.clientId),
+    // Active members, plus this project's own owner when they have since been
+    // removed — see selectOwnerOptions for why the second half is not optional.
+    members: selectOwnerOptions(members, current.ownerId),
   }
 }
