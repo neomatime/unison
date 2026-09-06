@@ -71,3 +71,31 @@ export function selectClientOptions(
 
   return [...open, { id: retained.id, name: `${retained.name} (archived)` }]
 }
+
+export type SelectablePhase = { id: string; name: string; frameworkId: string; archived_at: string | null }
+export type PhaseOption = { id: string; name: string; frameworkId: string }
+
+/**
+ * Unarchived phases, plus the project's current phase when it has since been
+ * archived. Identical reasoning to selectOwnerOptions: `phaseId` is optional,
+ * so a missing option means the next unrelated edit silently writes
+ * phase_id: null over a recorded governance fact.
+ *
+ * Keeps `frameworkId` because ProjectForm filters the list client-side when the
+ * framework changes; an option without it would vanish from the picker.
+ */
+export function selectPhaseOptions(
+  phases: ReadonlyArray<SelectablePhase>,
+  currentPhaseId?: string | null,
+): PhaseOption[] {
+  const open = phases
+    .filter((phase) => phase.archived_at === null)
+    .map((phase) => ({ id: phase.id, name: phase.name, frameworkId: phase.frameworkId }))
+
+  if (!currentPhaseId || open.some((option) => option.id === currentPhaseId)) return open
+
+  const retained = phases.find((phase) => phase.id === currentPhaseId)
+  if (!retained) return open
+
+  return [...open, { id: retained.id, name: `${retained.name} (archived)`, frameworkId: retained.frameworkId }]
+}

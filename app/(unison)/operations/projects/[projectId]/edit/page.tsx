@@ -13,6 +13,10 @@ export default async function Page({ params }: { params: Promise<{ projectId: st
   // falls back to its empty option and saving writes null over them.
   const project = await getProject(projectId)
   if (!project) notFound()
-  const options = await listProjectFormOptions({ ownerId: project.owner_id, clientId: project.client_id })
+  const options = await listProjectFormOptions({
+    ownerId: project.owner_id,
+    clientId: project.client_id,
+    phaseId: project.phase_id,
+  })
   return <ProjectForm mode="edit" project={project} action={updateProjectAction.bind(null, projectId)} options={options} />
 }

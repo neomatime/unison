@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { selectClientOptions, selectOwnerOptions } from '../../features/delivery/form-options.ts'
+import { selectClientOptions, selectOwnerOptions, selectPhaseOptions } from '../../features/delivery/form-options.ts'
 
 const ACTIVE = { userId: 'u-active', displayName: 'Active Member', status: 'active' }
 const REMOVED = { userId: 'u-removed', displayName: 'Departed Member', status: 'removed' }
@@ -68,5 +68,39 @@ test('an archived current client is retained and labelled', () => {
 test('an open current client is offered once, not duplicated', () => {
   assert.deepEqual(selectClientOptions([OPEN_CLIENT, ARCHIVED_CLIENT], 'c-open'), [
     { id: 'c-open', name: 'Open Client' },
+  ])
+})
+
+const OPEN_PHASE = { id: 'p-open', name: 'Design', frameworkId: 'f-1', archived_at: null }
+const ARCHIVED_PHASE = { id: 'p-archived', name: 'Legacy Gate', frameworkId: 'f-1', archived_at: '2026-09-01T00:00:00Z' }
+
+test('the phase picker excludes archived phases when they are not the current one', () => {
+  assert.deepEqual(selectPhaseOptions([OPEN_PHASE, ARCHIVED_PHASE]), [
+    { id: 'p-open', name: 'Design', frameworkId: 'f-1' },
+  ])
+})
+
+test('an archived current phase is retained and labelled', () => {
+  // Same defect as the removed owner: the select's defaultValue would match no
+  // option, the browser would fall back to the empty one, and saving any
+  // unrelated field would write phase_id: null.
+  const options = selectPhaseOptions([OPEN_PHASE, ARCHIVED_PHASE], 'p-archived')
+
+  assert.deepEqual(options, [
+    { id: 'p-open', name: 'Design', frameworkId: 'f-1' },
+    { id: 'p-archived', name: 'Legacy Gate (archived)', frameworkId: 'f-1' },
+  ])
+})
+
+test('a retained phase keeps its frameworkId so the form can still filter it', () => {
+  const retained = selectPhaseOptions([OPEN_PHASE, ARCHIVED_PHASE], 'p-archived')
+    .find((option) => option.id === 'p-archived')
+
+  assert.equal(retained?.frameworkId, 'f-1')
+})
+
+test('an open current phase is offered once, not duplicated', () => {
+  assert.deepEqual(selectPhaseOptions([OPEN_PHASE, ARCHIVED_PHASE], 'p-open'), [
+    { id: 'p-open', name: 'Design', frameworkId: 'f-1' },
   ])
 })
