@@ -1,45 +1,127 @@
 'use client'
 
-import { ArrowLeft, ArrowRight, Check, CheckCircle2 } from 'lucide-react'
 import Link from 'next/link'
-import { useState } from 'react'
+import { useActionState, useState } from 'react'
 
 import { WorkspaceHeader } from '@/components/shared/workspace-header'
-import { frameworks } from '../data'
+import { EntitySelectField, SelectField, TextAreaField, TextField } from '@/components/ui/form-fields'
+import { FormError, FormFooter, FormSection } from '@/components/ui/form-layout'
+import type { ProjectFormOptions } from '../queries/list-project-form-options'
+// Imported, not redeclared: these are the same arrays projectInputSchema builds
+// its enums from, so the form cannot offer a value the schema or
+// projects_status_check would reject. Copying them here would let them drift.
+import { PROJECT_HEALTHS, PROJECT_STATUSES } from '../schemas/project'
 
-const steps = ['Project Details', 'Framework', 'Configuration', 'Review'] as const
+type ActionState = { error?: string } | undefined
+type ProjectFormAction = (prevState: ActionState, formData: FormData) => Promise<ActionState>
 
-export function ProjectForm({ mode = 'create', projectId }: { mode?: 'create' | 'edit'; projectId?: string }) {
-  const [step, setStep] = useState(0)
-  const [complete, setComplete] = useState(false)
-  const title = mode === 'create' ? 'New Project' : 'Edit Project'
-  if (complete) return <><WorkspaceHeader category="Delivery" parent={{ label: 'Projects', href: '/operations/projects' }} title={title} /><div className="mx-auto max-w-2xl rounded-xl border border-success/25 bg-card p-10 text-center"><span className="mx-auto flex size-12 items-center justify-center rounded-full bg-success-soft text-success"><CheckCircle2 className="size-6" /></span><h2 className="mt-5 text-xl font-bold">Project {mode === 'create' ? 'created' : 'updated'}</h2><p className="mt-2 text-sm text-muted-foreground">The governed project workspace and delivery structure are ready.</p><Link href={projectId ? `/operations/projects/${projectId}` : '/operations/projects'} className="mt-6 inline-flex rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-white">Open project</Link></div></>
-
-  return <>
-    <WorkspaceHeader category="Delivery" parent={{ label: 'Projects', href: '/operations/projects' }} title={title} description="Create a new project using a framework to generate a governed delivery structure." />
-    <div className="mx-auto max-w-5xl">
-      <ol className="mb-6 grid grid-cols-4 rounded-xl border border-border bg-card p-2">{steps.map((label, index) => <li key={label} className="relative"><button type="button" onClick={() => index < step && setStep(index)} className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-semibold ${index === step ? 'bg-brand-soft text-brand' : index < step ? 'text-success' : 'text-muted-foreground'}`}><span className={`flex size-6 items-center justify-center rounded-full ${index < step ? 'bg-success text-white' : index === step ? 'bg-brand text-white' : 'bg-muted'}`}>{index < step ? <Check className="size-3.5" /> : index + 1}</span><span className="hidden sm:block">{label}</span></button></li>)}</ol>
-      <form onSubmit={(event) => { event.preventDefault(); step < steps.length - 1 ? setStep((value) => value + 1) : setComplete(true) }}>
-        <section className="rounded-xl border border-border bg-card p-6 shadow-sm">
-          {step === 0 ? <ProjectDetails /> : null}
-          {step === 1 ? <FrameworkSelection /> : null}
-          {step === 2 ? <ProjectConfiguration /> : null}
-          {step === 3 ? <ProjectReview /> : null}
-        </section>
-        <footer className="mt-4 flex items-center justify-between rounded-xl border border-border bg-card p-4"><Link href="/operations/projects" className="text-sm font-medium text-muted-foreground">Cancel</Link><div className="flex gap-2">{step > 0 ? <button type="button" onClick={() => setStep((value) => value - 1)} className="inline-flex h-10 items-center gap-2 rounded-lg border border-border px-4 text-sm font-semibold"><ArrowLeft className="size-4" />Back</button> : null}<button type="submit" className="inline-flex h-10 items-center gap-2 rounded-lg bg-brand px-4 text-sm font-semibold text-white">{step === steps.length - 1 ? mode === 'create' ? 'Create Project' : 'Save Changes' : 'Continue'}{step < steps.length - 1 ? <ArrowRight className="size-4" /> : null}</button></div></footer>
-      </form>
-    </div>
-  </>
+export type ProjectFormValues = {
+  id: string
+  name: string
+  framework_id: string | null
+  phase_id: string | null
+  client_id: string | null
+  owner_id: string | null
+  status: string
+  health: string
+  progress: number
+  next_gate: string | null
+  due_date: string | null
+  notes: string | null
 }
 
-function ProjectDetails() { return <><FormHeading title="Project information" description="Define the project identity, ownership and delivery window." /><div className="grid gap-5 md:grid-cols-2"><Field label="Project name" placeholder="e.g. Claims Intake Modernisation" required /><Field label="Project code" placeholder="PRJ-2026-001" required /><Field label="Description" placeholder="Project purpose, expected outcomes and scope" textarea className="md:col-span-2" /><Field label="Project owner" options={['Select owner','Thabo Mokoena','Naledi Maseko','Amara Dlamini']} /><Field label="Project sponsor" options={['Select sponsor','Neo Morake','Zanele Khumalo']} /><Field label="Start date" type="date" /><Field label="Target go-live date" type="date" /></div><FormHeading title="Business context" description="Connect the project to its strategic mandate." className="mt-8" /><div className="grid gap-5 md:grid-cols-3"><Field label="Business unit" options={['Select unit','Claims','Operations','Technology','Commercial']} /><Field label="Strategic objective" placeholder="Enterprise service modernisation" /><Field label="Business priority" options={['Critical','High','Medium','Low']} /></div></> }
+export function ProjectForm({
+  mode,
+  project,
+  action,
+  options,
+}: {
+  mode: 'create' | 'edit'
+  project?: ProjectFormValues
+  action: ProjectFormAction
+  options: ProjectFormOptions
+}) {
+  const [state, formAction, pending] = useActionState(action, undefined)
+  // The phase list depends on the chosen framework, and the composite key
+  // (framework_id, phase_id) means a phase from another framework is refused by
+  // the database. Filtering here keeps that impossible to attempt.
+  const [frameworkId, setFrameworkId] = useState(project?.framework_id ?? '')
+  const phases = options.phases.filter((phase) => phase.frameworkId === frameworkId)
+  const backHref = project ? `/operations/projects/${project.id}` : '/operations/projects'
 
-function FrameworkSelection() { return <><FormHeading title="Select framework" description="The selected framework generates phases, gates, workstreams and required artefacts." /><div className="grid gap-3 md:grid-cols-2">{frameworks.slice(0, 6).map((framework, index) => <label key={framework.id} className="flex cursor-pointer gap-3 rounded-xl border border-border p-4 has-[:checked]:border-brand has-[:checked]:ring-2 has-[:checked]:ring-brand/10"><input type="radio" name="framework" defaultChecked={index === 0} className="mt-1" /><span><span className="block text-sm font-semibold">{framework.name}</span><span className="mt-1 block text-xs text-muted-foreground">{framework.type} · {framework.version} · {framework.projects} active projects</span></span></label>)}</div><div className="mt-5 rounded-xl border border-brand/20 bg-brand-soft p-4 text-sm text-brand">Selecting a framework prepares the governed delivery structure for review before the project is created.</div></> }
+  return <>
+    <WorkspaceHeader
+      category="Delivery"
+      parent={{ label: 'Projects', href: '/operations/projects' }}
+      title={mode === 'create' ? 'New Project' : `Edit ${project?.name ?? 'Project'}`}
+      description={mode === 'create' ? 'Create a governed delivery project.' : 'Update this project’s record.'}
+    />
+    <Link href={backHref} className="mb-5 inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground">
+      Back to {project ? project.name : 'Projects'}
+    </Link>
 
-function ProjectConfiguration() { return <><FormHeading title="Project visibility & access" description="Control how this workspace is shared within the organization." /><div className="grid gap-5 md:grid-cols-2"><Field label="Visibility" options={['Organization','Project team only','Selected groups']} /><Field label="Default access group" options={['Delivery Office','Project Team','Executive Sponsors']} /><Field label="Confidentiality level" options={['Internal','Confidential','Restricted']} /><Field label="Tags" placeholder="Claims, Automation, Customer Experience" /></div><FormHeading title="Governance configuration" description="Confirm the default controls generated by the framework." className="mt-8" /><div className="grid gap-3 md:grid-cols-2">{['Evidence required at gates','Gate locking enabled','Mandatory business case','Benefits tracking enabled'].map((label) => <label key={label} className="flex items-center justify-between rounded-xl border border-border p-4 text-sm font-medium"><span>{label}</span><input type="checkbox" defaultChecked className="size-4" /></label>)}</div></> }
+    <form action={formAction} className="mx-auto max-w-5xl space-y-5">
+      <FormSection title="Project" description="What is being delivered, and under which framework.">
+        <TextField name="name" label="Project name" required defaultValue={project?.name} />
+        <label className="block">
+          <span className="text-sm font-medium">Delivery framework <span className="text-destructive">*</span></span>
+          <select
+            name="frameworkId"
+            required
+            value={frameworkId}
+            onChange={(event) => setFrameworkId(event.target.value)}
+            className="mt-1.5 h-11 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/20"
+          >
+            <option value="">Select a framework</option>
+            {options.frameworks.map((framework) => (
+              <option key={framework.id} value={framework.id}>{framework.name}</option>
+            ))}
+          </select>
+        </label>
+        <EntitySelectField
+          name="phaseId"
+          label="Current phase"
+          options={phases}
+          defaultValue={project?.phase_id}
+          emptyLabel={frameworkId ? 'Not started' : 'Choose a framework first'}
+        />
+      </FormSection>
 
-function ProjectReview() { return <><FormHeading title="Review project" description="Confirm the generated delivery structure before creating the project." /><div className="grid gap-4 md:grid-cols-2"><Review label="Project" value="Claims Intake Modernisation" /><Review label="Code" value="PRJ-2026-001" /><Review label="Framework" value="Business / Technology Change" /><Review label="Lifecycle" value="8 phases · 7 governance gates" /><Review label="Visibility" value="Organization" /><Review label="Confidentiality" value="Internal" /></div><div className="mt-6 rounded-xl bg-muted/50 p-5"><h3 className="text-sm font-semibold">Generated structure</h3><p className="mt-2 text-xs leading-5 text-muted-foreground">Initiate → Discover → Design → Build → Test → Ready → Deploy → Measure, with default workstreams, artefacts, roles and governance controls.</p></div></> }
+      <FormSection title="Accountability" description="Who owns delivery, and for whom.">
+        <EntitySelectField
+          name="ownerId"
+          label="Project owner"
+          options={options.members}
+          defaultValue={project?.owner_id}
+          emptyLabel="Unassigned"
+        />
+        <EntitySelectField
+          name="clientId"
+          label="Client"
+          options={options.clients}
+          defaultValue={project?.client_id}
+          emptyLabel="Internal change"
+        />
+      </FormSection>
 
-function FormHeading({ title, description, className }: { title: string; description: string; className?: string }) { return <div className={`mb-5 ${className ?? ''}`}><h2 className="text-lg font-semibold">{title}</h2><p className="mt-1 text-sm text-muted-foreground">{description}</p></div> }
-function Field({ label, placeholder, options, type = 'text', textarea, required, className }: { label: string; placeholder?: string; options?: string[]; type?: string; textarea?: boolean; required?: boolean; className?: string }) { return <label className={`text-sm font-medium ${className ?? ''}`}>{label}{required ? <span className="text-danger"> *</span> : null}{textarea ? <textarea required={required} placeholder={placeholder} rows={4} className="mt-1.5 w-full rounded-lg border border-border bg-background p-3 text-sm outline-none focus:border-brand" /> : options ? <select className="mt-1.5 h-11 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-brand">{options.map((option) => <option key={option}>{option}</option>)}</select> : <input required={required} type={type} placeholder={placeholder} className="mt-1.5 h-11 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-brand" />}</label> }
-function Review({ label, value }: { label: string; value: string }) { return <div className="rounded-xl border border-border p-4"><p className="text-[0.65rem] font-semibold tracking-wide text-muted-foreground uppercase">{label}</p><p className="mt-2 text-sm font-semibold">{value}</p></div> }
+      <FormSection title="Delivery state" description="Where this project currently stands.">
+        <SelectField name="status" label="Status" options={PROJECT_STATUSES} defaultValue={project?.status ?? 'Active'} />
+        <SelectField name="health" label="Health" options={PROJECT_HEALTHS} defaultValue={project?.health ?? 'On Track'} />
+        <TextField name="progress" label="Progress (%)" type="number" defaultValue={String(project?.progress ?? 0)} />
+        <TextField name="nextGate" label="Next gate" defaultValue={project?.next_gate} />
+        <TextField name="dueDate" label="Due date" type="date" defaultValue={project?.due_date} />
+      </FormSection>
+
+      <FormSection title="Notes" description="Context for the delivery team.">
+        <TextAreaField name="notes" label="Notes" defaultValue={project?.notes} />
+      </FormSection>
+
+      <FormError message={state?.error} />
+      <FormFooter
+        cancelHref={backHref}
+        submitLabel={mode === 'create' ? 'Create project' : 'Save changes'}
+        pending={pending}
+      />
+    </form>
+  </>
+}

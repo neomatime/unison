@@ -19,7 +19,7 @@ import { HEALTH_BANDS, type HealthBand, type PhaseColumn } from '../overview-ban
  * relying on fill alone to be legible.
  */
 const BAND_FILL: Record<HealthBand, string> = {
-  'On track': '#26914d',
+  'On Track / Healthy': '#26914d',
   Watch: '#e4a249',
   'At Risk': '#db4241',
   Critical: '#9e141e',

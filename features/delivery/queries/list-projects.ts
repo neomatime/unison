@@ -1,7 +1,8 @@
 import 'server-only'
 import { getSessionContext } from '@/lib/auth/get-session-context'
 import { createServerSupabase } from '@/lib/supabase/server'
-import type { CollectionRecord } from '@/features/product-ui/components/record-collection-workspace'
+import type { MockRecord } from '@/features/product-ui/types'
+import { listOrganizationMembers } from '@/features/memberships/queries/list-organization-members'
 import { escapeLikePattern, sortColumn } from './list-projects-helpers'
 
 const PAGE_SIZE = 25
@@ -14,7 +15,7 @@ export async function listProjects(params: { q?: string; status?: string; sort?:
   let query = supabase
     .from('projects')
     .select(
-      'id, name, status, health, progress, next_gate, due_date, updated_at, frameworks(name), framework_phases(name), clients(name)',
+      'id, name, status, health, progress, next_gate, due_date, updated_at, owner_id, frameworks(name), framework_phases(name), clients(name)',
       { count: 'exact' },
     )
     .eq('organization_id', organization.id)
@@ -30,7 +31,13 @@ export async function listProjects(params: { q?: string; status?: string; sort?:
   const { data, error, count } = await query
   if (error) throw error
 
-  const records: CollectionRecord[] = (data ?? []).map((row) => ({
+  // Owner is a user id and auth.users is not reachable through PostgREST, so
+  // names come from the list_organization_members RPC. One call for the page,
+  // not one per row.
+  const members = await listOrganizationMembers()
+  const memberNames = new Map(members.map((member) => [member.userId, member.displayName]))
+
+  const records: MockRecord[] = (data ?? []).map((row) => ({
     id: row.id,
     name: row.name,
     // The register's badge column is the one whose id is 'status', and the
@@ -41,13 +48,16 @@ export async function listProjects(params: { q?: string; status?: string; sort?:
     // healthStyles has no entry for either, so every badge would render grey.
     status: row.health,
     health: row.health,
-    // CollectionRecord requires this; the existing screen used the framework
+    // MockRecord requires this; the existing screen used the framework
     // name as the row's supporting line, so it keeps doing so.
     context: row.frameworks?.name ?? '—',
     framework: row.frameworks?.name ?? '—',
     phase: row.framework_phases?.name ?? '—',
     client: row.clients?.name ?? '—',
-    owner: '—', // Owner is a user id; resolving names needs a profiles join. Not fabricated.
+    // 'Former member' covers an owner whose membership row was deleted outright
+    // -- offboarding sets `status` instead, so this is the rare case, not the
+    // normal one.
+    owner: row.owner_id ? memberNames.get(row.owner_id) ?? 'Former member' : 'Unassigned',
     nextGate: row.next_gate ?? '—',
     due: row.due_date
       ? new Date(row.due_date).toLocaleDateString('en-ZA', { day: '2-digit', month: 'short', year: 'numeric' })

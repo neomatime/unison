@@ -79,6 +79,46 @@ export function TextAreaField({
   )
 }
 
+/**
+ * A select whose option values are ids and whose labels are names.
+ *
+ * SelectField renders `<option value={option}>{option}</option>`, so it can only
+ * express choices where the value and the label are the same string. Foreign
+ * keys are not like that. Kept as a sibling rather than a widened SelectField so
+ * the simple case stays simple.
+ */
+export function EntitySelectField({
+  name,
+  label,
+  options,
+  defaultValue,
+  required,
+  emptyLabel,
+  className,
+}: {
+  name: string
+  label: string
+  options: ReadonlyArray<{ id: string; name: string }>
+  defaultValue?: string | null
+  required?: boolean
+  emptyLabel?: string
+  className?: string
+}) {
+  return (
+    <label className={cn('block', className)}>
+      <FieldLabel label={label} required={required} />
+      <select name={name} defaultValue={defaultValue ?? ''} required={required} className={fieldClasses}>
+        {emptyLabel ? <option value="">{emptyLabel}</option> : null}
+        {options.map((option) => (
+          <option key={option.id} value={option.id}>
+            {option.name}
+          </option>
+        ))}
+      </select>
+    </label>
+  )
+}
+
 export function SelectField<T extends readonly string[]>({
   name,
   label,

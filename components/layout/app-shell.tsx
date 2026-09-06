@@ -2,7 +2,7 @@
 
 import type React from 'react'
 import { Menu, X } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import { Sidebar } from '@/components/navigation/sidebar'
 import { NavigationLoading } from '@/components/shared/navigation-loading'
@@ -22,16 +22,121 @@ type AppShellProps = {
 
 export function AppShell({ user, organization, organizations, role, navigationSections, children }: AppShellProps) {
   const [navigationOpen, setNavigationOpen] = useState(false)
+  const navigationDialogRef = useRef<HTMLDivElement>(null)
+  const navigationCloseRef = useRef<HTMLButtonElement>(null)
+  const navigationTriggerRef = useRef<HTMLButtonElement>(null)
+  const navigationWasOpenRef = useRef(false)
+
+  useEffect(() => {
+    if (!navigationOpen) {
+      if (navigationWasOpenRef.current) {
+        navigationWasOpenRef.current = false
+        navigationTriggerRef.current?.focus()
+      }
+      return
+    }
+
+    navigationWasOpenRef.current = true
+    const focusFrame = window.requestAnimationFrame(() => navigationCloseRef.current?.focus())
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        setNavigationOpen(false)
+        return
+      }
+
+      if (event.key !== 'Tab') return
+
+      const dialog = navigationDialogRef.current
+      if (!dialog) return
+
+      const focusableElements = Array.from(dialog.querySelectorAll<HTMLElement>(
+        'a[href]:not([aria-disabled="true"]), button:not([disabled]):not([tabindex="-1"]), [tabindex]:not([tabindex="-1"])',
+      ))
+
+      if (focusableElements.length === 0) {
+        event.preventDefault()
+        navigationCloseRef.current?.focus()
+        return
+      }
+
+      const firstElement = focusableElements[0]
+      const lastElement = focusableElements[focusableElements.length - 1]
+      const activeElement = document.activeElement
+
+      if (!dialog.contains(activeElement)) {
+        event.preventDefault()
+        firstElement.focus()
+      } else if (event.shiftKey && activeElement === firstElement) {
+        event.preventDefault()
+        lastElement.focus()
+      } else if (!event.shiftKey && activeElement === lastElement) {
+        event.preventDefault()
+        firstElement.focus()
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      window.cancelAnimationFrame(focusFrame)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [navigationOpen])
+
   return (
     <ShellProvider value={{ user, organization, organizations, role }}>
       <NavigationProvider sections={navigationSections}>
-        <div className="flex h-screen overflow-hidden bg-tenant-sidebar">
+        <div className="flex h-screen h-dvh overflow-hidden bg-tenant-canvas">
           <NavigationLoading />
           <div className="hidden lg:block"><Sidebar /></div>
-          {navigationOpen ? <div className="fixed inset-0 z-50 lg:hidden"><button type="button" aria-label="Close navigation overlay" className="absolute inset-0 bg-foreground/40" onClick={() => setNavigationOpen(false)} /><div className="relative h-full w-64"><Sidebar /><button type="button" onClick={() => setNavigationOpen(false)} aria-label="Close navigation" className="absolute top-4 -right-12 flex size-9 items-center justify-center rounded-full bg-card text-foreground shadow-lg"><X className="size-5" /></button></div></div> : null}
+          {navigationOpen ? (
+            <div className="fixed inset-0 z-50 lg:hidden">
+              <button
+                type="button"
+                tabIndex={-1}
+                aria-hidden="true"
+                className="absolute inset-0 bg-foreground/40"
+                onClick={() => setNavigationOpen(false)}
+              />
+              <div
+                ref={navigationDialogRef}
+                id="tenant-navigation-dialog"
+                role="dialog"
+                aria-modal="true"
+                aria-label="Primary navigation"
+                className="relative h-full w-64"
+              >
+                <Sidebar onNavigate={() => setNavigationOpen(false)} />
+                <button
+                  ref={navigationCloseRef}
+                  type="button"
+                  onClick={() => setNavigationOpen(false)}
+                  aria-label="Close navigation"
+                  className="absolute top-4 -right-12 flex size-9 items-center justify-center rounded-full bg-card text-foreground shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+                >
+                  <X className="size-5" />
+                </button>
+              </div>
+            </div>
+          ) : null}
           <div className="flex min-w-0 flex-1 flex-col">
-            <div className="flex h-14 items-center justify-between bg-tenant-sidebar px-4 text-tenant-sidebar-foreground lg:hidden"><span className="font-bold tracking-[0.2em]">UNISON</span><button type="button" onClick={() => setNavigationOpen(true)} aria-label="Open navigation" className="rounded-lg p-2 hover:bg-tenant-sidebar-hover"><Menu className="size-5" /></button></div>
-            <main className="flex-1 overflow-y-auto overscroll-contain rounded-none bg-background px-4 py-5 sm:px-6 lg:rounded-l-2xl lg:px-6 lg:py-6 xl:px-8">{children}</main>
+            <div className="flex h-14 items-center justify-between border-b border-tenant-sidebar-border bg-tenant-sidebar px-4 text-tenant-sidebar-foreground lg:hidden">
+              <span className="font-bold tracking-[0.2em]">UNISON</span>
+              <button
+                ref={navigationTriggerRef}
+                type="button"
+                onClick={() => setNavigationOpen(true)}
+                aria-label="Open navigation"
+                aria-expanded={navigationOpen}
+                aria-controls="tenant-navigation-dialog"
+                className="rounded-lg p-2 hover:bg-tenant-sidebar-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+              >
+                <Menu className="size-5" />
+              </button>
+            </div>
+            <main className="flex-1 overflow-y-auto overscroll-contain rounded-none bg-tenant-canvas px-4 py-5 sm:px-6 lg:px-6 lg:py-6 xl:px-8">{children}</main>
           </div>
         </div>
       </NavigationProvider>

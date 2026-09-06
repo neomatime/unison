@@ -13,12 +13,17 @@ export async function archiveProjectAction(formData: FormData) {
   const { organization } = await getSessionContext()
   const supabase = await createServerSupabase()
 
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('projects')
     .update({ archived_at: new Date().toISOString() })
     .eq('id', id)
     .eq('organization_id', organization.id)
+    .select('id')
   if (error) throw error
+  // Zero rows means the id was wrong, already archived, or another tenant's.
+  // Redirecting to the register as though it worked would be a fabricated
+  // success — the defect class ui-completeness.test.ts exists to prevent.
+  if (!data?.length) return
 
   revalidatePath('/operations/projects')
   redirect('/operations/projects')

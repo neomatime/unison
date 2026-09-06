@@ -17,9 +17,15 @@ export const moduleFixtures: Record<string, MockRecord[]> = {
     { id: 'aurelia-platform', name: 'Aurelia Client Platform', status: 'On Track', owner: owners[2], updated: 'Yesterday', client: companies[2], progress: '39%', milestone: 'Prototype review', due: '19 Sep 2026' },
   ],
   tasks: [
-    { id: 'task-brief', name: 'Approve Meridian workshop brief', status: 'Today', owner: owners[0], updated: '5 min ago', project: 'Meridian Growth Programme', priority: 'High', due: 'Today, 14:00' },
-    { id: 'task-budget', name: 'Review Q3 campaign budget', status: 'In Progress', owner: owners[1], updated: '25 min ago', project: 'Northstar Brand Transformation', priority: 'Medium', due: 'Tomorrow' },
-    { id: 'task-prototype', name: 'Prepare prototype walkthrough', status: 'Upcoming', owner: owners[2], updated: '2 hours ago', project: 'Aurelia Client Platform', priority: 'High', due: '14 Aug 2026' },
+    // 'client' was missing from all three of these until the new
+    // registry-column guard test caught it: the Tasks register's 'Client'
+    // column has resolved to a key with no backing data since this fixture
+    // was written, unrelated to the Projects fixes in this change -- fixed
+    // here with the same client each task's named project already belongs to
+    // in the 'projects' fixture above, not a new invented pairing.
+    { id: 'task-brief', name: 'Approve Meridian workshop brief', status: 'Today', owner: owners[0], updated: '5 min ago', project: 'Meridian Growth Programme', client: companies[0], priority: 'High', due: 'Today, 14:00' },
+    { id: 'task-budget', name: 'Review Q3 campaign budget', status: 'In Progress', owner: owners[1], updated: '25 min ago', project: 'Northstar Brand Transformation', client: companies[1], priority: 'Medium', due: 'Tomorrow' },
+    { id: 'task-prototype', name: 'Prepare prototype walkthrough', status: 'Upcoming', owner: owners[2], updated: '2 hours ago', project: 'Aurelia Client Platform', client: companies[2], priority: 'High', due: '14 Aug 2026' },
   ],
   calendar: [
     { id: 'event-exec', name: 'Meridian executive workshop', status: 'Confirmed', owner: owners[0], updated: 'Today', source: 'Client Meeting', date: '12 Aug 2026', time: '10:00–12:00' },
@@ -41,17 +47,32 @@ export const moduleFixtures: Record<string, MockRecord[]> = {
     { id: 'veridian-platform', name: 'Veridian Digital Platform', status: 'Negotiation', owner: owners[2], updated: 'Yesterday', client: 'Veridian Health', value: 'R720K', probability: '80%', close: '18 Sep 2026' },
   ],
   invoices: [
-    { id: 'inv-1328', name: 'INV-1328', status: 'Paid', owner: owners[0], updated: '10 min ago', client: companies[0], total: 'R148,500', balance: 'R0', due: '08 Aug 2026' },
-    { id: 'inv-1327', name: 'INV-1327', status: 'Overdue', owner: owners[1], updated: '1 hour ago', client: companies[1], total: 'R96,000', balance: 'R96,000', due: '05 Aug 2026' },
-    { id: 'inv-1326', name: 'INV-1326', status: 'Issued', owner: owners[2], updated: 'Yesterday', client: companies[2], total: 'R72,750', balance: 'R72,750', due: '24 Aug 2026' },
+    // 'issueDate' was missing here too (same guard-test finding as Tasks
+    // above) -- the Invoices register's 'Issue Date' column has resolved to
+    // a key with no backing data since this fixture was written. Filled in
+    // 30 days before each invoice's existing due date, standard net-30 terms
+    // consistent with the rest of this demo data, not a new fabricated fact.
+    { id: 'inv-1328', name: 'INV-1328', status: 'Paid', owner: owners[0], updated: '10 min ago', client: companies[0], total: 'R148,500', balance: 'R0', issueDate: '09 Jul 2026', due: '08 Aug 2026' },
+    { id: 'inv-1327', name: 'INV-1327', status: 'Overdue', owner: owners[1], updated: '1 hour ago', client: companies[1], total: 'R96,000', balance: 'R96,000', issueDate: '06 Jul 2026', due: '05 Aug 2026' },
+    { id: 'inv-1326', name: 'INV-1326', status: 'Issued', owner: owners[2], updated: 'Yesterday', client: companies[2], total: 'R72,750', balance: 'R72,750', issueDate: '25 Jul 2026', due: '24 Aug 2026' },
   ],
   expenses: [
-    { id: 'exp-441', name: 'Executive workshop venue', status: 'Awaiting Approval', owner: owners[0], updated: '16 min ago', category: 'Events', vendor: 'The Forum', amount: 'R18,600', date: '10 Aug 2026' },
-    { id: 'exp-440', name: 'Research subscriptions', status: 'Approved', owner: owners[1], updated: 'Yesterday', category: 'Software', vendor: 'Insight Library', amount: 'R6,450', date: '09 Aug 2026' },
+    // 'project' was missing here too (same guard-test finding as Tasks and
+    // Invoices above) -- the Expenses register's 'Project' column has
+    // resolved to a key with no backing data since this fixture was written.
+    // The workshop venue expense ties to the workshop project named
+    // elsewhere in this file (calendar's 'Meridian executive workshop');
+    // the subscription renewal isn't tied to one, so it gets the same '—'
+    // this file already uses elsewhere for "not applicable".
+    { id: 'exp-441', name: 'Executive workshop venue', status: 'Awaiting Approval', owner: owners[0], updated: '16 min ago', category: 'Events', vendor: 'The Forum', project: 'Meridian Growth Programme', amount: 'R18,600', date: '10 Aug 2026' },
+    { id: 'exp-440', name: 'Research subscriptions', status: 'Approved', owner: owners[1], updated: 'Yesterday', category: 'Software', vendor: 'Insight Library', project: '—', amount: 'R6,450', date: '09 Aug 2026' },
   ],
   forecast: [
-    { id: 'base-q3', name: 'Q3 Base Scenario', status: 'Active', owner: owners[0], updated: 'Today', period: 'Q3 2026', actual: 'R2.4M', projected: 'R3.8M', variance: '+6.2%' },
-    { id: 'growth-q4', name: 'Q4 Growth Scenario', status: 'Draft', owner: owners[1], updated: 'Yesterday', period: 'Q4 2026', actual: '—', projected: 'R4.6M', variance: '+18.4%' },
+    // 'confidence' was missing here too (same guard-test finding) -- the
+    // Forecast register's 'Confidence' column has resolved to a key with no
+    // backing data since this fixture was written.
+    { id: 'base-q3', name: 'Q3 Base Scenario', status: 'Active', owner: owners[0], updated: 'Today', period: 'Q3 2026', actual: 'R2.4M', projected: 'R3.8M', variance: '+6.2%', confidence: 'High' },
+    { id: 'growth-q4', name: 'Q4 Growth Scenario', status: 'Draft', owner: owners[1], updated: 'Yesterday', period: 'Q4 2026', actual: '—', projected: 'R4.6M', variance: '+18.4%', confidence: 'Medium' },
   ],
   knowledge: [
     { id: 'client-onboarding-playbook', name: 'Client Onboarding Playbook', status: 'Published', owner: owners[1], updated: 'Yesterday', category: 'SOP', related: 'Operations', visibility: 'Company' },

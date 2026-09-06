@@ -1,332 +1,432 @@
 import {
-  ArrowUpRight,
-  BriefcaseBusiness,
-  CalendarClock,
+  AlertCircle,
+  ArrowRight,
   CalendarDays,
-  ChevronRight,
-  ClipboardCheck,
+  CheckCircle2,
   Clock3,
-  Link2,
+  Milestone,
+  ShieldAlert,
+  UserRoundX,
   type LucideIcon,
 } from 'lucide-react'
 import Link from 'next/link'
 
+import { cn } from '@/lib/utils'
+import { positionNarrative, type AttentionRow, type DeliveryOverview, type PhaseColumn, type UpcomingProjectDate } from '../overview-bands'
 import { HealthBadge } from './delivery-primitives'
-import type { AttentionRow, DeliveryOverview, PhaseColumn } from '../overview-bands'
 
-export function PortfolioHealthCard({ overview }: { overview: DeliveryOverview }) {
-  const { activeProjects, healthCounts, portfolioHealth } = overview
-  const narrative = portfolioNarrative(overview)
-  const breakdown = [
-    { label: 'Healthy', value: healthCounts['On track'], color: 'bg-success' },
-    { label: 'Watch', value: healthCounts.Watch, color: 'bg-warning' },
-    { label: 'At Risk', value: healthCounts['At Risk'], color: 'bg-danger' },
-    { label: 'Critical', value: healthCounts.Critical, color: 'bg-red-800' },
-    { label: 'Total Projects', value: activeProjects, color: 'bg-foreground' },
+export function OverallPositionBrief({ overview }: { overview: DeliveryOverview }) {
+  const narrative = positionNarrative(overview)
+  const metrics = [
+    { label: 'Active projects', value: overview.activeProjects, dot: null },
+    { label: 'On Track / Healthy', value: overview.healthCounts['On Track / Healthy'], dot: 'bg-emerald-600' },
+    ...(overview.healthCounts.Watch > 0
+      ? [{ label: 'Watch', value: overview.healthCounts.Watch, dot: 'bg-blue-500' }]
+      : []),
+    { label: 'At Risk', value: overview.healthCounts['At Risk'], dot: 'bg-amber-500' },
+    { label: 'Critical', value: overview.healthCounts.Critical, dot: 'bg-red-600' },
   ]
 
   return (
-    <article className="overflow-hidden rounded-xl border border-border bg-card shadow-[0_1px_2px_rgb(16_32_46_/_0.04)] md:col-span-3 xl:col-span-1">
-      <header className="flex items-center justify-between gap-4 px-5 pt-4">
-        <h2 className="text-base font-semibold text-foreground">Portfolio Health</h2>
-        <Link href="/delivery/portfolio" className="inline-flex items-center gap-1 text-xs font-semibold text-brand hover:text-brand/80">
-          View portfolio <ArrowUpRight className="size-3.5" />
-        </Link>
-      </header>
+    <section aria-labelledby="overall-position-heading" className="overflow-hidden rounded-[10px] border border-border bg-card shadow-[0_1px_2px_rgb(16_32_46_/_0.025)]">
+      <div className="grid xl:grid-cols-[1.08fr_0.92fr]">
+        <div className="p-5 sm:p-6 xl:border-r xl:border-border xl:p-7">
+          <p className="text-xs font-semibold tracking-[0.1em] text-brand uppercase">Overall position</p>
+          <h2 id="overall-position-heading" className="mt-2 text-[1.625rem] leading-tight font-bold tracking-[-0.035em] text-foreground sm:text-[1.875rem]">
+            {narrative.headline}
+          </h2>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--briefing-muted)] sm:text-[0.9375rem]">
+            {narrative.description}
+          </p>
 
-      {portfolioHealth === null ? (
-        <ExecutiveEmptyState
-          title="No active projects yet"
-          description="Create your first governed project to begin tracking portfolio health and lifecycle position."
-          action="Create project"
-          href="/operations/projects/new"
-          compact
-        />
-      ) : (
-        <div className="px-5 pt-3 pb-4">
-          <div className="grid gap-4 sm:grid-cols-[8.5rem_minmax(0,1fr)] sm:items-center">
-            <PortfolioHealthRing value={portfolioHealth} />
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-foreground">{narrative.title}</p>
-              <p className="mt-1 max-w-xl text-xs leading-5 text-muted-foreground">{narrative.description}</p>
-            </div>
-          </div>
-          <dl className="mt-3 grid grid-cols-2 gap-3 border-t border-border pt-3 sm:grid-cols-5">
-            {breakdown.map((item) => (
-              <div key={item.label} className="min-w-0 text-center sm:text-left">
-                <dd className="text-lg font-bold tabular-nums text-foreground">{item.value}</dd>
-                <dt className="mt-0.5 flex items-start justify-center gap-1.5 text-[0.625rem] leading-4 text-muted-foreground sm:justify-start">
-                  <span aria-hidden="true" className={`mt-1 size-1.5 shrink-0 rounded-full ${item.color}`} />
-                  <span>{item.label}</span>
-                </dt>
-              </div>
-            ))}
-          </dl>
+          {overview.activeProjects === 0 ? (
+            <Link href="/operations/projects/new" className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-brand hover:text-brand/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">
+              Create project <ArrowRight aria-hidden="true" className="size-4" />
+            </Link>
+          ) : (
+            <>
+              <dl className={cn('mt-6 grid grid-cols-2 gap-y-4', metrics.length === 5 ? 'sm:grid-cols-5' : 'sm:grid-cols-4')}>
+                {metrics.map((metric, index) => (
+                  <div key={metric.label} className={cn('flex min-w-0 flex-col', index > 0 && 'sm:border-l sm:border-border sm:pl-4')}>
+                    <dt className="order-2 mt-1 flex items-center gap-2 text-xs text-[var(--briefing-muted)]">
+                      {metric.dot ? <span aria-hidden="true" className={cn('size-2 shrink-0 rounded-full', metric.dot)} /> : null}
+                      {metric.label}
+                    </dt>
+                    <dd className="order-1 text-2xl font-bold tabular-nums tracking-[-0.03em] text-foreground">{metric.value}</dd>
+                  </div>
+                ))}
+              </dl>
+              <Link href="/delivery/portfolio" className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-brand hover:text-brand/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">
+                View portfolio <ArrowRight aria-hidden="true" className="size-4" />
+              </Link>
+            </>
+          )}
         </div>
-      )}
-    </article>
+
+        <KeyFocusList overview={overview} />
+      </div>
+    </section>
   )
 }
 
-function PortfolioHealthRing({ value }: { value: number }) {
-  const radius = 50
-  const circumference = 2 * Math.PI * radius
-  const filled = circumference * (value / 100)
+function KeyFocusList({ overview }: { overview: DeliveryOverview }) {
+  if (overview.activeProjects === 0) {
+    return (
+      <div className="p-5 sm:p-6 xl:p-7">
+        <h3 className="text-xs font-semibold tracking-[0.1em] text-[var(--briefing-muted)] uppercase">Key focus areas</h3>
+        <BriefingEmptyState
+          icon={CheckCircle2}
+          title="No delivery signals yet"
+          description="The briefing will surface intervention, ownership and date signals when active projects are available."
+        />
+      </div>
+    )
+  }
+
+  const interventionCount = overview.attention.length
+  const criticalCount = overview.healthCounts.Critical
+  const ownershipOrGateGap = overview.unassignedOwnerCount + overview.missingNextGateCount
+  const focusItems: FocusItem[] = [
+    {
+      icon: interventionCount > 0 ? AlertCircle : CheckCircle2,
+      tone: interventionCount > 0 ? 'danger' : 'success',
+      title: interventionCount > 0
+        ? `${interventionCount} ${plural('project', interventionCount)} require intervention`
+        : 'No projects require intervention',
+      detail: interventionCount > 0
+        ? `${criticalCount} critical and ${overview.healthCounts['At Risk']} at-risk health ${plural('record', interventionCount)}.`
+        : 'No active project is currently marked At Risk or Critical.',
+    },
+    {
+      icon: overview.overdueProjectDates > 0 ? Clock3 : CheckCircle2,
+      tone: overview.overdueProjectDates > 0 ? 'danger' : 'success',
+      title: overview.overdueProjectDates > 0
+        ? `${overview.overdueProjectDates} overdue project target ${plural('date', overview.overdueProjectDates)}`
+        : 'No overdue project target dates',
+      detail: 'Based on dates recorded against active projects.',
+    },
+    {
+      icon: CalendarDays,
+      tone: 'brand',
+      title: `${overview.projectDatesNext30} project target ${plural('date', overview.projectDatesNext30)} in the next 30 days`,
+      detail: `${overview.projectDatesNext7} fall within the next 7 days.`,
+    },
+    {
+      icon: ownershipOrGateGap > 0 ? UserRoundX : Milestone,
+      tone: ownershipOrGateGap > 0 ? 'warning' : 'brand',
+      title: ownershipOrGateGap > 0 ? `${ownershipOrGateGap} delivery record ${plural('gap', ownershipOrGateGap)}` : 'Ownership and next gates are recorded',
+      detail: ownershipOrGateGap > 0
+        ? `${overview.unassignedOwnerCount} without an owner and ${overview.missingNextGateCount} without a recorded next gate.`
+        : 'Every active project has an owner and a recorded next gate.',
+    },
+  ]
 
   return (
-    <div className="relative mx-auto size-32" aria-label={`${value}% of active projects are on track`}>
-      <svg viewBox="0 0 120 120" className="size-full -rotate-90" aria-hidden="true">
-        <circle cx="60" cy="60" r={radius} fill="none" stroke="var(--muted)" strokeWidth="11" />
-        <circle
-          cx="60"
-          cy="60"
-          r={radius}
-          fill="none"
-          stroke="var(--success)"
-          strokeWidth="11"
-          strokeLinecap="butt"
-          strokeDasharray={`${filled} ${circumference - filled}`}
-        />
-      </svg>
-      <span className="absolute inset-0 flex flex-col items-center justify-center">
-        <strong className="text-2xl font-bold tabular-nums tracking-tight text-foreground">{value}%</strong>
-        <span className="mt-0.5 text-xs font-medium text-muted-foreground">On Track</span>
-      </span>
+    <div className="p-5 sm:p-6 xl:p-7">
+      <h3 className="text-xs font-semibold tracking-[0.1em] text-[var(--briefing-muted)] uppercase">Key focus areas</h3>
+      <ul className="mt-4 space-y-4">
+        {focusItems.map((item) => <FocusListItem key={item.title} item={item} />)}
+      </ul>
     </div>
   )
 }
 
-function portfolioNarrative(overview: DeliveryOverview) {
-  const { activeProjects, healthCounts } = overview
-  const critical = healthCounts.Critical
-  const atRisk = healthCounts['At Risk']
-  const watch = healthCounts.Watch
+type FocusItem = {
+  icon: LucideIcon
+  tone: 'brand' | 'success' | 'warning' | 'danger'
+  title: string
+  detail: string
+}
 
-  if (critical > 0) {
-    return {
-      title: 'Executive intervention is required',
-      description: `${critical} critical ${plural('project', critical)} and ${atRisk} at-risk ${plural('project', atRisk)} need focused review across ${activeProjects} active ${plural('project', activeProjects)}.`,
-    }
-  }
-  if (atRisk > 0) {
-    return {
-      title: 'Delivery needs focused attention',
-      description: `${atRisk} at-risk ${plural('project', atRisk)} require review. The remaining portfolio is on track or being watched.`,
-    }
-  }
-  if (watch > 0) {
-    return {
-      title: 'The portfolio is broadly controlled',
-      description: `${watch} ${plural('project', watch)} remain on watch while no active project is currently marked At Risk or Critical.`,
-    }
-  }
-  return {
-    title: 'A strong delivery position',
-    description: `All ${activeProjects} active ${plural('project', activeProjects)} are currently recorded as on track.`,
-  }
+const focusToneClasses: Record<FocusItem['tone'], string> = {
+  brand: 'text-brand',
+  success: 'text-emerald-700',
+  warning: 'text-amber-700',
+  danger: 'text-red-600',
+}
+
+function FocusListItem({ item }: { item: FocusItem }) {
+  const Icon = item.icon
+  return (
+    <li className="flex items-start gap-3.5">
+      <Icon aria-hidden="true" className={cn('mt-0.5 size-5 shrink-0', focusToneClasses[item.tone])} strokeWidth={1.8} />
+      <div className="min-w-0">
+        <p className="text-sm font-semibold text-foreground">{item.title}</p>
+        <p className="mt-0.5 text-xs leading-5 text-[var(--briefing-muted)]">{item.detail}</p>
+      </div>
+    </li>
+  )
+}
+
+export function InterventionList({ rows }: { rows: AttentionRow[] }) {
+  const visibleRows = rows.slice(0, 3)
+
+  return (
+    <section aria-labelledby="intervention-heading" className="overflow-hidden rounded-[10px] border border-border bg-card shadow-[0_1px_2px_rgb(16_32_46_/_0.025)]">
+      <header className="relative flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4 before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:bg-danger">
+        <h2 id="intervention-heading" className="text-xs font-bold tracking-[0.12em] text-foreground uppercase">Requires intervention</h2>
+        <Link href="/operations/projects" className="inline-flex items-center gap-2 text-xs font-semibold text-brand hover:text-brand/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">
+          View all projects <ArrowRight aria-hidden="true" className="size-4" />
+        </Link>
+      </header>
+
+      {visibleRows.length === 0 ? (
+        <BriefingEmptyState
+          icon={CheckCircle2}
+          title="Nothing requires intervention"
+          description="No active projects are currently marked At Risk or Critical."
+        />
+      ) : (
+        <>
+          <div className="divide-y divide-border min-[1360px]:hidden">
+            {visibleRows.map((row) => <InterventionCard key={row.id} row={row} />)}
+          </div>
+          <div className="hidden min-[1360px]:block">
+            <table className="w-full table-fixed text-left">
+              <caption className="sr-only">Active projects marked At Risk or Critical</caption>
+              <colgroup>
+                <col className="w-[20%]" />
+                <col className="w-[9%]" />
+                <col className="w-[20%]" />
+                <col className="w-[13%]" />
+                <col className="w-[16%]" />
+                <col className="w-[13%]" />
+                <col className="w-[9%]" />
+              </colgroup>
+              <thead className="bg-muted/35 text-[0.6875rem] font-semibold tracking-[0.04em] text-[var(--briefing-muted)] uppercase">
+                <tr>
+                  {['Project', 'Health', 'Latest note', 'Impact', 'Next checkpoint', 'Owner', 'Action'].map((label) => (
+                    <th key={label} scope="col" className="px-4 py-3">{label}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {visibleRows.map((row) => <InterventionTableRow key={row.id} row={row} />)}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+    </section>
+  )
+}
+
+function InterventionTableRow({ row }: { row: AttentionRow }) {
+  return (
+    <tr className="align-top transition-colors hover:bg-muted/20">
+      <td className="px-4 py-3.5">
+        <p className="text-sm font-semibold text-foreground">{row.name}</p>
+        <p className="mt-0.5 text-xs leading-5 text-[var(--briefing-muted)]">{row.client} · {row.framework} · {row.phase}</p>
+      </td>
+      <td className="px-4 py-3.5"><HealthBadge>{row.health}</HealthBadge></td>
+      <td className="px-4 py-3.5 text-xs leading-5 text-foreground"><p className="line-clamp-2">{row.note ?? 'No project note recorded.'}</p></td>
+      <td className="px-4 py-3.5 text-xs leading-5 text-[var(--briefing-muted)]"><p className="line-clamp-2">Not structured in the current project model.</p></td>
+      <td className="px-4 py-3.5">
+        <p className="text-xs font-semibold text-foreground">{row.nextGate ?? 'No next gate recorded'}</p>
+        <p className="mt-0.5 text-xs text-[var(--briefing-muted)]">Project target · {row.targetDateLabel}</p>
+      </td>
+      <td className="px-4 py-3.5 text-xs font-medium text-foreground">{row.owner}</td>
+      <td className="px-4 py-3.5">
+        <Link href={`/operations/projects/${row.id}`} className="inline-flex h-8 items-center justify-center rounded-md bg-foreground px-3 text-xs font-semibold text-primary-foreground transition-colors hover:bg-foreground/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">
+          Review
+        </Link>
+      </td>
+    </tr>
+  )
+}
+
+function InterventionCard({ row }: { row: AttentionRow }) {
+  return (
+    <article className="p-5">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h3 className="text-sm font-semibold text-foreground">{row.name}</h3>
+          <p className="mt-0.5 text-xs leading-5 text-[var(--briefing-muted)]">{row.client} · {row.framework} · {row.phase}</p>
+        </div>
+        <HealthBadge>{row.health}</HealthBadge>
+      </div>
+      <dl className="mt-4 grid gap-4 sm:grid-cols-2">
+        <BriefingDatum label="Latest project note" value={row.note ?? 'No project note recorded.'} clamp />
+        <BriefingDatum label="Impact" value="Not structured in the current project model." muted clamp />
+        <BriefingDatum label="Next checkpoint" value={row.nextGate ?? 'No next gate recorded'} detail={`Project target · ${row.targetDateLabel}`} />
+        <BriefingDatum label="Owner" value={row.owner} />
+      </dl>
+      <Link href={`/operations/projects/${row.id}`} className="mt-4 inline-flex items-center gap-2 text-xs font-semibold text-brand hover:text-brand/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">
+        Review project <ArrowRight aria-hidden="true" className="size-4" />
+      </Link>
+    </article>
+  )
+}
+
+function BriefingDatum({ label, value, detail, muted = false, clamp = false }: { label: string; value: string; detail?: string; muted?: boolean; clamp?: boolean }) {
+  return (
+    <div>
+      <dt className="text-[0.6875rem] font-semibold tracking-wide text-[var(--briefing-muted)] uppercase">{label}</dt>
+      <dd className={cn('mt-1 text-xs leading-5', muted ? 'text-[var(--briefing-muted)]' : 'font-medium text-foreground', clamp && 'line-clamp-3')}>{value}</dd>
+      {detail ? <dd className="mt-0.5 text-xs text-[var(--briefing-muted)]">{detail}</dd> : null}
+    </div>
+  )
+}
+
+export function DeliveryHorizon({ overview }: { overview: DeliveryOverview }) {
+  return (
+    <section aria-labelledby="delivery-horizon-heading" className="overflow-hidden rounded-[10px] border border-border bg-card shadow-[0_1px_2px_rgb(16_32_46_/_0.025)]">
+      <header className="relative flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4 before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:bg-brand">
+        <h2 id="delivery-horizon-heading" className="text-xs font-bold tracking-[0.12em] text-foreground uppercase">Delivery horizon</h2>
+        <Link href="/operations/projects" className="inline-flex items-center gap-2 text-xs font-semibold text-brand hover:text-brand/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">
+          View all projects <ArrowRight aria-hidden="true" className="size-4" />
+        </Link>
+      </header>
+
+      <div className="grid min-[1360px]:grid-cols-3">
+        <UpcomingKeyDates rows={overview.upcomingProjectDates} />
+        <PhaseDistribution
+          activeProjects={overview.activeProjects}
+          columns={overview.columns}
+          frameworkName={overview.framework?.name ?? null}
+          frameworkProjectCount={overview.lifecycleProjectCount}
+          unassignedPhaseCount={overview.lifecycleUnassignedPhaseCount}
+        />
+        <TopRisksDependencies />
+      </div>
+    </section>
+  )
+}
+
+function UpcomingKeyDates({ rows }: { rows: UpcomingProjectDate[] }) {
+  const visibleRows = rows.slice(0, 4)
+  return (
+    <div className="border-b border-border p-5 sm:p-6 min-[1360px]:border-r min-[1360px]:border-b-0">
+      <h3 className="text-xs font-semibold tracking-[0.08em] text-[var(--briefing-muted)] uppercase">Upcoming project dates</h3>
+      {visibleRows.length === 0 ? (
+        <BriefingEmptyState
+          icon={CalendarDays}
+          title="No upcoming project dates"
+          description="No active project target dates fall within the next 30 days."
+        />
+      ) : (
+        <ol className="relative mt-4 space-y-4 before:absolute before:top-2 before:bottom-2 before:left-[6.85rem] before:w-px before:bg-border">
+          {visibleRows.map((row) => (
+            <li key={row.id} className="relative grid grid-cols-[6.25rem_0.75rem_minmax(0,1fr)] items-start gap-2.5">
+              <time dateTime={row.dueDate} className="pt-0.5 text-xs font-medium tabular-nums text-foreground">{row.dueDateLabel}</time>
+              <span aria-hidden="true" className={cn('relative z-10 mt-1 size-2.5 rounded-full ring-4 ring-card', timelineDotClass(row.health))} />
+              <div className="min-w-0">
+                <Link href={`/operations/projects/${row.id}`} className="block truncate text-xs font-semibold text-foreground hover:text-brand focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">{row.name}</Link>
+                <p className="mt-0.5 text-xs leading-5 text-[var(--briefing-muted)]">{row.nextGate ? `Recorded next gate · ${row.nextGate}` : 'No next gate recorded'}</p>
+              </div>
+            </li>
+          ))}
+        </ol>
+      )}
+      <Link href="/operations/projects" className="mt-5 inline-flex items-center gap-2 text-xs font-semibold text-brand hover:text-brand/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">
+        View project dates <ArrowRight aria-hidden="true" className="size-4" />
+      </Link>
+    </div>
+  )
+}
+
+function PhaseDistribution({
+  activeProjects,
+  columns,
+  frameworkName,
+  frameworkProjectCount,
+  unassignedPhaseCount,
+}: {
+  activeProjects: number
+  columns: PhaseColumn[]
+  frameworkName: string | null
+  frameworkProjectCount: number
+  unassignedPhaseCount: number
+}) {
+  const totalAssigned = columns.reduce((total, column) => total + column.total, 0)
+  const segmentColors = ['#6f86a3', '#83a8d4', '#64a6ea', '#3f8fe5', '#85baf0', '#a7caef', '#c4d9ee', '#dce6ef']
+  const coloredColumns = columns.map((column, index) => ({
+    ...column,
+    color: segmentColors[index % segmentColors.length],
+  }))
+
+  return (
+    <div className="border-b border-border p-5 sm:p-6 min-[1360px]:border-r min-[1360px]:border-b-0">
+      <h3 className="text-xs font-semibold tracking-[0.08em] text-[var(--briefing-muted)] uppercase">Delivery by phase</h3>
+      {columns.length === 0 ? (
+        <BriefingEmptyState
+          icon={Milestone}
+          title={activeProjects === 0 ? 'No active lifecycle yet' : 'No lifecycle phases available'}
+          description={activeProjects === 0
+            ? 'Active projects will appear here when delivery begins.'
+            : frameworkName
+              ? `${frameworkName} has no configured phase sequence to display.`
+              : 'No active project is connected to a delivery framework.'}
+        />
+      ) : (
+        <>
+          <div
+            role="img"
+            aria-label={`${totalAssigned} projects assigned across ${columns.length} phases in ${frameworkName}`}
+            className="mt-5 flex h-4 overflow-hidden rounded-md bg-muted"
+          >
+            {coloredColumns.filter((column) => column.total > 0).map((column) => (
+              <span
+                key={column.phase}
+                title={`${column.phase}: ${column.total}`}
+                style={{ flexGrow: column.total, backgroundColor: column.color }}
+                className="border-r border-card last:border-r-0"
+              />
+            ))}
+          </div>
+          <dl className="mt-5 grid grid-cols-2 gap-x-5 gap-y-2.5">
+            {coloredColumns.map((column) => (
+              <div key={column.phase} className="flex items-center justify-between gap-3 text-xs">
+                <dt className="flex min-w-0 items-center gap-2 text-[var(--briefing-muted)]">
+                  <span aria-hidden="true" className="size-2 shrink-0 rounded-full" style={{ backgroundColor: column.color }} />
+                  <span className="truncate">{column.phase}</span>
+                </dt>
+                <dd className="font-semibold tabular-nums text-foreground">{column.total}</dd>
+              </div>
+            ))}
+          </dl>
+          <p className="mt-4 border-t border-border pt-3 text-xs leading-5 text-[var(--briefing-muted)]">
+            {frameworkProjectCount} of {activeProjects} active projects use {frameworkName}.
+            {unassignedPhaseCount > 0 ? ` ${unassignedPhaseCount} ${plural('project', unassignedPhaseCount)} ${unassignedPhaseCount === 1 ? 'has' : 'have'} no phase assigned.` : ''}
+          </p>
+        </>
+      )}
+    </div>
+  )
+}
+
+function TopRisksDependencies() {
+  return (
+    <div className="p-5 sm:p-6">
+      <h3 className="text-xs font-semibold tracking-[0.08em] text-[var(--briefing-muted)] uppercase">Top risks &amp; dependencies</h3>
+      <BriefingEmptyState
+        icon={ShieldAlert}
+        title="No structured register is connected"
+        description="Risks, dependencies and downstream impacts are not persisted in the current delivery model. Current project health signals remain visible in the intervention queue."
+      />
+      <Link href="/operations/projects" className="inline-flex items-center gap-2 text-xs font-semibold text-brand hover:text-brand/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">
+        Review project health <ArrowRight aria-hidden="true" className="size-4" />
+      </Link>
+    </div>
+  )
+}
+
+function BriefingEmptyState({ icon: Icon, title, description }: { icon: LucideIcon; title: string; description: string }) {
+  return (
+    <div className="py-5">
+      <Icon aria-hidden="true" className="size-5 text-[var(--briefing-muted)]" strokeWidth={1.7} />
+      <p className="mt-3 text-sm font-semibold text-foreground">{title}</p>
+      <p className="mt-1 max-w-md text-xs leading-5 text-[var(--briefing-muted)]">{description}</p>
+    </div>
+  )
+}
+
+function timelineDotClass(health: string) {
+  if (health === 'Critical') return 'bg-danger'
+  if (health === 'At Risk' || health === 'Watch') return 'bg-warning'
+  return 'bg-brand'
 }
 
 function plural(word: string, count: number) {
   return count === 1 ? word : `${word}s`
 }
-
-export function ExecutiveMetricCard({
-  title,
-  value,
-  description,
-  footer,
-  icon: Icon,
-  href,
-}: {
-  title: string
-  value: string | null
-  description: string
-  footer: string
-  icon: LucideIcon
-  href?: string
-}) {
-  const content = (
-    <article className="flex h-full min-h-48 flex-col rounded-xl border border-border bg-card p-4 shadow-[0_1px_2px_rgb(16_32_46_/_0.04)] transition-colors hover:border-brand/25">
-      <div className="flex items-start justify-between gap-3">
-        <span className="flex size-9 items-center justify-center rounded-lg bg-brand-soft text-brand"><Icon className="size-[1.125rem]" /></span>
-        {href ? <ChevronRight className="size-4 text-brand" /> : null}
-      </div>
-      <h2 className="mt-3 text-sm font-semibold text-foreground">{title}</h2>
-      <p className={`mt-2 font-bold tracking-tight text-foreground ${value === null ? 'text-xl' : 'text-3xl tabular-nums'}`}>{value ?? 'Not tracked'}</p>
-      <p className="mt-1 text-xs leading-5 text-muted-foreground">{description}</p>
-      <p className="mt-auto flex items-center gap-2 border-t border-border pt-3 text-xs font-medium text-brand">
-        <Clock3 className="size-3.5" />{footer}
-      </p>
-    </article>
-  )
-
-  return href ? <Link href={href} className="block h-full focus-visible:rounded-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">{content}</Link> : content
-}
-
-export function AttentionProjects({ rows }: { rows: AttentionRow[] }) {
-  return (
-    <section className="mt-4 overflow-hidden rounded-xl border border-border bg-card shadow-[0_1px_2px_rgb(16_32_46_/_0.04)]">
-      <header className="relative flex flex-wrap items-start justify-between gap-3 border-b border-border px-5 py-3.5 before:absolute before:inset-y-0 before:left-0 before:w-1 before:bg-danger">
-        <div>
-          <h2 className="text-base font-semibold text-foreground">Projects Requiring Attention</h2>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            {rows.length > 0
-              ? `${rows.length} active ${plural('project', rows.length)} are recorded as At Risk or Critical.`
-              : 'Intervention signals across active delivery.'}
-          </p>
-        </div>
-        <Link href="/operations/projects" className="inline-flex items-center gap-1 text-xs font-semibold text-brand hover:text-brand/80">
-          View all projects <ArrowUpRight className="size-3.5" />
-        </Link>
-      </header>
-
-      {rows.length > 0 ? (
-        <div className="divide-y divide-border">
-          {rows.map((row) => <AttentionProjectRow key={row.id} row={row} />)}
-        </div>
-      ) : (
-        <ExecutiveEmptyState
-          title="Nothing currently requires intervention"
-          description="All active projects are within their current recorded health thresholds."
-          compact
-        />
-      )}
-    </section>
-  )
-}
-
-export function AttentionProjectRow({ row }: { row: AttentionRow }) {
-  return (
-    <Link
-      href={`/operations/projects/${row.id}`}
-      aria-label={`Review ${row.name}`}
-      className="grid gap-3 px-5 py-3.5 transition-colors hover:bg-muted/30 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-brand md:grid-cols-[minmax(0,1fr)_minmax(175px,auto)] md:items-center lg:grid-cols-[minmax(220px,1.15fr)_auto_minmax(220px,1.1fr)_minmax(175px,0.7fr)_auto]"
-    >
-      <span className="flex min-w-0 items-center gap-3">
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-danger-soft text-danger"><BriefcaseBusiness className="size-[1.125rem]" /></span>
-        <span className="min-w-0">
-          <span className="block truncate text-sm font-semibold text-foreground">{row.name}</span>
-          <span className="mt-0.5 block truncate text-xs text-muted-foreground">{row.client} · {row.framework} · {row.phase}</span>
-        </span>
-      </span>
-
-      <span className="md:justify-self-start"><HealthBadge>{row.health}</HealthBadge></span>
-
-      <span className="min-w-0">
-        <span className="block truncate text-sm font-medium text-foreground">{row.note ?? `${row.health} health assessment requires review`}</span>
-        <span className="mt-0.5 block text-xs text-muted-foreground">{row.note ? 'Latest project note' : 'No intervention reason has been recorded.'}</span>
-      </span>
-
-      <span className="flex items-center gap-2 border-border md:border-l md:pl-4">
-        <CalendarDays className="size-4 shrink-0 text-muted-foreground" />
-        <span className="min-w-0">
-          <span className="block text-[0.65rem] text-muted-foreground">Recorded next gate</span>
-          <span className="block truncate text-xs font-semibold text-foreground">{row.nextGate ?? 'Not recorded'}</span>
-          <span className="block text-[0.65rem] text-muted-foreground">Project target · {row.targetDateLabel}</span>
-        </span>
-      </span>
-
-      <span className="inline-flex items-center gap-1 text-xs font-semibold whitespace-nowrap text-brand md:col-start-2 md:justify-self-start lg:col-start-auto">Review project <ArrowUpRight className="size-3.5" /></span>
-    </Link>
-  )
-}
-
-export function DeliveryLifecycleSummary({ columns, frameworkName }: { columns: PhaseColumn[]; frameworkName: string | null }) {
-  return (
-    <section className="overflow-hidden rounded-xl border border-border bg-card shadow-[0_1px_2px_rgb(16_32_46_/_0.04)]">
-      <header className="flex flex-wrap items-start justify-between gap-3 border-b border-border px-5 py-3.5">
-        <div>
-          <h2 className="text-base font-semibold text-foreground">Delivery Lifecycle</h2>
-          <p className="mt-0.5 text-xs text-muted-foreground">Active projects across the governed delivery lifecycle.</p>
-        </div>
-        {frameworkName ? <span className="text-xs font-medium text-muted-foreground">{frameworkName}</span> : null}
-      </header>
-
-      {columns.length > 0 ? (
-        <div className="overflow-x-auto px-4 py-4">
-          <ol className="grid min-w-[36rem] grid-flow-col auto-cols-fr gap-1.5" aria-label={`Project distribution across ${frameworkName ?? 'the delivery lifecycle'}`}>
-            {columns.map((column) => {
-              const riskCount = column.counts['At Risk'] + column.counts.Critical
-              return (
-                <li key={column.phase} className="flex min-w-0 items-stretch">
-                  <div className="flex w-full min-w-0 flex-col items-center justify-center rounded-lg border border-border bg-muted/45 px-2 py-3 text-center">
-                    <span className="max-w-24 truncate text-[0.6875rem] font-semibold text-foreground" title={column.phase}>{column.phase}</span>
-                    <strong className="mt-1.5 text-xl font-bold tabular-nums text-foreground">{column.total}</strong>
-                    <span className={`mt-1 text-[0.625rem] ${riskCount > 0 ? 'text-danger' : 'text-muted-foreground'}`}>
-                      {riskCount > 0 ? `${riskCount} need attention` : column.total === 0 ? 'No projects' : 'Within threshold'}
-                    </span>
-                  </div>
-                </li>
-              )
-            })}
-          </ol>
-        </div>
-      ) : (
-        <ExecutiveEmptyState
-          title="No active projects yet"
-          description="Projects will appear here as they move through their framework phases."
-          action="Go to projects"
-          href="/operations/projects"
-          compact
-        />
-      )}
-    </section>
-  )
-}
-
-export function UpcomingGovernance() {
-  return (
-    <section className="overflow-hidden rounded-xl border border-border bg-card shadow-[0_1px_2px_rgb(16_32_46_/_0.04)]">
-      <header className="flex flex-wrap items-start justify-between gap-3 border-b border-border px-5 py-3.5">
-        <div>
-          <h2 className="text-base font-semibold text-foreground">Upcoming Governance</h2>
-          <p className="mt-0.5 text-xs text-muted-foreground">Dated gates and decisions expected in the next 30 days.</p>
-        </div>
-        <Link href="/operations/projects" className="inline-flex items-center gap-1 text-xs font-semibold text-brand hover:text-brand/80">
-          Review projects <ArrowUpRight className="size-3.5" />
-        </Link>
-      </header>
-      <ExecutiveEmptyState
-        icon={CalendarClock}
-        title="No dated governance events available"
-        description="Project records can name a next gate, but dedicated gate dates and decision requirements are not currently recorded."
-        compact
-      />
-    </section>
-  )
-}
-
-export function ExecutiveEmptyState({
-  title,
-  description,
-  action,
-  href,
-  icon: Icon = ClipboardCheck,
-  compact = false,
-}: {
-  title: string
-  description: string
-  action?: string
-  href?: string
-  icon?: LucideIcon
-  compact?: boolean
-}) {
-  return (
-    <div className={`px-5 text-center ${compact ? 'py-5' : 'py-10'}`}>
-      <span className="mx-auto flex size-9 items-center justify-center rounded-lg bg-muted text-muted-foreground"><Icon className="size-[1.125rem]" /></span>
-      <p className="mt-3 text-sm font-semibold text-foreground">{title}</p>
-      <p className="mx-auto mt-1 max-w-md text-xs leading-5 text-muted-foreground">{description}</p>
-      {action && href ? (
-        <Link href={href} className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-brand">
-          {action} <ArrowUpRight className="size-3.5" />
-        </Link>
-      ) : null}
-    </div>
-  )
-}
-
-export const overviewMetricIcons = {
-  decisions: ClipboardCheck,
-  projectDates: CalendarDays,
-  dependencies: Link2,
-} as const

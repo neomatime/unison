@@ -131,7 +131,13 @@ function DataTable({ module, records, selected, onSelected, onArchive }: { modul
 function Cell({ module, record, column, primary }: { module: ModuleDefinition; record: MockRecord; column: string; primary: boolean }) {
   const value = recordValue(record, column)
   if (primary) return <Link href={`${module.route}/${record.id}`} className="font-semibold text-foreground hover:underline">{record.name}</Link>
-  if (column === 'Status' || column === 'Risk' || column === 'Client Health' || column === 'Stage') return <StatusBadge tone={statusTone(value)}>{value}</StatusBadge>
+  // 'Health' is additive here: of every module this component actually renders
+  // (clients, projects, tasks, calendar, knowledge, settings -- verified by
+  // grepping app/(unison) for imports of this file), only Projects has a column
+  // labelled exactly 'Health', so this cannot change any other module's cells.
+  // Onboarding's registry definition also has a 'Health' column, but Onboarding
+  // renders through its own OnboardingScreen and never reaches this component.
+  if (column === 'Status' || column === 'Risk' || column === 'Client Health' || column === 'Stage' || column === 'Health') return <StatusBadge tone={statusTone(value)}>{value}</StatusBadge>
   return <span className="text-muted-foreground">{value}</span>
 }
 
@@ -143,6 +149,12 @@ function statusTone(value: string): 'brand' | 'warning' | 'info' | 'neutral' {
 }
 
 function recordValue(record: MockRecord, column: string) {
-  const aliases: Record<string, string> = { Client: 'client', 'Primary Contact': 'contact', 'Service / Engagement': 'service', 'Account Owner': 'owner', 'Active Projects': 'projects', 'Client Health': 'health', 'Last Activity': 'updated', Project: 'name', Progress: 'progress', 'Next Milestone': 'milestone', 'Due Date': 'due', Task: 'name', Assignee: 'owner', Priority: 'priority', Event: 'name', Source: 'source', Date: 'date', Time: 'time', Company: 'name', 'Estimated Value': 'value', Quote: 'name', Total: 'total', Expiry: 'expiry', Opportunity: 'name', 'Client / Prospect': 'client', Stage: 'status', Value: 'value', Probability: 'probability', 'Expected Close': 'close', Invoice: 'name', Balance: 'balance', Expense: 'name', Category: 'category', Vendor: 'vendor', Amount: 'amount', Forecast: 'name', Period: 'period', Actual: 'actual', Projected: 'projected', Variance: 'variance', Employee: 'name', 'Job Title': 'title', Department: 'department', Team: 'team', Manager: 'owner', 'Start Date': 'start', Record: 'name', Type: 'type', 'Leave Type': 'type', From: 'from', To: 'to', Days: 'days', Approver: 'owner', Title: 'name', Owner: 'owner', 'Related Record': 'related', Visibility: 'visibility', Updated: 'updated', Insight: 'name', Module: 'module', Confidence: 'confidence', Generated: 'updated', Setting: 'name', Area: 'area', 'Last Changed': 'updated', Status: 'status' }
+  // 'Next Gate' -> 'nextGate' is added here rather than by renaming the query's
+  // record key, because the fallback below (`column.toLowerCase()`) keeps the
+  // space -- it would look up 'next gate', which no record shape uses or could
+  // use as a plain identifier. Projects is the only module with a 'Next Gate'
+  // column (verified against every definition in registry.ts), so this cannot
+  // change any other module's cell.
+  const aliases: Record<string, string> = { Client: 'client', 'Primary Contact': 'contact', 'Service / Engagement': 'service', 'Account Owner': 'owner', 'Active Projects': 'projects', 'Client Health': 'health', 'Last Activity': 'updated', Project: 'name', Progress: 'progress', 'Next Milestone': 'milestone', 'Next Gate': 'nextGate', 'Due Date': 'due', Task: 'name', Assignee: 'owner', Priority: 'priority', Event: 'name', Source: 'source', Date: 'date', Time: 'time', Company: 'name', 'Estimated Value': 'value', Quote: 'name', Total: 'total', Expiry: 'expiry', Opportunity: 'name', 'Client / Prospect': 'client', Stage: 'status', Value: 'value', Probability: 'probability', 'Expected Close': 'close', Invoice: 'name', Balance: 'balance', Expense: 'name', Category: 'category', Vendor: 'vendor', Amount: 'amount', Forecast: 'name', Period: 'period', Actual: 'actual', Projected: 'projected', Variance: 'variance', Employee: 'name', 'Job Title': 'title', Department: 'department', Team: 'team', Manager: 'owner', 'Start Date': 'start', Record: 'name', Type: 'type', 'Leave Type': 'type', From: 'from', To: 'to', Days: 'days', Approver: 'owner', Title: 'name', Owner: 'owner', 'Related Record': 'related', Visibility: 'visibility', Updated: 'updated', Insight: 'name', Module: 'module', Confidence: 'confidence', Generated: 'updated', Setting: 'name', Area: 'area', 'Last Changed': 'updated', Status: 'status' }
   return record[aliases[column] ?? column.toLowerCase()] ?? '—'
 }
