@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 
 import { PROJECT_HEALTHS } from '../../features/delivery/schemas/project.ts'
+import { DELIVERY_ITEM_HEALTHS } from '../../features/delivery/schemas/delivery-item.ts'
 import {
   bandFor,
   HEALTH_BANDS,
@@ -126,5 +127,15 @@ test('every health the schema permits is a band bandFor can return', () => {
   for (const health of PROJECT_HEALTHS) {
     assert.doesNotThrow(() => bandFor(health), `bandFor has no case for '${health}', which projectInputSchema accepts`)
     assert.ok(HEALTH_BANDS.includes(bandFor(health)), `bandFor('${health}') returned a band outside HEALTH_BANDS`)
+  }
+})
+
+test('every delivery-item health bands cleanly for the briefing', () => {
+  // itemPhaseColumns reuses PhaseColumn, whose counts are keyed by HealthBand.
+  // If a delivery-item health ever stopped mapping, the column counts would be
+  // silently wrong rather than loud.
+  for (const health of DELIVERY_ITEM_HEALTHS) {
+    assert.doesNotThrow(() => bandFor(health), `bandFor has no case for '${health}'`)
+    assert.ok(HEALTH_BANDS.includes(bandFor(health)))
   }
 })

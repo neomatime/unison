@@ -9,11 +9,11 @@ import {
   isDateWithinDays,
   type AttentionRow,
   type DeliveryOverview,
-  type PhaseColumn,
   type UpcomingProjectDate,
 } from '../overview-bands'
+import { summariseDeliveryItems } from '../item-briefing.ts'
 
-export type { AttentionRow, DeliveryOverview, PhaseColumn, UpcomingProjectDate }
+export type { AttentionRow, DeliveryOverview, UpcomingProjectDate }
 
 const PROJECT_DATE_WINDOW_DAYS = 30
 const NEXT_SEVEN_DAYS = 7
@@ -22,16 +22,22 @@ export async function getDeliveryOverview(): Promise<DeliveryOverview> {
   const { organization } = await getSessionContext()
   const supabase = await createServerSupabase()
 
-  const [projectResult, members] = await Promise.all([
+  const [projectResult, members, itemResult] = await Promise.all([
     supabase
       .from('projects')
       .select('id, name, status, health, due_date, next_gate, notes, owner_id, framework_id, phase_id, clients(name), frameworks(id, name), framework_phases(id, name, position)')
       .eq('organization_id', organization.id)
       .is('archived_at', null),
     listOrganizationMembers(),
+    supabase
+      .from('delivery_items')
+      .select('project_id, current_phase_id, health, status')
+      .eq('organization_id', organization.id)
+      .is('archived_at', null),
   ])
   const { data, error } = projectResult
   if (error) throw error
+  if (itemResult.error) throw itemResult.error
 
   const rows = data ?? []
   const active = rows.filter((row) => row.status === 'Active')
@@ -86,16 +92,12 @@ export async function getDeliveryOverview(): Promise<DeliveryOverview> {
   })[0]
 
   let framework: DeliveryOverview['framework'] = null
-  let lifecycleProjectCount = 0
-  let lifecycleUnassignedPhaseCount = 0
-  let columns: PhaseColumn[] = []
+  let leadingPhases: { id: string; name: string; position: number }[] = []
+  let leadingProjectIds = new Set<string>()
 
   if (leading) {
     const [frameworkId, { name }] = leading
     framework = { id: frameworkId, name }
-    const lifecycleRows = active.filter((row) => row.framework_id === frameworkId)
-    lifecycleProjectCount = lifecycleRows.length
-    lifecycleUnassignedPhaseCount = lifecycleRows.filter((row) => !row.phase_id).length
 
     // Every phase of the framework appears, including those holding nothing — an
     // empty column is the useful part of a distribution, not a gap to omit.
@@ -107,17 +109,21 @@ export async function getDeliveryOverview(): Promise<DeliveryOverview> {
       .order('position', { ascending: true })
     if (phaseError) throw phaseError
 
-    columns = (phases ?? []).map((phase) => {
-      const counts: PhaseColumn['counts'] = { 'On Track / Healthy': 0, Watch: 0, 'At Risk': 0, Critical: 0 }
-      let total = 0
-      for (const row of lifecycleRows) {
-        if (row.framework_phases?.id !== phase.id) continue
-        counts[bandFor(row.health)] += 1
-        total += 1
-      }
-      return { phase: phase.name, position: phase.position, total, counts }
-    })
+    leadingProjectIds = new Set(active.filter((row) => row.framework_id === frameworkId).map((row) => row.id))
+    leadingPhases = (phases ?? []).map((phase) => ({ id: phase.id, name: phase.name, position: phase.position }))
   }
+
+  const itemBriefing = summariseDeliveryItems({
+    rows: (itemResult.data ?? []).map((row) => ({
+      projectId: row.project_id,
+      phaseId: row.current_phase_id,
+      health: row.health,
+      status: row.status,
+    })),
+    leadingFrameworkPhases: leadingPhases,
+    leadingFrameworkProjectIds: leadingProjectIds,
+    activeProjectIds: new Set(active.map((row) => row.id)),
+  })
 
   const attention: AttentionRow[] = active
     .filter((row) => row.health === 'At Risk' || row.health === 'Critical')
@@ -154,9 +160,7 @@ export async function getDeliveryOverview(): Promise<DeliveryOverview> {
     unassignedOwnerCount,
     portfolioHealth: active.length === 0 ? null : Math.round((healthCounts['On Track / Healthy'] / active.length) * 100),
     framework,
-    lifecycleProjectCount,
-    lifecycleUnassignedPhaseCount,
-    columns,
+    ...itemBriefing,
     attention,
     upcomingProjectDates,
   }
