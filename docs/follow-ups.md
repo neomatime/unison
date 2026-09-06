@@ -624,3 +624,65 @@ review report before that workspace was deleted, so the undone work survives it.
   definition — "the next 30 days" is today plus 29 — not a bug.
 - Four `create or replace` migrations for one function is the honest cost of the
   append-only rule, not a defect to collapse.
+
+## Final review of feat/frameworks-write-path (2026-09-06)
+
+The slice made the Frameworks module read and write real rows: register, detail,
+framework create/edit, and phase add/rename/reorder/archive. Carried out of the
+execution ledger and the review report before that workspace was deleted.
+
+### Fixed before merge, recorded because they are worth remembering
+
+- **Archiving a framework stranded every project governed by it.** This branch
+  made `frameworks.archived_at` writable for the first time, which made a
+  pre-existing `.is('archived_at', null)` filter in the project form reachable.
+  The framework select is controlled and `required`, so no matching option meant
+  `selectedIndex = -1` and the browser refused to submit — the project could not
+  be edited at all, and the only escape re-filtered the phase list and nulled
+  `phase_id`. **The fourth instance of one pattern**: owner (PR #2), client
+  (PR #2), phase (Task 3), framework (fix wave). If a fifth optional foreign key
+  ever reaches a form, retention is not optional — see
+  `features/delivery/form-options.ts`, where all four now live together.
+- **The archive dialog claimed per-project version pinning**, which does not
+  exist — `version` is one mutable text column with no history, and this slice
+  kept it read-only precisely because editing it would be an unkeepable claim.
+
+### Open — behaviour worth a product decision
+
+- **An archived framework is only restorable while you stay on its page.** It is
+  excluded from the register with no toggle, so navigating away loses the route
+  and the only way back is a remembered URL. The spec chose "no toggle in this
+  slice" deliberately; whether restore needs a route of its own is the spec
+  owner's call, not an implementation detail.
+- **Confirmation drift between the two restores.** Restoring a framework is
+  gated behind a confirmation styled for a destructive action; restoring a phase
+  is one click with none. Neither is destructive. Cosmetic, but the kind of drift
+  that hardens into convention if left.
+
+### Open — fixture debt this slice moved rather than removed
+
+- **`deliveryPhases` survives as `illustrativePhases`** in
+  `features/delivery/components/portfolio-screen.tsx`, byte-for-byte, still
+  rendered under a heading claiming project counts summing to 36 in tenants that
+  hold none. Relocating it kept the build green and was disclosed at the time.
+  `ui-completeness.test.ts` now states in its own comment that its assertion
+  covers `data.ts` only — a guard that would otherwise be cited later as evidence
+  the fixture is gone. Removing it belongs to the portfolio work, which owns that
+  fixture world; `PhaseStepper` has no other caller.
+
+### Accepted deliberately, with reasons
+
+- **`reorderFrameworkPhasesAction` does not scope to the active organisation.**
+  It is the only write in the branch that does not, and that is correct: the RPC
+  it calls checks `is_member_of` in Postgres before touching anything, which is
+  the same guarantee the table's own RLS policy gives. Adding a TypeScript check
+  would duplicate the authority, not strengthen it.
+- **The register omits the Status column the spec listed.** Archived frameworks
+  are excluded entirely, so the column would read "Active" on every row —
+  omitting a constant is more faithful to the claim rule than rendering it.
+- **Phase writes do not revalidate the register**, which shows a phase count.
+  The count is stale only until the next register visit, and phase edits happen
+  on the detail page.
+- **Two migrations where one would have done**, again: the first was applied
+  before its comment was found to be wrong, and the log is append-only. The
+  correction lives in `20260906130000`. Same precedent as `20260905190000`.
