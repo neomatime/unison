@@ -357,6 +357,21 @@ actually enforced, what requires schema work, what can remain configuration, and
 what would create unnecessary complexity. Then propose the smallest coherent
 path that makes Frameworks meaningfully govern project execution.
 
+**Sequencing, decided 2026-09-06.** This runs *alongside* §18's build order, not
+ahead of it. Delivery Items remains the next thing built; the Frameworks
+inspection and the design that follows it happen in parallel. §20 names the next
+strategic area to strengthen, which is not the same as the next thing to ship.
+
+That ordering is also the safer one on the evidence: Delivery Items already has
+a locked direction and a schema shape to copy (`projects_phase_fkey`, see the
+status note below), whereas §3's Frameworks ambition — gates, artefacts,
+evidence, roles, approval rules — is almost entirely unbuilt, so designing it
+before the operating loop closes would be the speculative sophistication §18
+warns against. Delivery Items also *depends* on Frameworks for its terminology
+and phases, so building it will surface which parts of the Frameworks model are
+actually load-bearing, which is better input to the design than inspection
+alone.
+
 ## 21. Final north star
 
 > **UNISON should make governed enterprise delivery easier to control, easier to
@@ -398,10 +413,6 @@ will not.
 - **§8 and §10 are unbuilt.** Delivery Items and dependencies have locked
   requirements documents but no schema.
 
-**One sequencing question left open by this document.** §18 puts Delivery Items
-next in the *build* order; §20 names Frameworks as the next strategic area to
-*strengthen*. These are compatible if §20 is read as an investigation that runs
-alongside or ahead of §18's build — inspect the Frameworks model, then propose
-the smallest coherent path — rather than as a reordering of the build queue.
-That is the reading applied here. If the intent was to move Frameworks ahead of
-Delivery Items in the build order, this document should be amended to say so.
+**The §18/§20 sequencing question is resolved** — the ruling is recorded in §20
+itself, since it is direction rather than observation: Frameworks is
+investigated alongside the Delivery Items build, not ahead of it.
