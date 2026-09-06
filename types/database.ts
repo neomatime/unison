@@ -128,6 +128,118 @@ export type Database = {
           },
         ]
       }
+      delivery_items: {
+        Row: {
+          archived_at: string | null
+          created_at: string
+          current_phase_id: string | null
+          description: string | null
+          external_reference: string | null
+          framework_id: string
+          health: string
+          id: string
+          level: number
+          name: string
+          organization_id: string
+          owner_id: string | null
+          parent_id: string | null
+          parent_level: number | null
+          project_id: string
+          source_system: string | null
+          start_date: string | null
+          status: string
+          target_date: string | null
+          updated_at: string
+        }
+        Insert: {
+          archived_at?: string | null
+          created_at?: string
+          current_phase_id?: string | null
+          description?: string | null
+          external_reference?: string | null
+          framework_id: string
+          health?: string
+          id?: string
+          level: number
+          name: string
+          organization_id: string
+          owner_id?: string | null
+          parent_id?: string | null
+          parent_level?: number | null
+          project_id: string
+          source_system?: string | null
+          start_date?: string | null
+          status?: string
+          target_date?: string | null
+          updated_at?: string
+        }
+        Update: {
+          archived_at?: string | null
+          created_at?: string
+          current_phase_id?: string | null
+          description?: string | null
+          external_reference?: string | null
+          framework_id?: string
+          health?: string
+          id?: string
+          level?: number
+          name?: string
+          organization_id?: string
+          owner_id?: string | null
+          parent_id?: string | null
+          parent_level?: number | null
+          project_id?: string
+          source_system?: string | null
+          start_date?: string | null
+          status?: string
+          target_date?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "delivery_items_organization_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_items_owner_fkey"
+            columns: ["organization_id", "owner_id"]
+            isOneToOne: false
+            referencedRelation: "memberships"
+            referencedColumns: ["organization_id", "user_id"]
+          },
+          {
+            foreignKeyName: "delivery_items_parent_fkey"
+            columns: ["parent_id", "parent_level", "project_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_items"
+            referencedColumns: ["id", "level", "project_id"]
+          },
+          {
+            foreignKeyName: "delivery_items_phase_fkey"
+            columns: ["framework_id", "current_phase_id"]
+            isOneToOne: false
+            referencedRelation: "framework_phases"
+            referencedColumns: ["framework_id", "id"]
+          },
+          {
+            foreignKeyName: "delivery_items_project_fkey"
+            columns: ["project_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id", "organization_id"]
+          },
+          {
+            foreignKeyName: "delivery_items_project_framework_fkey"
+            columns: ["project_id", "framework_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id", "framework_id"]
+          },
+        ]
+      }
       framework_phases: {
         Row: {
           archived_at: string | null
@@ -168,6 +280,8 @@ export type Database = {
           archived_at: string | null
           created_at: string
           id: string
+          level_1_label: string | null
+          level_2_label: string | null
           name: string
           organization_id: string
           type: string | null
@@ -178,6 +292,8 @@ export type Database = {
           archived_at?: string | null
           created_at?: string
           id?: string
+          level_1_label?: string | null
+          level_2_label?: string | null
           name: string
           organization_id: string
           type?: string | null
@@ -188,6 +304,8 @@ export type Database = {
           archived_at?: string | null
           created_at?: string
           id?: string
+          level_1_label?: string | null
+          level_2_label?: string | null
           name?: string
           organization_id?: string
           type?: string | null
