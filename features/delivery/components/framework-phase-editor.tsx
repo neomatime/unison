@@ -22,18 +22,22 @@ import { SectionCard } from './delivery-primitives'
  * Move only ever reorders the active phases against each other -- see
  * reorder-framework-phases.ts's own comment on why the RPC refuses any
  * submission that is not exactly the framework's full phase set (SQLSTATE
- * 22023). Every move therefore submits the newly ordered active phases
- * followed by the archived phases in their existing order: archived phases
- * are never reordered from here, so there is no "up"/"down" to offer them.
+ * 22023). An archived phase keeps its own slot in the stored order; only the
+ * active phases move around it. The submission is built by walking the
+ * phases in their current stored order: an archived slot contributes its own
+ * id unchanged, an active slot contributes the next id off the newly
+ * reordered active sequence. That way a Move never relocates an archived
+ * phase to the tail of the list -- restoring it later drops it back into the
+ * same gap it left, not onto the end.
  */
 export function FrameworkPhaseEditor({ frameworkId, phases }: { frameworkId: string; phases: FrameworkPhase[] }) {
   const activePhases = phases.filter((phase) => phase.archivedAt === null)
-  const archivedIds = phases.filter((phase) => phase.archivedAt !== null).map((phase) => phase.id)
 
   function idsForSwap(index: number, otherIndex: number): string[] {
-    const reordered = [...activePhases]
-    ;[reordered[index], reordered[otherIndex]] = [reordered[otherIndex], reordered[index]]
-    return [...reordered.map((phase) => phase.id), ...archivedIds]
+    const reorderedActive = [...activePhases]
+    ;[reorderedActive[index], reorderedActive[otherIndex]] = [reorderedActive[otherIndex], reorderedActive[index]]
+    let cursor = 0
+    return phases.map((phase) => (phase.archivedAt !== null ? phase.id : reorderedActive[cursor++].id))
   }
 
   return (
