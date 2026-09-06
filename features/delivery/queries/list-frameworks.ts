@@ -14,11 +14,9 @@ export type FrameworkSummary = {
 }
 
 /**
- * Counts are tallied here rather than through PostgREST embeds because both
- * relationships hang off composite foreign keys — projects_framework_fkey is
- * (framework_id, organization_id) — and an embed across one needs a
- * disambiguating hint. Three small selects are predictable where an embed
- * hint is a guess: a tenant has around six frameworks and fifty phases.
+ * Counts are tallied here rather than through PostgREST embeds because three
+ * small selects are predictable and easy to reason about at this data size —
+ * a tenant typically has around six frameworks and fifty phases.
  */
 export async function listFrameworks(): Promise<FrameworkSummary[]> {
   const { organization } = await getSessionContext()
