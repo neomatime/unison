@@ -101,58 +101,31 @@ test('a project cannot be its own prerequisite', async () => {
   assert.match(error!.message, /circular dependency/)
 })
 
-test('the no-self-prerequisite CHECK constraint independently rejects a self-edge', async () => {
-  // The test above pins the real user-facing behaviour: the cycle-guard
-  // trigger intercepts every self-edge before
-  // project_dependencies_no_self_check (a plain CHECK constraint) is ever
-  // reached, because BEFORE ROW triggers fire before CHECK constraints. That
-  // means the assertion above passes whether or not the constraint still
-  // exists -- it was the only test exercising it, so a dropped or broken
-  // constraint would go unnoticed.
-  //
-  // This test proves the constraint independently by removing the trigger
-  // that would otherwise shadow it, the same technique the Step 5 proof in
-  // task-2-report.md used by hand. It goes through
-  // rls_test_set_project_dependencies_cycle_guard() -- a SECURITY DEFINER
-  // bridge restricted to service_role (migration
-  // 20260907110000_rls_test_toggle_dependency_cycle_guard.sql) -- because
-  // supabase-js talks to this project only through PostgREST, which has no
-  // DDL surface for the admin client to drop or recreate a trigger directly.
-  //
-  // The trigger is restored in `finally` no matter what happens above it, so
-  // a failing assertion here can never leave the live database unguarded,
-  // and its restoration is itself verified with a real insert before the
-  // test ends, so a botched recreation cannot pass silently.
-  const disabled = await admin.rpc('rls_test_set_project_dependencies_cycle_guard', { enabled: false })
-  assert.equal(disabled.error, null)
-
-  try {
-    const { error } = await admin.from('project_dependencies')
-      .insert(edge({ prerequisite_project_id: projectA })).select('id').single()
-
-    assert.ok(error, 'a self-edge must still be refused with the trigger gone')
-    assert.equal(error!.code, '23514')
-    assert.match(error!.message, /project_dependencies_no_self_check/)
-  } finally {
-    const restored = await admin.rpc('rls_test_set_project_dependencies_cycle_guard', { enabled: true })
-    assert.equal(restored.error, null)
-  }
-
-  // The trigger must be back and actually working, not just recreated in
-  // name -- prove it with the same two-hop cycle shape the dedicated test
-  // below exercises, on a self-edge that only the trigger (not the
-  // constraint) is positioned to catch this way.
-  const first = await admin.from('project_dependencies').insert(edge()).select('id').single()
-  assert.equal(first.error, null)
-
-  const { error: reversedError } = await admin.from('project_dependencies')
-    .insert(edge({ dependent_project_id: projectB, prerequisite_project_id: projectA }))
-    .select('id').single()
-  assert.ok(reversedError, 'the cycle guard trigger must be reinstated and working')
-  assert.match(reversedError!.message, /circular dependency/)
-
-  await admin.from('project_dependencies').delete().eq('id', first.data!.id)
-})
+// project_dependencies_no_self_check (a plain CHECK constraint) is a backstop
+// that the project_dependencies_cycle_guard BEFORE ROW trigger shadows:
+// BEFORE ROW triggers fire before CHECK constraints, and a self-edge is the
+// degenerate one-node cycle, so the trigger's own recursive walk always
+// catches it first (depth 1, immediately). There is therefore no way to
+// exercise the constraint through the normal write path -- it cannot fail
+// this suite by being dropped or broken, only by inspection.
+//
+// A prior fix round added a SECURITY DEFINER RPC
+// (rls_test_set_project_dependencies_cycle_guard, migration
+// 20260907110000_rls_test_toggle_dependency_cycle_guard.sql) purely so a test
+// could disable the trigger and observe the constraint alone. That RPC was
+// removed: disabling and re-enabling the guard were two separate calls, so a
+// crashed or killed test run could leave a tenant-integrity guard off,
+// durably, for every organisation, with only this backstop constraint (not
+// the graph-walking trigger) left standing. That risk was judged worse than
+// the regression coverage it bought for a constraint the trigger already
+// shadows.
+//
+// The constraint's independent correctness was instead proved manually,
+// once, by hand-dropping and re-adding it against the live database -- see
+// "Proving the new test is a real guard" in
+// .superpowers/sdd/2026-09-06-project-dependencies/task-2-report.md (fix
+// round 1). If you are looking at this comment because you assume the
+// constraint is untested: it is untested by decision, not by accident.
 
 test('a cross-tenant prerequisite is unrepresentable', async () => {
   const { error } = await admin.from('project_dependencies')
