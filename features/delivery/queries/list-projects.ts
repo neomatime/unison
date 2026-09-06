@@ -60,7 +60,10 @@ export async function listProjects(params: { q?: string; status?: string; sort?:
     owner: row.owner_id ? memberNames.get(row.owner_id) ?? 'Former member' : 'Unassigned',
     nextGate: row.next_gate ?? '—',
     due: row.due_date
-      ? new Date(row.due_date).toLocaleDateString('en-ZA', { day: '2-digit', month: 'short', year: 'numeric' })
+      // timeZone pinned because due_date is a `date` column: new Date('2026-09-30')
+      // is UTC midnight, and any runtime west of UTC would render it as 29 Sep.
+      // `updated` below is a timestamptz and correctly keeps the local zone.
+      ? new Date(row.due_date).toLocaleDateString('en-ZA', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' })
       : '—',
     progress: `${row.progress}%`,
     updated: new Date(row.updated_at).toLocaleDateString('en-ZA', { day: '2-digit', month: 'short', year: 'numeric' }),

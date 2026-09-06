@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useActionState, useState } from 'react'
 
 import { WorkspaceHeader } from '@/components/shared/workspace-header'
-import { EntitySelectField, SelectField, TextAreaField, TextField } from '@/components/ui/form-fields'
+import { EntitySelectField, fieldClasses, FieldLabel, SelectField, TextAreaField, TextField } from '@/components/ui/form-fields'
 import { FormError, FormFooter, FormSection } from '@/components/ui/form-layout'
 import type { ProjectFormOptions } from '../queries/list-project-form-options'
 // Imported, not redeclared: these are the same arrays projectInputSchema builds
@@ -63,14 +63,19 @@ export function ProjectForm({
     <form action={formAction} className="mx-auto max-w-5xl space-y-5">
       <FormSection title="Project" description="What is being delivered, and under which framework.">
         <TextField name="name" label="Project name" required defaultValue={project?.name} />
+        {/* Inline rather than an EntitySelectField because this is the one
+            controlled select on the form — the phase list filters on it. It now
+            borrows FieldLabel and fieldClasses from form-fields rather than
+            restating them, so it cannot drift the next time fields are
+            restyled. */}
         <label className="block">
-          <span className="text-sm font-medium">Delivery framework <span className="text-destructive">*</span></span>
+          <FieldLabel label="Delivery framework" required />
           <select
             name="frameworkId"
             required
             value={frameworkId}
             onChange={(event) => setFrameworkId(event.target.value)}
-            className="mt-1.5 h-11 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/20"
+            className={fieldClasses}
           >
             <option value="">Select a framework</option>
             {options.frameworks.map((framework) => (
@@ -113,7 +118,7 @@ export function ProjectForm({
       </FormSection>
 
       <FormSection title="Notes" description="Context for the delivery team.">
-        <TextAreaField name="notes" label="Notes" defaultValue={project?.notes} />
+        <TextAreaField name="notes" label="Notes" defaultValue={project?.notes} className="md:col-span-2" />
       </FormSection>
 
       <FormError message={state?.error} />

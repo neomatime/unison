@@ -155,8 +155,19 @@ test('the project detail screen offers no archive-state control with no backing 
   // behind a confirmation -- archiving is a single click with no in-UI undo
   // once "Restore" is gone, so a bare unconfirmed submit button would be a new
   // hazard the two changes combine to create.
-  assert.match(project, /action=\{archiveProjectAction\}/, 'the archive form must post to the real server action')
+  // The form is driven through useActionState so the action's refusal has a
+  // return channel. Both names are read out of the destructure rather than
+  // hard-coded, so renaming them cannot quietly detach the form from the action.
+  const binding = project.match(/const\s*\[\s*(\w+)\s*,\s*(\w+)\s*\]\s*=\s*useActionState\(\s*archiveProjectAction/)
+  assert.ok(binding, 'the archive form must be driven by archiveProjectAction through useActionState')
+  const [, stateName, dispatchName] = binding
+  assert.match(project, new RegExp(`<form[^>]*action=\\{${dispatchName}\\}`), 'the archive form must post to the real server action')
   assert.match(project, /ConfirmationDialog[\s\S]*?onConfirm=\{[^}]*requestSubmit/, 'archiving must be confirmed before the real form submits')
+
+  // archiveProjectAction refuses on a wrong, foreign or already-archived id.
+  // That refusal returned silently, so the user confirmed an irreversible
+  // action and then saw nothing at all happen. It must reach the screen.
+  assert.match(project, new RegExp(`${stateName}\\?\\.error`), "the archive action's refusal must be rendered, not swallowed")
 })
 
 test('navigation follows the delivery-focused product structure', () => {
@@ -626,4 +637,67 @@ test('the projects register renders Health through the colour badge, not plain t
   // eslint-disable-next-line no-new-func -- evaluating the exact extracted boolean expression, not arbitrary input
   const isBadgeColumn = new Function('column', `return (${conditionSource})`) as (column: string) => boolean
   assert.equal(isBadgeColumn('Health'), true, "column === 'Health' must satisfy Cell()'s badge condition")
+})
+
+test('no rendered module declares more columns than its table will show', () => {
+  // The register silently lacked a Due Date column: registry.ts declared eight
+  // for projects, DataTable rendered `slice(0, 7)`, and the eighth disappeared.
+  // The resolution guard above could not see it -- it asserts every declared
+  // column resolves to a key the records carry, which 'Due Date' -> 'due' did.
+  // The data was fetched, formatted and mapped for every row, then cut at the
+  // last step. This asserts the other half: that a declared column is actually
+  // rendered, by holding each module's column count against the cap of the
+  // component that renders it.
+  //
+  // Both caps are read out of the components rather than restated here, so
+  // lowering a cap fails this test instead of silently truncating a register.
+  const moduleWorkspaceSource = readFileSync(join(workspace, 'features', 'product-ui', 'components', 'module-workspace.tsx'), 'utf8')
+  const domainWorkspaceSource = readFileSync(join(workspace, 'features', 'product-ui', 'components', 'domain-module-workspace.tsx'), 'utf8')
+
+  const moduleCap = Number(moduleWorkspaceSource.match(/const VISIBLE_COLUMN_CAP = (\d+)/)?.[1])
+  const domainCap = Number(domainWorkspaceSource.match(/module\.columns\.slice\(0,\s*(\d+)\)/)?.[1])
+  assert.ok(Number.isInteger(moduleCap), 'could not read VISIBLE_COLUMN_CAP from module-workspace.tsx')
+  assert.ok(Number.isInteger(domainCap), 'could not read the column slice from domain-module-workspace.tsx')
+
+  // Same split as the resolution guard above, and the same exclusions:
+  // Onboarding and Team render bespoke screens that never read module.columns.
+  const moduleWorkspaceModules = new Set(['clients', 'projects', 'tasks', 'calendar', 'knowledge', 'settings'])
+  const domainWorkspaceModules = new Set(['leads', 'quotes', 'sales', 'invoices', 'expenses', 'forecast'])
+
+  let checked = 0
+  for (const module of productModules) {
+    const cap = moduleWorkspaceModules.has(module.id) ? moduleCap
+      : domainWorkspaceModules.has(module.id) ? domainCap
+      : null
+    if (cap === null) continue
+
+    assert.ok(
+      module.columns.length <= cap,
+      `${module.id} declares ${module.columns.length} columns but its table renders only ${cap}; '${module.columns[cap]}' would never appear`,
+    )
+    checked += 1
+  }
+  assert.equal(checked, 12, `expected to check all 12 wired modules, checked ${checked}`)
+})
+
+test('the projects register offers no view it cannot render from real records', () => {
+  // Moving projects onto ModuleWorkspace inherited its view tabs, and
+  // special-workspaces.tsx registers a hard-coded board and Gantt for two of
+  // them: five invented project names in columns labelled Planning / On Track /
+  // At Risk / Review / Complete, four of which projects_status_check rejects
+  // and two of which this slice removed from the registry for that reason. A
+  // user on a register of real rows clicked 'Board' and saw five projects that
+  // do not exist. Reinstate a view here only when it reads `records`.
+  const projects = productModules.find((module) => module.id === 'projects')
+  assert.ok(projects, 'projects module definition not found')
+  assert.deepEqual(projects.views, ['List'])
+
+  const specialWorkspaces = readFileSync(join(workspace, 'features', 'product-ui', 'components', 'special-workspaces.tsx'), 'utf8')
+  for (const invented of ['Aurelia research sprint', 'Meridian Growth Programme', 'Northstar Brand Transformation']) {
+    if (!specialWorkspaces.includes(invented)) continue
+    assert.ok(
+      !projects.views.includes('Board') && !projects.views.includes('Timeline'),
+      `special-workspaces.tsx still hard-codes '${invented}', so projects must not offer the views that render it`,
+    )
+  }
 })

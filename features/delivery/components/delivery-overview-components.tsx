@@ -164,7 +164,12 @@ export function InterventionList({ rows }: { rows: AttentionRow[] }) {
   return (
     <section aria-labelledby="intervention-heading" className="overflow-hidden rounded-[10px] border border-border bg-card shadow-[0_1px_2px_rgb(16_32_46_/_0.025)]">
       <header className="relative flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4 before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:bg-danger">
-        <h2 id="intervention-heading" className="text-xs font-bold tracking-[0.12em] text-foreground uppercase">Requires intervention</h2>
+        {/* The count is disclosed because the list is capped at three. A
+            section titled "Requires intervention" showing three of eleven rows,
+            with no number anywhere in its own header, reads as complete. */}
+        <h2 id="intervention-heading" className="text-xs font-bold tracking-[0.12em] text-foreground uppercase">
+          Requires intervention{rows.length > visibleRows.length ? ` · showing ${visibleRows.length} of ${rows.length}` : ''}
+        </h2>
         <Link href="/operations/projects" className="inline-flex items-center gap-2 text-xs font-semibold text-brand hover:text-brand/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">
           View all projects <ArrowRight aria-hidden="true" className="size-4" />
         </Link>
@@ -297,7 +302,9 @@ function UpcomingKeyDates({ rows }: { rows: UpcomingProjectDate[] }) {
   const visibleRows = rows.slice(0, 4)
   return (
     <div className="border-b border-border p-5 sm:p-6 min-[1360px]:border-r min-[1360px]:border-b-0">
-      <h3 className="text-xs font-semibold tracking-[0.08em] text-[var(--briefing-muted)] uppercase">Upcoming project dates</h3>
+      <h3 className="text-xs font-semibold tracking-[0.08em] text-[var(--briefing-muted)] uppercase">
+        Upcoming project dates{rows.length > visibleRows.length ? ` · showing ${visibleRows.length} of ${rows.length}` : ''}
+      </h3>
       {visibleRows.length === 0 ? (
         <BriefingEmptyState
           icon={CalendarDays}
