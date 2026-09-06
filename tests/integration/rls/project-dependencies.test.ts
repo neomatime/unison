@@ -1,0 +1,207 @@
+import assert from 'node:assert/strict'
+import test, { after, before } from 'node:test'
+
+import { admin, cleanup, createFixtureOrg, createFixtureUser, signedInClient } from './helpers.ts'
+
+let orgId: string
+let member: { id: string; email: string; password: string }
+let outsiderOrg: string
+let outsider: { id: string; email: string; password: string }
+let frameworkId: string
+let otherFrameworkId: string
+let phaseId: string
+let otherFrameworkPhaseId: string
+let projectA: string
+let projectB: string
+let outsiderProject: string
+
+before(async () => {
+  orgId = await createFixtureOrg('project-deps')
+  member = await createFixtureUser(orgId, 'owner')
+  outsiderOrg = await createFixtureOrg('project-deps-outsider')
+  outsider = await createFixtureUser(outsiderOrg, 'owner')
+
+  const framework = await admin.from('frameworks')
+    .insert({ organization_id: orgId, name: 'PD Framework', type: 'Enterprise', version: 'v1.0' })
+    .select('id').single()
+  if (framework.error) throw framework.error
+  frameworkId = framework.data.id
+
+  const otherFramework = await admin.from('frameworks')
+    .insert({ organization_id: orgId, name: 'PD Other Framework', type: 'Operations', version: 'v1.0' })
+    .select('id').single()
+  if (otherFramework.error) throw otherFramework.error
+  otherFrameworkId = otherFramework.data.id
+
+  const phase = await admin.from('framework_phases')
+    .insert({ organization_id: orgId, framework_id: frameworkId, name: 'Build', position: 1 })
+    .select('id').single()
+  if (phase.error) throw phase.error
+  phaseId = phase.data.id
+
+  const otherPhase = await admin.from('framework_phases')
+    .insert({ organization_id: orgId, framework_id: otherFrameworkId, name: 'Elsewhere', position: 1 })
+    .select('id').single()
+  if (otherPhase.error) throw otherPhase.error
+  otherFrameworkPhaseId = otherPhase.data.id
+
+  for (const [name, target] of [['PD A', 'a'], ['PD B', 'b']] as const) {
+    const project = await admin.from('projects')
+      .insert({ organization_id: orgId, name, status: 'Active', health: 'On Track', framework_id: frameworkId })
+      .select('id').single()
+    if (project.error) throw project.error
+    if (target === 'a') projectA = project.data.id
+    else projectB = project.data.id
+  }
+
+  const outsiderFramework = await admin.from('frameworks')
+    .insert({ organization_id: outsiderOrg, name: 'PD Outsider Framework', type: 'Enterprise', version: 'v1.0' })
+    .select('id').single()
+  if (outsiderFramework.error) throw outsiderFramework.error
+
+  const foreign = await admin.from('projects')
+    .insert({ organization_id: outsiderOrg, name: 'PD Foreign', status: 'Active', health: 'On Track', framework_id: outsiderFramework.data.id })
+    .select('id').single()
+  if (foreign.error) throw foreign.error
+  outsiderProject = foreign.data.id
+})
+
+after(async () => { await cleanup([orgId, outsiderOrg], [member.id, outsider.id]) })
+
+function edge(over: Record<string, unknown> = {}) {
+  return {
+    organization_id: orgId,
+    dependent_project_id: projectA,
+    prerequisite_project_id: projectB,
+    prerequisite_framework_id: frameworkId,
+    required_status: 'Complete',
+    ...over,
+  }
+}
+
+test('a valid prerequisite edge is accepted', async () => {
+  const { data, error } = await admin.from('project_dependencies').insert(edge()).select('id').single()
+  assert.equal(error, null)
+  await admin.from('project_dependencies').delete().eq('id', data!.id)
+})
+
+test('a project cannot be its own prerequisite', async () => {
+  const { error } = await admin.from('project_dependencies')
+    .insert(edge({ prerequisite_project_id: projectA })).select('id').single()
+
+  assert.ok(error, 'a self-edge must be refused')
+  assert.equal(error!.code, '23514')
+  assert.match(error!.message, /project_dependencies_no_self_check/)
+})
+
+test('a cross-tenant prerequisite is unrepresentable', async () => {
+  const { error } = await admin.from('project_dependencies')
+    .insert(edge({ prerequisite_project_id: outsiderProject })).select('id').single()
+
+  assert.ok(error, "a prerequisite in another organisation must be refused")
+  assert.equal(error!.code, '23503')
+  assert.match(error!.message, /project_dependencies_prerequisite_fkey|project_dependencies_prerequisite_framework_fkey/)
+})
+
+test('a cross-tenant dependent is unrepresentable', async () => {
+  const { error } = await admin.from('project_dependencies')
+    .insert(edge({ dependent_project_id: outsiderProject })).select('id').single()
+
+  assert.ok(error, 'a dependent in another organisation must be refused')
+  assert.equal(error!.code, '23503')
+  assert.match(error!.message, /project_dependencies_dependent_fkey/)
+})
+
+test('a duplicate edge is refused', async () => {
+  const first = await admin.from('project_dependencies').insert(edge()).select('id').single()
+  assert.equal(first.error, null)
+
+  const { error } = await admin.from('project_dependencies').insert(edge()).select('id').single()
+  assert.ok(error, 'a duplicate edge must be refused')
+  assert.equal(error!.code, '23505')
+  assert.match(error!.message, /project_dependencies_unique/)
+
+  await admin.from('project_dependencies').delete().eq('id', first.data!.id)
+})
+
+test('a required phase from another framework is refused', async () => {
+  // The sharpest rule on this table: without it a dependency could require a
+  // phase the prerequisite's framework does not contain, and could never be
+  // satisfied by any state that project can reach.
+  const { error } = await admin.from('project_dependencies')
+    .insert(edge({ required_status: null, required_phase_id: otherFrameworkPhaseId })).select('id').single()
+
+  assert.ok(error, "another framework's phase must be refused")
+  assert.equal(error!.code, '23503')
+  assert.match(error!.message, /project_dependencies_phase_fkey/)
+})
+
+test('a required phase of the prerequisite own framework is accepted', async () => {
+  const { data, error } = await admin.from('project_dependencies')
+    .insert(edge({ required_status: null, required_phase_id: phaseId })).select('id').single()
+
+  assert.equal(error, null)
+  await admin.from('project_dependencies').delete().eq('id', data!.id)
+})
+
+test('both required states set is refused', async () => {
+  const { error } = await admin.from('project_dependencies')
+    .insert(edge({ required_status: 'Complete', required_phase_id: phaseId })).select('id').single()
+
+  assert.ok(error, 'both required states must be refused')
+  assert.equal(error!.code, '23514')
+  assert.match(error!.message, /project_dependencies_required_state_check/)
+})
+
+test('neither required state set is refused', async () => {
+  const { error } = await admin.from('project_dependencies')
+    .insert(edge({ required_status: null, required_phase_id: null })).select('id').single()
+
+  assert.ok(error, 'a dependency with no required state must be refused')
+  assert.equal(error!.code, '23514')
+  assert.match(error!.message, /project_dependencies_required_state_check/)
+})
+
+test('a mismatched prerequisite framework is refused', async () => {
+  const { error } = await admin.from('project_dependencies')
+    .insert(edge({ prerequisite_framework_id: otherFrameworkId })).select('id').single()
+
+  assert.ok(error, "a framework the prerequisite does not use must be refused")
+  assert.equal(error!.code, '23503')
+  assert.match(error!.message, /project_dependencies_prerequisite_framework_fkey/)
+})
+
+test('an outsider can neither read nor write these rows', async () => {
+  const seeded = await admin.from('project_dependencies').insert(edge()).select('id').single()
+  assert.equal(seeded.error, null)
+
+  const client = await signedInClient(outsider.email, outsider.password)
+
+  const read = await client.from('project_dependencies').select('id').eq('organization_id', orgId)
+  assert.equal(read.error, null)
+  assert.deepEqual(read.data, [], "another organisation's dependencies must not be visible")
+
+  const write = await client.from('project_dependencies').insert(edge()).select('id').single()
+  assert.ok(write.error, 'an outsider must not be able to write')
+  assert.equal(write.error!.code, '42501')
+
+  await admin.from('project_dependencies').delete().eq('id', seeded.data!.id)
+})
+
+test('a member of the organisation can read, write and delete', async () => {
+  const client = await signedInClient(member.email, member.password)
+
+  const created = await client.from('project_dependencies').insert(edge()).select('id').single()
+  assert.equal(created.error, null)
+
+  const read = await client.from('project_dependencies').select('id').eq('id', created.data!.id)
+  assert.equal(read.error, null)
+  assert.equal(read.data!.length, 1)
+
+  // Unlike projects and delivery items, this table has a delete policy.
+  const removed = await client.from('project_dependencies').delete().eq('id', created.data!.id)
+  assert.equal(removed.error, null)
+
+  const after = await client.from('project_dependencies').select('id').eq('id', created.data!.id)
+  assert.deepEqual(after.data, [], 'the deleted edge must be gone')
+})
