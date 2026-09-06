@@ -13,6 +13,7 @@ let phaseId: string
 let otherFrameworkPhaseId: string
 let projectA: string
 let projectB: string
+let projectC: string
 let outsiderProject: string
 
 before(async () => {
@@ -45,13 +46,14 @@ before(async () => {
   if (otherPhase.error) throw otherPhase.error
   otherFrameworkPhaseId = otherPhase.data.id
 
-  for (const [name, target] of [['PD A', 'a'], ['PD B', 'b']] as const) {
+  for (const [name, target] of [['PD A', 'a'], ['PD B', 'b'], ['PD C', 'c']] as const) {
     const project = await admin.from('projects')
       .insert({ organization_id: orgId, name, status: 'Active', health: 'On Track', framework_id: frameworkId })
       .select('id').single()
     if (project.error) throw project.error
     if (target === 'a') projectA = project.data.id
-    else projectB = project.data.id
+    else if (target === 'b') projectB = project.data.id
+    else projectC = project.data.id
   }
 
   const outsiderFramework = await admin.from('frameworks')
@@ -91,7 +93,12 @@ test('a project cannot be its own prerequisite', async () => {
 
   assert.ok(error, 'a self-edge must be refused')
   assert.equal(error!.code, '23514')
-  assert.match(error!.message, /project_dependencies_no_self_check/)
+  // A self-edge is the degenerate one-node cycle, and the cycle guard is a
+  // BEFORE ROW trigger, so it fires before the project_dependencies_no_self_check
+  // constraint is ever evaluated: its recursive walk starts at the prerequisite
+  // and finds the dependent at depth 1 when the two are equal. Still SQLSTATE
+  // 23514, but via the trigger's message, not the constraint's name.
+  assert.match(error!.message, /circular dependency/)
 })
 
 test('a cross-tenant prerequisite is unrepresentable', async () => {
@@ -204,4 +211,68 @@ test('a member of the organisation can read, write and delete', async () => {
 
   const after = await client.from('project_dependencies').select('id').eq('id', created.data!.id)
   assert.deepEqual(after.data, [], 'the deleted edge must be gone')
+})
+
+test('a two-hop cycle is rejected', async () => {
+  // A depends on B. B may not then depend on A.
+  const first = await admin.from('project_dependencies').insert(edge()).select('id').single()
+  assert.equal(first.error, null)
+
+  const { error } = await admin.from('project_dependencies')
+    .insert(edge({ dependent_project_id: projectB, prerequisite_project_id: projectA }))
+    .select('id').single()
+
+  assert.ok(error, 'a two-hop cycle must be refused')
+  assert.match(error!.message, /circular dependency/)
+
+  await admin.from('project_dependencies').delete().eq('id', first.data!.id)
+})
+
+test('a three-hop cycle is rejected', async () => {
+  // A -> B, B -> C, then C -> A closes the loop.
+  const ab = await admin.from('project_dependencies').insert(edge()).select('id').single()
+  assert.equal(ab.error, null)
+
+  const bc = await admin.from('project_dependencies')
+    .insert(edge({ dependent_project_id: projectB, prerequisite_project_id: projectC }))
+    .select('id').single()
+  assert.equal(bc.error, null)
+
+  const { error } = await admin.from('project_dependencies')
+    .insert(edge({ dependent_project_id: projectC, prerequisite_project_id: projectA }))
+    .select('id').single()
+
+  assert.ok(error, 'a three-hop cycle must be refused')
+  assert.match(error!.message, /circular dependency/)
+
+  await admin.from('project_dependencies').delete().in('id', [ab.data!.id, bc.data!.id])
+})
+
+test('a shared prerequisite is not a cycle', async () => {
+  // A -> C and B -> C is a diamond, not a loop. A guard that rejects this is
+  // over-broad and would refuse ordinary portfolios.
+  const ac = await admin.from('project_dependencies')
+    .insert(edge({ dependent_project_id: projectA, prerequisite_project_id: projectC }))
+    .select('id').single()
+  assert.equal(ac.error, null)
+
+  const bc = await admin.from('project_dependencies')
+    .insert(edge({ dependent_project_id: projectB, prerequisite_project_id: projectC }))
+    .select('id').single()
+  assert.equal(bc.error, null, 'two projects may share one prerequisite')
+
+  await admin.from('project_dependencies').delete().in('id', [ac.data!.id, bc.data!.id])
+})
+
+test('a long acyclic chain is accepted', async () => {
+  // A -> B -> C. The walk must terminate and permit this.
+  const ab = await admin.from('project_dependencies').insert(edge()).select('id').single()
+  assert.equal(ab.error, null)
+
+  const bc = await admin.from('project_dependencies')
+    .insert(edge({ dependent_project_id: projectB, prerequisite_project_id: projectC }))
+    .select('id').single()
+  assert.equal(bc.error, null, 'a three-project chain is legitimate')
+
+  await admin.from('project_dependencies').delete().in('id', [ab.data!.id, bc.data!.id])
 })
