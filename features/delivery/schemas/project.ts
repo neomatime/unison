@@ -1,5 +1,7 @@
 import { z } from 'zod'
 
+import { isValidIsoDate } from './date.ts'
+
 const optionalText = z.string().trim().max(500).optional().or(z.literal('')).transform((v) => v || null)
 const optionalUuid = z.string().uuid().optional().or(z.literal('')).transform((v) => v || null)
 
@@ -7,29 +9,11 @@ const optionalUuid = z.string().uuid().optional().or(z.literal('')).transform((v
 // for no stated reason, so the form refused what the database would accept.
 const optionalLongText = z.string().trim().optional().or(z.literal('')).transform((v) => v || null)
 
-// A date column rejects anything it cannot parse, and an unvalidated string
-// turned that into a Postgres error surfacing as "the project could not be
-// created" rather than a message against the field.
-//
-// Date.parse cannot do this validation: V8's legacy, non-ISO fallback parser
-// accepts strings like "31 September" and silently rolls them over to a
-// different date instead of returning NaN (confirmed against this repo's
-// Node runtime), so a refine built on it would let the exact defect this
-// field exists to catch straight through. Instead the value is required to
-// be in the yyyy-mm-dd shape the <input type="date"> the form actually uses
-// produces, and the calendar fields are round-tripped through Date.UTC to
-// catch a shape that parses but names no real day (2026-02-30).
-const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
-function isValidIsoDate(value: string): boolean {
-  if (!ISO_DATE.test(value)) return false
-  const [year, month, day] = value.split('-').map(Number)
-  const roundTripped = new Date(Date.UTC(year, month - 1, day))
-  return (
-    roundTripped.getUTCFullYear() === year &&
-    roundTripped.getUTCMonth() === month - 1 &&
-    roundTripped.getUTCDate() === day
-  )
-}
+// isValidIsoDate (see ./date.ts) is what turns a malformed or impossible date
+// into a field-level refusal instead of a Postgres error or a thrown
+// exception. The blank-first ordering below matters too: .optional().or('')
+// runs before the refine, so an empty string never reaches isValidIsoDate at
+// all — it is already `null` by the time the refine sees it.
 const optionalDate = z
   .string()
   .optional()

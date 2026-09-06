@@ -1,5 +1,7 @@
 import { z } from 'zod'
 
+import { isValidIsoDate } from './date.ts'
+
 /** Where the work is. */
 export const DELIVERY_ITEM_STATUSES = ['Not Started', 'In Progress', 'Blocked', 'Complete'] as const
 
@@ -16,9 +18,15 @@ export const DELIVERY_ITEM_HEALTHS = ['Healthy', 'Watch', 'At Risk', 'Critical']
 
 const optionalUuid = z.string().uuid().optional().or(z.literal('')).transform((value) => value || null)
 const optionalText = z.string().trim().optional().or(z.literal('')).transform((value) => value || null)
-const optionalDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Enter a date as yyyy-mm-dd.')
-  .refine((value) => new Date(`${value}T00:00:00Z`).toISOString().slice(0, 10) === value, 'That date does not exist.')
-  .optional().or(z.literal('')).transform((value) => value || null)
+// Blank-first, same as features/delivery/schemas/project.ts: .optional().or('')
+// and the transform to null run before the refine, so an empty date never
+// reaches isValidIsoDate at all. The previous ordering ran the date check on
+// the raw string first, and new Date('T00:00:00Z').toISOString() throws
+// rather than returning a value — an unhandled throw inside zod parsing
+// escapes safeParse and surfaces as a 500 instead of a field error.
+const optionalDate = z.string().optional().or(z.literal(''))
+  .transform((value) => value || null)
+  .refine((value) => value === null || isValidIsoDate(value), 'Enter a valid date, as yyyy-mm-dd.')
 
 export const deliveryItemInputSchema = z.object({
   name: z.string().trim().min(1, 'A name is required.'),
