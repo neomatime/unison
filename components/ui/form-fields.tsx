@@ -9,10 +9,10 @@ import { cn } from '@/lib/utils'
  * to be a client component.
  */
 
-const fieldClasses =
+export const fieldClasses =
   'mt-1.5 min-h-11 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/20'
 
-function FieldLabel({ label, required }: { label: string; required?: boolean }) {
+export function FieldLabel({ label, required }: { label: string; required?: boolean }) {
   return (
     <span className="text-sm font-medium text-foreground">
       {label}

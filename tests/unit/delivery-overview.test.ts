@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
+import { PROJECT_HEALTHS } from '../../features/delivery/schemas/project.ts'
 import {
   bandFor,
   HEALTH_BANDS,
@@ -112,4 +113,18 @@ test('position narrative distinguishes At Risk, Watch, and positive delivery sta
     headline: 'Delivery remains on track.',
     description: 'The active project is recorded as On Track or Healthy.',
   })
+})
+
+test('every health the schema permits is a band bandFor can return', () => {
+  // bandFor throws on an unrecognised health rather than silently reporting it
+  // as Critical, which is the right call — but it, PROJECT_HEALTHS and the
+  // projects_health_check constraint are three independent lists in three
+  // files. Widening the constraint and the zod enum without touching bandFor
+  // left the suite green and took the whole /overview page down at runtime,
+  // because getDeliveryOverview calls bandFor for every active project.
+  // This links two of the three lists so that drift is a red test instead.
+  for (const health of PROJECT_HEALTHS) {
+    assert.doesNotThrow(() => bandFor(health), `bandFor has no case for '${health}', which projectInputSchema accepts`)
+    assert.ok(HEALTH_BANDS.includes(bandFor(health)), `bandFor('${health}') returned a band outside HEALTH_BANDS`)
+  }
 })

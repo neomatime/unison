@@ -20,12 +20,17 @@ export function DeliveryBriefingHeader({ dateTime, dateLabel }: DeliveryBriefing
   const [panel, setPanel] = useState<UtilityPanelKind | null>(null)
   const { user, organization } = useShellContext()
   const firstName = user.displayName.trim().split(/\s+/)[0] || 'there'
+  // Was hard-coded to "Good afternoon", which told a 7am reader it was the
+  // afternoon — the one line on a page whose whole design argument is that
+  // everything on it is derived from data.
+  const hour = new Date().getHours()
+  const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
 
   return (
     <>
       <header className="mb-5 flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
         <div className="min-w-0">
-          <p className="text-sm font-medium text-[var(--briefing-muted)]">Good afternoon, {firstName}.</p>
+          <p className="text-sm font-medium text-[var(--briefing-muted)]">{greeting}, {firstName}.</p>
           <h1 className="mt-2 text-[1.75rem] leading-tight font-bold tracking-[-0.035em] text-foreground sm:text-[2rem]">
             Here&apos;s the delivery briefing.
           </h1>
