@@ -1,8 +1,47 @@
-'use client'
+import Link from 'next/link'
 
+import { EmptyState } from '@/components/shared/state-feedback'
 import { WorkspaceHeader } from '@/components/shared/workspace-header'
-import { RecordCollectionWorkspace } from '@/features/product-ui/components/record-collection-workspace'
-import { deliveryPhases, frameworks } from '../data'
-import { MetricCard, PhaseStepper, SectionCard } from './delivery-primitives'
+import type { FrameworkSummary } from '../queries/list-frameworks'
 
-export function FrameworksScreen(){const records=frameworks.map((item)=>({id:item.id,name:item.name,context:`${item.type} delivery framework`,type:item.type,owner:item.owner,status:item.review==='Current'?'Published':'Under Review',projects:String(item.projects),version:item.version,review:item.review,health:item.health,updated:item.updated}));return <><WorkspaceHeader category="Delivery" title="Project Frameworks" description="Define, manage and govern reusable delivery methodologies across the organisation." action="New Framework" actionHref="/delivery/frameworks/new"/><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-8">{[['Published','6','Current standards'],['Draft','2','In preparation'],['Under Review','3','Governance review'],['Projects Covered','42','91% adoption'],['Phases','48','Across frameworks'],['Gates','39','Controlled exits'],['Artefacts','126','74 mandatory'],['Health','94%','Framework coverage']].map(([label,value,detail])=><MetricCard key={label} label={label} value={value} detail={detail}/>)}</div><SectionCard title="Default delivery lifecycle" description="The common governed path used by enterprise frameworks." className="mt-5"><div className="p-5"><PhaseStepper phases={deliveryPhases}/></div></SectionCard><div className="mt-5"><RecordCollectionWorkspace config={{title:'Framework Register',singular:'Framework',description:'Reusable delivery methodologies and version-controlled governance standards.',primaryAction:'New Framework',records,recordHref:(record)=>`/delivery/frameworks/${record.id}`,filters:['Type','Owner','Status','Health'],columns:[{id:'name',label:'Framework'},{id:'type',label:'Type'},{id:'owner',label:'Owner'},{id:'projects',label:'Projects'},{id:'version',label:'Version'},{id:'review',label:'Review'},{id:'status',label:'Status'},{id:'updated',label:'Updated'}],fields:[{id:'name',label:'Framework Name',required:true},{id:'code',label:'Framework Code',required:true},{id:'context',label:'Description',type:'textarea',required:true},{id:'type',label:'Type',type:'select',options:['Enterprise','Technology','Operations','Compliance','Commercial']},{id:'owner',label:'Owner'},{id:'status',label:'Status',type:'select',options:['Draft','Under Review','Published','Deprecated','Archived']}],contextualActions:['Publish','Create New Version','Compare Versions'],emptyDescription:'Create the first framework to standardise governed project execution.'}}/></div></>}
+export function FrameworksScreen({ frameworks }: { frameworks: FrameworkSummary[] }) {
+  return <>
+    <WorkspaceHeader
+      category="Delivery"
+      title="Project Frameworks"
+      description="The delivery methodologies this organisation governs projects with."
+      action="New Framework"
+      actionHref="/delivery/frameworks/new"
+    />
+    <section className="overflow-hidden rounded-xl border border-border bg-card">
+      {frameworks.length === 0 ? <EmptyState /> : (
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[640px] text-left">
+            <thead>
+              <tr className="bg-muted/35 text-[0.65rem] font-semibold tracking-[0.08em] text-muted-foreground uppercase">
+                {['Framework', 'Type', 'Version', 'Phases', 'Projects'].map((heading) => (
+                  <th key={heading} className="px-4 py-3">{heading}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {frameworks.map((framework) => (
+                <tr key={framework.id} className="border-t border-border hover:bg-muted/25">
+                  <td className="px-4 py-3.5">
+                    <Link href={`/delivery/frameworks/${framework.id}`} className="text-sm font-semibold text-foreground hover:text-brand">
+                      {framework.name}
+                    </Link>
+                  </td>
+                  <td className="px-4 py-3.5 text-xs text-muted-foreground">{framework.type ?? '—'}</td>
+                  <td className="px-4 py-3.5 text-xs text-muted-foreground">{framework.version ?? '—'}</td>
+                  <td className="px-4 py-3.5 text-xs">{framework.phaseCount}</td>
+                  <td className="px-4 py-3.5 text-xs">{framework.projectCount}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  </>
+}

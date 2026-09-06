@@ -2,17 +2,34 @@
 
 import { WorkspaceHeader } from '@/components/shared/workspace-header'
 import { RecordCollectionWorkspace } from '@/features/product-ui/components/record-collection-workspace'
-import { deliveryMetrics, deliveryPhases } from '../data'
+import { deliveryMetrics } from '../data'
 import { portfolios } from '../portfolio-data'
 import { MetricGrid, PhaseStepper, RiskList, SectionCard } from './delivery-primitives'
 
 const portfolioMetrics = deliveryMetrics.map((item, index) => index === 0 ? ['Active Portfolios', '3', '8 active programmes'] as const : item)
 
+// Portfolio is still its own unconnected fixture world (portfolio-data.ts),
+// separate from the real per-framework phases the Frameworks module now
+// reads from framework_phases. This distribution stepper is illustrative
+// copy for that fixture world, not a claim about any one framework's phases,
+// so it stays local here rather than being reintroduced into delivery/data.ts
+// as a shared export.
+const illustrativePhases = [
+  { name: 'Initiate', projects: 4 },
+  { name: 'Discover', projects: 6 },
+  { name: 'Design', projects: 5 },
+  { name: 'Build', projects: 9 },
+  { name: 'Test', projects: 4 },
+  { name: 'Ready', projects: 3 },
+  { name: 'Deploy', projects: 2 },
+  { name: 'Measure', projects: 3 },
+] as const
+
 export function PortfolioScreen() {
   return <>
     <WorkspaceHeader category="Delivery" title="Project Portfolio" description="Monitor programme health, portfolio risk, governance performance and delivery outcomes." action="New Portfolio" actionHref="/delivery/portfolio/new" />
     <MetricGrid items={portfolioMetrics} />
-    <SectionCard title="Portfolio distribution across framework" description="Project concentration by lifecycle phase." className="mt-5"><div className="p-5"><PhaseStepper phases={deliveryPhases} /></div></SectionCard>
+    <SectionCard title="Portfolio distribution across framework" description="Project concentration by lifecycle phase." className="mt-5"><div className="p-5"><PhaseStepper phases={illustrativePhases} /></div></SectionCard>
     <div className="mt-5"><RecordCollectionWorkspace config={{
       title:'Portfolio Register', singular:'Portfolio', description:'Governed portfolios in the active organization.', primaryAction:'New Portfolio', records:portfolios,
       filters:['Owner','Sponsor','Framework','Health','Date'],

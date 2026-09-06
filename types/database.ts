@@ -130,6 +130,7 @@ export type Database = {
       }
       framework_phases: {
         Row: {
+          archived_at: string | null
           framework_id: string
           id: string
           name: string
@@ -137,6 +138,7 @@ export type Database = {
           position: number
         }
         Insert: {
+          archived_at?: string | null
           framework_id: string
           id?: string
           name: string
@@ -144,6 +146,7 @@ export type Database = {
           position: number
         }
         Update: {
+          archived_at?: string | null
           framework_id?: string
           id?: string
           name?: string
@@ -474,6 +477,10 @@ export type Database = {
           p_organization_id: string
           p_token_hash: string
         }
+        Returns: undefined
+      }
+      reorder_framework_phases: {
+        Args: { p_framework_id: string; p_phase_ids: string[] }
         Returns: undefined
       }
       rls_test_give_azure_identity: {

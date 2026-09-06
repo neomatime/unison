@@ -7,12 +7,16 @@ import { listProjectFormOptions } from '@/features/delivery/queries/list-project
 
 export default async function Page({ params }: { params: Promise<{ projectId: string }> }) {
   const { projectId } = await params
-  // Sequential rather than Promise.all: the options depend on the project. The
-  // owner and client pickers must retain this project's current selections even
-  // when that member has been removed or that client archived, or the select
-  // falls back to its empty option and saving writes null over them.
+  // Sequential rather than Promise.all: the options depend on the project. All
+  // four pickers—owner, client, phase, and framework—must include the current
+  // selection to handle removal, archival, or fallback to null.
   const project = await getProject(projectId)
   if (!project) notFound()
-  const options = await listProjectFormOptions({ ownerId: project.owner_id, clientId: project.client_id })
+  const options = await listProjectFormOptions({
+    ownerId: project.owner_id,
+    clientId: project.client_id,
+    phaseId: project.phase_id,
+    frameworkId: project.framework_id,
+  })
   return <ProjectForm mode="edit" project={project} action={updateProjectAction.bind(null, projectId)} options={options} />
 }

@@ -5,6 +5,23 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+/**
+ * Whether a route param looks like a Postgres `uuid`, before it ever reaches
+ * a query.
+ *
+ * Postgres rejects a non-uuid literal (error 22P02) before RLS is consulted,
+ * so a malformed id thrown straight at `.eq('id', value)` surfaces as a 500
+ * rather than the 404 a missing row would produce. A malformed id is a miss,
+ * not a fault — checking it here, inside the id-keyed queries themselves,
+ * means every caller inherits the guard instead of each route copying its
+ * own regex.
+ */
+export function isUuid(value: string): boolean {
+  return UUID.test(value)
+}
+
 /**
  * Formats a timestamp for display in a record. Shared so every connected module
  * renders dates identically rather than each picking its own locale and options.

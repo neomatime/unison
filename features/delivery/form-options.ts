@@ -71,3 +71,59 @@ export function selectClientOptions(
 
   return [...open, { id: retained.id, name: `${retained.name} (archived)` }]
 }
+
+export type SelectableFramework = { id: string; name: string; archived_at: string | null }
+
+/**
+ * Unarchived frameworks, plus the project's current framework when it has
+ * since been archived. Identical reasoning to selectClientOptions:
+ * `frameworkId` is required and rendered as a controlled `<select>` in
+ * ProjectForm, so a missing option does not fall back to an empty choice —
+ * `selectedIndex` becomes -1, the field renders blank, and a `required`
+ * select with nothing selected refuses to submit. Editing any other field on
+ * the project became impossible, and the only escape (choosing a different
+ * framework) re-filtered the phase list and silently nulled phase_id too.
+ */
+export function selectFrameworkOptions(
+  frameworks: ReadonlyArray<SelectableFramework>,
+  currentFrameworkId?: string | null,
+): EntityOption[] {
+  const open = frameworks
+    .filter((framework) => framework.archived_at === null)
+    .map((framework) => ({ id: framework.id, name: framework.name }))
+
+  if (!currentFrameworkId || open.some((option) => option.id === currentFrameworkId)) return open
+
+  const retained = frameworks.find((framework) => framework.id === currentFrameworkId)
+  if (!retained) return open
+
+  return [...open, { id: retained.id, name: `${retained.name} (archived)` }]
+}
+
+export type SelectablePhase = { id: string; name: string; frameworkId: string; archived_at: string | null }
+export type PhaseOption = { id: string; name: string; frameworkId: string }
+
+/**
+ * Unarchived phases, plus the project's current phase when it has since been
+ * archived. Identical reasoning to selectOwnerOptions: `phaseId` is optional,
+ * so a missing option means the next unrelated edit silently writes
+ * phase_id: null over a recorded governance fact.
+ *
+ * Keeps `frameworkId` because ProjectForm filters the list client-side when the
+ * framework changes; an option without it would vanish from the picker.
+ */
+export function selectPhaseOptions(
+  phases: ReadonlyArray<SelectablePhase>,
+  currentPhaseId?: string | null,
+): PhaseOption[] {
+  const open = phases
+    .filter((phase) => phase.archived_at === null)
+    .map((phase) => ({ id: phase.id, name: phase.name, frameworkId: phase.frameworkId }))
+
+  if (!currentPhaseId || open.some((option) => option.id === currentPhaseId)) return open
+
+  const retained = phases.find((phase) => phase.id === currentPhaseId)
+  if (!retained) return open
+
+  return [...open, { id: retained.id, name: `${retained.name} (archived)`, frameworkId: retained.frameworkId }]
+}
