@@ -776,3 +776,50 @@ this class of drift; this module should too.
 `tests/unit/delivery-briefing-ui.test.ts` slice component source between `function`
 keywords, so each slice captures interstitial code past its target function body.
 Harmless today — no asserted token collides — but a known limitation of the approach.
+
+## From the project-dependencies slice (2026-09-07)
+
+**Picker retention is not implemented for dependencies, by decision.** Retention
+exists to stop an HTML `select` whose `defaultValue` matches no option falling
+back to its first and writing the wrong value over recorded data. That failure
+needs an *edit* form with an existing value; this slice ships add-and-remove
+only, so every picker starts empty and there is nothing to mismatch. Building
+the functions anyway would have been three unused exports.
+
+The display half IS implemented: `list-project-dependencies.ts` resolves a
+removed owner to `Former member` rather than a blank or a raw uuid.
+
+**When an edit path is added, it must bring the retention functions with it.**
+This defect class has been found five times in this codebase — owner, client,
+phase, framework and delivery items — and an edit form is exactly where it
+appears. `features/delivery/form-options.ts` holds the pattern.
+
+**The cycle guard's advisory lock is unproven by the test suite.** The trigger
+takes `pg_advisory_xact_lock(hashtext(organization_id::text))` before walking
+the graph, because two transactions can each insert an individually-acyclic edge
+that jointly forms a cycle. A single-threaded suite cannot exercise that. Proving
+it needs a harness that opens two overlapping transactions and interleaves their
+inserts — worth building if dependency editing ever becomes concurrent in
+practice. The lock is present and correctly keyed; only its behaviour under real
+concurrency is unverified.
+
+**`project_dependencies_no_self_check` has no automated test, by decision.**
+The `BEFORE ROW` cycle trigger fires before CHECK constraints, and a self-edge is
+a one-hop cycle, so the trigger always intercepts it and the constraint is never
+reached through the normal write path. It remains as a backstop.
+
+It was proved manually against `unison-uat`: with the cycle trigger dropped, an
+attempted self-edge was still refused with SQLSTATE `23514` naming
+`project_dependencies_no_self_check`; with the constraint also dropped, the same
+insert succeeded — confirming the constraint, not the trigger, was doing the
+refusing. Both were then restored and verified. A fix round briefly added a
+`service_role` RPC to toggle the trigger so a test could reach the constraint;
+it was removed because disable and re-enable were two separate calls, leaving a
+durable window with cycle protection off for every tenant if a run died between
+them. See the comment at `tests/integration/rls/project-dependencies.test.ts`.
+
+**Roughly eleven rows in `supabase_migrations.schema_migrations`** dated
+2026-04-19 to 2026-04-27 have no matching files on disk — remnants of the
+booking schema that `unison-uat` was reset from on 2026-08-11. Harmless, since
+the ledger is not replayed, but they are noise that would make a genuinely stale
+row harder to spot later. Worth a one-line cleanup at some point.
