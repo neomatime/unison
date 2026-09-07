@@ -25,11 +25,15 @@ export async function deleteProjectDependencyAction(
   // filter is wrong deletes nothing rather than something else.
   const { data, error } = await supabase.from('project_dependencies')
     .delete().eq('id', parsed.data.id).eq('organization_id', organization.id)
-    .select('id')
+    .select('id, prerequisite_project_id')
 
   if (error) return { error: 'That dependency could not be removed.' }
   if (!data || data.length === 0) return { error: 'That dependency no longer exists, or is not yours.' }
 
+  // Both ends of the removed edge change: see the matching comment in
+  // create-project-dependency.ts. The prerequisite id is only known from the
+  // deleted row itself, so it is read back from .select() rather than the form.
   revalidatePath(`/operations/projects/${parsed.data.projectId}`)
+  revalidatePath(`/operations/projects/${data[0].prerequisite_project_id}`)
   return {}
 }

@@ -138,7 +138,13 @@ function DependsOnRow({ row, projectId }: { row: DependencyRow; projectId: strin
 
   return (
     <tr className="border-t border-border align-top">
-      <td className="px-4 py-3"><Link href={`/operations/projects/${row.projectId}`} className="text-sm font-semibold text-foreground hover:text-brand">{row.projectName}</Link></td>
+      <td className="px-4 py-3">
+        <Link href={`/operations/projects/${row.projectId}`} className="text-sm font-semibold text-foreground hover:text-brand">{row.projectName}</Link>
+        {/* The note is the user's own words about why the dependency exists.
+            Captured on the add form and stored, so it must be readable back --
+            a field rendered nowhere is a capability the product only claims. */}
+        {row.notes ? <p className="mt-1 text-xs leading-5 text-muted-foreground">{row.notes}</p> : null}
+      </td>
       <td className="px-4 py-3 text-xs">{row.requiredState}</td>
       <td className="px-4 py-3 align-top">
         <DependencyStatusBadge status={row.status} />
@@ -179,7 +185,12 @@ function DependedOnByTable({ rows }: { rows: DependencyRow[] }) {
         </tr></thead>
         <tbody>{rows.map((row) => (
           <tr key={row.id} className="border-t border-border align-top">
-            <td className="px-4 py-3"><Link href={`/operations/projects/${row.projectId}`} className="text-sm font-semibold text-foreground hover:text-brand">{row.projectName}</Link></td>
+            <td className="px-4 py-3">
+              <Link href={`/operations/projects/${row.projectId}`} className="text-sm font-semibold text-foreground hover:text-brand">{row.projectName}</Link>
+              {/* This is the case that matters most: a PM reading another
+                  team's note about why THEIR project is a prerequisite here. */}
+              {row.notes ? <p className="mt-1 text-xs leading-5 text-muted-foreground">{row.notes}</p> : null}
+            </td>
             <td className="px-4 py-3 text-xs">{row.requiredState}</td>
             <td className="px-4 py-3 align-top">
               <DependencyStatusBadge status={row.status} />

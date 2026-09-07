@@ -123,6 +123,26 @@ test('an unmet requirement due inside 30 days is At Risk', () => {
   assert.equal(result.status, 'At Risk')
 })
 
+test('a dependency due today reads "is required today", not "within 0 days"', () => {
+  const result = deriveDependencyStatus(
+    requirement({ requiredByDate: TODAY }),
+    prerequisite({ status: 'Active' }),
+    TODAY,
+  )
+  assert.equal(result.status, 'At Risk')
+  assert.equal(result.reason, 'Customer Data Migration has not reached Complete, and is required today.')
+})
+
+test('a dependency due tomorrow reads "within 1 day", not "within 1 days"', () => {
+  const result = deriveDependencyStatus(
+    requirement({ requiredByDate: '2026-09-07' }),
+    prerequisite({ status: 'Active' }),
+    TODAY,
+  )
+  assert.equal(result.status, 'At Risk')
+  assert.equal(result.reason, 'Customer Data Migration has not reached Complete, and is required within 1 day.')
+})
+
 test('an unmet requirement on an At Risk prerequisite is At Risk with no date', () => {
   const result = deriveDependencyStatus(requirement(), prerequisite({ health: 'At Risk' }), TODAY)
   assert.equal(result.status, 'At Risk')

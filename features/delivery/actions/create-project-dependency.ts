@@ -57,6 +57,11 @@ export async function createProjectDependencyAction(
     return { error: 'The dependency could not be created. Check the prerequisite, required state and owner.' }
   }
 
+  // Both ends of the edge change what they show: the dependent project gains
+  // a row under "This project depends on", and the prerequisite gains one
+  // under "Projects that depend on this". Revalidating only the dependent's
+  // page would leave the prerequisite's page stale in the router cache.
   revalidatePath(`/operations/projects/${dependentProjectId}`)
+  revalidatePath(`/operations/projects/${parsed.data.prerequisiteProjectId}`)
   return {}
 }

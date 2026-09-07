@@ -7,6 +7,7 @@ import {
   HEALTH_BANDS,
   isDateOverdue,
   isDateWithinDays,
+  PROJECT_DATE_WINDOW_DAYS,
   type AttentionRow,
   type DeliveryOverview,
   type UpcomingProjectDate,
@@ -15,7 +16,6 @@ import { summariseDeliveryItems } from '../item-briefing.ts'
 
 export type { AttentionRow, DeliveryOverview, UpcomingProjectDate }
 
-const PROJECT_DATE_WINDOW_DAYS = 30
 const NEXT_SEVEN_DAYS = 7
 
 export async function getDeliveryOverview(): Promise<DeliveryOverview> {

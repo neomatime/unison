@@ -823,3 +823,22 @@ them. See the comment at `tests/integration/rls/project-dependencies.test.ts`.
 booking schema that `unison-uat` was reset from on 2026-08-11. Harmless, since
 the ledger is not replayed, but they are noise that would make a genuinely stale
 row harder to spot later. Worth a one-line cleanup at some point.
+
+**Any dependency naming a project as prerequisite freezes that project's
+framework.** `project_dependencies_prerequisite_framework_fkey` is
+`ON UPDATE NO ACTION`, so once another project's dependency row names project P
+as its prerequisite, P's `framework_id` can no longer be changed —
+`update-project.ts` now raises SQLSTATE `23503` on the attempt. The fix landed
+in this wave only improves the message so the owner of P can discover the
+cause; it does not remove the freeze. The deeper fix is making
+`prerequisite_framework_id` nullable and required exactly when
+`required_phase_id` is set, which would limit the freeze to phase-based
+dependencies — the only ones that actually need the framework pinned, since a
+status-based dependency (`Active` / `Complete`) does not care which framework
+the prerequisite uses. Both composite foreign keys on this table are MATCH
+SIMPLE, so a null `prerequisite_framework_id` would satisfy them trivially and
+not block anything.
+
+**The cycle tests prove the recursive CTE, not the advisory lock.** They run
+single-threaded, one insert at a time, so a full green suite is evidence the
+graph walk is correct, not evidence the concurrency hole noted above is closed.

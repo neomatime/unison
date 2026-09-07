@@ -29,6 +29,14 @@ export function bandFor(health: string): HealthBand {
   }
 }
 
+/**
+ * The shared 30-day lookahead window. `delivery-overview.ts` uses it for
+ * upcoming project dates and `dependency-status.ts` uses it for the At Risk
+ * threshold -- the two are deliberately the same window, so it lives here
+ * once rather than as two independent `30`s bound only by a comment.
+ */
+export const PROJECT_DATE_WINDOW_DAYS = 30
+
 export type PhaseColumn = {
   phase: string
   position: number

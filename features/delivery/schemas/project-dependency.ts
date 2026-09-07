@@ -26,8 +26,13 @@ export const DEPENDENCY_CRITICALITIES = ['Standard', 'Critical'] as const
  */
 export const projectDependencyInputSchema = z.object({
   prerequisiteProjectId: z.string().uuid('Choose a prerequisite project.'),
+  // No trailing /i: the CHECK constraint compares required_status
+  // case-sensitively, and splitRequiredState below compares `kind === 'phase'`
+  // case-sensitively too, so an uppercase `PHASE:` must not match here either
+  // -- it would otherwise route a uuid into requiredStatus. The uuid itself
+  // stays case-insensitive, since genuine uuid casing varies.
   requiredState: z.string().regex(
-    /^(status:(Active|Complete)|phase:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i,
+    /^(status:(Active|Complete)|phase:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$/,
     'Choose a required state.',
   ),
   criticality: z.enum(DEPENDENCY_CRITICALITIES),

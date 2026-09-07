@@ -122,9 +122,8 @@ test('a project cannot be its own prerequisite', async () => {
 //
 // The constraint's independent correctness was instead proved manually,
 // once, by hand-dropping and re-adding it against the live database -- see
-// "Proving the new test is a real guard" in
-// .superpowers/sdd/2026-09-06-project-dependencies/task-2-report.md (fix
-// round 1). If you are looking at this comment because you assume the
+// docs/follow-ups.md, under "From the project-dependencies slice
+// (2026-09-07)". If you are looking at this comment because you assume the
 // constraint is untested: it is untested by decision, not by accident.
 
 test('a cross-tenant prerequisite is unrepresentable', async () => {
@@ -204,7 +203,7 @@ test('a mismatched prerequisite framework is refused', async () => {
   assert.match(error!.message, /project_dependencies_prerequisite_framework_fkey/)
 })
 
-test('an outsider can neither read nor write these rows', async () => {
+test('an outsider can neither read, write nor delete these rows', async () => {
   const seeded = await admin.from('project_dependencies').insert(edge()).select('id').single()
   assert.equal(seeded.error, null)
 
@@ -217,6 +216,18 @@ test('an outsider can neither read nor write these rows', async () => {
   const write = await client.from('project_dependencies').insert(edge()).select('id').single()
   assert.ok(write.error, 'an outsider must not be able to write')
   assert.equal(write.error!.code, '42501')
+
+  // This is the only table in the schema with a delete policy, which makes
+  // delete the most novel thing to pin from the outside. The USING clause
+  // filters by organisation membership, so an outsider's delete matches zero
+  // rows rather than raising 42501 -- no error, an empty data array, and the
+  // row must still exist afterwards.
+  const remove = await client.from('project_dependencies').delete().eq('id', seeded.data!.id).select('id')
+  assert.equal(remove.error, null)
+  assert.deepEqual(remove.data, [], "an outsider's delete must match no rows")
+
+  const stillThere = await admin.from('project_dependencies').select('id').eq('id', seeded.data!.id)
+  assert.equal(stillThere.data?.length, 1, "another organisation's row must survive an outsider's delete")
 
   await admin.from('project_dependencies').delete().eq('id', seeded.data!.id)
 })
@@ -239,6 +250,9 @@ test('a member of the organisation can read, write and delete', async () => {
   assert.deepEqual(after.data, [], 'the deleted edge must be gone')
 })
 
+// These run single-threaded, one insert at a time, so they exercise the
+// trigger's recursive CTE walk -- not the pg_advisory_xact_lock it takes
+// first. That lock only matters under genuine concurrency; see docs/follow-ups.md.
 test('a two-hop cycle is rejected', async () => {
   // A depends on B. B may not then depend on A.
   const first = await admin.from('project_dependencies').insert(edge()).select('id').single()

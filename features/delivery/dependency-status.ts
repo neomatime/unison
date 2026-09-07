@@ -1,3 +1,5 @@
+import { PROJECT_DATE_WINDOW_DAYS as AT_RISK_WINDOW_DAYS } from './overview-bands.ts'
+
 /**
  * Derives a dependency's status from the prerequisite's CURRENT state.
  *
@@ -8,9 +10,6 @@
  * Pure, and free of `server-only`, so it is unit testable -- the same split
  * overview-bands.ts and item-briefing.ts already use.
  */
-
-/** Matches PROJECT_DATE_WINDOW_DAYS in queries/delivery-overview.ts deliberately. */
-const AT_RISK_WINDOW_DAYS = 30
 
 export type DependencyStatus = 'Satisfied' | 'Pending' | 'At Risk' | 'Blocked'
 
@@ -62,7 +61,13 @@ export function deriveDependencyStatus(
     return { status: 'Blocked', reason: `${prerequisite.name} has not reached ${target}, and the required-by date has passed.` }
   }
   if (daysRemaining !== null && daysRemaining <= AT_RISK_WINDOW_DAYS) {
-    return { status: 'At Risk', reason: `${prerequisite.name} has not reached ${target}, and is required within ${daysRemaining} days.` }
+    // 0 and 1 are both reachable -- a dependency due today is correctly At
+    // Risk rather than Blocked, and "within 1 days" / "within 0 days" are not
+    // sentences a PM should have to read past.
+    const dueCopy = daysRemaining === 0
+      ? 'is required today'
+      : `is required within ${daysRemaining} ${daysRemaining === 1 ? 'day' : 'days'}`
+    return { status: 'At Risk', reason: `${prerequisite.name} has not reached ${target}, and ${dueCopy}.` }
   }
   if (prerequisite.health === 'At Risk' || prerequisite.health === 'Critical') {
     return { status: 'At Risk', reason: `${prerequisite.name} has not reached ${target}, and its own health is ${prerequisite.health}.` }

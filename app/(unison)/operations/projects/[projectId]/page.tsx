@@ -40,21 +40,24 @@ export default async function Page({ params }: { params: Promise<{ projectId: st
     ? members.find((member) => member.userId === project.owner_id)?.displayName ?? 'Former member'
     : 'Unassigned'
 
-  // The Delivery tab's own hierarchy, plus the framework's two level labels so
-  // the tab can head level-1 and level-2 rows with the framework's own words
-  // rather than an invented default.
-  const items = await listDeliveryItems(projectId)
+  // The Delivery tab's own hierarchy, the Dependencies tab's two directions,
+  // and the picker options for its add form -- none of these three depends on
+  // either of the others, so they run together rather than adding sequential
+  // round trips to the render. (Unlike DeliveryItemsPanel's per-item retention
+  // case, there is nothing here that varies by which row is being edited.)
+  // Each of listProjectDependencies and listDependencyFormOptions also calls
+  // listOrganizationMembers, as does this page above when there is an owner
+  // to resolve; that function is wrapped in React's cache() precisely so
+  // those calls collapse into one RPC round trip rather than three.
+  const [items, { dependsOn, dependedOnBy }, dependencyOptions] = await Promise.all([
+    listDeliveryItems(projectId),
+    listProjectDependencies(projectId),
+    listDependencyFormOptions(projectId),
+  ])
   const labels = {
     level1Label: project.frameworks?.level_1_label ?? null,
     level2Label: project.frameworks?.level_2_label ?? null,
   }
-
-  // The Dependencies tab's two directions, plus the picker options for its
-  // add form -- fetched alongside the Delivery tab's own data rather than
-  // lazily, since (unlike DeliveryItemsPanel's per-item retention case) there
-  // is nothing here that varies by which row is being edited.
-  const { dependsOn, dependedOnBy } = await listProjectDependencies(projectId)
-  const dependencyOptions = await listDependencyFormOptions(projectId)
 
   return <ProjectDetailScreen items={items} labels={labels} dependsOn={dependsOn} dependedOnBy={dependedOnBy} options={dependencyOptions} project={{
     id: project.id,
