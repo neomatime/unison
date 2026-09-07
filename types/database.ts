@@ -440,6 +440,100 @@ export type Database = {
         }
         Relationships: []
       }
+      project_dependencies: {
+        Row: {
+          created_at: string
+          criticality: string
+          dependency_owner_id: string | null
+          dependent_project_id: string
+          id: string
+          notes: string | null
+          organization_id: string
+          prerequisite_framework_id: string
+          prerequisite_project_id: string
+          relationship_type: string
+          required_by_date: string | null
+          required_phase_id: string | null
+          required_status: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          criticality?: string
+          dependency_owner_id?: string | null
+          dependent_project_id: string
+          id?: string
+          notes?: string | null
+          organization_id: string
+          prerequisite_framework_id: string
+          prerequisite_project_id: string
+          relationship_type?: string
+          required_by_date?: string | null
+          required_phase_id?: string | null
+          required_status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          criticality?: string
+          dependency_owner_id?: string | null
+          dependent_project_id?: string
+          id?: string
+          notes?: string | null
+          organization_id?: string
+          prerequisite_framework_id?: string
+          prerequisite_project_id?: string
+          relationship_type?: string
+          required_by_date?: string | null
+          required_phase_id?: string | null
+          required_status?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_dependencies_dependent_fkey"
+            columns: ["dependent_project_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id", "organization_id"]
+          },
+          {
+            foreignKeyName: "project_dependencies_organization_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_dependencies_owner_fkey"
+            columns: ["organization_id", "dependency_owner_id"]
+            isOneToOne: false
+            referencedRelation: "memberships"
+            referencedColumns: ["organization_id", "user_id"]
+          },
+          {
+            foreignKeyName: "project_dependencies_phase_fkey"
+            columns: ["prerequisite_framework_id", "required_phase_id"]
+            isOneToOne: false
+            referencedRelation: "framework_phases"
+            referencedColumns: ["framework_id", "id"]
+          },
+          {
+            foreignKeyName: "project_dependencies_prerequisite_fkey"
+            columns: ["prerequisite_project_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id", "organization_id"]
+          },
+          {
+            foreignKeyName: "project_dependencies_prerequisite_framework_fkey"
+            columns: ["prerequisite_project_id", "prerequisite_framework_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id", "framework_id"]
+          },
+        ]
+      }
       projects: {
         Row: {
           archived_at: string | null
