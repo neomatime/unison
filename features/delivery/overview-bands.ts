@@ -71,11 +71,24 @@ export type DeliveryOverview = {
   portfolioHealth: number | null
   /** The single framework described by the lifecycle distribution. */
   framework: { id: string; name: string } | null
-  /** Active projects belonging to the selected lifecycle framework. */
-  lifecycleProjectCount: number
-  /** Selected-framework projects that do not have a recorded phase. */
-  lifecycleUnassignedPhaseCount: number
-  columns: PhaseColumn[]
+  /** Delivery items belonging to the charted framework's projects. */
+  leadingFrameworkItemCount: number
+  /** Of those, the ones carrying no phase. */
+  itemsWithoutPhaseCount: number
+  /**
+   * Delivery items by phase, for the charted framework. Named for its unit
+   * because it used to carry projects: a field whose meaning changes while its
+   * name stays is how a later reader is misled.
+   *
+   * Empty when there are no items — see the honest-zero rule in item-briefing.ts.
+   */
+  itemPhaseColumns: PhaseColumn[]
+  /** Blocked delivery items across every active project. */
+  blockedItemCount: number
+  /** Distinct projects those blocked items sit in. */
+  blockedItemProjectCount: number
+  /** Delivery items across every active project, blocked or not. */
+  activeItemCount: number
   /** All active At Risk or Critical projects, in deterministic triage order. */
   attention: AttentionRow[]
   /** Active project due dates in the end-exclusive 30-day window. */
