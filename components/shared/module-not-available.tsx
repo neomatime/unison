@@ -17,9 +17,9 @@ export function ModuleNotAvailable({ moduleId, tier }: { moduleId: UnisonModuleI
   // nesting one inside the other is invalid HTML and a second landmark.
   return (
     <div className="flex min-h-[60vh] items-center justify-center px-6">
-      <section className="max-w-md rounded-xl border border-border bg-card p-8 text-center shadow-sm">
-        <p className="text-xs font-semibold tracking-[0.09em] text-muted-foreground uppercase">Not included</p>
-        <h1 className="mt-2 text-2xl font-semibold text-foreground">
+      <section className="max-w-md rounded-none border border-border bg-card p-8 text-center">
+        <p className="unison-metric-label text-xs text-muted-foreground">Not included</p>
+        <h1 className="unison-page-title mt-2 text-xl text-foreground">
           {label} isn&rsquo;t part of {current.label}
         </h1>
         {upgrade ? (
@@ -31,7 +31,7 @@ export function ModuleNotAvailable({ moduleId, tier }: { moduleId: UnisonModuleI
         )}
         <Link
           href="/overview"
-          className="mt-6 inline-flex rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
+          className="mt-6 inline-flex rounded-none bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
         >
           Back to Overview
         </Link>

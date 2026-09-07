@@ -22,19 +22,17 @@
     --brand: var(--tenant-brand);
     --brand-soft: var(--tenant-brand-soft);
 
-    /* Tailwind radius utilities resolve these at runtime. Remapping the full
-       scale makes legacy rounded-xl/2xl surfaces near-sharp without hundreds
-       of page-specific replacements; rounded-full remains available for
-       avatars, status dots and lifecycle nodes. */
-    --radius: 4px;
-    --radius-xs: 1px;
-    --radius-sm: 2px;
-    --radius-md: 3px;
-    --radius-lg: 4px;
-    --radius-xl: 4px;
-    --radius-2xl: 4px;
-    --radius-3xl: 4px;
-    --radius-4xl: 4px;
+    /* Tailwind radius utilities resolve these at runtime. The complete scale
+       is square; rounded-full remains available only for semantic circles. */
+    --radius: 0px;
+    --radius-xs: 0px;
+    --radius-sm: 0px;
+    --radius-md: 0px;
+    --radius-lg: 0px;
+    --radius-xl: 0px;
+    --radius-2xl: 0px;
+    --radius-3xl: 0px;
+    --radius-4xl: 0px;
 
     color: var(--tenant-foreground);
     font-feature-settings: "kern" 1, "liga" 1;
@@ -45,44 +43,54 @@
     color: var(--tenant-foreground);
   }
 
+  .unison-interface {
+    font-feature-settings: "kern" 1, "liga" 1;
+  }
+
   .unison-page-title {
     font-family: var(--unison-brand-font);
-    font-weight: 800;
+    font-weight: var(--font-weight-medium);
     letter-spacing: 0.14em;
-    line-height: 1.08;
+    line-height: 1.15;
     text-transform: uppercase;
   }
 
   .unison-section-title {
     font-family: var(--unison-brand-font);
-    font-weight: 700;
-    letter-spacing: 0.1em;
+    font-weight: var(--font-weight-medium);
+    letter-spacing: 0.12em;
     line-height: 1.35;
     text-transform: uppercase;
   }
 
   .unison-metric-label {
     font-family: var(--unison-brand-font);
-    font-weight: 700;
+    font-weight: var(--font-weight-medium);
     letter-spacing: 0.13em;
     text-transform: uppercase;
   }
 
   .unison-record-name {
     font-family: var(--unison-brand-font);
-    font-weight: 700;
-    letter-spacing: 0.035em;
+    font-weight: var(--font-weight-medium);
+    letter-spacing: 0.025em;
   }
 
   .unison-surface {
-    @apply rounded-lg border border-border bg-card;
-    box-shadow: var(--tenant-surface-shadow);
+    @apply rounded-none border border-border bg-card;
+    box-shadow: none;
   }
 
   .unison-tenant :where(input:not([type='checkbox']):not([type='radio']), select, textarea) {
-    border-radius: var(--radius-md);
+    border-radius: 0;
     background-color: var(--tenant-surface);
     box-shadow: none;
+    transition: border-color var(--motion-micro) var(--ease-unison), box-shadow var(--motion-micro) var(--ease-unison), background-color var(--motion-micro) var(--ease-unison);
+  }
+
+  .unison-tenant :where(input:not([type='checkbox']):not([type='radio']), select, textarea):focus {
+    border-color: var(--tenant-brand);
+    box-shadow: var(--focus-ring);
   }
 
   .unison-tenant :where(input, select, textarea)::placeholder {
@@ -91,11 +99,54 @@
 
   .unison-tenant table thead {
     font-family: var(--unison-brand-font);
-    letter-spacing: 0.08em;
+    font-weight: var(--font-weight-medium);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
   }
 
   .unison-tenant table tbody tr {
-    transition: background-color 140ms ease;
+    transition: background-color var(--motion-micro) var(--ease-unison);
+  }
+
+  .unison-tenant table tbody tr:hover {
+    background-color: color-mix(in oklab, var(--tenant-surface-muted) 62%, white);
+  }
+
+  .unison-interface table {
+    border-collapse: collapse;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .unison-interface table thead {
+    font-family: var(--unison-brand-font);
+    font-weight: var(--font-weight-medium);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .unison-interface table tbody tr {
+    transition: background-color var(--motion-micro) var(--ease-unison);
+  }
+
+  .unison-route-view {
+    animation: unison-view-enter var(--motion-view) var(--ease-unison) both;
+  }
+
+  .unison-skeleton {
+    animation: unison-skeleton-pulse 1.6s var(--ease-unison) infinite;
+  }
+
+  .unison-dialog-enter {
+    animation: unison-dialog-enter var(--motion-panel) var(--ease-unison) both;
+  }
+
+  .unison-drawer-enter {
+    animation: unison-drawer-enter var(--motion-panel) var(--ease-unison) both;
+  }
+
+  .unison-menu-enter {
+    animation: unison-menu-enter var(--motion-micro) var(--ease-unison) both;
+    transform-origin: top right;
   }
 
   @media (max-width: 640px) {
@@ -117,7 +168,43 @@
     background-color: color-mix(in oklab, var(--tenant-brand) 92%, black);
   }
 
-  .unison-tenant :where(section, article):not([role='dialog']):not([role='alertdialog'])[class*='shadow-'] {
-    box-shadow: var(--tenant-surface-shadow);
+  .unison-interface :where([class*='shadow-'], [class~='shadow']):not([role='dialog']):not([role='alertdialog']):not([role='menu']) {
+    box-shadow: none;
+  }
+
+  .unison-interface [class*='backdrop-blur']:not([role='dialog']):not([role='alertdialog']) {
+    backdrop-filter: none;
+  }
+
+  .unison-interface [class*='rounded-['] {
+    border-radius: 0 !important;
+  }
+
+  /* Legacy badges often paired rounded-full with horizontal padding. Keep
+     true circles (avatars, dots, radio controls and progress nodes), while
+     status containers remain architectural and rectangular. */
+  .unison-interface [class~='rounded-full'][class*='px-'] {
+    border-radius: 0 !important;
+  }
+
+  .unison-interface :where(button, a, input, select, textarea, [role='tab'], [role='menuitem']) {
+    transition-duration: var(--motion-micro);
+    transition-timing-function: var(--ease-unison);
+  }
+
+  .unison-interface :where([role='dialog'], [role='alertdialog'], [role='menu']) {
+    border-radius: 0;
+    box-shadow: var(--shadow-overlay);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .unison-interface *,
+    .unison-interface *::before,
+    .unison-interface *::after {
+      scroll-behavior: auto !important;
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
   }
 }

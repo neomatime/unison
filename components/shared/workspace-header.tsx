@@ -34,12 +34,12 @@ export function WorkspaceHeader({ category, title, description, parent, breadcru
           {description ? <p className="mt-1.5 max-w-3xl text-sm text-muted-foreground">{description}</p> : null}
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2">
-          <button type="button" onClick={() => setPanel('search')} className="relative hidden h-10 w-64 items-center rounded-lg border border-border bg-card px-3 pl-9 text-left text-sm text-muted-foreground 2xl:flex"><Search className="absolute left-3 size-4" />Search UNISON...</button>
+          <button type="button" onClick={() => setPanel('search')} className="relative hidden h-10 w-64 items-center border border-border bg-card px-3 pl-9 text-left text-sm text-muted-foreground transition-colors hover:border-muted-foreground/45 2xl:flex"><Search className="absolute left-3 size-4" />Search UNISON...</button>
           <TenantSwitcher />
           <IconButton label="Help" onClick={() => setPanel('help')}><CircleHelp className="size-5" /></IconButton>
           <IconButton label="Notifications" onClick={() => setPanel('notifications')}><Bell className="size-5" /></IconButton>
           {actions}
-          {action && actionHref ? <Link href={actionHref} className="inline-flex h-10 items-center gap-2 rounded-lg bg-brand px-4 text-sm font-semibold text-white hover:bg-brand/90"><Plus className="size-4" />{action}</Link> : null}
+          {action && actionHref ? <Link href={actionHref} className="inline-flex h-10 items-center gap-2 bg-brand px-4 text-sm font-medium text-white transition-colors hover:bg-brand/90"><Plus className="size-4" />{action}</Link> : null}
         </div>
       </div>
     </header>
@@ -48,5 +48,5 @@ export function WorkspaceHeader({ category, title, description, parent, breadcru
 }
 
 function IconButton({ label, children, onClick }: { label: string; children: React.ReactNode; onClick: () => void }) {
-  return <button type="button" onClick={onClick} aria-label={label} className="flex size-10 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground hover:text-foreground">{children}</button>
+  return <button type="button" onClick={onClick} aria-label={label} className="flex size-10 items-center justify-center border border-border bg-card text-muted-foreground transition-colors hover:border-muted-foreground/45 hover:text-foreground">{children}</button>
 }

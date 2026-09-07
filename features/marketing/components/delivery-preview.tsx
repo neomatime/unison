@@ -1,118 +1,108 @@
-import { AlertTriangle, CheckCircle2, FileCheck2, FolderKanban, ShieldCheck } from 'lucide-react'
+import { AlertCircle, ArrowRight, CalendarDays, CheckCircle2, Link2, Search } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 
-const phases = ['Initiate', 'Discover', 'Design', 'Build', 'Test', 'Ready', 'Deploy', 'Measure'] as const
-
-const projects = [
-  { name: 'Claims Automation', phase: 'Test', health: 'At risk', progress: 68 },
-  { name: 'Client Onboarding', phase: 'Design', health: 'Healthy', progress: 44 },
-  { name: 'Policy Modernisation', phase: 'Build', health: 'Healthy', progress: 57 },
+const navigation = ['Overview', 'Portfolio', 'Projects', 'Frameworks', 'Approvals', 'Vendors'] as const
+const interventions = [
+  { project: 'Digital Claims Platform', state: 'Critical', issue: 'UAT approval overdue', decision: '18 Apr 2025' },
+  { project: 'Customer Data Migration', state: 'At Risk', issue: 'Vendor dependency unresolved', decision: '24 Apr 2025' },
 ] as const
 
 export function DeliveryPreview({ compact = false }: { compact?: boolean }) {
   return (
-    <div className={cn('overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_24px_70px_rgb(15_39_74_/_0.16)]', compact && 'rounded-xl shadow-[0_18px_50px_rgb(15_39_74_/_0.14)]')}>
-      <div className="grid min-h-[26rem] grid-cols-[7.25rem_1fr] sm:grid-cols-[8.5rem_1fr]">
-        <aside className="bg-[#061b3b] px-3 py-4 text-white">
-          <p className="text-[0.58rem] font-bold tracking-[0.24em]">UNISON</p>
-          <p className="mt-7 text-[0.45rem] font-semibold tracking-[0.18em] text-slate-400">DELIVERY</p>
-          <div className="mt-2 space-y-1 text-[0.55rem] font-medium text-slate-300">
-            {['Overview', 'Portfolio', 'Projects', 'Frameworks', 'Approvals', 'Vendors'].map((item, index) => (
-              <div key={item} className={cn('flex items-center gap-2 rounded-md px-2 py-1.5', index === 0 && 'bg-[#1463df] text-white')}>
-                <span className="size-1.5 rounded-full border border-current" />
+    <div className={cn('relative overflow-hidden border border-[#aebbc9] bg-white shadow-[0_24px_55px_rgb(13_35_64_/_0.14)]', compact && 'shadow-[0_18px_42px_rgb(13_35_64_/_0.12)]')}>
+      <div className="grid min-h-[29rem] grid-cols-[7.6rem_1fr] sm:grid-cols-[9rem_1fr]">
+        <aside className="border-r border-[#dce3eb] bg-[#fbfcfe] px-3 py-4 text-[#274364]">
+          <p className="px-2 text-[0.6rem] font-medium tracking-[0.22em] text-[#0d2340]">UNISON</p>
+          <div className="mt-7 space-y-1 text-[0.52rem]">
+            {navigation.map((item, index) => (
+              <div key={item} className={cn('relative flex items-center gap-2 px-2 py-1.5', index === 0 && 'bg-[#edf3f8] text-[#0d2340] before:absolute before:inset-y-0 before:-left-3 before:w-0.5 before:bg-[#1769aa]')}>
+                <span className="grid size-2 grid-cols-2 gap-px" aria-hidden="true"><span className="border border-current" /><span className="border border-current" /><span className="border border-current" /><span className="border border-current" /></span>
                 {item}
               </div>
             ))}
           </div>
-          <p className="mt-6 text-[0.45rem] font-semibold tracking-[0.18em] text-slate-400">OPERATIONS</p>
-          <div className="mt-2 space-y-1 text-[0.55rem] font-medium text-slate-300">
-            <div className="px-2 py-1.5">Clients</div>
-            <div className="px-2 py-1.5">Onboarding</div>
-          </div>
+          <p className="mt-6 px-2 text-[0.42rem] font-medium tracking-[0.18em] text-[#71839a]">OPERATIONS</p>
+          <div className="mt-2 space-y-1 px-2 text-[0.52rem] text-[#49617f]"><div className="py-1.5">Clients</div><div className="py-1.5">Onboarding</div></div>
+          <p className="mt-6 px-2 text-[0.42rem] font-medium tracking-[0.18em] text-[#71839a]">COMMERCIAL</p>
+          <div className="mt-2 space-y-1 px-2 text-[0.52rem] text-[#49617f]"><div className="py-1.5">Leads</div><div className="py-1.5">Quotes</div></div>
         </aside>
 
-        <div className="min-w-0 bg-[#f7f9fc] p-3 sm:p-4">
+        <div className="min-w-0 bg-[#fafbfd] p-3 sm:p-4">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-xs font-bold text-[#0a1f3d] sm:text-sm">Project Delivery Overview</p>
-              <p className="mt-1 hidden text-[0.5rem] text-slate-500 sm:block">Portfolio health, governance and execution performance.</p>
+              <p className="text-[0.5rem] text-[#657590]">Good afternoon, Neo.</p>
+              <h2 className="mt-1 text-xs font-medium tracking-[0.08em] text-[#0d2340] uppercase sm:text-sm">Here’s the delivery briefing.</h2>
+              <p className="mt-1 hidden text-[0.46rem] text-[#657590] sm:block">A clear view of what’s happening, what matters, and what needs your attention.</p>
             </div>
-            <div className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[0.5rem] font-semibold text-[#0a1f3d]">HIMARK</div>
+            <div className="flex items-center gap-2">
+              <div className="hidden h-7 w-32 items-center gap-1.5 border border-[#dce3eb] bg-white px-2 text-[0.42rem] text-[#71839a] sm:flex"><Search className="size-2.5" />Search</div>
+              <div className="border border-[#dce3eb] bg-white px-2.5 py-1.5 text-[0.46rem] font-medium text-[#0d2340]">HIMARK</div>
+            </div>
           </div>
 
-          <div className="mt-4 grid grid-cols-2 gap-2 xl:grid-cols-4">
-            <PreviewMetric label="Active projects" value="18" icon={FolderKanban} tone="blue" />
-            <PreviewMetric label="At risk" value="6" icon={AlertTriangle} tone="amber" />
-            <PreviewMetric label="Approvals" value="12" icon={FileCheck2} tone="green" />
-            <PreviewMetric label="Health score" value="78" icon={ShieldCheck} tone="blue" />
-          </div>
+          <section className="mt-4 grid border border-[#dce3eb] bg-white lg:grid-cols-[1.12fr_0.88fr]">
+            <div className="border-b border-[#dce3eb] p-3 lg:border-r lg:border-b-0">
+              <p className="text-[0.42rem] font-medium tracking-[0.16em] text-[#1769aa] uppercase">Overall position</p>
+              <h3 className="mt-2 text-sm font-medium text-[#0d2340] sm:text-base">Delivery remains on track.</h3>
+              <p className="mt-1 max-w-[22rem] text-[0.47rem] leading-3.5 text-[#657590]">Most projects are progressing as planned. Two require timely intervention.</p>
+              <div className="mt-3 flex divide-x divide-[#dce3eb]">
+                <BriefMetric value="15" label="Projects" />
+                <BriefMetric value="12" label="On track" tone="success" />
+                <BriefMetric value="2" label="At risk" tone="warning" />
+                <BriefMetric value="1" label="Critical" tone="danger" />
+              </div>
+            </div>
+            <div className="p-3">
+              <p className="text-[0.42rem] font-medium tracking-[0.16em] text-[#55749a] uppercase">Key focus areas</p>
+              <div className="mt-3 space-y-2.5">
+                <FocusLine icon={AlertCircle} title="2 projects require intervention" tone="danger" />
+                <FocusLine icon={CalendarDays} title="3 decisions due this week" />
+                <FocusLine icon={Link2} title="1 critical dependency" />
+              </div>
+            </div>
+          </section>
 
-          <section className="mt-3 rounded-lg border border-slate-200 bg-white p-3">
-            <p className="text-[0.55rem] font-semibold text-[#0a1f3d]">Delivery framework status</p>
-            <div className="mt-3 flex min-w-[27rem] items-start">
-              {phases.map((phase, index) => (
-                <div key={phase} className="relative flex flex-1 flex-col items-center text-center">
-                  {index > 0 ? <span className={cn('absolute top-2 right-1/2 h-px w-full', index <= 4 ? 'bg-emerald-500' : 'bg-slate-200')} /> : null}
-                  <span className={cn('relative z-10 flex size-4 items-center justify-center rounded-full border bg-white text-[0.42rem] font-bold', index <= 4 ? 'border-emerald-500 text-emerald-700' : 'border-slate-300 text-slate-500')}>{index + 1}</span>
-                  <span className="mt-1 text-[0.42rem] font-medium text-slate-600">{phase}</span>
+          <section className="mt-3 border border-[#dce3eb] bg-white">
+            <div className="flex items-center justify-between border-b border-[#dce3eb] px-3 py-2">
+              <p className="border-l-2 border-red-500 pl-2 text-[0.46rem] font-medium tracking-[0.14em] uppercase">Requires intervention</p>
+              <span className="flex items-center gap-1 text-[0.42rem] text-[#1769aa]">View all <ArrowRight className="size-2.5" /></span>
+            </div>
+            <div className="divide-y divide-[#edf0f4]">
+              {interventions.map((item) => (
+                <div key={item.project} className="grid grid-cols-[1.2fr_0.48fr_1fr_0.55fr] items-center gap-2 px-3 py-2 text-[0.45rem]">
+                  <p className="truncate font-medium text-[#0d2340]">{item.project}</p>
+                  <span className={cn('flex items-center gap-1', item.state === 'Critical' ? 'text-red-700' : 'text-amber-700')}><span className={cn('size-1.5 rounded-full', item.state === 'Critical' ? 'bg-red-500' : 'bg-amber-500')} />{item.state}</span>
+                  <p className="truncate text-[#657590]">{item.issue}</p>
+                  <p className="text-[#334d6d]">{item.decision}</p>
                 </div>
               ))}
             </div>
           </section>
 
-          <div className="mt-3 grid gap-3 xl:grid-cols-[1.55fr_0.8fr]">
-            <section className="rounded-lg border border-slate-200 bg-white">
-              <div className="border-b border-slate-200 px-3 py-2 text-[0.55rem] font-semibold text-[#0a1f3d]">Portfolio overview</div>
-              <div className="divide-y divide-slate-100">
-                {projects.map((project) => (
-                  <div key={project.name} className="grid grid-cols-[1fr_2.5rem_3rem] items-center gap-2 px-3 py-2 text-[0.48rem]">
-                    <div className="min-w-0">
-                      <p className="truncate font-semibold text-[#0a1f3d]">{project.name}</p>
-                      <p className="mt-1 text-slate-500">{project.phase} · {project.progress}%</p>
-                    </div>
-                    <div className="h-1 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-[#1463df]" style={{ width: `${project.progress}%` }} /></div>
-                    <span className={cn('rounded px-1 py-0.5 text-center font-semibold', project.health === 'Healthy' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700')}>{project.health}</span>
-                  </div>
-                ))}
-              </div>
-            </section>
-
-            <section className="rounded-lg border border-slate-200 bg-white p-3">
-              <p className="text-[0.55rem] font-semibold text-[#0a1f3d]">Delivery risks</p>
-              <div className="mt-3 space-y-3">
-                <PreviewRisk label="Governance gate delayed" tone="danger" />
-                <PreviewRisk label="Vendor dependency due" tone="warning" />
-                <PreviewRisk label="Approval awaiting owner" tone="info" />
-              </div>
-            </section>
-          </div>
+          <section className="mt-3 border border-[#dce3eb] bg-white">
+            <div className="flex items-center justify-between border-b border-[#dce3eb] px-3 py-2"><p className="border-l-2 border-[#1769aa] pl-2 text-[0.46rem] font-medium tracking-[0.14em] uppercase">Delivery horizon</p><span className="text-[0.42rem] text-[#1769aa]">View calendar</span></div>
+            <div className="grid divide-y divide-[#dce3eb] sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+              <HorizonBlock title="Upcoming dates" icon={CalendarDays} detail="3 gates in the next 30 days" />
+              <HorizonBlock title="Delivery by phase" icon={CheckCircle2} detail="12 projects progressing" />
+              <HorizonBlock title="Risks & dependencies" icon={AlertCircle} detail="2 require attention" />
+            </div>
+          </section>
         </div>
       </div>
     </div>
   )
 }
 
-function PreviewMetric({ label, value, icon: Icon, tone }: { label: string; value: string; icon: typeof CheckCircle2; tone: 'blue' | 'amber' | 'green' }) {
-  const iconTone = tone === 'amber' ? 'bg-amber-50 text-amber-600' : tone === 'green' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'
-  return (
-    <article className="rounded-lg border border-slate-200 bg-white p-2.5">
-      <div className="flex items-start justify-between gap-2">
-        <div>
-          <p className="text-[0.44rem] font-semibold text-slate-500">{label}</p>
-          <p className="mt-1 text-base font-bold text-[#0a1f3d]">{value}</p>
-        </div>
-        <span className={cn('flex size-6 items-center justify-center rounded-full', iconTone)}><Icon className="size-3" /></span>
-      </div>
-    </article>
-  )
+function BriefMetric({ value, label, tone }: { value: string; label: string; tone?: 'success' | 'warning' | 'danger' }) {
+  const dot = tone === 'success' ? 'bg-emerald-500' : tone === 'warning' ? 'bg-amber-500' : tone === 'danger' ? 'bg-red-500' : undefined
+  return <div className="min-w-0 flex-1 px-2 first:pl-0"><p className="text-sm font-medium text-[#0d2340]">{value}</p><p className="mt-0.5 flex items-center gap-1 text-[0.4rem] text-[#657590]">{dot ? <span className={cn('size-1 rounded-full', dot)} /> : null}{label}</p></div>
 }
 
-function PreviewRisk({ label, tone }: { label: string; tone: 'danger' | 'warning' | 'info' }) {
-  return (
-    <div className="flex items-start gap-2 text-[0.48rem] text-slate-600">
-      <span className={cn('mt-0.5 size-1.5 shrink-0 rounded-full', tone === 'danger' ? 'bg-red-500' : tone === 'warning' ? 'bg-amber-500' : 'bg-blue-500')} />
-      <span>{label}</span>
-    </div>
-  )
+function FocusLine({ icon: Icon, title, tone }: { icon: typeof AlertCircle; title: string; tone?: 'danger' }) {
+  return <div className="flex items-center gap-2 text-[0.45rem] font-medium text-[#0d2340]"><Icon className={cn('size-3.5 shrink-0', tone === 'danger' ? 'text-red-500' : 'text-[#0d2340]')} strokeWidth={1.6} /><span>{title}</span></div>
+}
+
+function HorizonBlock({ title, icon: Icon, detail }: { title: string; icon: typeof CalendarDays; detail: string }) {
+  return <div className="p-3"><p className="text-[0.4rem] font-medium tracking-[0.12em] text-[#657590] uppercase">{title}</p><div className="mt-3 flex items-center gap-2"><Icon className="size-3.5 text-[#55749a]" strokeWidth={1.5} /><span className="text-[0.45rem] font-medium text-[#0d2340]">{detail}</span></div></div>
 }

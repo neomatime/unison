@@ -34,7 +34,7 @@ export function ArchiveTrigger({ detailHref, label }: { detailHref: string; labe
   return (
     <Link
       href={archiveConfirmHref(detailHref)}
-      className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm font-medium text-destructive"
+      className="inline-flex items-center gap-2 rounded-none border border-border px-3 py-2 text-sm font-medium text-destructive transition-colors hover:bg-destructive/5"
     >
       <Archive className="size-4" />
       {label}
@@ -58,18 +58,18 @@ export function ArchiveConfirmation({
   confirmLabel: string
 }) {
   return (
-    <div className="mt-6 rounded-xl border border-destructive/30 bg-destructive/5 p-4">
+    <div className="mt-6 rounded-none border border-destructive/30 bg-destructive/5 p-4">
       <p className="text-sm font-semibold text-destructive">{title ?? `Archive ${recordName}?`}</p>
       <p className="mt-1 text-sm text-muted-foreground">{description}</p>
       <div className="mt-4 flex gap-2">
-        <Link href={cancelHref} className="rounded-lg border border-border px-4 py-2 text-sm font-medium">
+        <Link href={cancelHref} className="rounded-none border border-border px-4 py-2 text-sm font-medium transition-colors hover:bg-muted">
           Cancel
         </Link>
         {/* A real form post, not an onClick — this is what survives no JS. */}
         <form action={action}>
           <button
             type="submit"
-            className="inline-flex items-center gap-2 rounded-lg bg-destructive px-4 py-2 text-sm font-semibold text-white"
+            className="inline-flex items-center gap-2 rounded-none bg-destructive px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-destructive/90"
           >
             <Archive className="size-4" />
             {confirmLabel}

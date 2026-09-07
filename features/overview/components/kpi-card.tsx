@@ -43,7 +43,7 @@ function GaugeBody({ card }: { card: Extract<KpiCardType, { kind: 'gauge' }> }) 
         <p className="text-4xl font-bold tracking-tight text-foreground">{card.value}</p>
       </div>
       <div className="mt-3"><DeltaRow delta={card.delta} deltaLabel={card.deltaLabel} /></div>
-      <div className="mt-auto pt-4"><div className="h-1.5 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-brand" style={{ width: `${card.percent}%` }} /></div></div>
+      <div className="mt-auto pt-4"><div className="h-1.5 overflow-hidden rounded-none bg-muted"><div className="h-full rounded-none bg-brand transition-[width] duration-200 ease-out" style={{ width: `${card.percent}%` }} /></div></div>
     </div>
   )
 }
@@ -71,7 +71,7 @@ function IconBody({ card }: { card: Extract<KpiCardType, { kind: 'icon' }> }) {
       </div>
       <span
         className={cn(
-          'flex size-9 items-center justify-center rounded-full',
+          'flex size-9 items-center justify-center',
           iconToneClasses[card.tone],
         )}
       >

@@ -25,7 +25,7 @@ export function ContentPanel({
   return (
     <section
       className={cn(
-        'flex flex-col rounded-xl border border-border bg-card',
+        'flex flex-col rounded-none border border-border bg-card',
         className,
       )}
     >

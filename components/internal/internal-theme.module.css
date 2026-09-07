@@ -1,0 +1,117 @@
+.theme {
+  --background: #fafbfc;
+  --foreground: #0d2340;
+  --card: #ffffff;
+  --card-foreground: #0d2340;
+  --popover: #ffffff;
+  --popover-foreground: #0d2340;
+  --primary: #0d2340;
+  --primary-foreground: #ffffff;
+  --secondary: #f4f6f8;
+  --secondary-foreground: #0d2340;
+  --muted: #f4f6f8;
+  --muted-foreground: #6e7d8c;
+  --accent: #eef4fa;
+  --accent-foreground: #0d2340;
+  --border: #dce2e8;
+  --input: #dce2e8;
+  --ring: #1769aa;
+  --brand: #1769aa;
+  --brand-soft: #eef4fa;
+  --sidebar: #fbfcfe;
+  --sidebar-foreground: #203956;
+  --sidebar-muted: #718197;
+  --sidebar-active: #edf3f8;
+  --sidebar-active-foreground: #0d2340;
+  --sidebar-border: #dce2e8;
+  --radius: 0px;
+  --radius-xs: 0px;
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
+  --radius-2xl: 0px;
+  --radius-3xl: 0px;
+  --radius-4xl: 0px;
+
+  background: var(--background);
+  color: var(--foreground);
+  font-feature-settings: "kern" 1, "liga" 1;
+}
+
+.theme :global(h1),
+.theme :global(h2),
+.theme :global(h3) {
+  color: var(--foreground);
+  font-family: var(--unison-brand-font);
+  font-weight: 500;
+}
+
+.theme :global(h1) {
+  letter-spacing: 0.1em;
+  line-height: 1.15;
+  text-transform: uppercase;
+}
+
+.theme :global(h2),
+.theme :global(h3) {
+  letter-spacing: 0.075em;
+}
+
+.theme :global(.font-bold) {
+  font-weight: 600;
+}
+
+.theme :global(.font-semibold) {
+  font-weight: 500;
+}
+
+.theme :global(table thead) {
+  font-family: var(--unison-brand-font);
+  letter-spacing: 0.09em;
+}
+
+.theme :global(a),
+.theme :global(button),
+.theme :global(input),
+.theme :global(select),
+.theme :global(textarea) {
+  transition-duration: 150ms;
+  transition-property: background-color, border-color, color, opacity, transform;
+  transition-timing-function: cubic-bezier(0.2, 0.75, 0.25, 1);
+}
+
+.theme :global(input),
+.theme :global(select),
+.theme :global(textarea) {
+  background: #ffffff;
+  box-shadow: none;
+}
+
+.theme :global(input:focus-visible),
+.theme :global(select:focus-visible),
+.theme :global(textarea:focus-visible),
+.theme :global(button:focus-visible),
+.theme :global(a:focus-visible) {
+  outline: 2px solid color-mix(in srgb, var(--brand) 42%, transparent);
+  outline-offset: 2px;
+}
+
+.theme :global([class*="shadow-"]) {
+  box-shadow: none;
+}
+
+.theme :global([role="dialog"]) {
+  box-shadow: 0 16px 40px rgb(13 35 64 / 0.08);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .theme *,
+  .theme *::before,
+  .theme *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}

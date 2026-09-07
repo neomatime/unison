@@ -1,6 +1,5 @@
 'use client'
 
-import { LoaderCircle } from 'lucide-react'
 import { usePathname } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 
@@ -68,10 +67,6 @@ export function NavigationLoading() {
 
   return <div role="status" aria-live="polite" aria-label="Loading next screen" className="pointer-events-none fixed inset-x-0 top-0 z-[100]">
     <span className="sr-only">Loading next screen</span>
-    <div className="h-0.5 overflow-hidden bg-brand/15"><div className="h-full w-1/3 bg-brand [animation:unison-navigation-progress_1s_ease-in-out_infinite]" /></div>
-    <div className="mx-auto mt-3 flex w-fit items-center gap-2 rounded-full border border-border bg-card/95 px-3 py-2 text-xs font-semibold text-foreground shadow-lg backdrop-blur">
-      <LoaderCircle className="size-3.5 animate-spin text-brand" />
-      Loading workspace
-    </div>
+    <div className="h-px overflow-hidden bg-brand/10"><div className="h-full w-1/3 bg-brand/80 [animation:unison-navigation-progress_1s_var(--ease-unison)_infinite]" /></div>
   </div>
 }

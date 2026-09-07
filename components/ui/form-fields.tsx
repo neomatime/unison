@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils'
  */
 
 export const fieldClasses =
-  'mt-1.5 min-h-10 w-full rounded-lg border border-border bg-card px-3 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/20'
+  'mt-1.5 min-h-10 w-full rounded-none border border-border bg-card px-3 text-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/15'
 
 export function FieldLabel({ label, required }: { label: string; required?: boolean }) {
   return (
@@ -76,7 +76,7 @@ export function TextAreaField({
         rows={rows}
         defaultValue={defaultValue ?? ''}
         placeholder={placeholder}
-        className="mt-1.5 w-full rounded-lg border border-border bg-card px-3 py-3 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/20"
+        className="mt-1.5 w-full rounded-none border border-border bg-card px-3 py-3 text-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/15"
       />
     </label>
   )

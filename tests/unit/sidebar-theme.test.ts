@@ -13,11 +13,11 @@ test('the tenant shell uses its light neutral palette without recolouring intern
 
   for (const [token, value] of [
     ['tenant-sidebar', '#fbfcfe'],
-    ['tenant-sidebar-foreground', '#102344'],
-    ['tenant-sidebar-muted', '#60738e'],
-    ['tenant-sidebar-active', '#edf4ff'],
-    ['tenant-sidebar-hover', '#f2f6fb'],
-    ['tenant-sidebar-border', '#dfe6ee'],
+    ['tenant-sidebar-foreground', '#0d2340'],
+    ['tenant-sidebar-muted', '#65778a'],
+    ['tenant-sidebar-active', '#edf3f8'],
+    ['tenant-sidebar-hover', '#f3f6f9'],
+    ['tenant-sidebar-border', '#dce2e8'],
     ['tenant-canvas', '#fafbfc'],
   ]) {
     assert.match(tokens, new RegExp(`--${token}: ${value};`))

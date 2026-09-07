@@ -4,30 +4,51 @@
   /* The wordmark is live text using the product's existing UI stack. Keep a
      named brand face so headings can share that treatment without importing a
      lookalike font or turning body copy into logo typography. */
-  --unison-brand-font: Inter, Aptos, "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+  --unison-brand-font: "Aptos Display", "Segoe UI Variable Display", Inter, Aptos, "Segoe UI", ui-sans-serif, system-ui, sans-serif;
 
-  --background: oklch(0.968 0.003 247);
-  --foreground: oklch(0.23 0.03 254);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.23 0.03 254);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.23 0.03 254);
-  --primary: oklch(0.23 0.03 254);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.968 0.003 247);
-  --secondary-foreground: oklch(0.23 0.03 254);
-  --muted: oklch(0.968 0.003 247);
-  --muted-foreground: oklch(0.62 0.022 254);
-  --accent: oklch(0.965 0.004 247);
-  --accent-foreground: oklch(0.23 0.03 254);
+  /* Premium enterprise foundation. These values are intentionally shared by
+     the public site, authentication, tenant workspace and internal console. */
+  --unison-navy: #0d2340;
+  --unison-canvas: #fafbfc;
+  --unison-surface: #ffffff;
+  --unison-surface-muted: #f6f8fa;
+  --unison-border: #dce2e8;
+  --unison-muted: #6e7d8c;
+  --unison-accent: #1769aa;
+
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-strong: 600;
+
+  --motion-micro: 150ms;
+  --motion-panel: 220ms;
+  --motion-view: 260ms;
+  --ease-unison: cubic-bezier(0.22, 1, 0.36, 1);
+  --focus-ring: 0 0 0 2px rgb(23 105 170 / 0.2);
+  --shadow-overlay: 0 18px 48px rgb(13 35 64 / 0.12);
+
+  --background: var(--unison-canvas);
+  --foreground: var(--unison-navy);
+  --card: var(--unison-surface);
+  --card-foreground: var(--unison-navy);
+  --popover: var(--unison-surface);
+  --popover-foreground: var(--unison-navy);
+  --primary: var(--unison-navy);
+  --primary-foreground: #ffffff;
+  --secondary: var(--unison-surface-muted);
+  --secondary-foreground: var(--unison-navy);
+  --muted: var(--unison-surface-muted);
+  --muted-foreground: var(--unison-muted);
+  --accent: #edf3f8;
+  --accent-foreground: var(--unison-navy);
   --destructive: oklch(0.62 0.2 25);
-  --border: oklch(0.925 0.006 247);
-  --input: oklch(0.925 0.006 247);
-  --ring: oklch(0.55 0.06 240);
+  --border: var(--unison-border);
+  --input: var(--unison-border);
+  --ring: var(--unison-accent);
 
-  --brand: oklch(0.56 0.16 252);
-  --brand-foreground: oklch(0.985 0 0);
-  --brand-soft: oklch(0.955 0.025 252);
+  --brand: var(--unison-accent);
+  --brand-foreground: #ffffff;
+  --brand-soft: #edf3f8;
   --success: oklch(0.58 0.14 151);
   --success-soft: oklch(0.96 0.035 151);
   --warning: oklch(0.76 0.13 72);
@@ -47,20 +68,20 @@
   /* Tenant workspace navigation. Kept separate from auth, internal admin and
      data-avatar surfaces that intentionally use the original navy token. */
   --tenant-sidebar: #fbfcfe;
-  --tenant-sidebar-foreground: #102344;
-  --tenant-sidebar-muted: #60738e;
-  --tenant-sidebar-active: #edf4ff;
-  --tenant-sidebar-hover: #f2f6fb;
-  --tenant-sidebar-border: #dfe6ee;
+  --tenant-sidebar-foreground: #0d2340;
+  --tenant-sidebar-muted: #65778a;
+  --tenant-sidebar-active: #edf3f8;
+  --tenant-sidebar-hover: #f3f6f9;
+  --tenant-sidebar-border: #dce2e8;
   --tenant-canvas: #fafbfc;
   --tenant-surface: #ffffff;
   --tenant-surface-muted: #f5f7fa;
-  --tenant-foreground: #0a1d3f;
-  --tenant-muted-foreground: #637590;
-  --tenant-border: #dfe6ee;
-  --tenant-brand: #0968e8;
-  --tenant-brand-soft: #edf4ff;
-  --tenant-surface-shadow: 0 1px 2px rgb(10 29 63 / 0.025);
+  --tenant-foreground: #0d2340;
+  --tenant-muted-foreground: #6e7d8c;
+  --tenant-border: #dce2e8;
+  --tenant-brand: #1769aa;
+  --tenant-brand-soft: #edf3f8;
+  --tenant-surface-shadow: none;
 
   /* Executive briefing secondary copy. This intentionally stays scoped to the
      briefing instead of darkening muted copy across every existing workspace. */
@@ -72,5 +93,15 @@
   --chart-4: oklch(0.55 0.06 240);
   --chart-5: oklch(0.45 0.05 254);
 
-  --radius: 0.75rem;
+  /* Primary surfaces are architectural and square. `rounded-full` remains an
+     explicit semantic exception for avatars, status dots and switches. */
+  --radius: 0px;
+  --radius-xs: 0px;
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
+  --radius-2xl: 0px;
+  --radius-3xl: 0px;
+  --radius-4xl: 0px;
 }

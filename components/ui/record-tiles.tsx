@@ -13,17 +13,17 @@
 
 export function SummaryTile({ label, value }: { label: string; value: string | null }) {
   return (
-    <div className="rounded-lg border border-border p-4">
+    <div className="rounded-none border border-border p-4">
       <p className="text-xs font-medium text-muted-foreground">{label}</p>
-      <p className="mt-2 text-sm font-semibold">{value ?? '—'}</p>
+      <p className="unison-record-name mt-2 text-sm">{value ?? '—'}</p>
     </div>
   )
 }
 
 export function DetailTile({ label, value }: { label: string; value: string | null }) {
   return (
-    <div className="rounded-lg bg-muted/50 p-4">
-      <p className="text-[0.6875rem] font-semibold tracking-wide text-muted-foreground uppercase">{label}</p>
+    <div className="rounded-none border border-border bg-card p-4">
+      <p className="unison-metric-label text-[0.6875rem] text-muted-foreground">{label}</p>
       <p className="mt-1 text-sm font-medium">{value ?? '—'}</p>
     </div>
   )

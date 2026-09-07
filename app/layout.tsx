@@ -22,7 +22,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="bg-background font-sans antialiased">
+      <body className="unison-interface bg-background font-sans antialiased">
         {children}
         <Analytics />
       </body>

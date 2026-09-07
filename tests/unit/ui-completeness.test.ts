@@ -209,15 +209,14 @@ test('the projects route reads from the database, not the delivery mocks', () =>
   assert.doesNotMatch(source, /features\/delivery\/data/)
 })
 
-test('main sign-in uses the centered secure workspace experience', () => {
+test('main sign-in uses the premium split workspace experience', () => {
   const screen = readFileSync(join(workspace, 'features', 'auth-ui', 'auth-screen.tsx'), 'utf8')
   for (const copy of [
-    'Secure workspace access',
-    'Sign in to UNISON',
+    'Welcome to UNISON',
+    'Aligned delivery.',
+    'Greater impact.',
     'Continue with Microsoft',
-    'Enterprise-grade security',
-    'SSO-ready',
-    'Role-based access',
+    'The operating layer for governed enterprise delivery.',
     'your UNISON administrator',
   ]) assert.match(screen, new RegExp(copy))
   for (const behavior of ['signInAction', 'signInWithMicrosoftAction', 'useFormStatus', 'name="next"', 'Show password']) assert.match(screen, new RegExp(behavior))

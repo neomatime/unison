@@ -22,7 +22,7 @@ export function FormSection({
   columns?: 1 | 2
 }) {
   return (
-    <section className="rounded-xl border border-border bg-card p-6">
+    <section className="rounded-none border border-border bg-card p-6">
       <div className="mb-5">
         <h2 className="unison-section-title text-sm text-foreground">{title}</h2>
         {description ? <p className="mt-1 text-sm text-muted-foreground">{description}</p> : null}
@@ -37,7 +37,7 @@ export function FormError({ message }: { message?: string }) {
   return (
     <p
       role="alert"
-      className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive"
+      className="rounded-none border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive"
     >
       {message}
     </p>
@@ -64,19 +64,19 @@ export function FormFooter({
   note?: string
 }) {
   return (
-    <div className="sticky bottom-4 flex items-center justify-between rounded-xl border border-border bg-card/95 px-5 py-4 shadow-xl backdrop-blur">
+    <div className="sticky bottom-4 flex items-center justify-between rounded-none border border-border bg-card px-5 py-4">
       <p className="flex items-center gap-2 text-xs text-muted-foreground">
         <Info className="size-4" />
         {note}
       </p>
       <div className="flex gap-2">
-        <Link href={cancelHref} className="rounded-lg border border-border px-4 py-2 text-sm font-medium">
+        <Link href={cancelHref} className="rounded-none border border-border px-4 py-2 text-sm font-medium transition-colors hover:bg-muted">
           Cancel
         </Link>
         <button
           type="submit"
           disabled={pending}
-          className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-brand-foreground disabled:opacity-60"
+          className="rounded-none bg-brand px-4 py-2 text-sm font-medium text-brand-foreground transition-colors hover:bg-brand/90 disabled:opacity-60"
         >
           {pending ? 'Saving…' : submitLabel}
         </button>

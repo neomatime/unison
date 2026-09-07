@@ -2,6 +2,7 @@
 
 import type React from 'react'
 import { Menu, X } from 'lucide-react'
+import { usePathname } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 
 import { Sidebar } from '@/components/navigation/sidebar'
@@ -21,6 +22,7 @@ type AppShellProps = {
 }
 
 export function AppShell({ user, organization, organizations, role, navigationSections, children }: AppShellProps) {
+  const pathname = usePathname()
   const [navigationOpen, setNavigationOpen] = useState(false)
   const navigationDialogRef = useRef<HTMLDivElement>(null)
   const navigationCloseRef = useRef<HTMLButtonElement>(null)
@@ -114,7 +116,7 @@ export function AppShell({ user, organization, organizations, role, navigationSe
                   type="button"
                   onClick={() => setNavigationOpen(false)}
                   aria-label="Close navigation"
-                  className="absolute top-4 -right-12 flex size-9 items-center justify-center rounded-full bg-card text-foreground shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+                  className="absolute top-4 -right-12 flex size-9 items-center justify-center border border-border bg-card text-foreground transition-colors hover:bg-muted focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-brand"
                 >
                   <X className="size-5" />
                 </button>
@@ -123,7 +125,7 @@ export function AppShell({ user, organization, organizations, role, navigationSe
           ) : null}
           <div className="flex min-w-0 flex-1 flex-col">
             <div className="flex h-14 items-center justify-between border-b border-tenant-sidebar-border bg-tenant-sidebar px-4 text-tenant-sidebar-foreground lg:hidden">
-              <span className="font-bold tracking-[0.2em]">UNISON</span>
+              <span className="font-brand font-medium tracking-[0.2em]">UNISON</span>
               <button
                 ref={navigationTriggerRef}
                 type="button"
@@ -131,12 +133,14 @@ export function AppShell({ user, organization, organizations, role, navigationSe
                 aria-label="Open navigation"
                 aria-expanded={navigationOpen}
                 aria-controls="tenant-navigation-dialog"
-                className="rounded-lg p-2 hover:bg-tenant-sidebar-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+                className="p-2 transition-colors hover:bg-tenant-sidebar-hover focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-brand"
               >
                 <Menu className="size-5" />
               </button>
             </div>
-            <main className="flex-1 overflow-y-auto overscroll-contain rounded-none bg-tenant-canvas px-4 py-5 sm:px-6 lg:px-6 lg:py-6 xl:px-8">{children}</main>
+            <main className="flex-1 overflow-y-auto overscroll-contain bg-tenant-canvas px-4 py-5 sm:px-6 lg:px-6 lg:py-6 xl:px-8">
+              <div key={pathname} className="unison-route-view min-h-full">{children}</div>
+            </main>
           </div>
         </div>
       </NavigationProvider>

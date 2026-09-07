@@ -11,7 +11,7 @@ export function ClientActivityPanel() {
             key={item.id}
             className="flex items-center gap-3 border-b border-border py-3 last:border-b-0"
           >
-            <InitialAvatar initials={item.initials} className="rounded-full" />
+            <InitialAvatar initials={item.initials} />
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium text-foreground">{item.name}</p>
               <p className="truncate text-xs text-muted-foreground">{item.detail}</p>

@@ -27,17 +27,17 @@ export function Sidebar({ onNavigate }: SidebarProps = {}) {
   const avatarUrl = user.avatarUrl
   const roleLabel = roles.find((definition) => definition.id === role)?.label ?? role
   return (
-    <aside className={cn('flex h-full shrink-0 flex-col border-r border-tenant-sidebar-border bg-tenant-sidebar text-tenant-sidebar-foreground transition-[width]', collapsed ? 'w-20' : 'w-64')}>
+    <aside className={cn('flex h-full shrink-0 flex-col border-r border-tenant-sidebar-border bg-tenant-sidebar text-tenant-sidebar-foreground transition-[width] duration-200 ease-out', collapsed ? 'w-20' : 'w-64')}>
       {/* Brand */}
       <div className={cn('flex items-center justify-between py-5', collapsed ? 'px-6' : 'px-6')}>
-        <span className={cn('text-xl font-bold tracking-[0.2em] text-tenant-sidebar-foreground', collapsed && 'hidden')}>
+        <span className={cn('font-brand text-xl font-medium tracking-[0.2em] text-tenant-sidebar-foreground', collapsed && 'hidden')}>
           UNISON
         </span>
         <button
           type="button"
           onClick={() => setCollapsed((value) => !value)}
           aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          className="rounded-md text-tenant-sidebar-muted transition-colors hover:text-tenant-sidebar-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+          className="text-tenant-sidebar-muted transition-colors hover:text-tenant-sidebar-foreground focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-brand"
         >
           <Menu className="size-5" />
         </button>
@@ -48,7 +48,7 @@ export function Sidebar({ onNavigate }: SidebarProps = {}) {
         {navigationSections.map((section, sectionIndex) => (
           <div key={section.heading ?? `section-${sectionIndex}`} className="mb-2">
             {section.heading ? (
-              <p className={cn('px-3 pt-4 pb-2 text-[0.6875rem] font-semibold tracking-[0.12em] text-tenant-sidebar-muted uppercase', collapsed && 'sr-only')}>
+              <p className={cn('px-3 pt-4 pb-2 font-brand text-[0.6875rem] font-medium tracking-[0.14em] text-tenant-sidebar-muted uppercase', collapsed && 'sr-only')}>
                 {section.heading}
               </p>
             ) : (
@@ -77,7 +77,7 @@ export function Sidebar({ onNavigate }: SidebarProps = {}) {
                       onNavigate?.()
                     }}
                     className={cn(
-                      'relative flex items-center gap-3 rounded-sm px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand',
+                      'relative flex items-center gap-3 px-3 py-2 text-sm font-normal transition-colors focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-brand',
                       isActive
                         ? 'bg-tenant-sidebar-active text-tenant-sidebar-foreground'
                         : 'text-tenant-sidebar-muted hover:bg-tenant-sidebar-hover hover:text-tenant-sidebar-foreground',
@@ -100,7 +100,7 @@ export function Sidebar({ onNavigate }: SidebarProps = {}) {
           type="button"
           onClick={() => setProfileOpen((value) => !value)}
           aria-expanded={profileOpen}
-          className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left transition-colors hover:bg-tenant-sidebar-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+          className="flex w-full items-center gap-3 px-2 py-2 text-left transition-colors hover:bg-tenant-sidebar-hover focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-brand"
         >
           {avatarUrl ? (
             <Image
@@ -114,14 +114,14 @@ export function Sidebar({ onNavigate }: SidebarProps = {}) {
             <InitialAvatar initials={getInitials(displayName)} className="size-10 rounded-full" />
           )}
           <span className={cn('min-w-0 flex-1', collapsed && 'sr-only')}>
-            <span className="block truncate text-sm font-semibold text-tenant-sidebar-foreground">
+            <span className="block truncate text-sm font-medium text-tenant-sidebar-foreground">
               {displayName}
             </span>
             <span className="block truncate text-xs text-tenant-sidebar-muted">{roleLabel}</span>
           </span>
           <ChevronDown className={cn('size-4 shrink-0 text-tenant-sidebar-muted', collapsed && 'hidden')} />
         </button>
-        {profileOpen ? <div className={cn('absolute bottom-full z-50 mb-2 rounded-xl border border-border bg-card p-2 text-foreground shadow-xl', collapsed ? 'left-2 w-52' : 'right-3 left-3')}><p className="px-2 py-2 text-xs font-semibold text-muted-foreground">{displayName} · {organization.name}</p><Link href="/people/team" onClick={onNavigate} className="block rounded-lg px-2 py-2 text-sm hover:bg-muted">View profile</Link><Link href="/settings" onClick={onNavigate} className="block rounded-lg px-2 py-2 text-sm hover:bg-muted">Organization settings</Link><form action={signOutAction} onSubmit={onNavigate}><button type="submit" className="block w-full rounded-lg px-2 py-2 text-left text-sm text-destructive hover:bg-muted">Sign out</button></form></div> : null}
+        {profileOpen ? <div role="menu" className={cn('absolute bottom-full z-50 mb-2 border border-border bg-card p-1.5 text-foreground shadow-xl', collapsed ? 'left-2 w-52' : 'right-3 left-3')}><p className="px-2 py-2 text-xs font-medium text-muted-foreground">{displayName} · {organization.name}</p><Link href="/people/team" onClick={onNavigate} className="block px-2 py-2 text-sm transition-colors hover:bg-muted">View profile</Link><Link href="/settings" onClick={onNavigate} className="block px-2 py-2 text-sm transition-colors hover:bg-muted">Organization settings</Link><form action={signOutAction} onSubmit={onNavigate}><button type="submit" className="block w-full px-2 py-2 text-left text-sm text-destructive transition-colors hover:bg-muted">Sign out</button></form></div> : null}
       </div>
     </aside>
   )

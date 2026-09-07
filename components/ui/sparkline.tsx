@@ -6,12 +6,12 @@ type SparklineProps = {
   height?: number
   color?: string
   className?: string
-  /** Unique id used for the gradient fill definition */
+  /** Unique id retained as stable series metadata for callers and tests. */
   id: string
 }
 
 /**
- * A minimal area sparkline rendered as SVG with a soft gradient fill.
+ * A minimal line sparkline with a restrained, flat tonal fill.
  * Used inside the trend KPI cards (Revenue, MRR, Cash Flow).
  */
 export function Sparkline({
@@ -40,8 +40,6 @@ export function Sparkline({
     .join(' ')
 
   const areaPath = `${linePath} L ${width} ${height} L 0 ${height} Z`
-  const gradientId = `sparkline-gradient-${id}`
-
   return (
     <svg
       width="100%"
@@ -49,22 +47,17 @@ export function Sparkline({
       viewBox={`0 0 ${width} ${height}`}
       preserveAspectRatio="none"
       className={cn('block', className)}
+      data-series={id}
       aria-hidden="true"
     >
-      <defs>
-        <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={color} stopOpacity="0.22" />
-          <stop offset="100%" stopColor={color} stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      <path d={areaPath} fill={`url(#${gradientId})`} />
+      <path d={areaPath} fill={color} fillOpacity="0.055" />
       <path
         d={linePath}
         fill="none"
         stroke={color}
         strokeWidth="1.75"
-        strokeLinecap="round"
-        strokeLinejoin="round"
+        strokeLinecap="square"
+        strokeLinejoin="miter"
       />
     </svg>
   )

@@ -29,7 +29,7 @@ const dependencyTone: Record<DependencyStatus, string> = {
 }
 
 function DependencyStatusBadge({ status }: { status: DependencyStatus }) {
-  return <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold ${dependencyTone[status]}`}>{status}</span>
+  return <span className={`inline-flex items-center rounded-none border px-2 py-0.5 text-xs font-medium ${dependencyTone[status]}`}>{status}</span>
 }
 
 /**

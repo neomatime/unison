@@ -101,7 +101,7 @@ function EventDrawer({ event, onClose }: { event: (typeof calendarEvents)[number
 function PipelineWorkspace() {
   const [selected, setSelected] = useState('')
   const stages: Array<[string, string[]]> = [['Lead', ['Riverton Transformation', 'Altura Market Entry']], ['Qualified', ['Harbour Growth Strategy']], ['Discovery', ['Veridian Digital Platform', 'Kopano Advisory']], ['Proposal', ['Meridian Expansion']], ['Negotiation', ['Northstar Renewal']], ['Won', ['Aurelia Platform']]]
-  return <><div className="grid min-w-[1100px] grid-cols-6 gap-3 overflow-x-auto pb-3">{stages.map(([stage, cards]) => <section key={stage} className="rounded-xl bg-muted/50 p-3"><div className="mb-3 flex items-center justify-between"><h2 className="text-sm font-semibold">{stage}</h2><span className="rounded-full bg-card px-2 py-0.5 text-xs text-muted-foreground">{cards.length}</span></div><div className="space-y-2">{cards.map((card, index) => <button type="button" onClick={() => setSelected(card)} key={card} className="w-full rounded-lg border border-border bg-card p-3 text-left shadow-sm"><span className="text-sm font-semibold">{card}</span><span className="mt-1 block text-xs text-muted-foreground">{index % 2 ? 'R260K' : 'R480K'} · {40 + index * 15}%</span><span className="mt-3 flex items-center justify-between text-[0.6875rem] text-muted-foreground"><span>Neo Morake</span><span>Sep 2026</span></span></button>)}</div></section>)}</div>{selected ? <InlineNotice message={`${selected} opportunity preview opened.`} onClose={() => setSelected('')} /> : null}</>
+  return <><div className="grid min-w-[1100px] grid-cols-6 gap-3 overflow-x-auto pb-3">{stages.map(([stage, cards]) => <section key={stage} className="rounded-none border border-border bg-muted/25 p-3"><div className="mb-3 flex items-center justify-between"><h2 className="unison-section-title text-xs">{stage}</h2><span className="border border-border bg-card px-2 py-0.5 text-xs text-muted-foreground">{cards.length}</span></div><div className="space-y-2">{cards.map((card, index) => <button type="button" onClick={() => setSelected(card)} key={card} className="w-full rounded-none border border-border bg-card p-3 text-left transition-colors hover:border-brand/25 hover:bg-muted/20"><span className="unison-record-name text-sm">{card}</span><span className="mt-1 block text-xs text-muted-foreground">{index % 2 ? 'R260K' : 'R480K'} · {40 + index * 15}%</span><span className="mt-3 flex items-center justify-between text-[0.6875rem] text-muted-foreground"><span>Neo Morake</span><span>Sep 2026</span></span></button>)}</div></section>)}</div>{selected ? <InlineNotice message={`${selected} opportunity preview opened.`} onClose={() => setSelected('')} /> : null}</>
 }
 
 function ProjectBoard() { return <Board columns={[['Planning',['Aurelia research sprint']],['On Track',['Meridian Growth Programme','Aurelia Client Platform']],['At Risk',['Northstar Brand Transformation']],['Review',['Kopano Service Blueprint']],['Complete',['Copperleaf Discovery']]]} /> }
@@ -240,8 +240,8 @@ function Board({ columns }: { columns: Array<[string, string[]]> }) {
       <div className="grid min-w-[1000px] grid-cols-5 gap-3">
         {boardColumns.map((column, columnIndex) => {
           const isTarget = Boolean(drag && dropTarget?.columnIndex === columnIndex)
-          return <section key={column.title} data-board-column-index={columnIndex} className={`min-h-80 rounded-xl border p-3 transition-colors duration-150 ${isTarget ? 'border-brand/40 bg-brand-soft/40' : 'border-transparent bg-muted/50'}`}>
-            <div className="mb-3 flex items-center justify-between"><h2 className="text-sm font-semibold">{column.title}</h2><span className="rounded-full bg-card px-2 text-xs text-muted-foreground">{column.cards.length}</span></div>
+          return <section key={column.title} data-board-column-index={columnIndex} className={`min-h-80 rounded-none border p-3 transition-colors duration-150 ease-out motion-reduce:transition-none ${isTarget ? 'border-brand/40 bg-brand-soft/30' : 'border-border bg-muted/25'}`}>
+            <div className="mb-3 flex items-center justify-between"><h2 className="unison-section-title text-xs">{column.title}</h2><span className="border border-border bg-card px-2 text-xs text-muted-foreground">{column.cards.length}</span></div>
             <div className="min-h-60">
               {column.cards.map((card, cardIndex) => <div key={card} data-board-card-index={cardIndex}>
                 {isTarget && dropTarget?.cardIndex === cardIndex ? <DropIndicator /> : null}
@@ -252,19 +252,19 @@ function Board({ columns }: { columns: Array<[string, string[]]> }) {
                   onPointerUp={endPointer}
                   onPointerCancel={cancelPointer}
                   onClick={(event) => { if (suppressClickRef.current) { event.preventDefault(); return } setSelected(card); setMoveMessage('') }}
-                  className={`group mb-2 block w-full touch-none select-none rounded-lg border border-border bg-card p-3 text-left shadow-sm transition-[transform,box-shadow,opacity] duration-150 ease-out hover:-translate-y-0.5 hover:shadow-md active:cursor-grabbing ${drag?.card === card ? 'opacity-25' : 'cursor-grab opacity-100'}`}
+                  className={`group mb-2 block w-full touch-none select-none rounded-none border border-border bg-card p-3 text-left transition-[border-color,background-color,opacity] duration-150 ease-out hover:border-brand/25 hover:bg-muted/20 active:cursor-grabbing motion-reduce:transition-none ${drag?.card === card ? 'opacity-25' : 'cursor-grab opacity-100'}`}
                 >
                   <BoardCardContent card={card} index={cardIndex} />
                 </button>
               </div>)}
               {isTarget && dropTarget?.cardIndex === column.cards.length ? <DropIndicator /> : null}
-              {drag && column.cards.length === 0 ? <div className="flex h-24 items-center justify-center rounded-lg border border-dashed border-brand/30 text-xs font-medium text-brand">Drop card here</div> : null}
+              {drag && column.cards.length === 0 ? <div className="flex h-24 items-center justify-center rounded-none border border-dashed border-brand/30 text-xs font-medium text-brand">Drop card here</div> : null}
             </div>
           </section>
         })}
       </div>
     </div>
-    {drag ? <div aria-hidden="true" className="pointer-events-none fixed top-0 left-0 z-[70] will-change-transform" style={{ width: drag.width, transform: `translate3d(${drag.x - drag.offsetX}px, ${drag.y - drag.offsetY}px, 0) rotate(1deg)` }}><div className="rounded-lg border border-brand/30 bg-card p-3 text-left shadow-2xl ring-2 ring-brand/10"><BoardCardContent card={drag.card} index={drag.fromIndex} dragging /></div></div> : null}
+    {drag ? <div aria-hidden="true" className="pointer-events-none fixed top-0 left-0 z-[70] will-change-transform" style={{ width: drag.width, transform: `translate3d(${drag.x - drag.offsetX}px, ${drag.y - drag.offsetY}px, 0)` }}><div className="rounded-none border border-brand/40 bg-card p-3 text-left shadow-2xl"><BoardCardContent card={drag.card} index={drag.fromIndex} dragging /></div></div> : null}
     {selected ? <InlineNotice message={`${selected} detail drawer opened.`} onClose={() => setSelected('')} /> : null}
     {moveMessage ? <InlineNotice message={moveMessage} onClose={() => setMoveMessage('')} /> : null}
   </>
@@ -274,7 +274,7 @@ function BoardCardContent({ card, index, dragging }: { card: string; index: numb
   return <><span className="flex items-start gap-2"><GripVertical className={`mt-0.5 size-4 shrink-0 transition-colors ${dragging ? 'text-brand' : 'text-muted-foreground/40 group-hover:text-muted-foreground'}`} /><span className="block text-sm font-semibold">{card}</span></span><span className="mt-2 block pl-6 text-xs text-muted-foreground">{index % 2 ? 'Amara Dlamini' : 'Neo Morake'} · {index + 2} actions</span></>
 }
 
-function DropIndicator() { return <div className="mb-2 flex h-2 items-center"><span className="size-2 rounded-full bg-brand" /><span className="h-0.5 flex-1 rounded-full bg-brand" /></div> }
+function DropIndicator() { return <div className="mb-2 flex h-2 items-center"><span className="size-2 rounded-full bg-brand" /><span className="h-0.5 flex-1 bg-brand" /></div> }
 
 function ProjectTimeline() {
   const [selected, setSelected] = useState('')
@@ -353,7 +353,7 @@ function RoleSettings() {
 
 function UsersSettings() {
   const [invited, setInvited] = useState(false)
-  return <section className="overflow-hidden rounded-xl border border-border bg-card"><header className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-5"><div><h2 className="font-semibold">Users</h2><p className="text-sm text-muted-foreground">Manage access to the HIMARK tenant.</p></div><button type="button" onClick={() => setInvited(true)} className="inline-flex items-center gap-2 rounded-lg bg-foreground px-3 py-2 text-sm font-semibold text-primary-foreground"><UserPlus className="size-4" />{invited ? 'Invitation sent' : 'Invite user'}</button></header><div className="overflow-x-auto"><table className="w-full min-w-[720px] text-left"><thead><tr className="bg-muted/40 text-xs text-muted-foreground"><th className="p-4">User</th><th className="p-4">Role</th><th className="p-4">Team</th><th className="p-4">Last active</th><th className="p-4">Status</th></tr></thead><tbody>{[['Neo Morake','Admin','Leadership','Now'],['Amara Dlamini','Executive','Leadership','12m ago'],['Lethabo Nkosi','Manager','Platforms','1h ago'],['Zanele Khumalo','Manager','Finance','Yesterday']].map((row) => <tr key={row[0]} className="border-t border-border">{row.map((cell,index) => <td key={cell} className="p-4 text-sm"><span className={index === 4 ? 'rounded-full bg-brand-soft px-2 py-1 text-xs font-semibold text-brand' : ''}>{index === 4 ? 'Active' : cell}</span></td>)}</tr>)}</tbody></table></div></section>
+  return <section className="overflow-hidden rounded-xl border border-border bg-card"><header className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-5"><div><h2 className="font-semibold">Users</h2><p className="text-sm text-muted-foreground">Manage access to the HIMARK tenant.</p></div><button type="button" onClick={() => setInvited(true)} className="inline-flex items-center gap-2 rounded-lg bg-foreground px-3 py-2 text-sm font-semibold text-primary-foreground"><UserPlus className="size-4" />{invited ? 'Invitation sent' : 'Invite user'}</button></header><div className="overflow-x-auto"><table className="w-full min-w-[720px] text-left"><thead><tr className="bg-muted/40 text-xs text-muted-foreground"><th className="p-4">User</th><th className="p-4">Role</th><th className="p-4">Team</th><th className="p-4">Last active</th><th className="p-4">Status</th></tr></thead><tbody>{[['Neo Morake','Admin','Leadership','Now'],['Amara Dlamini','Executive','Leadership','12m ago'],['Lethabo Nkosi','Manager','Platforms','1h ago'],['Zanele Khumalo','Manager','Finance','Yesterday']].map((row) => <tr key={row[0]} className="border-t border-border">{row.map((cell,index) => <td key={cell} className="p-4 text-sm"><span className={index === 4 ? 'border border-brand/10 bg-brand-soft px-2 py-1 text-xs font-medium text-brand' : ''}>{index === 4 ? 'Active' : cell}</span></td>)}</tr>)}</tbody></table></div></section>
 }
 
 function NotificationSettings() {

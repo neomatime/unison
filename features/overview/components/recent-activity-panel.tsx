@@ -21,7 +21,7 @@ export function RecentActivityPanel() {
               key={item.id}
               className="flex items-center gap-3 border-b border-border py-3 last:border-b-0"
             >
-              <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
+              <span className="flex size-8 shrink-0 items-center justify-center bg-muted text-muted-foreground">
                 <Icon className="size-4" strokeWidth={1.75} />
               </span>
               <p className="min-w-0 flex-1 truncate text-sm text-foreground">{item.title}</p>

@@ -19,21 +19,21 @@ export function TenantSwitcher() {
         aria-expanded={open}
         aria-haspopup="listbox"
         aria-disabled={!hasMultipleOrganizations || undefined}
-        className="flex h-10 min-w-48 items-center gap-2.5 rounded-lg border border-border bg-card px-3 text-left transition-colors hover:bg-muted/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+        className="flex h-10 min-w-48 items-center gap-2.5 border border-border bg-card px-3 text-left transition-colors hover:border-muted-foreground/45 hover:bg-muted/30 focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-brand"
       >
-        <span className="flex size-7 items-center justify-center rounded-sm bg-foreground text-[0.65rem] font-bold text-primary-foreground">
+        <span className="flex size-7 items-center justify-center bg-foreground text-[0.65rem] font-medium text-primary-foreground">
           {getInitials(active.name)}
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block text-[0.625rem] font-semibold tracking-wide text-muted-foreground uppercase">Organization</span>
-          <span className="block truncate text-sm font-semibold text-foreground">{active.name}</span>
+          <span className="block font-brand text-[0.625rem] font-medium tracking-[0.1em] text-muted-foreground uppercase">Organization</span>
+          <span className="block truncate text-sm font-medium text-foreground">{active.name}</span>
         </span>
         {hasMultipleOrganizations ? <ChevronsUpDown className="size-4 text-muted-foreground" /> : null}
       </button>
 
       {open && hasMultipleOrganizations ? (
-        <div className="absolute top-full right-0 z-50 mt-2 w-64 rounded-xl border border-border bg-card p-2 shadow-xl" role="listbox" aria-label="Organizations">
-          <div className="flex items-center gap-2 px-2 py-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+        <div className="absolute top-full right-0 z-50 mt-2 w-64 border border-border bg-card p-1.5 shadow-xl" role="listbox" aria-label="Organizations">
+          <div className="flex items-center gap-2 px-2 py-2 font-brand text-xs font-medium tracking-[0.1em] text-muted-foreground uppercase">
             <Building2 className="size-3.5" /> Switch organization
           </div>
           {organizations.map((organization) => (
@@ -44,9 +44,9 @@ export function TenantSwitcher() {
                 role="option"
                 aria-selected={active.id === organization.id}
                 onClick={() => setOpen(false)}
-                className="flex w-full items-center gap-3 rounded-lg px-2 py-2.5 text-left text-sm hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+                className="flex w-full items-center gap-3 px-2 py-2.5 text-left text-sm transition-colors hover:bg-muted focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-brand"
               >
-                <span className="flex size-8 items-center justify-center rounded-lg bg-muted text-xs font-bold text-foreground">{getInitials(organization.name)}</span>
+                <span className="flex size-8 items-center justify-center bg-muted text-xs font-medium text-foreground">{getInitials(organization.name)}</span>
                 <span className="flex-1 font-medium">{organization.name}</span>
                 {active.id === organization.id ? <Check className="size-4 text-brand" /> : null}
               </button>

@@ -88,7 +88,7 @@ export function InvitationSignUpScreen({
           <button
             type="submit"
             disabled={pending}
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-foreground text-sm font-semibold text-primary-foreground transition-transform hover:-translate-y-0.5 disabled:translate-y-0 disabled:opacity-60"
+            className="flex h-12 w-full items-center justify-center gap-2 rounded-none bg-foreground text-sm font-medium text-primary-foreground transition-colors duration-150 ease-out hover:bg-foreground/90 disabled:opacity-60 motion-reduce:transition-none"
           >
             {pending ? 'Creating your account…' : 'Create account and join'}
             <ArrowRight className="size-4" />
