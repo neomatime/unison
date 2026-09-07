@@ -797,7 +797,10 @@ test('the project detail page offers no tab without a table behind it', () => {
   const tabsMatch = screen.match(/const tabs\s*=\s*\[([^\]]*)\]/)
   assert.ok(tabsMatch, 'the tabs array was not found in the expected shape')
   const tabs = [...tabsMatch[1].matchAll(/'([^']+)'/g)].map((match) => match[1])
-  assert.deepEqual(tabs, ['Overview', 'Framework', 'Delivery'])
+  // Dependencies joined the three once project_dependencies existed to back
+  // it -- both directions read from that table, not a fixture. See
+  // list-project-dependencies.ts and project-dependencies-panel.tsx.
+  assert.deepEqual(tabs, ['Overview', 'Framework', 'Delivery', 'Dependencies'])
 
   for (const gone of ['Workstreams', 'Requirements', 'Documents', 'Processes', 'Testing', 'Risks', 'Decisions', 'Benefits', 'Governance']) {
     // Matched as a quoted string anywhere in the file, not just inside the

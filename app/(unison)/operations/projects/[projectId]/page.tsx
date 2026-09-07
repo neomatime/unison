@@ -3,6 +3,8 @@ import { notFound } from 'next/navigation'
 import { ProjectDetailScreen } from '@/features/delivery/components/project-detail-screen'
 import { getProject } from '@/features/delivery/queries/get-project'
 import { listDeliveryItems } from '@/features/delivery/queries/list-delivery-items'
+import { listDependencyFormOptions } from '@/features/delivery/queries/list-dependency-form-options'
+import { listProjectDependencies } from '@/features/delivery/queries/list-project-dependencies'
 import { listOrganizationMembers } from '@/features/memberships/queries/list-organization-members'
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -47,7 +49,14 @@ export default async function Page({ params }: { params: Promise<{ projectId: st
     level2Label: project.frameworks?.level_2_label ?? null,
   }
 
-  return <ProjectDetailScreen items={items} labels={labels} project={{
+  // The Dependencies tab's two directions, plus the picker options for its
+  // add form -- fetched alongside the Delivery tab's own data rather than
+  // lazily, since (unlike DeliveryItemsPanel's per-item retention case) there
+  // is nothing here that varies by which row is being edited.
+  const { dependsOn, dependedOnBy } = await listProjectDependencies(projectId)
+  const dependencyOptions = await listDependencyFormOptions(projectId)
+
+  return <ProjectDetailScreen items={items} labels={labels} dependsOn={dependsOn} dependedOnBy={dependedOnBy} options={dependencyOptions} project={{
     id: project.id,
     owner: ownerName,
     name: project.name,
