@@ -6,17 +6,32 @@ import { getEntitledModuleIds } from '../../config/unison-tiers.ts'
 
 test('a Core tenant sees Delivery and People only', () => {
   const headings = navigationSectionsFor(getEntitledModuleIds('core')).map((section) => section.heading)
-  assert.deepEqual(headings, ['Delivery', 'People'])
+  assert.deepEqual(headings, [undefined, 'Delivery', 'People'])
 })
 
 test('a Framework tenant also sees Operations', () => {
   const headings = navigationSectionsFor(getEntitledModuleIds('framework')).map((section) => section.heading)
-  assert.deepEqual(headings, ['Delivery', 'Operations', 'People'])
+  assert.deepEqual(headings, [undefined, 'Delivery', 'Operations', 'People'])
 })
 
 test('an Enterprise tenant sees every section', () => {
   const headings = navigationSectionsFor(getEntitledModuleIds('enterprise')).map((section) => section.heading)
-  assert.deepEqual(headings, ['Delivery', 'Operations', 'Commercial', 'Finance', 'People'])
+  assert.deepEqual(headings, [undefined, 'Delivery', 'Operations', 'Commercial', 'Finance', 'People'])
+})
+
+test('Overview is isolated above the Delivery section', () => {
+  const [overview, delivery] = navigationSectionsFor(getEntitledModuleIds('core'))
+
+  assert.equal(overview.heading, undefined)
+  assert.deepEqual(overview.items.map((item) => item.id), ['overview'])
+  assert.equal(delivery.heading, 'Delivery')
+  assert.deepEqual(delivery.items.map((item) => item.id), [
+    'portfolio',
+    'projects',
+    'frameworks',
+    'approvals',
+    'vendors',
+  ])
 })
 
 test('a section with no entitled modules is omitted, not left empty', () => {

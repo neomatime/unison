@@ -27,7 +27,7 @@ export type NavigationItem = {
 }
 
 export type NavigationSection = {
-  heading: 'Delivery' | 'Operations' | 'Commercial' | 'Finance' | 'People'
+  heading?: 'Delivery' | 'Operations' | 'Commercial' | 'Finance' | 'People'
   items: NavigationItem[]
 }
 
@@ -60,6 +60,10 @@ const itemsFor = (category: (typeof modules)[number]['category'], moduleIds: rea
   .filter((module) => module.category === category && module.enabled && moduleIds.includes(module.id))
   .map((module) => ({ ...module }))
 
+const itemFor = (id: (typeof modules)[number]['id'], moduleIds: readonly UnisonModuleId[]) => modules
+  .filter((module) => module.id === id && module.enabled && moduleIds.includes(module.id))
+  .map((module) => ({ ...module }))
+
 /**
  * Built per tenant from its tier's entitlement rather than once at import. A
  * section whose modules are all withheld is dropped entirely — an empty "Finance"
@@ -67,7 +71,8 @@ const itemsFor = (category: (typeof modules)[number]['category'], moduleIds: rea
  */
 export function navigationSectionsFor(moduleIds: readonly UnisonModuleId[]): NavigationSection[] {
   const sections: NavigationSection[] = [
-    { heading: 'Delivery', items: itemsFor('delivery', moduleIds) },
+    { items: itemFor('overview', moduleIds) },
+    { heading: 'Delivery', items: itemsFor('delivery', moduleIds).filter((item) => item.id !== 'overview') },
     { heading: 'Operations', items: itemsFor('operations', moduleIds) },
     { heading: 'Commercial', items: itemsFor('commercial', moduleIds) },
     { heading: 'Finance', items: itemsFor('finance', moduleIds) },
