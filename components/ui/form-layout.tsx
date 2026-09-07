@@ -22,9 +22,9 @@ export function FormSection({
   columns?: 1 | 2
 }) {
   return (
-    <section className="rounded-xl border border-border bg-card p-6 shadow-[0_1px_2px_rgb(16_32_46_/_0.04)]">
+    <section className="rounded-xl border border-border bg-card p-6">
       <div className="mb-5">
-        <h2 className="font-semibold text-foreground">{title}</h2>
+        <h2 className="unison-section-title text-sm text-foreground">{title}</h2>
         {description ? <p className="mt-1 text-sm text-muted-foreground">{description}</p> : null}
       </div>
       <div className={columns === 2 ? 'grid gap-5 md:grid-cols-2' : 'grid gap-5'}>{children}</div>
@@ -76,7 +76,7 @@ export function FormFooter({
         <button
           type="submit"
           disabled={pending}
-          className="rounded-lg bg-foreground px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-60"
+          className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-brand-foreground disabled:opacity-60"
         >
           {pending ? 'Saving…' : submitLabel}
         </button>

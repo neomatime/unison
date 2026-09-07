@@ -12,12 +12,12 @@ test('the tenant shell uses its light neutral palette without recolouring intern
   const authScreen = readFileSync('features/auth-ui/auth-screen.tsx', 'utf8')
 
   for (const [token, value] of [
-    ['tenant-sidebar', '#f6f8fa'],
-    ['tenant-sidebar-foreground', '#1c2b3a'],
-    ['tenant-sidebar-muted', '#5c6f82'],
-    ['tenant-sidebar-active', '#eaf2fd'],
-    ['tenant-sidebar-hover', '#eef3f7'],
-    ['tenant-sidebar-border', '#e1e7ec'],
+    ['tenant-sidebar', '#fbfcfe'],
+    ['tenant-sidebar-foreground', '#102344'],
+    ['tenant-sidebar-muted', '#60738e'],
+    ['tenant-sidebar-active', '#edf4ff'],
+    ['tenant-sidebar-hover', '#f2f6fb'],
+    ['tenant-sidebar-border', '#dfe6ee'],
     ['tenant-canvas', '#fafbfc'],
   ]) {
     assert.match(tokens, new RegExp(`--${token}: ${value};`))
@@ -27,11 +27,12 @@ test('the tenant shell uses its light neutral palette without recolouring intern
   assert.match(sidebar, /border-r border-tenant-sidebar-border bg-tenant-sidebar text-tenant-sidebar-foreground/)
   assert.match(sidebar, /bg-tenant-sidebar-active text-tenant-sidebar-foreground/)
   assert.match(sidebar, /text-tenant-sidebar-muted hover:bg-tenant-sidebar-hover hover:text-tenant-sidebar-foreground/)
-  assert.match(sidebar, /absolute inset-y-0 -left-3 w-0\.5 rounded-r-full bg-brand/)
+  assert.match(sidebar, /absolute inset-y-0 -left-3 w-0\.5 bg-brand/)
   assert.match(sidebar, /collapsed \? 'w-20' : 'w-64'/)
   assert.match(sidebar, /useNavigationSections\(\)/)
   assert.match(sidebar, /moduleIcons\[item\.id\]/)
   assert.match(shell, /bg-tenant-canvas/)
+  assert.match(shell, /unison-tenant/)
   assert.match(shell, /border-b border-tenant-sidebar-border bg-tenant-sidebar/)
   assert.match(shell, /hidden lg:block/)
   assert.match(shell, /fixed inset-0 z-50 lg:hidden/)

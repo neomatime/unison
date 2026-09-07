@@ -30,7 +30,7 @@ export function OverallPositionBrief({ overview }: { overview: DeliveryOverview 
   ]
 
   return (
-    <section aria-labelledby="overall-position-heading" className="overflow-hidden rounded-[10px] border border-border bg-card shadow-[0_1px_2px_rgb(16_32_46_/_0.025)]">
+    <section aria-labelledby="overall-position-heading" className="overflow-hidden rounded-lg border border-border bg-card shadow-[0_1px_2px_rgb(16_32_46_/_0.025)]">
       <div className="grid xl:grid-cols-[1.08fr_0.92fr]">
         <div className="p-5 sm:p-6 xl:border-r xl:border-border xl:p-7">
           <p className="text-xs font-semibold tracking-[0.1em] text-brand uppercase">Overall position</p>
@@ -181,7 +181,7 @@ export function InterventionList({ rows }: { rows: AttentionRow[] }) {
   const visibleRows = rows.slice(0, 3)
 
   return (
-    <section aria-labelledby="intervention-heading" className="overflow-hidden rounded-[10px] border border-border bg-card shadow-[0_1px_2px_rgb(16_32_46_/_0.025)]">
+    <section aria-labelledby="intervention-heading" className="overflow-hidden rounded-lg border border-border bg-card shadow-[0_1px_2px_rgb(16_32_46_/_0.025)]">
       <header className="relative flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4 before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:bg-danger">
         {/* The count is disclosed because the list is capped at three. A
             section titled "Requires intervention" showing three of eleven rows,
@@ -294,7 +294,7 @@ function BriefingDatum({ label, value, detail, muted = false, clamp = false }: {
 
 export function DeliveryHorizon({ overview }: { overview: DeliveryOverview }) {
   return (
-    <section aria-labelledby="delivery-horizon-heading" className="overflow-hidden rounded-[10px] border border-border bg-card shadow-[0_1px_2px_rgb(16_32_46_/_0.025)]">
+    <section aria-labelledby="delivery-horizon-heading" className="overflow-hidden rounded-lg border border-border bg-card shadow-[0_1px_2px_rgb(16_32_46_/_0.025)]">
       <header className="relative flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4 before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:bg-brand">
         <h2 id="delivery-horizon-heading" className="text-xs font-bold tracking-[0.12em] text-foreground uppercase">Delivery horizon</h2>
         <Link href="/operations/projects" className="inline-flex items-center gap-2 text-xs font-semibold text-brand hover:text-brand/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">

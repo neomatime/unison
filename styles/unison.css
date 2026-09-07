@@ -1,7 +1,123 @@
 @layer components {
+  /* Tenant-only system theme. Auth and HIMARK Internal deliberately do not use
+     this class, so their established identities remain isolated. */
+  .unison-tenant {
+    --background: var(--tenant-surface);
+    --foreground: var(--tenant-foreground);
+    --card: var(--tenant-surface);
+    --card-foreground: var(--tenant-foreground);
+    --popover: var(--tenant-surface);
+    --popover-foreground: var(--tenant-foreground);
+    --primary: var(--tenant-brand);
+    --primary-foreground: #ffffff;
+    --secondary: var(--tenant-surface-muted);
+    --secondary-foreground: var(--tenant-foreground);
+    --muted: var(--tenant-surface-muted);
+    --muted-foreground: var(--tenant-muted-foreground);
+    --accent: var(--tenant-brand-soft);
+    --accent-foreground: var(--tenant-foreground);
+    --border: var(--tenant-border);
+    --input: var(--tenant-border);
+    --ring: var(--tenant-brand);
+    --brand: var(--tenant-brand);
+    --brand-soft: var(--tenant-brand-soft);
+
+    /* Tailwind radius utilities resolve these at runtime. Remapping the full
+       scale makes legacy rounded-xl/2xl surfaces near-sharp without hundreds
+       of page-specific replacements; rounded-full remains available for
+       avatars, status dots and lifecycle nodes. */
+    --radius: 4px;
+    --radius-xs: 1px;
+    --radius-sm: 2px;
+    --radius-md: 3px;
+    --radius-lg: 4px;
+    --radius-xl: 4px;
+    --radius-2xl: 4px;
+    --radius-3xl: 4px;
+    --radius-4xl: 4px;
+
+    color: var(--tenant-foreground);
+    font-feature-settings: "kern" 1, "liga" 1;
+  }
+
+  .unison-tenant :where(h1, h2, h3) {
+    font-family: var(--unison-brand-font);
+    color: var(--tenant-foreground);
+  }
+
+  .unison-page-title {
+    font-family: var(--unison-brand-font);
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    line-height: 1.08;
+    text-transform: uppercase;
+  }
+
+  .unison-section-title {
+    font-family: var(--unison-brand-font);
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    line-height: 1.35;
+    text-transform: uppercase;
+  }
+
+  .unison-metric-label {
+    font-family: var(--unison-brand-font);
+    font-weight: 700;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+  }
+
+  .unison-record-name {
+    font-family: var(--unison-brand-font);
+    font-weight: 700;
+    letter-spacing: 0.035em;
+  }
+
   .unison-surface {
-    @apply rounded-xl border border-border bg-card;
-    box-shadow: 0 1px 2px rgb(16 32 46 / 0.04);
+    @apply rounded-lg border border-border bg-card;
+    box-shadow: var(--tenant-surface-shadow);
+  }
+
+  .unison-tenant :where(input:not([type='checkbox']):not([type='radio']), select, textarea) {
+    border-radius: var(--radius-md);
+    background-color: var(--tenant-surface);
+    box-shadow: none;
+  }
+
+  .unison-tenant :where(input, select, textarea)::placeholder {
+    color: color-mix(in oklab, var(--tenant-muted-foreground) 72%, white);
+  }
+
+  .unison-tenant table thead {
+    font-family: var(--unison-brand-font);
+    letter-spacing: 0.08em;
+  }
+
+  .unison-tenant table tbody tr {
+    transition: background-color 140ms ease;
+  }
+
+  @media (max-width: 640px) {
+    .unison-page-title {
+      letter-spacing: 0.09em;
+    }
   }
 }
 
+@layer utilities {
+  /* Older feature screens used foreground/navy for primary actions. Inside the
+     tenant shell those actions now inherit the approved restrained blue. */
+  .unison-tenant :where(button, a).bg-foreground {
+    background-color: var(--tenant-brand);
+    color: #ffffff;
+  }
+
+  .unison-tenant :where(button, a).bg-foreground:hover {
+    background-color: color-mix(in oklab, var(--tenant-brand) 92%, black);
+  }
+
+  .unison-tenant :where(section, article):not([role='dialog']):not([role='alertdialog'])[class*='shadow-'] {
+    box-shadow: var(--tenant-surface-shadow);
+  }
+}

@@ -64,6 +64,7 @@
   --color-chart-5: var(--chart-5);
 
   --font-sans: Inter, Aptos, "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+  --font-brand: var(--unison-brand-font);
   --font-mono: "Cascadia Code", "SFMono-Regular", Consolas, ui-monospace, monospace;
 
   --radius-sm: calc(var(--radius) - 4px);

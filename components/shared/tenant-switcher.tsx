@@ -19,9 +19,9 @@ export function TenantSwitcher() {
         aria-expanded={open}
         aria-haspopup="listbox"
         aria-disabled={!hasMultipleOrganizations || undefined}
-        className="flex h-11 min-w-48 items-center gap-2.5 rounded-xl border border-border bg-card px-3 text-left shadow-[0_1px_2px_rgb(16_32_46_/_0.04)] transition-colors hover:bg-muted/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+        className="flex h-10 min-w-48 items-center gap-2.5 rounded-lg border border-border bg-card px-3 text-left transition-colors hover:bg-muted/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
       >
-        <span className="flex size-7 items-center justify-center rounded-lg bg-foreground text-[0.65rem] font-bold text-primary-foreground">
+        <span className="flex size-7 items-center justify-center rounded-sm bg-foreground text-[0.65rem] font-bold text-primary-foreground">
           {getInitials(active.name)}
         </span>
         <span className="min-w-0 flex-1">

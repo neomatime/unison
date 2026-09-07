@@ -77,13 +77,13 @@ export function Sidebar({ onNavigate }: SidebarProps = {}) {
                       onNavigate?.()
                     }}
                     className={cn(
-                      'relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand',
+                      'relative flex items-center gap-3 rounded-sm px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand',
                       isActive
                         ? 'bg-tenant-sidebar-active text-tenant-sidebar-foreground'
                         : 'text-tenant-sidebar-muted hover:bg-tenant-sidebar-hover hover:text-tenant-sidebar-foreground',
                     )}
                   >
-                    {isActive ? <span aria-hidden="true" className="absolute inset-y-0 -left-3 w-0.5 rounded-r-full bg-brand" /> : null}
+                    {isActive ? <span aria-hidden="true" className="absolute inset-y-0 -left-3 w-0.5 bg-brand" /> : null}
                     <Icon className="size-[1.125rem] shrink-0" strokeWidth={1.75} />
                     <span className={cn(collapsed && 'sr-only')}>{item.label}</span>
                   </Link>

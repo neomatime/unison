@@ -22,13 +22,13 @@ type StatusBadgeProps = {
 }
 
 /**
- * A small pill used for statuses like "On Track" / "At Risk".
+ * A compact status label used for values like "On Track" / "At Risk".
  */
 export function StatusBadge({ children, tone = 'neutral', className }: StatusBadgeProps) {
   return (
     <span
       className={cn(
-        'inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium whitespace-nowrap',
+        'inline-flex items-center rounded-sm px-2 py-0.5 text-xs font-medium whitespace-nowrap',
         toneClasses[tone],
         className,
       )}

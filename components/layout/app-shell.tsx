@@ -88,7 +88,7 @@ export function AppShell({ user, organization, organizations, role, navigationSe
   return (
     <ShellProvider value={{ user, organization, organizations, role }}>
       <NavigationProvider sections={navigationSections}>
-        <div className="flex h-screen h-dvh overflow-hidden bg-tenant-canvas">
+        <div className="unison-tenant flex h-screen h-dvh overflow-hidden bg-tenant-canvas">
           <NavigationLoading />
           <div className="hidden lg:block"><Sidebar /></div>
           {navigationOpen ? (

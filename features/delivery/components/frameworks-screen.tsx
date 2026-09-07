@@ -28,7 +28,7 @@ export function FrameworksScreen({ frameworks }: { frameworks: FrameworkSummary[
               {frameworks.map((framework) => (
                 <tr key={framework.id} className="border-t border-border hover:bg-muted/25">
                   <td className="px-4 py-3.5">
-                    <Link href={`/delivery/frameworks/${framework.id}`} className="text-sm font-semibold text-foreground hover:text-brand">
+                    <Link href={`/delivery/frameworks/${framework.id}`} className="unison-record-name text-sm text-foreground hover:text-brand">
                       {framework.name}
                     </Link>
                   </td>

@@ -12,8 +12,8 @@ type ContentPanelProps = {
 }
 
 /**
- * The base surface for every dashboard panel: white card, hairline border,
- * subtle shadow and a header row with a title and optional action.
+ * The base surface for every dashboard panel: flat white surface, hairline
+ * border and a header row with a title and optional action.
  */
 export function ContentPanel({
   title,
@@ -25,12 +25,12 @@ export function ContentPanel({
   return (
     <section
       className={cn(
-        'flex flex-col rounded-xl border border-border bg-card shadow-[0_1px_2px_0_rgb(16_32_46_/_0.04)]',
+        'flex flex-col rounded-xl border border-border bg-card',
         className,
       )}
     >
       <header className="flex items-center justify-between px-5 pt-5 pb-3">
-        <h2 className="text-base font-semibold tracking-tight text-card-foreground">
+        <h2 className="unison-section-title text-sm text-card-foreground">
           {title}
         </h2>
         {action}

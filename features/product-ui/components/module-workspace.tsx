@@ -190,7 +190,7 @@ function DataTable({ module, records, selected, onSelected, onArchive }: { modul
 
 function Cell({ module, record, column, primary }: { module: ModuleDefinition; record: MockRecord; column: string; primary: boolean }) {
   const value = recordValue(record, column)
-  if (primary) return <Link href={`${module.route}/${record.id}`} className="font-semibold text-foreground hover:underline">{record.name}</Link>
+  if (primary) return <Link href={`${module.route}/${record.id}`} className="unison-record-name text-foreground hover:underline">{record.name}</Link>
   // 'Health' is additive here: of every module this component actually renders
   // (clients, projects, tasks, calendar, knowledge, settings -- verified by
   // grepping app/(unison) for imports of this file), only Projects has a column

@@ -1,6 +1,11 @@
 :root {
   color-scheme: light;
 
+  /* The wordmark is live text using the product's existing UI stack. Keep a
+     named brand face so headings can share that treatment without importing a
+     lookalike font or turning body copy into logo typography. */
+  --unison-brand-font: Inter, Aptos, "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+
   --background: oklch(0.968 0.003 247);
   --foreground: oklch(0.23 0.03 254);
   --card: oklch(1 0 0);
@@ -41,13 +46,21 @@
 
   /* Tenant workspace navigation. Kept separate from auth, internal admin and
      data-avatar surfaces that intentionally use the original navy token. */
-  --tenant-sidebar: #f6f8fa;
-  --tenant-sidebar-foreground: #1c2b3a;
-  --tenant-sidebar-muted: #5c6f82;
-  --tenant-sidebar-active: #eaf2fd;
-  --tenant-sidebar-hover: #eef3f7;
-  --tenant-sidebar-border: #e1e7ec;
+  --tenant-sidebar: #fbfcfe;
+  --tenant-sidebar-foreground: #102344;
+  --tenant-sidebar-muted: #60738e;
+  --tenant-sidebar-active: #edf4ff;
+  --tenant-sidebar-hover: #f2f6fb;
+  --tenant-sidebar-border: #dfe6ee;
   --tenant-canvas: #fafbfc;
+  --tenant-surface: #ffffff;
+  --tenant-surface-muted: #f5f7fa;
+  --tenant-foreground: #0a1d3f;
+  --tenant-muted-foreground: #637590;
+  --tenant-border: #dfe6ee;
+  --tenant-brand: #0968e8;
+  --tenant-brand-soft: #edf4ff;
+  --tenant-surface-shadow: 0 1px 2px rgb(10 29 63 / 0.025);
 
   /* Executive briefing secondary copy. This intentionally stays scoped to the
      briefing instead of darkening muted copy across every existing workspace. */

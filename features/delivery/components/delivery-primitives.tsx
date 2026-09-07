@@ -6,13 +6,13 @@ import { cn } from '@/lib/utils'
 import type { DeliveryHealth } from '../data'
 
 export function MetricCard({ label, value, detail, icon: Icon }: { label: string; value: string; detail: string; icon?: LucideIcon }) {
-  return <article className="rounded-xl border border-border bg-card px-4 py-4 shadow-[0_1px_2px_rgb(16_32_46_/_0.04)]">
+  return <article className="rounded-xl border border-border bg-card px-4 py-4">
     {/* The label block reserves two lines whether or not it needs them. Without
         it, a label that wraps ("Outstanding approvals") pushes its own value down
         a line while its neighbours' values stay put, and the row of numbers sits
         on three different baselines. */}
-    <div className="flex min-h-8 items-start justify-between gap-3"><p className="text-[0.675rem] font-semibold tracking-[0.09em] text-muted-foreground uppercase">{label}</p>{Icon ? <Icon className="size-4 text-muted-foreground" /> : null}</div>
-    <p className="mt-3 text-2xl font-bold tracking-tight text-foreground">{value}</p>
+    <div className="flex min-h-8 items-start justify-between gap-3"><p className="unison-metric-label text-[0.675rem] text-muted-foreground">{label}</p>{Icon ? <Icon className="size-4 text-muted-foreground" /> : null}</div>
+    <p className="font-brand mt-3 text-2xl font-bold tracking-tight text-foreground">{value}</p>
     <p className="mt-1 text-xs text-muted-foreground">{detail}</p>
   </article>
 }
@@ -25,8 +25,8 @@ export function MetricGrid({ items }: { items: ReadonlyArray<readonly [string, s
 }
 
 export function SectionCard({ title, description, action, children, className }: { title: string; description?: string; action?: ReactNode; children: ReactNode; className?: string }) {
-  return <section className={cn('overflow-hidden rounded-xl border border-border bg-card shadow-[0_1px_2px_rgb(16_32_46_/_0.04)]', className)}>
-    <header className="flex flex-wrap items-start justify-between gap-3 border-b border-border px-5 py-4"><div><h2 className="text-sm font-semibold text-foreground">{title}</h2>{description ? <p className="mt-1 text-xs text-muted-foreground">{description}</p> : null}</div>{action}</header>
+  return <section className={cn('overflow-hidden rounded-xl border border-border bg-card', className)}>
+    <header className="flex flex-wrap items-start justify-between gap-3 border-b border-border px-5 py-4"><div><h2 className="unison-section-title text-xs text-foreground">{title}</h2>{description ? <p className="mt-1 text-xs text-muted-foreground">{description}</p> : null}</div>{action}</header>
     {children}
   </section>
 }
@@ -58,7 +58,7 @@ export function PhaseStepper({ phases, active }: { phases: ReadonlyArray<{ name:
       return <div key={phase.name} className="relative flex flex-1 flex-col items-center text-center">
         {index > 0 ? <span className={cn('absolute top-3 right-1/2 h-px w-full', reached ? 'bg-brand' : 'bg-border')} /> : null}
         <span className={cn('relative z-10 flex size-6 items-center justify-center rounded-full border text-[0.625rem] font-bold', reached ? 'border-brand bg-brand text-white' : 'border-border bg-card text-muted-foreground')}>{index + 1}</span>
-        <span className="mt-2 text-xs font-semibold">{phase.name}</span>
+        <span className="unison-section-title mt-2 text-[0.6875rem]">{phase.name}</span>
         {phase.projects !== undefined ? <span className="mt-0.5 text-[0.6875rem] text-muted-foreground">{phase.projects} projects</span> : null}
       </div>
     })}

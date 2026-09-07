@@ -12,7 +12,7 @@ export function ProjectTable({ limit }: { limit?: number }) {
         {['Project', 'Framework', 'Current phase', 'Owner', 'Health', 'Next gate', 'Blockers', 'Target go-live', '% complete', ''].map((heading) => <th key={heading} className="px-4 py-3">{heading}</th>)}
       </tr></thead>
       <tbody>{records.map((project) => <tr key={project.id} className="border-t border-border hover:bg-muted/25">
-        <td className="px-4 py-3.5"><Link href={`/operations/projects/${project.id}`} className="text-sm font-semibold text-foreground hover:text-brand">{project.name}</Link><p className="mt-0.5 text-[0.6875rem] text-muted-foreground">{project.dependencies} dependencies</p></td>
+        <td className="px-4 py-3.5"><Link href={`/operations/projects/${project.id}`} className="unison-record-name text-sm text-foreground hover:text-brand">{project.name}</Link><p className="mt-0.5 text-[0.6875rem] text-muted-foreground">{project.dependencies} dependencies</p></td>
         <td className="max-w-48 px-4 py-3.5 text-xs text-muted-foreground">{project.framework}</td>
         <td className="px-4 py-3.5 text-xs font-medium">{project.phase}</td>
         <td className="px-4 py-3.5 text-xs">{project.owner}</td>
