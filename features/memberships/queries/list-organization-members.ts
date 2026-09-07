@@ -1,4 +1,5 @@
 import 'server-only'
+import { cache } from 'react'
 import { getSessionContext } from '@/lib/auth/get-session-context'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { resolveDisplayName } from '@/lib/auth/display-name'
@@ -26,8 +27,14 @@ export type OrganizationMember = {
  * `coalesce(full_name, name)` from `raw_user_meta_data` for the same reason,
  * so a member is named identically here and in the shell regardless of which
  * of those two keys their provider populated.
+ *
+ * Wrapped in React's `cache()`, the same as `getSessionContext`: this is
+ * called from several independent places on a single project-detail render
+ * (the page itself, `listProjectDependencies`, `listDependencyFormOptions`),
+ * and without it each one pays its own RPC round trip for identical data.
+ * Per-request, not global -- see the caching note on `getSessionContext`.
  */
-export async function listOrganizationMembers(): Promise<OrganizationMember[]> {
+export const listOrganizationMembers = cache(async function listOrganizationMembers(): Promise<OrganizationMember[]> {
   const { organization } = await getSessionContext()
   const supabase = await createServerSupabase()
 
@@ -46,4 +53,4 @@ export async function listOrganizationMembers(): Promise<OrganizationMember[]> {
     roleId: row.role_id,
     status: row.status,
   }))
-}
+})

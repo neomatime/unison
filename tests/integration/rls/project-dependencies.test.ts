@@ -1,0 +1,318 @@
+import assert from 'node:assert/strict'
+import test, { after, before } from 'node:test'
+
+import { admin, cleanup, createFixtureOrg, createFixtureUser, signedInClient } from './helpers.ts'
+
+let orgId: string
+let member: { id: string; email: string; password: string }
+let outsiderOrg: string
+let outsider: { id: string; email: string; password: string }
+let frameworkId: string
+let otherFrameworkId: string
+let phaseId: string
+let otherFrameworkPhaseId: string
+let projectA: string
+let projectB: string
+let projectC: string
+let outsiderProject: string
+
+before(async () => {
+  orgId = await createFixtureOrg('project-deps')
+  member = await createFixtureUser(orgId, 'owner')
+  outsiderOrg = await createFixtureOrg('project-deps-outsider')
+  outsider = await createFixtureUser(outsiderOrg, 'owner')
+
+  const framework = await admin.from('frameworks')
+    .insert({ organization_id: orgId, name: 'PD Framework', type: 'Enterprise', version: 'v1.0' })
+    .select('id').single()
+  if (framework.error) throw framework.error
+  frameworkId = framework.data.id
+
+  const otherFramework = await admin.from('frameworks')
+    .insert({ organization_id: orgId, name: 'PD Other Framework', type: 'Operations', version: 'v1.0' })
+    .select('id').single()
+  if (otherFramework.error) throw otherFramework.error
+  otherFrameworkId = otherFramework.data.id
+
+  const phase = await admin.from('framework_phases')
+    .insert({ organization_id: orgId, framework_id: frameworkId, name: 'Build', position: 1 })
+    .select('id').single()
+  if (phase.error) throw phase.error
+  phaseId = phase.data.id
+
+  const otherPhase = await admin.from('framework_phases')
+    .insert({ organization_id: orgId, framework_id: otherFrameworkId, name: 'Elsewhere', position: 1 })
+    .select('id').single()
+  if (otherPhase.error) throw otherPhase.error
+  otherFrameworkPhaseId = otherPhase.data.id
+
+  for (const [name, target] of [['PD A', 'a'], ['PD B', 'b'], ['PD C', 'c']] as const) {
+    const project = await admin.from('projects')
+      .insert({ organization_id: orgId, name, status: 'Active', health: 'On Track', framework_id: frameworkId })
+      .select('id').single()
+    if (project.error) throw project.error
+    if (target === 'a') projectA = project.data.id
+    else if (target === 'b') projectB = project.data.id
+    else projectC = project.data.id
+  }
+
+  const outsiderFramework = await admin.from('frameworks')
+    .insert({ organization_id: outsiderOrg, name: 'PD Outsider Framework', type: 'Enterprise', version: 'v1.0' })
+    .select('id').single()
+  if (outsiderFramework.error) throw outsiderFramework.error
+
+  const foreign = await admin.from('projects')
+    .insert({ organization_id: outsiderOrg, name: 'PD Foreign', status: 'Active', health: 'On Track', framework_id: outsiderFramework.data.id })
+    .select('id').single()
+  if (foreign.error) throw foreign.error
+  outsiderProject = foreign.data.id
+})
+
+after(async () => { await cleanup([orgId, outsiderOrg], [member.id, outsider.id]) })
+
+function edge(over: Record<string, unknown> = {}) {
+  return {
+    organization_id: orgId,
+    dependent_project_id: projectA,
+    prerequisite_project_id: projectB,
+    prerequisite_framework_id: frameworkId,
+    required_status: 'Complete',
+    ...over,
+  }
+}
+
+test('a valid prerequisite edge is accepted', async () => {
+  const { data, error } = await admin.from('project_dependencies').insert(edge()).select('id').single()
+  assert.equal(error, null)
+  await admin.from('project_dependencies').delete().eq('id', data!.id)
+})
+
+test('a project cannot be its own prerequisite', async () => {
+  const { error } = await admin.from('project_dependencies')
+    .insert(edge({ prerequisite_project_id: projectA })).select('id').single()
+
+  assert.ok(error, 'a self-edge must be refused')
+  assert.equal(error!.code, '23514')
+  // A self-edge is the degenerate one-node cycle, and the cycle guard is a
+  // BEFORE ROW trigger, so it fires before the project_dependencies_no_self_check
+  // constraint is ever evaluated: its recursive walk starts at the prerequisite
+  // and finds the dependent at depth 1 when the two are equal. Still SQLSTATE
+  // 23514, but via the trigger's message, not the constraint's name.
+  assert.match(error!.message, /circular dependency/)
+})
+
+// project_dependencies_no_self_check (a plain CHECK constraint) is a backstop
+// that the project_dependencies_cycle_guard BEFORE ROW trigger shadows:
+// BEFORE ROW triggers fire before CHECK constraints, and a self-edge is the
+// degenerate one-node cycle, so the trigger's own recursive walk always
+// catches it first (depth 1, immediately). There is therefore no way to
+// exercise the constraint through the normal write path -- it cannot fail
+// this suite by being dropped or broken, only by inspection.
+//
+// A prior fix round added a SECURITY DEFINER RPC
+// (rls_test_set_project_dependencies_cycle_guard, migration
+// 20260907110000_rls_test_toggle_dependency_cycle_guard.sql) purely so a test
+// could disable the trigger and observe the constraint alone. That RPC was
+// removed: disabling and re-enabling the guard were two separate calls, so a
+// crashed or killed test run could leave a tenant-integrity guard off,
+// durably, for every organisation, with only this backstop constraint (not
+// the graph-walking trigger) left standing. That risk was judged worse than
+// the regression coverage it bought for a constraint the trigger already
+// shadows.
+//
+// The constraint's independent correctness was instead proved manually,
+// once, by hand-dropping and re-adding it against the live database -- see
+// docs/follow-ups.md, under "From the project-dependencies slice
+// (2026-09-07)". If you are looking at this comment because you assume the
+// constraint is untested: it is untested by decision, not by accident.
+
+test('a cross-tenant prerequisite is unrepresentable', async () => {
+  const { error } = await admin.from('project_dependencies')
+    .insert(edge({ prerequisite_project_id: outsiderProject })).select('id').single()
+
+  assert.ok(error, "a prerequisite in another organisation must be refused")
+  assert.equal(error!.code, '23503')
+  assert.match(error!.message, /project_dependencies_prerequisite_fkey|project_dependencies_prerequisite_framework_fkey/)
+})
+
+test('a cross-tenant dependent is unrepresentable', async () => {
+  const { error } = await admin.from('project_dependencies')
+    .insert(edge({ dependent_project_id: outsiderProject })).select('id').single()
+
+  assert.ok(error, 'a dependent in another organisation must be refused')
+  assert.equal(error!.code, '23503')
+  assert.match(error!.message, /project_dependencies_dependent_fkey/)
+})
+
+test('a duplicate edge is refused', async () => {
+  const first = await admin.from('project_dependencies').insert(edge()).select('id').single()
+  assert.equal(first.error, null)
+
+  const { error } = await admin.from('project_dependencies').insert(edge()).select('id').single()
+  assert.ok(error, 'a duplicate edge must be refused')
+  assert.equal(error!.code, '23505')
+  assert.match(error!.message, /project_dependencies_unique/)
+
+  await admin.from('project_dependencies').delete().eq('id', first.data!.id)
+})
+
+test('a required phase from another framework is refused', async () => {
+  // The sharpest rule on this table: without it a dependency could require a
+  // phase the prerequisite's framework does not contain, and could never be
+  // satisfied by any state that project can reach.
+  const { error } = await admin.from('project_dependencies')
+    .insert(edge({ required_status: null, required_phase_id: otherFrameworkPhaseId })).select('id').single()
+
+  assert.ok(error, "another framework's phase must be refused")
+  assert.equal(error!.code, '23503')
+  assert.match(error!.message, /project_dependencies_phase_fkey/)
+})
+
+test('a required phase of the prerequisite own framework is accepted', async () => {
+  const { data, error } = await admin.from('project_dependencies')
+    .insert(edge({ required_status: null, required_phase_id: phaseId })).select('id').single()
+
+  assert.equal(error, null)
+  await admin.from('project_dependencies').delete().eq('id', data!.id)
+})
+
+test('both required states set is refused', async () => {
+  const { error } = await admin.from('project_dependencies')
+    .insert(edge({ required_status: 'Complete', required_phase_id: phaseId })).select('id').single()
+
+  assert.ok(error, 'both required states must be refused')
+  assert.equal(error!.code, '23514')
+  assert.match(error!.message, /project_dependencies_required_state_check/)
+})
+
+test('neither required state set is refused', async () => {
+  const { error } = await admin.from('project_dependencies')
+    .insert(edge({ required_status: null, required_phase_id: null })).select('id').single()
+
+  assert.ok(error, 'a dependency with no required state must be refused')
+  assert.equal(error!.code, '23514')
+  assert.match(error!.message, /project_dependencies_required_state_check/)
+})
+
+test('a mismatched prerequisite framework is refused', async () => {
+  const { error } = await admin.from('project_dependencies')
+    .insert(edge({ prerequisite_framework_id: otherFrameworkId })).select('id').single()
+
+  assert.ok(error, "a framework the prerequisite does not use must be refused")
+  assert.equal(error!.code, '23503')
+  assert.match(error!.message, /project_dependencies_prerequisite_framework_fkey/)
+})
+
+test('an outsider can neither read, write nor delete these rows', async () => {
+  const seeded = await admin.from('project_dependencies').insert(edge()).select('id').single()
+  assert.equal(seeded.error, null)
+
+  const client = await signedInClient(outsider.email, outsider.password)
+
+  const read = await client.from('project_dependencies').select('id').eq('organization_id', orgId)
+  assert.equal(read.error, null)
+  assert.deepEqual(read.data, [], "another organisation's dependencies must not be visible")
+
+  const write = await client.from('project_dependencies').insert(edge()).select('id').single()
+  assert.ok(write.error, 'an outsider must not be able to write')
+  assert.equal(write.error!.code, '42501')
+
+  // This is the only table in the schema with a delete policy, which makes
+  // delete the most novel thing to pin from the outside. The USING clause
+  // filters by organisation membership, so an outsider's delete matches zero
+  // rows rather than raising 42501 -- no error, an empty data array, and the
+  // row must still exist afterwards.
+  const remove = await client.from('project_dependencies').delete().eq('id', seeded.data!.id).select('id')
+  assert.equal(remove.error, null)
+  assert.deepEqual(remove.data, [], "an outsider's delete must match no rows")
+
+  const stillThere = await admin.from('project_dependencies').select('id').eq('id', seeded.data!.id)
+  assert.equal(stillThere.data?.length, 1, "another organisation's row must survive an outsider's delete")
+
+  await admin.from('project_dependencies').delete().eq('id', seeded.data!.id)
+})
+
+test('a member of the organisation can read, write and delete', async () => {
+  const client = await signedInClient(member.email, member.password)
+
+  const created = await client.from('project_dependencies').insert(edge()).select('id').single()
+  assert.equal(created.error, null)
+
+  const read = await client.from('project_dependencies').select('id').eq('id', created.data!.id)
+  assert.equal(read.error, null)
+  assert.equal(read.data!.length, 1)
+
+  // Unlike projects and delivery items, this table has a delete policy.
+  const removed = await client.from('project_dependencies').delete().eq('id', created.data!.id)
+  assert.equal(removed.error, null)
+
+  const after = await client.from('project_dependencies').select('id').eq('id', created.data!.id)
+  assert.deepEqual(after.data, [], 'the deleted edge must be gone')
+})
+
+// These run single-threaded, one insert at a time, so they exercise the
+// trigger's recursive CTE walk -- not the pg_advisory_xact_lock it takes
+// first. That lock only matters under genuine concurrency; see docs/follow-ups.md.
+test('a two-hop cycle is rejected', async () => {
+  // A depends on B. B may not then depend on A.
+  const first = await admin.from('project_dependencies').insert(edge()).select('id').single()
+  assert.equal(first.error, null)
+
+  const { error } = await admin.from('project_dependencies')
+    .insert(edge({ dependent_project_id: projectB, prerequisite_project_id: projectA }))
+    .select('id').single()
+
+  assert.ok(error, 'a two-hop cycle must be refused')
+  assert.match(error!.message, /circular dependency/)
+
+  await admin.from('project_dependencies').delete().eq('id', first.data!.id)
+})
+
+test('a three-hop cycle is rejected', async () => {
+  // A -> B, B -> C, then C -> A closes the loop.
+  const ab = await admin.from('project_dependencies').insert(edge()).select('id').single()
+  assert.equal(ab.error, null)
+
+  const bc = await admin.from('project_dependencies')
+    .insert(edge({ dependent_project_id: projectB, prerequisite_project_id: projectC }))
+    .select('id').single()
+  assert.equal(bc.error, null)
+
+  const { error } = await admin.from('project_dependencies')
+    .insert(edge({ dependent_project_id: projectC, prerequisite_project_id: projectA }))
+    .select('id').single()
+
+  assert.ok(error, 'a three-hop cycle must be refused')
+  assert.match(error!.message, /circular dependency/)
+
+  await admin.from('project_dependencies').delete().in('id', [ab.data!.id, bc.data!.id])
+})
+
+test('a shared prerequisite is not a cycle', async () => {
+  // A -> C and B -> C is a diamond, not a loop. A guard that rejects this is
+  // over-broad and would refuse ordinary portfolios.
+  const ac = await admin.from('project_dependencies')
+    .insert(edge({ dependent_project_id: projectA, prerequisite_project_id: projectC }))
+    .select('id').single()
+  assert.equal(ac.error, null)
+
+  const bc = await admin.from('project_dependencies')
+    .insert(edge({ dependent_project_id: projectB, prerequisite_project_id: projectC }))
+    .select('id').single()
+  assert.equal(bc.error, null, 'two projects may share one prerequisite')
+
+  await admin.from('project_dependencies').delete().in('id', [ac.data!.id, bc.data!.id])
+})
+
+test('a long acyclic chain is accepted', async () => {
+  // A -> B -> C. The walk must terminate and permit this.
+  const ab = await admin.from('project_dependencies').insert(edge()).select('id').single()
+  assert.equal(ab.error, null)
+
+  const bc = await admin.from('project_dependencies')
+    .insert(edge({ dependent_project_id: projectB, prerequisite_project_id: projectC }))
+    .select('id').single()
+  assert.equal(bc.error, null, 'a three-project chain is legitimate')
+
+  await admin.from('project_dependencies').delete().in('id', [ab.data!.id, bc.data!.id])
+})
