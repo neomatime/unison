@@ -1,7 +1,12 @@
-import { ModuleWorkspace } from '@/features/product-ui/components/module-workspace'
-import { moduleFixtures } from '@/features/product-ui/mocks/modules'
-import { moduleById } from '@/features/product-ui/registry'
+import { OrganizationProfileScreen } from '@/features/organizations/components/organization-profile-screen'
+import { getOrganizationProfile } from '@/features/organizations/queries/get-organization-profile'
 
-export default function Page() {
-  return <ModuleWorkspace module={moduleById.settings} records={moduleFixtures.settings ?? []} />
+export default async function Page({
+  searchParams,
+}: {
+  searchParams: Promise<{ saved?: string }>
+}) {
+  const [{ saved }, profile] = await Promise.all([searchParams, getOrganizationProfile()])
+
+  return <OrganizationProfileScreen profile={profile} saved={saved === '1'} />
 }

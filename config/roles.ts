@@ -24,3 +24,11 @@ export const roles = [
   },
 ] as const satisfies readonly RoleDefinition[]
 
+/**
+ * Resolve permissions from the central role registry instead of repeating
+ * role-name checks in server actions and page components.
+ */
+export function roleHasPermission(roleId: string, permission: PermissionId) {
+  const role = roles.find((candidate) => candidate.id === roleId)
+  return role ? (role.permissions as readonly PermissionId[]).includes(permission) : false
+}

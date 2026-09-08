@@ -79,9 +79,4 @@ export const moduleFixtures: Record<string, MockRecord[]> = {
     { id: 'proposal-quality-standard', name: 'Proposal Quality Standard', status: 'Review', owner: owners[0], updated: '2 days ago', category: 'Policy', related: 'Commercial', visibility: 'Company' },
     { id: 'northstar-decisions', name: 'Northstar Decision Register', status: 'Published', owner: owners[2], updated: '3 days ago', category: 'Decision Register', related: companies[1], visibility: 'Project Team' },
   ],
-  settings: [
-    { id: 'company-profile', name: 'Company Profile', status: 'Configured', owner: owners[0], updated: '2 days ago', area: 'Company' },
-    { id: 'module-access', name: 'Module Access', status: 'Needs Review', owner: owners[0], updated: '5 days ago', area: 'Modules' },
-    { id: 'notification-policy', name: 'Notification Policy', status: 'Configured', owner: owners[1], updated: '1 week ago', area: 'Notifications' },
-  ],
 }

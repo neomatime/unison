@@ -578,7 +578,7 @@ test('every registry column resolves to a key its records actually carry', () =>
   recordKeysByModule.projects = extractMapperKeys(readFileSync(join(workspace, 'features', 'delivery', 'queries', 'list-projects.ts'), 'utf8'))
   recordKeysByModule.clients = extractMapperKeys(readFileSync(join(workspace, 'features', 'clients', 'queries', 'list-clients.ts'), 'utf8'))
 
-  const moduleWorkspaceModules = new Set(['clients', 'projects', 'tasks', 'calendar', 'knowledge', 'settings'])
+  const moduleWorkspaceModules = new Set(['clients', 'projects', 'tasks', 'calendar', 'knowledge'])
   const domainWorkspaceModules = new Set(['leads', 'quotes', 'sales', 'invoices', 'expenses', 'forecast'])
 
   let checked = 0
@@ -610,7 +610,7 @@ test('every registry column resolves to a key its records actually carry', () =>
       checked += 1
     }
   }
-  assert.ok(checked >= 60, `expected to have checked columns across all 12 wired modules, only checked ${checked}`)
+  assert.ok(checked >= 55, `expected to have checked columns across all 11 wired modules, only checked ${checked}`)
 })
 
 test('the projects register renders a real Next Gate value instead of always dashing it out', () => {
@@ -678,7 +678,7 @@ test('no rendered module declares more columns than its table will show', () => 
 
   // Same split as the resolution guard above, and the same exclusions:
   // Onboarding and Team render bespoke screens that never read module.columns.
-  const moduleWorkspaceModules = new Set(['clients', 'projects', 'tasks', 'calendar', 'knowledge', 'settings'])
+  const moduleWorkspaceModules = new Set(['clients', 'projects', 'tasks', 'calendar', 'knowledge'])
   const domainWorkspaceModules = new Set(['leads', 'quotes', 'sales', 'invoices', 'expenses', 'forecast'])
 
   let checked = 0
@@ -694,7 +694,7 @@ test('no rendered module declares more columns than its table will show', () => 
     )
     checked += 1
   }
-  assert.equal(checked, 12, `expected to check all 12 wired modules, checked ${checked}`)
+  assert.equal(checked, 11, `expected to check all 11 wired modules, checked ${checked}`)
 })
 
 test('the projects register offers no view it cannot render from real records', () => {
