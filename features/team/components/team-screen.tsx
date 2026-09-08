@@ -9,11 +9,12 @@ import {
   Download,
   Gauge,
   MoreHorizontal,
-  Plus,
   Users,
   UsersRound,
   X,
 } from 'lucide-react'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 
 import { ConfirmationDialog } from '@/components/shared/confirmation-dialog'
@@ -22,15 +23,15 @@ import { WorkspaceHeader } from '@/components/shared/workspace-header'
 import { DonutChart } from '@/components/ui/donut-chart'
 
 import { departments, teamActivity, teamMembers as initialMembers, type TeamMember } from '../data'
-import { InviteMemberDialog, MemberActionDialog, type MemberAction } from './team-dialogs'
+import { MemberActionDialog, type MemberAction } from './team-dialogs'
 import { AvailabilityBadge, TeamWorkspace, teamTabs, type TeamTab } from './team-workspaces'
 
 type Toast = { message: string; tone?: 'success' | 'neutral' } | null
 
-export function TeamScreen() {
-  const [activeTab, setActiveTab] = useState<TeamTab>('directory')
+export function TeamScreen({ initialTab }: { initialTab?: string }) {
+  const [activeTab, setActiveTab] = useState<TeamTab>(teamTabs.some((tab) => tab.id === initialTab) ? initialTab as TeamTab : 'directory')
+  const router = useRouter()
   const [members, setMembers] = useState(initialMembers)
-  const [inviteOpen, setInviteOpen] = useState(false)
   const [moreOpen, setMoreOpen] = useState(false)
   const [exportOpen, setExportOpen] = useState(false)
   const [memberAction, setMemberAction] = useState<{ member: TeamMember; action: MemberAction } | null>(null)
@@ -48,6 +49,10 @@ export function TeamScreen() {
 
   function openMemberAction(member: TeamMember, action: MemberAction) {
     if (action === null) return
+    if (action !== 'assignments' && action !== 'capacity') {
+      router.push(`/people/team/${member.id}/action?action=${action}`)
+      return
+    }
     setMemberAction({ member, action })
   }
 
@@ -71,7 +76,7 @@ export function TeamScreen() {
         <button type="button" onClick={() => { setActiveTab('activity'); setMoreOpen(false) }} className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm hover:bg-muted"><Activity className="size-4" />View activity</button>
       </div> : null}
     </div>
-    <button type="button" onClick={() => setInviteOpen(true)} className="inline-flex h-11 items-center gap-2 rounded-xl bg-brand px-4 text-sm font-semibold text-white shadow-sm hover:bg-brand/90"><Plus className="size-4" />Invite Member</button>
+    <Link href="/people/team/new" className="inline-flex h-11 items-center bg-brand px-4 text-sm font-semibold text-white shadow-sm hover:bg-brand/90">Invite Member</Link>
   </>
 
   return <>
@@ -96,8 +101,7 @@ export function TeamScreen() {
 
     {activeTab === 'directory' ? <DirectoryPanels onNavigate={setActiveTab} /> : null}
 
-    <InviteMemberDialog open={inviteOpen} onClose={() => setInviteOpen(false)} onInvited={(member) => { setMembers((current) => [member, ...current]); showToast(`${member.name} was invited.`) }} />
-    <MemberActionDialog member={memberAction?.member ?? null} action={memberAction?.action ?? null} onClose={() => setMemberAction(null)} onComplete={(message) => { setMemberAction(null); showToast(message) }} />
+    <MemberActionDialog member={memberAction?.member ?? null} action={memberAction?.action ?? null} onClose={() => setMemberAction(null)} />
     <ConfirmationDialog open={deactivateTarget !== null} title="Deactivate Member" description={`${deactivateTarget?.name ?? 'This member'} will lose active access and will no longer be available for new delivery assignments. Their history remains intact.`} confirmLabel="Deactivate Member" onCancel={() => setDeactivateTarget(null)} onConfirm={() => {
       if (!deactivateTarget) return
       const name = deactivateTarget.name

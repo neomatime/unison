@@ -1,6 +1,8 @@
 'use client'
 
 import { useActionState, useEffect } from 'react'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 
 import { EntitySelectField, SelectField, TextAreaField, TextField } from '@/components/ui/form-fields'
 import { FormError } from '@/components/ui/form-layout'
@@ -49,6 +51,7 @@ export function DeliveryItemForm({
   options,
   onCancel,
   onSaved,
+  cancelHref,
 }: {
   mode: 'create' | 'edit'
   level: 1 | 2
@@ -56,18 +59,23 @@ export function DeliveryItemForm({
   item?: DeliveryItemFormValues
   action: DeliveryItemFormAction
   options: DeliveryItemFormOptions
-  onCancel: () => void
-  onSaved: () => void
+  onCancel?: () => void
+  onSaved?: () => void
+  cancelHref?: string
 }) {
   const [state, formAction, pending] = useActionState(action, undefined)
+  const router = useRouter()
 
   // Closes the dialog on a successful save. `state` starts `undefined` and
   // only becomes an object once the action has returned, so this cannot fire
   // before a real submission — and it does not fire on a failed one, because
   // that response carries `error`.
   useEffect(() => {
-    if (state && !state.error) onSaved()
-  }, [state, onSaved])
+    if (state && !state.error) {
+      if (onSaved) onSaved()
+      else if (cancelHref) router.push(cancelHref)
+    }
+  }, [state, onSaved, cancelHref, router])
 
   return (
     <form action={formAction} className="space-y-4">
@@ -85,9 +93,7 @@ export function DeliveryItemForm({
       </div>
       <FormError message={state?.error} />
       <div className="flex justify-end gap-2 pt-2">
-        <button type="button" onClick={onCancel} className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-muted">
-          Cancel
-        </button>
+        {onCancel ? <button type="button" onClick={onCancel} className="border border-border px-4 py-2 text-sm font-medium hover:bg-muted">Cancel</button> : cancelHref ? <Link href={cancelHref} className="inline-flex items-center border border-border px-4 py-2 text-sm font-medium hover:bg-muted">Cancel</Link> : null}
         <button type="submit" disabled={pending} className="rounded-lg bg-foreground px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-60">
           {pending ? 'Saving…' : mode === 'create' ? 'Create' : 'Save changes'}
         </button>

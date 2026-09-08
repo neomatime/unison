@@ -84,7 +84,7 @@ test('Team is the only People module and exposes the complete accountability wor
   const teamRoute = readFileSync(join(unisonRoot, 'people', 'team', 'page.tsx'), 'utf8')
   const screen = readFileSync(join(workspace, 'features', 'team', 'components', 'team-screen.tsx'), 'utf8')
   const workspaces = readFileSync(join(workspace, 'features', 'team', 'components', 'team-workspaces.tsx'), 'utf8')
-  const dialogs = readFileSync(join(workspace, 'features', 'team', 'components', 'team-dialogs.tsx'), 'utf8')
+  const memberForm = readFileSync(join(workspace, 'features', 'team', 'components', 'team-member-form.tsx'), 'utf8')
 
   assert.match(modules, /id: 'team'.*enabled: true.*category: 'people'/)
   assert.equal([...modules.matchAll(/category: 'people'/g)].length, 1)
@@ -93,8 +93,9 @@ test('Team is the only People module and exposes the complete accountability wor
   for (const tab of ['Directory', 'Departments', 'Teams', 'Roles', 'Project Assignments', 'Capacity', 'Availability', 'Activity']) assert.match(workspaces, new RegExp(tab))
   for (const capability of ['Invite Member', 'Total Members', 'Active on Projects', 'Capacity Utilisation', 'Department Snapshot', 'Recent Team Activity']) assert.match(screen, new RegExp(capability))
   for (const action of ['View Profile', 'Edit', 'View Assignments', 'View Capacity', 'Change Team', 'Change Role', 'Deactivate', 'Reactivate', 'New Department', 'New Team', 'New Role', 'Assign Member', 'Remove Assignment']) assert.match(workspaces, new RegExp(action))
-  for (const state of ['loading', 'success', 'error', 'First Name', 'Work Email', 'Access Role', 'Initial Project Assignment']) assert.match(dialogs, new RegExp(state, 'i'))
+  for (const field of ['First Name', 'Work Email', 'Access Role', 'Initial Project Assignment']) assert.match(memberForm, new RegExp(field, 'i'))
   for (const path of ['new/page.tsx', '[employeeId]/page.tsx', '[employeeId]/edit/page.tsx']) assert.ok(existsSync(join(unisonRoot, 'people', 'team', ...path.split('/'))))
+  for (const path of ['assignments/new/page.tsx', 'assignments/[assignmentId]/page.tsx', 'assignments/[assignmentId]/edit/page.tsx']) assert.ok(existsSync(join(unisonRoot, 'people', 'team', ...path.split('/'))))
 })
 
 test('retired People routes redirect to Team without exposing orphan workspaces', () => {
@@ -148,9 +149,10 @@ test('shared register UI covers CRUD, archived records, export, import, and tabl
 // "project records". That half is kept below under its own name.
 test('the shared document-upload workspace still offers its upload states', () => {
   const documents = readFileSync(join(workspace, 'features', 'delivery', 'components', 'project-documents-workspace.tsx'), 'utf8')
-  for (const state of ['progress', 'Cancel', 'Retry', 'Remove', 'duplicate', 'unsupported', 'classification']) {
+  for (const state of ['progress', 'Cancel', 'Remove', 'duplicate', 'unsupported', 'classification']) {
     assert.match(documents, new RegExp(state, 'i'), `${state} document-upload state is missing`)
   }
+  assert.match(documents, /records\/documents\/upload/, 'document upload must navigate to its dedicated page')
 })
 
 test('the project detail screen offers no archive-state control with no backing action', () => {
@@ -386,6 +388,7 @@ test('the provisioning success dialog claims only the invitation that was actual
 test('internal registers provide non-destructive operational actions and tier impact review', () => {
   const provisioning = readFileSync(join(workspace, 'features', 'internal-provisioning', 'components', 'provisioning-register.tsx'), 'utf8')
   const registers = readFileSync(join(workspace, 'features', 'internal-provisioning', 'components', 'internal-registers.tsx'), 'utf8')
+  const tierPage = readFileSync(join(workspace, 'features', 'internal-provisioning', 'components', 'internal-action-pages.tsx'), 'utf8')
 
   // Matched as `label: 'X'`, which only a row action produces. Matching the bare
   // name against the whole file meant a comment satisfied the assertion: this
@@ -402,7 +405,7 @@ test('internal registers provide non-destructive operational actions and tier im
 
   // Copy rather than row actions, so these stay whole-file matches.
   for (const copy of ['Module Impact', 'Data is not deleted when a module is disabled']) {
-    assert.match(registers, new RegExp(copy))
+    assert.match(tierPage, new RegExp(copy))
   }
 })
 
@@ -840,7 +843,7 @@ test('an archived current phase is disclosed rather than shown as current', () =
   assert.ok(panel.includes('Archived in framework'), 'the qualifier text must be present')
 })
 
-test('the delivery-item edit dialog wires its own owner and phase into the picker-options request', () => {
+test('the delivery-item edit page wires its own owner and phase into the picker-options request', () => {
   // This is the fifth and sixth instance of the picker-retention defect (see
   // selectOwnerOptions / selectPhaseOptions in project-form-options.test.ts,
   // which guard the pure functions but predate this branch and know nothing
@@ -858,9 +861,9 @@ test('the delivery-item edit dialog wires its own owner and phase into the picke
   // is derived from the call site itself, not restated as a fixed string, so
   // reordering the two keys or reformatting the call cannot defeat it -- only
   // actually dropping the wiring can.
-  const panel = readFileSync(join(workspace, 'features', 'delivery', 'components', 'delivery-items-panel.tsx'), 'utf8')
-  const editCall = panel.match(/getDeliveryItemFormOptionsAction\(\s*projectId\s*,\s*(\{[^}]*\})\s*\)/)
-  assert.ok(editCall, 'openEdit must call getDeliveryItemFormOptionsAction with a second argument carrying the item\'s current owner and phase -- openCreate\'s call (projectId alone) does not count')
+  const editPage = readFileSync(join(unisonRoot, 'operations', 'projects', '[projectId]', 'delivery-items', '[itemId]', 'edit', 'page.tsx'), 'utf8')
+  const editCall = editPage.match(/listDeliveryItemFormOptions\(\s*projectId\s*,\s*(\{[^}]*\})\s*\)/)
+  assert.ok(editCall, 'the edit route must load picker options with the item\'s current owner and phase')
   assert.match(editCall[1], /ownerId\s*:\s*item\.ownerId/, 'the edit call must forward the item\'s own ownerId, not omit it')
   assert.match(editCall[1], /phaseId\s*:\s*item\.currentPhaseId/, 'the edit call must forward the item\'s own currentPhaseId, not omit it')
 

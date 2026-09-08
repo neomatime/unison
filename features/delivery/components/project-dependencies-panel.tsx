@@ -1,8 +1,8 @@
 'use client'
 
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useActionState, useEffect, useRef, useState } from 'react'
-import { createPortal } from 'react-dom'
 
 import { ConfirmationDialog } from '@/components/shared/confirmation-dialog'
 import { EntitySelectField, FieldLabel, SelectField, TextAreaField, TextField, fieldClasses } from '@/components/ui/form-fields'
@@ -46,28 +46,20 @@ export function ProjectDependenciesPanel({
   projectId,
   dependsOn,
   dependedOnBy,
-  options,
 }: {
   projectId: string
   dependsOn: DependencyRow[]
   dependedOnBy: DependencyRow[]
-  options: DependencyFormOptions
 }) {
-  const [showAddDialog, setShowAddDialog] = useState(false)
-
   return (
     <div className="grid gap-5">
       <SectionCard
         title="This project depends on"
         description="Other projects that must reach a required state before this one can proceed."
         action={
-          <button
-            type="button"
-            onClick={() => setShowAddDialog(true)}
-            className="h-9 rounded-lg bg-foreground px-3 text-xs font-semibold text-primary-foreground"
-          >
+          <Link href={`/operations/projects/${projectId}/dependencies/new`} className="inline-flex h-9 items-center bg-foreground px-3 text-xs font-semibold text-primary-foreground">
             Add prerequisite
-          </button>
+          </Link>
         }
       >
         {dependsOn.length === 0 ? (
@@ -91,29 +83,6 @@ export function ProjectDependenciesPanel({
           <DependedOnByTable rows={dependedOnBy} />
         )}
       </SectionCard>
-
-      {showAddDialog ? createPortal(
-        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-foreground/30 p-4 py-10" role="presentation" onMouseDown={() => setShowAddDialog(false)}>
-          <section
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="add-dependency-dialog-title"
-            onMouseDown={(event) => event.stopPropagation()}
-            className="w-full max-w-2xl rounded-2xl border border-border bg-card p-6 shadow-2xl"
-          >
-            <h2 id="add-dependency-dialog-title" className="text-lg font-semibold text-foreground">Add prerequisite</h2>
-            <div className="mt-4">
-              <AddDependencyForm
-                projectId={projectId}
-                options={options}
-                onCancel={() => setShowAddDialog(false)}
-                onSaved={() => setShowAddDialog(false)}
-              />
-            </div>
-          </section>
-        </div>,
-        document.body,
-      ) : null}
     </div>
   )
 }
@@ -218,24 +187,30 @@ function DependedOnByTable({ rows }: { rows: DependencyRow[] }) {
  * prerequisite's framework would otherwise stay selected and be refused on
  * submit with no explanation the user can act on.
  */
-function AddDependencyForm({
+export function AddDependencyForm({
   projectId,
   options,
   onCancel,
   onSaved,
+  cancelHref,
 }: {
   projectId: string
   options: DependencyFormOptions
-  onCancel: () => void
-  onSaved: () => void
+  onCancel?: () => void
+  onSaved?: () => void
+  cancelHref?: string
 }) {
   const [state, formAction, pending] = useActionState(createProjectDependencyAction.bind(null, projectId), undefined)
+  const router = useRouter()
   const [prerequisiteId, setPrerequisiteId] = useState('')
   const [requiredState, setRequiredState] = useState('')
 
   useEffect(() => {
-    if (state && !state.error) onSaved()
-  }, [state, onSaved])
+    if (state && !state.error) {
+      if (onSaved) onSaved()
+      else if (cancelHref) router.push(cancelHref)
+    }
+  }, [state, onSaved, cancelHref, router])
 
   // A single-project organisation has no other project to depend on. An
   // empty select is a dead control, so the form says so instead of offering
@@ -245,7 +220,7 @@ function AddDependencyForm({
       <div className="space-y-4">
         <p className="text-sm text-muted-foreground">There are no other projects in this organisation to depend on.</p>
         <div className="flex justify-end">
-          <button type="button" onClick={onCancel} className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-muted">Close</button>
+          {onCancel ? <button type="button" onClick={onCancel} className="border border-border px-4 py-2 text-sm font-medium hover:bg-muted">Close</button> : cancelHref ? <Link href={cancelHref} className="inline-flex items-center border border-border px-4 py-2 text-sm font-medium hover:bg-muted">Close</Link> : null}
         </div>
       </div>
     )
@@ -297,7 +272,7 @@ function AddDependencyForm({
       <TextAreaField name="notes" label="Notes" rows={3} />
       <FormError message={state?.error} />
       <div className="flex justify-end gap-2 pt-2">
-        <button type="button" onClick={onCancel} className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-muted">Cancel</button>
+        {onCancel ? <button type="button" onClick={onCancel} className="border border-border px-4 py-2 text-sm font-medium hover:bg-muted">Cancel</button> : cancelHref ? <Link href={cancelHref} className="inline-flex items-center border border-border px-4 py-2 text-sm font-medium hover:bg-muted">Cancel</Link> : null}
         <button type="submit" disabled={pending} className="rounded-lg bg-foreground px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-60">
           {pending ? 'Adding…' : 'Add prerequisite'}
         </button>
