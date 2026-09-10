@@ -34,7 +34,7 @@ export function TopNav({ greeting, subtitle }: TopNavProps) {
 
         <TenantSwitcher />
 
-        <IconButton label="Notifications" hasDot onClick={() => setPanel('notifications')}>
+        <IconButton label="Notifications" onClick={() => setPanel('notifications')}>
           <Bell className="size-5" strokeWidth={1.75} />
         </IconButton>
         <IconButton label="Help" onClick={() => setPanel('help')}>
@@ -49,12 +49,10 @@ export function TopNav({ greeting, subtitle }: TopNavProps) {
 function IconButton({
   children,
   label,
-  hasDot,
   onClick,
 }: {
   children: React.ReactNode
   label: string
-  hasDot?: boolean
   onClick: () => void
 }) {
   return (
@@ -65,9 +63,6 @@ function IconButton({
       className="relative flex size-10 items-center justify-center border border-border bg-card text-muted-foreground transition-colors hover:border-muted-foreground/45 hover:text-foreground"
     >
       {children}
-      {hasDot ? (
-        <span className="absolute top-2.5 right-2.5 size-2 rounded-full bg-warning ring-2 ring-card" />
-      ) : null}
     </button>
   )
 }

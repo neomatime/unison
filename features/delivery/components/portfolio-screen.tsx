@@ -63,6 +63,8 @@ export async function PortfolioScreen() {
             fields: [],
             detailTabs: ["Overview", "Programmes", "Executive visibility"],
             contextualActions: [],
+            allowImport: true,
+            portableCollection: "portfolios",
             emptyDescription:
               "Create the first portfolio to organise programmes and executive reporting.",
           }}

@@ -25,6 +25,7 @@ import { ExportDialog } from '@/components/shared/export-dialog'
 import { RowActionMenu } from '@/components/shared/row-action-menu'
 import { ErrorState, LoadingSkeleton, PermissionState } from '@/components/shared/state-feedback'
 import { HealthBadge } from '@/features/delivery/components/delivery-primitives'
+import type { PortableCollection } from '@/features/data-portability/portable-collections'
 
 export type CollectionRecord = {
   id: string
@@ -57,6 +58,7 @@ export type CollectionConfig = {
   columns?: Array<{ id: string; label: string }>
   detailTabs?: string[]
   allowImport?: boolean
+  portableCollection?: PortableCollection
   allowLink?: boolean
   contextualActions?: string[]
   emptyDescription?: string
@@ -119,6 +121,8 @@ export function RecordCollectionWorkspace({ config, compact = false, onPrimaryAc
     } catch { /* A stale browser draft should not break the register. */ }
   }, [storageKey])
 
+  useEffect(() => setRecords(config.records), [config.records])
+
   function persistRoutePayload() {
     window.sessionStorage.setItem(storageKey, JSON.stringify({
       title: config.title,
@@ -127,6 +131,7 @@ export function RecordCollectionWorkspace({ config, compact = false, onPrimaryAc
       fields,
       records,
       returnHref: pathname,
+      portableCollection: config.portableCollection,
     }))
   }
 
@@ -142,7 +147,8 @@ export function RecordCollectionWorkspace({ config, compact = false, onPrimaryAc
 
   function openImport() {
     persistRoutePayload()
-    router.push(`/records/${encodeURIComponent(slug)}/import`)
+    const params = new URLSearchParams({ collection: config.portableCollection!, return: pathname })
+    router.push(`/records/${encodeURIComponent(slug)}/import?${params}`)
   }
 
   const setMessage = (value: string) => setMessageState(value)
@@ -190,7 +196,7 @@ export function RecordCollectionWorkspace({ config, compact = false, onPrimaryAc
       <header className="flex flex-wrap items-start justify-between gap-3 border-b border-border px-5 py-4">
         <div><h2 className="unison-section-title text-xs">{config.title}</h2><p className="mt-1 text-xs text-muted-foreground">{config.description}</p></div>
         <div className="flex flex-wrap gap-2">
-          {config.allowImport ? <button type="button" onClick={openImport} className="inline-flex h-9 items-center gap-2 rounded-lg border border-border px-3 text-xs font-semibold"><Import className="size-3.5" />Import</button> : null}
+          {config.allowImport && config.portableCollection ? <button type="button" onClick={openImport} className="inline-flex h-9 items-center gap-2 rounded-lg border border-border px-3 text-xs font-semibold"><Import className="size-3.5" />Import</button> : null}
           {config.allowLink ? <button type="button" onClick={() => setMessage(`Select a record to link to ${config.title.toLowerCase()}.`)} className="inline-flex h-9 items-center gap-2 rounded-lg border border-border px-3 text-xs font-semibold"><Link2 className="size-3.5" />Link existing</button> : null}
           <button type="button" onClick={onPrimaryAction ?? (() => openRecord('create'))} className="inline-flex h-9 items-center gap-2 rounded-lg bg-brand px-3 text-xs font-semibold text-white"><Plus className="size-3.5" />{config.primaryAction ?? `Add ${config.singular}`}</button>
         </div>
@@ -206,7 +212,7 @@ export function RecordCollectionWorkspace({ config, compact = false, onPrimaryAc
         <div className="relative flex items-center gap-2">
           <button type="button" aria-expanded={columnsOpen} onClick={() => setColumnsOpen((value) => !value)} className="inline-flex h-10 items-center gap-2 rounded-lg border border-border px-3 text-xs font-semibold"><Columns3 className="size-3.5" />Columns</button>
           {columnsOpen ? <div className="absolute top-full right-0 z-30 mt-2 w-56 rounded-xl border border-border bg-card p-3 shadow-xl"><p className="text-xs font-semibold">Visible columns</p>{columns.map((column) => <label key={column.id} className="mt-2 flex items-center gap-2 text-xs"><input type="checkbox" defaultChecked />{column.label}</label>)}</div> : null}
-          <button type="button" onClick={() => setExportOpen(true)} className="inline-flex h-10 items-center gap-2 rounded-lg border border-border px-3 text-xs font-semibold"><FileText className="size-3.5" />Export</button>
+          {config.portableCollection ? <button type="button" onClick={() => setExportOpen(true)} className="inline-flex h-10 items-center gap-2 rounded-lg border border-border px-3 text-xs font-semibold"><FileText className="size-3.5" />Export</button> : null}
           <button type="button" onClick={() => { setArchived((value) => !value); setSelected([]); setPage(1) }} className={`inline-flex h-10 items-center gap-2 rounded-lg border px-3 text-xs font-semibold ${archived ? 'border-brand bg-brand-soft text-brand' : 'border-border'}`}>{archived ? <RotateCcw className="size-3.5" /> : <Archive className="size-3.5" />}{archived ? 'Active' : 'Archived'}</button>
         </div>
       </div>
@@ -228,7 +234,7 @@ export function RecordCollectionWorkspace({ config, compact = false, onPrimaryAc
     </section>
 
     <ArchiveDialog record={archiveTarget} singular={config.singular} onClose={() => setArchiveTarget(null)} onConfirm={confirmArchive} />
-    <ExportDialog open={exportOpen} title={config.title} selectedCount={selected.length} onClose={() => setExportOpen(false)} />
+    {config.portableCollection ? <ExportDialog open={exportOpen} title={config.title} collection={config.portableCollection} visibleIds={visible.map((record) => record.id)} selectedIds={selected} onClose={() => setExportOpen(false)} /> : null}
     {message ? <button type="button" role="status" onClick={() => setMessage('')} className="fixed right-6 bottom-6 z-[100] max-w-sm rounded-xl bg-foreground px-4 py-3 text-left text-sm font-medium text-primary-foreground shadow-xl">{message}<X className="ml-3 inline size-3.5 opacity-60" /></button> : null}
   </>
 }

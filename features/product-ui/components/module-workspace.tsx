@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Archive, ArrowDownUp, ChevronLeft, ChevronRight, Download, Filter, LayoutGrid, List, MoreHorizontal, Search, SlidersHorizontal } from 'lucide-react'
+import { Archive, ArrowDownUp, ChevronLeft, ChevronRight, Download, Filter, Import, LayoutGrid, List, MoreHorizontal, Search, SlidersHorizontal } from 'lucide-react'
 import { useMemo, useState } from 'react'
 
 import { ConfirmationDialog } from '@/components/shared/confirmation-dialog'
@@ -29,6 +29,7 @@ export function ModuleWorkspace({ module, records, connected, initialQuery, tota
   const [archiveRecord, setArchiveRecord] = useState<MockRecord | null>(null)
   const [toast, setToast] = useState('')
   const [exportOpen, setExportOpen] = useState(false)
+  const portableCollection = connected ? module.id === 'clients' ? 'clients' : module.id === 'projects' ? 'projects' : undefined : undefined
   // A connected module is already filtered by the server against the URL's `q`,
   // so re-filtering here would search only the current page while the record
   // count describes the whole result — the two would describe different things.
@@ -102,13 +103,9 @@ export function ModuleWorkspace({ module, records, connected, initialQuery, tota
             ) : (
               <div className="relative min-w-56 flex-1 sm:max-w-xs"><Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" /><input value={query} onChange={(event) => setQuery(event.target.value)} aria-label={`Search ${module.label}`} placeholder={`Search ${module.label.toLowerCase()}...`} className="h-10 w-full rounded-lg border border-border bg-background pr-3 pl-9 text-sm outline-none focus:border-ring" /></div>
             )}
-            {/* Filters, Sort and Export are unconnected-only. On a fixture
-                register they are honest demo affordances; on a register of real
-                rows they are claims the product does not keep — "Apply filters"
-                fired a toast and navigated nowhere, Export announced a prepared
-                XLSX above a Download button that does nothing, and Sort
-                reordered one page of a multi-page result by a formatted date
-                string. Archive and bulk archive were already gated this way. */}
+            {/* Fixture modules keep local filters and sorting. Connected clients
+                and projects use database-backed import and export actions. */}
+            {portableCollection ? <><Link href={`/records/${module.id}/import?collection=${portableCollection}&return=${encodeURIComponent(module.route)}`} className="inline-flex h-10 items-center gap-2 rounded-lg border border-border px-3 text-sm font-medium"><Import className="size-4" />Import</Link><button type="button" onClick={() => setExportOpen(true)} className="inline-flex h-10 items-center gap-2 rounded-lg border border-border px-3 text-sm font-medium"><Download className="size-4" />Export</button></> : null}
             {!connected ? <><div className="relative"><button type="button" onClick={() => setFilterOpen((value) => !value)} aria-expanded={filterOpen} className="inline-flex h-10 items-center gap-2 rounded-lg border border-border px-3 text-sm font-medium"><Filter className="size-4" />Filters</button>{filterOpen ? <div className="absolute top-full left-0 z-30 mt-2 w-72 rounded-xl border border-border bg-card p-4 shadow-xl"><div className="flex items-center justify-between"><p className="text-sm font-semibold">Filter {module.label}</p><button type="button" onClick={() => setFilterOpen(false)} className="text-xs text-muted-foreground">Close</button></div><div className="mt-4 space-y-3">{module.filters.map((filter) => <label key={filter} className="block text-xs font-medium text-muted-foreground">{filter}<select className="mt-1 h-9 w-full rounded-lg border border-border bg-background px-2 text-sm text-foreground"><option>All {filter.toLowerCase()}</option><option>Active</option><option>Needs attention</option></select></label>)}</div><div className="mt-4 flex gap-2"><button type="button" onClick={() => { setFilterOpen(false); setToast('Filters applied.'); window.setTimeout(() => setToast(''), 2600) }} className="flex-1 rounded-lg bg-foreground px-3 py-2 text-xs font-semibold text-primary-foreground">Apply filters</button><button type="button" onClick={() => setFilterOpen(false)} className="rounded-lg border border-border px-3 py-2 text-xs font-semibold">Reset</button></div></div> : null}</div>
             <button type="button" onClick={() => setSortMode((current) => current === 'updated' ? 'name' : current === 'name' ? 'status' : 'updated')} className="inline-flex h-10 items-center gap-2 rounded-lg border border-border px-3 text-sm font-medium"><ArrowDownUp className="size-4" />Sort: {sortMode}</button>
             <button type="button" onClick={() => setExportOpen(true)} className="inline-flex h-10 items-center gap-2 rounded-lg border border-border px-3 text-sm font-medium"><Download className="size-4" />Export</button></> : null}
@@ -156,7 +153,7 @@ export function ModuleWorkspace({ module, records, connected, initialQuery, tota
 
       {toast ? <div role="status" className="fixed right-6 bottom-6 z-50 rounded-xl bg-foreground px-4 py-3 text-sm font-medium text-primary-foreground shadow-xl">{toast}</div> : null}
       {!connected ? <ConfirmationDialog open={Boolean(archiveRecord)} title={`${module.archiveLabel ?? `Archive ${module.singular}`}?`} description={`This will remove ${archiveRecord?.name ?? 'this record'} from active views. It can be restored from the archived register.`} confirmLabel={module.archiveLabel ?? 'Archive'} onCancel={() => setArchiveRecord(null)} onConfirm={confirmArchive} /> : null}
-      <ExportDialog open={exportOpen} title={module.label} selectedCount={selected.length} onClose={() => setExportOpen(false)} />
+      {portableCollection ? <ExportDialog open={exportOpen} title={module.label} collection={portableCollection} visibleIds={filtered.map((record) => record.id)} selectedIds={selected} onClose={() => setExportOpen(false)} /> : null}
     </>
   )
 }

@@ -1,4 +1,5 @@
 import type { CollectionField, CollectionRecord } from './components/record-collection-workspace'
+import type { PortableCollection } from '@/features/data-portability/portable-collections'
 
 export type CollectionRoutePayload = {
   title: string
@@ -7,6 +8,7 @@ export type CollectionRoutePayload = {
   fields: CollectionField[]
   records: CollectionRecord[]
   returnHref: string
+  portableCollection?: PortableCollection
 }
 
 export function collectionSlug(pathname: string, title: string) {

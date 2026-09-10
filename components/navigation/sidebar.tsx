@@ -3,8 +3,8 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Menu, ChevronDown } from 'lucide-react'
-import { useState } from 'react'
+import { Bell, CircleHelp, Menu, ChevronDown, Search } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { cn, getInitials } from '@/lib/utils'
 import { useShellContext } from '@/components/layout/shell-context'
 import { useNavigationSections } from '@/components/layout/navigation-context'
@@ -12,6 +12,7 @@ import { moduleIcons } from '@/config/navigation'
 import { InitialAvatar } from '@/components/ui/initial-avatar'
 import { roles } from '@/config/roles'
 import { signOutAction } from '@/features/auth-ui/actions/sign-out'
+import { UtilityPanel, type UtilityPanelKind } from '@/components/shared/utility-panel'
 
 type SidebarProps = {
   onNavigate?: () => void
@@ -21,13 +22,35 @@ export function Sidebar({ onNavigate }: SidebarProps = {}) {
   const pathname = usePathname()
   const [collapsed, setCollapsed] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
+  const [panel, setPanel] = useState<UtilityPanelKind | null>(null)
+  const [unread, setUnread] = useState(0)
   const { user, organization, role } = useShellContext()
   const navigationSections = useNavigationSections()
   const displayName = user.displayName
   const avatarUrl = user.avatarUrl
   const roleLabel = roles.find((definition) => definition.id === role)?.label ?? role
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault()
+        setPanel('search')
+      } else if (event.key === 'Escape') setPanel(null)
+    }
+    function handleCount(event: Event) { setUnread(Number((event as CustomEvent<number>).detail) || 0) }
+    document.addEventListener('keydown', handleKeyDown)
+    window.addEventListener('unison:notification-count', handleCount)
+    void fetch('/api/notifications', { cache: 'no-store' }).then(async (response) => {
+      if (!response.ok) return
+      const payload = await response.json() as { notifications?: Array<{ read_at: string | null }> }
+      setUnread((payload.notifications ?? []).filter((item) => !item.read_at).length)
+    })
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+      window.removeEventListener('unison:notification-count', handleCount)
+    }
+  }, [])
   return (
-    <aside className={cn('flex h-full shrink-0 flex-col border-r border-tenant-sidebar-border bg-tenant-sidebar text-tenant-sidebar-foreground transition-[width] duration-200 ease-out', collapsed ? 'w-20' : 'w-64')}>
+    <><aside className={cn('flex h-full shrink-0 flex-col border-r border-tenant-sidebar-border bg-tenant-sidebar text-tenant-sidebar-foreground transition-[width] duration-200 ease-out', collapsed ? 'w-20' : 'w-64')}>
       {/* Brand */}
       <div className={cn('flex items-center justify-between py-5', collapsed ? 'px-6' : 'px-6')}>
         <span className={cn('font-brand text-xl font-medium tracking-[0.2em] text-tenant-sidebar-foreground', collapsed && 'hidden')}>
@@ -94,6 +117,12 @@ export function Sidebar({ onNavigate }: SidebarProps = {}) {
         ))}
       </nav>
 
+      <div className="grid grid-cols-3 gap-1 border-t border-tenant-sidebar-border px-3 py-2">
+        <UtilityButton label="Search" collapsed={collapsed} onClick={() => setPanel('search')}><Search className="size-4" /></UtilityButton>
+        <UtilityButton label="Notifications" collapsed={collapsed} onClick={() => setPanel('notifications')} dot={unread > 0}><Bell className="size-4" /></UtilityButton>
+        <UtilityButton label="Help" collapsed={collapsed} onClick={() => setPanel('help')}><CircleHelp className="size-4" /></UtilityButton>
+      </div>
+
       {/* User */}
       <div className="relative border-t border-tenant-sidebar-border px-3 py-3">
         <button
@@ -123,6 +152,10 @@ export function Sidebar({ onNavigate }: SidebarProps = {}) {
         </button>
         {profileOpen ? <div role="menu" className={cn('absolute bottom-full z-50 mb-2 border border-border bg-card p-1.5 text-foreground shadow-xl', collapsed ? 'left-2 w-52' : 'right-3 left-3')}><p className="px-2 py-2 text-xs font-medium text-muted-foreground">{displayName} · {organization.name}</p><Link href="/people/team" onClick={onNavigate} className="block px-2 py-2 text-sm transition-colors hover:bg-muted">View profile</Link><Link href="/settings" onClick={onNavigate} className="block px-2 py-2 text-sm transition-colors hover:bg-muted">Organization settings</Link><form action={signOutAction} onSubmit={onNavigate}><button type="submit" className="block w-full px-2 py-2 text-left text-sm text-destructive transition-colors hover:bg-muted">Sign out</button></form></div> : null}
       </div>
-    </aside>
+    </aside><UtilityPanel kind={panel ?? 'help'} open={panel !== null} onClose={() => setPanel(null)} /></>
   )
+}
+
+function UtilityButton({ label, collapsed, onClick, dot, children }: { label: string; collapsed: boolean; onClick: () => void; dot?: boolean; children: React.ReactNode }) {
+  return <button type="button" title={label} aria-label={label} onClick={onClick} className="relative flex flex-col items-center justify-center gap-1 px-1 py-2 text-tenant-sidebar-muted transition-colors hover:bg-tenant-sidebar-hover hover:text-tenant-sidebar-foreground focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-brand">{children}{dot ? <span className="absolute top-1 right-2 size-2 rounded-full bg-warning" /> : null}<span className={cn('text-[0.6rem]', collapsed && 'sr-only')}>{label}</span></button>
 }

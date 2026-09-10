@@ -109,7 +109,7 @@ export function TeamScreen({ initialTab }: { initialTab?: string }) {
       setDeactivateTarget(null)
       showToast(`${name} was deactivated.`)
     }} />
-    <ExportDialog open={exportOpen} title="Team Directory" selectedCount={0} onClose={() => setExportOpen(false)} />
+    <ExportDialog open={exportOpen} title="Team Directory" collection="team-members" visibleIds={members.map((member) => member.id)} selectedIds={[]} onClose={() => setExportOpen(false)} />
     {toast ? <button type="button" role="status" onClick={() => setToast(null)} className="fixed right-6 bottom-6 z-[100] inline-flex max-w-sm items-center gap-3 rounded-xl bg-foreground px-4 py-3 text-left text-sm font-medium text-primary-foreground shadow-xl">{toast.message}<X className="size-3.5 opacity-60" /></button> : null}
   </>
 }

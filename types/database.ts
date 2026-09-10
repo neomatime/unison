@@ -460,6 +460,59 @@ export type Database = {
           },
         ]
       }
+      data_import_jobs: {
+        Row: {
+          collection: string
+          created_at: string
+          created_by: string
+          errors: Json
+          file_name: string
+          file_type: string
+          id: string
+          imported_count: number
+          organization_id: string
+          row_count: number
+          skipped_count: number
+          status: string
+        }
+        Insert: {
+          collection: string
+          created_at?: string
+          created_by?: string
+          errors?: Json
+          file_name: string
+          file_type: string
+          id?: string
+          imported_count: number
+          organization_id: string
+          row_count: number
+          skipped_count: number
+          status: string
+        }
+        Update: {
+          collection?: string
+          created_at?: string
+          created_by?: string
+          errors?: Json
+          file_name?: string
+          file_type?: string
+          id?: string
+          imported_count?: number
+          organization_id?: string
+          row_count?: number
+          skipped_count?: number
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "data_import_jobs_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       delivery_item_phase_history: {
         Row: {
           changed_at: string
@@ -628,6 +681,77 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "projects"
             referencedColumns: ["id", "framework_id"]
+          },
+        ]
+      }
+      documents: {
+        Row: {
+          archived_at: string | null
+          classification: string
+          confidentiality: string
+          created_at: string
+          description: string | null
+          display_name: string
+          file_size: number
+          id: string
+          linked_path: string | null
+          linked_record_id: string | null
+          linked_record_type: string | null
+          mime_type: string
+          organization_id: string
+          storage_bucket: string
+          storage_path: string
+          updated_at: string
+          uploaded_by: string | null
+          version: number
+        }
+        Insert: {
+          archived_at?: string | null
+          classification?: string
+          confidentiality?: string
+          created_at?: string
+          description?: string | null
+          display_name: string
+          file_size: number
+          id?: string
+          linked_path?: string | null
+          linked_record_id?: string | null
+          linked_record_type?: string | null
+          mime_type: string
+          organization_id: string
+          storage_bucket?: string
+          storage_path: string
+          updated_at?: string
+          uploaded_by?: string | null
+          version?: number
+        }
+        Update: {
+          archived_at?: string | null
+          classification?: string
+          confidentiality?: string
+          created_at?: string
+          description?: string | null
+          display_name?: string
+          file_size?: number
+          id?: string
+          linked_path?: string | null
+          linked_record_id?: string | null
+          linked_record_type?: string | null
+          mime_type?: string
+          organization_id?: string
+          storage_bucket?: string
+          storage_path?: string
+          updated_at?: string
+          uploaded_by?: string | null
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "documents_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -1374,6 +1498,50 @@ export type Database = {
           },
         ]
       }
+      notifications: {
+        Row: {
+          body: string | null
+          category: string
+          created_at: string
+          href: string | null
+          id: string
+          organization_id: string
+          read_at: string | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          body?: string | null
+          category?: string
+          created_at?: string
+          href?: string | null
+          id?: string
+          organization_id: string
+          read_at?: string | null
+          title: string
+          user_id?: string
+        }
+        Update: {
+          body?: string | null
+          category?: string
+          created_at?: string
+          href?: string | null
+          id?: string
+          organization_id?: string
+          read_at?: string | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organizations: {
         Row: {
           created_at: string
@@ -2082,6 +2250,85 @@ export type Database = {
           },
         ]
       }
+      record_change_events: {
+        Row: {
+          actor_id: string | null
+          changed_at: string
+          id: number
+          operation: string
+          organization_id: string
+          record_id: string
+          resource: string
+        }
+        Insert: {
+          actor_id?: string | null
+          changed_at?: string
+          id?: never
+          operation: string
+          organization_id: string
+          record_id: string
+          resource: string
+        }
+        Update: {
+          actor_id?: string | null
+          changed_at?: string
+          id?: never
+          operation?: string
+          organization_id?: string
+          record_id?: string
+          resource?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "record_change_events_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      record_index: {
+        Row: {
+          href: string
+          organization_id: string
+          record_id: string
+          resource: string
+          search_vector: unknown
+          subtitle: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          href: string
+          organization_id: string
+          record_id: string
+          resource: string
+          search_vector?: unknown
+          subtitle?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          href?: string
+          organization_id?: string
+          record_id?: string
+          resource?: string
+          search_vector?: unknown
+          subtitle?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "record_index_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sales_opportunities: {
         Row: {
           archived_at: string | null
@@ -2174,6 +2421,59 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "team_members"
             referencedColumns: ["id", "organization_id"]
+          },
+        ]
+      }
+      support_tickets: {
+        Row: {
+          category: string
+          created_at: string
+          description: string
+          id: string
+          organization_id: string
+          priority: string
+          resolution: string | null
+          status: string
+          subject: string
+          submitted_by: string
+          ticket_number: number
+          updated_at: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          description: string
+          id?: string
+          organization_id: string
+          priority?: string
+          resolution?: string | null
+          status?: string
+          subject: string
+          submitted_by?: string
+          ticket_number?: number
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          description?: string
+          id?: string
+          organization_id?: string
+          priority?: string
+          resolution?: string | null
+          status?: string
+          subject?: string
+          submitted_by?: string
+          ticket_number?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_tickets_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -2522,6 +2822,22 @@ export type Database = {
       rls_test_give_azure_identity: {
         Args: { target_email: string; target_user_id: string }
         Returns: undefined
+      }
+      search_organization_records: {
+        Args: {
+          result_limit?: number
+          search_query: string
+          target_organization: string
+        }
+        Returns: {
+          href: string
+          rank: number
+          record_id: string
+          resource: string
+          subtitle: string
+          title: string
+          updated_at: string
+        }[]
       }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }

@@ -24,6 +24,13 @@ const loaders: Record<Exclude<PhaseFourKind, "team-member" | "assignment">, () =
   "calendar-event": listCalendarEvents,
 };
 
+const portableCollectionByKind = {
+  onboarding: "client-onboardings",
+  vendor: "vendors",
+  task: "tasks",
+  "calendar-event": "calendar-events",
+} as const;
+
 export async function PersistentTeamScreen({ initialTab }: { initialTab?: string }) {
   const [members, assignments] = await Promise.all([listTeamMembers(), listProjectAssignments()]);
   const assignmentView = initialTab === "assignments";
@@ -62,6 +69,8 @@ export async function PersistentTeamScreen({ initialTab }: { initialTab?: string
         ? [{ id: "name", label: "Assignment" }, { id: "project", label: "Project" }, { id: "owner", label: "Member" }, { id: "allocation", label: "Allocation" }, { id: "start", label: "Start" }, { id: "end", label: "End" }, { id: "status", label: "Status" }]
         : [{ id: "name", label: "Member" }, { id: "owner", label: "Delivery Role" }, { id: "department", label: "Department" }, { id: "team", label: "Team" }, { id: "projects", label: "Projects" }, { id: "capacity", label: "Capacity" }, { id: "availability", label: "Availability" }, { id: "status", label: "Status" }],
       fields: [], contextualActions: [],
+      allowImport: true,
+      portableCollection: assignmentView ? "project-assignments" : "team-members",
       emptyDescription: assignmentView ? "Create the first project assignment." : "Add the first team member to the organization directory.",
     }} /></div>
   </>;
@@ -82,6 +91,7 @@ export async function PhaseFourRegister({ kind }: { kind: Exclude<PhaseFourKind,
       title: `${config.singular} Register`, singular: config.singular, description: config.registerDescription,
       primaryAction: config.action, records: config.records, recordHrefBase: config.base,
       columns: config.columns, fields: [], contextualActions: [], emptyDescription: config.empty,
+      allowImport: true, portableCollection: portableCollectionByKind[kind],
     }} /></div>
   </>;
 }

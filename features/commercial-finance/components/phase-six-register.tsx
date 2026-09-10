@@ -24,6 +24,15 @@ const loaders: Record<PhaseSixKind, () => Promise<PhaseSixRecord[]>> = {
   forecast: listForecasts,
 };
 
+const portableCollectionByKind = {
+  lead: "leads",
+  quote: "quotes",
+  opportunity: "sales-opportunities",
+  invoice: "invoices",
+  expense: "expenses",
+  forecast: "financial-forecasts",
+} as const;
+
 const text = (value: unknown, fallback = "—") =>
   value === null || value === undefined || value === "" ? fallback : String(value);
 const date = (value: unknown) =>
@@ -71,6 +80,8 @@ export async function PhaseSixRegister({ kind }: { kind: PhaseSixKind }) {
           columns: config.columns,
           fields: [],
           contextualActions: [],
+          allowImport: true,
+          portableCollection: portableCollectionByKind[kind],
           emptyDescription: config.empty,
         }} />
       </div>

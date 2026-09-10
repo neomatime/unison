@@ -78,6 +78,7 @@ export async function ApprovalsScreen() {
             fields: [],
             detailTabs: ["Summary", "Evidence", "Decision History"],
             contextualActions: [],
+            portableCollection: "approvals",
             emptyDescription:
               "Create the first approval request to begin a governed decision process.",
           }}

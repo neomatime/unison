@@ -151,9 +151,10 @@ test('shared register UI covers CRUD, archived records, export, import, and tabl
 // "project records". That half is kept below under its own name.
 test('the shared document-upload workspace still offers its upload states', () => {
   const documents = readFileSync(join(workspace, 'features', 'delivery', 'components', 'project-documents-workspace.tsx'), 'utf8')
-  for (const state of ['progress', 'Cancel', 'Remove', 'duplicate', 'unsupported', 'classification']) {
+  for (const state of ['ready', 'uploading', 'error', 'complete', 'Cancel', 'Remove', 'unsupported', 'classification']) {
     assert.match(documents, new RegExp(state, 'i'), `${state} document-upload state is missing`)
   }
+  assert.match(documents, /storage\.from\('documents'\)\.upload/, 'document upload must persist the selected file')
   assert.match(documents, /records\/documents\/upload/, 'document upload must navigate to its dedicated page')
 })
 

@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { EmptyState } from '@/components/shared/state-feedback'
 import { WorkspaceHeader } from '@/components/shared/workspace-header'
 import type { FrameworkSummary } from '../queries/list-frameworks'
+import { DataPortabilityActions } from '@/features/data-portability/components/data-portability-actions'
 
 export function FrameworksScreen({ frameworks }: { frameworks: FrameworkSummary[] }) {
   return <>
@@ -13,6 +14,7 @@ export function FrameworksScreen({ frameworks }: { frameworks: FrameworkSummary[
       action="New Framework"
       actionHref="/delivery/frameworks/new"
     />
+    <DataPortabilityActions collection="frameworks" title="Frameworks" returnHref="/delivery/frameworks" recordIds={frameworks.map((framework) => framework.id)} />
     <section className="overflow-hidden rounded-xl border border-border bg-card">
       {frameworks.length === 0 ? <EmptyState /> : (
         <div className="overflow-x-auto">

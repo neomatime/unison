@@ -11,6 +11,7 @@ import { ShellProvider, type ShellUser } from '@/components/layout/shell-context
 import { NavigationProvider } from '@/components/layout/navigation-context'
 import type { NavigationSection } from '@/config/navigation'
 import type { Organization } from '@/types/tenancy'
+import { RealtimeRefresh } from '@/components/layout/realtime-refresh'
 
 type AppShellProps = {
   user: ShellUser
@@ -92,6 +93,7 @@ export function AppShell({ user, organization, organizations, role, navigationSe
       <NavigationProvider sections={navigationSections}>
         <div className="unison-tenant flex h-screen h-dvh overflow-hidden bg-tenant-canvas">
           <NavigationLoading />
+          <RealtimeRefresh organizationId={organization.id} />
           <div className="hidden lg:block"><Sidebar /></div>
           {navigationOpen ? (
             <div className="fixed inset-0 z-50 lg:hidden">
