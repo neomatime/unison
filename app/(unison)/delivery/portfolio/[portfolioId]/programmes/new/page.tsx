@@ -1,3 +1,3 @@
 import { PortfolioForm } from '@/features/delivery/components/portfolio-form'
 
-export default function Page() { return <PortfolioForm kind="programme" /> }
+export default async function Page({params}:{params:Promise<{portfolioId:string}>}) { const {portfolioId}=await params;return <PortfolioForm kind="programme" portfolioId={portfolioId} /> }
