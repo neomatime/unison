@@ -1,2 +1,4 @@
 import { ApprovalDetail } from '@/features/delivery/components/approval-workspace'
-export default async function Page({params}:{params:Promise<{approvalId:string}>}){const {approvalId}=await params;return <ApprovalDetail approvalId={approvalId}/>}
+import { getApproval } from '@/features/delivery/queries/approvals'
+import { notFound } from 'next/navigation'
+export default async function Page({params}:{params:Promise<{approvalId:string}>}){const {approvalId}=await params;const approval=await getApproval(approvalId);if(!approval)notFound();return <ApprovalDetail approval={approval}/>}

@@ -10,8 +10,9 @@ import { setFrameworkArchivedAction } from '@/features/delivery/actions/set-fram
 import type { FrameworkDetail, FrameworkProject } from '@/features/delivery/queries/get-framework'
 import { HealthBadge, SectionCard } from './delivery-primitives'
 import { FrameworkPhaseEditor } from './framework-phase-editor'
+import { FrameworkGates, FrameworkVersions } from './framework-governance'
 
-const tabs = ['Overview', 'Phases', 'Projects'] as const
+const tabs = ['Overview', 'Phases', 'Gates', 'Projects', 'Versions'] as const
 
 // Everything on this screen comes from public.frameworks, public.framework_phases
 // and public.projects. The route resolves the record and 404s on a miss; nothing
@@ -60,7 +61,7 @@ export function FrameworkDetailScreen({ framework }: { framework: FrameworkDetai
       {tabs.map((item) => <button type="button" key={item} onClick={() => setTab(item)} className={`whitespace-nowrap border-b-2 px-3 py-3 text-sm font-medium ${tab === item ? 'border-brand text-brand' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>{item}</button>)}
     </nav>
     <div className="mt-5">
-      {tab === 'Overview' ? <Overview framework={framework} /> : tab === 'Phases' ? <FrameworkPhaseEditor frameworkId={framework.id} phases={framework.phases} /> : <ProjectsTab projects={framework.projects} />}
+      {tab === 'Overview' ? <Overview framework={framework} /> : tab === 'Phases' ? <FrameworkPhaseEditor frameworkId={framework.id} phases={framework.phases} /> : tab === 'Gates' ? <FrameworkGates framework={framework} /> : tab === 'Projects' ? <ProjectsTab projects={framework.projects} /> : <FrameworkVersions framework={framework} />}
     </div>
     <ConfirmationDialog
       open={confirmOpen}

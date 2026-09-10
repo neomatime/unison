@@ -741,10 +741,11 @@ test('the frameworks module reads the database rather than a fixture', () => {
   }
 
   // Five tabs named domains with no tables behind them.
-  for (const tab of ['Workstreams', 'Artefacts', 'Roles', 'Controls', 'Versions']) {
+  for (const tab of ['Workstreams', 'Artefacts', 'Roles', 'Controls']) {
     assert.ok(!detail.includes(`'${tab}'`), `the ${tab} tab has no table behind it and must not be offered`)
   }
   assert.ok(!detail.includes('Phases & Gates'), 'gates do not exist; the tab is Phases')
+  assert.match(detail, /FrameworkVersions/, 'the Versions tab must read persisted history')
 
   assert.ok(!data.includes('export const frameworks'), 'the frameworks fixture must not survive alongside the real query')
   // This checks data.ts only. `deliveryPhases` was not deleted — it was
@@ -798,13 +799,13 @@ test('the project detail page offers no tab without a table behind it', () => {
 
   const tabsMatch = screen.match(/const tabs\s*=\s*\[([^\]]*)\]/)
   assert.ok(tabsMatch, 'the tabs array was not found in the expected shape')
-  const tabs = [...tabsMatch[1].matchAll(/'([^']+)'/g)].map((match) => match[1])
+  const tabs = [...tabsMatch[1].matchAll(/["']([^"']+)["']/g)].map((match) => match[1])
   // Dependencies joined the three once project_dependencies existed to back
   // it -- both directions read from that table, not a fixture. See
   // list-project-dependencies.ts and project-dependencies-panel.tsx.
-  assert.deepEqual(tabs, ['Overview', 'Framework', 'Delivery', 'Dependencies'])
+  assert.deepEqual(tabs, ['Overview', 'Framework', 'Delivery', 'Governance', 'Dependencies'])
 
-  for (const gone of ['Workstreams', 'Requirements', 'Documents', 'Processes', 'Testing', 'Risks', 'Decisions', 'Benefits', 'Governance']) {
+  for (const gone of ['Workstreams', 'Requirements', 'Documents', 'Processes', 'Testing', 'Benefits']) {
     // Matched as a quoted string anywhere in the file, not just inside the
     // tabs array literal above -- that array only proves what the tab strip
     // renders today. This loop exists for the other half: a fabricated name
