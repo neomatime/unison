@@ -14,6 +14,12 @@ const portfolioScreen = read(
 );
 const detail = read("features/delivery/components/portfolio-detail-screen.tsx");
 const form = read("features/delivery/components/portfolio-form.tsx");
+const approvalScreen = read(
+  "features/delivery/components/approvals-screen.tsx",
+);
+const collectionWorkspace = read(
+  "features/product-ui/components/record-collection-workspace.tsx",
+);
 
 test("portfolio and programme records are tenant isolated and persistent", () => {
   for (const table of ["portfolios", "programmes"]) {
@@ -45,4 +51,13 @@ test("executive visibility is calculated from governance records", () => {
     assert.match(portfolioQuery, new RegExp(`from\\(["']${table}["']\\)`));
   assert.match(detail, /ExecutiveVisibility/);
   assert.match(detail, /Executive visibility/);
+});
+
+test("server-fetched registers pass only serializable routing config to the client", () => {
+  for (const screen of [portfolioScreen, approvalScreen]) {
+    assert.match(screen, /recordHrefBase:/);
+    assert.doesNotMatch(screen, /recordHref:\s*\(/);
+  }
+  assert.match(collectionWorkspace, /recordHrefBase\?: string/);
+  assert.match(collectionWorkspace, /encodeURIComponent\(record\.id\)/);
 });

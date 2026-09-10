@@ -50,7 +50,7 @@ export async function PortfolioScreen() {
             description: "Persisted strategic delivery portfolios.",
             primaryAction: "New Portfolio",
             records,
-            recordHref: (r) => `/delivery/portfolio/${r.id}`,
+            recordHrefBase: "/delivery/portfolio",
             filters: ["Owner", "Status"],
             columns: [
               { id: "name", label: "Portfolio" },

@@ -64,7 +64,7 @@ export async function ApprovalsScreen() {
               "Persisted governance requests and their current decision state.",
             primaryAction: "New Approval",
             records,
-            recordHref: (record) => `/delivery/approvals/${record.id}`,
+            recordHrefBase: "/delivery/approvals",
             filters: ["Project", "Priority", "Status"],
             columns: [
               { id: "name", label: "Approval" },

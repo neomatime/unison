@@ -61,6 +61,7 @@ export type CollectionConfig = {
   contextualActions?: string[]
   emptyDescription?: string
   recordHref?: (record: CollectionRecord) => string
+  recordHrefBase?: string
   state?: 'loaded' | 'loading' | 'error' | 'restricted'
 }
 
@@ -99,6 +100,15 @@ export function RecordCollectionWorkspace({ config, compact = false, onPrimaryAc
   const storageKey = collectionStorageKey(organization.id, slug)
   const fields = config.fields ?? defaultFields
   const columns = config.columns ?? defaultColumns
+  const hasConfiguredRecordRoute = Boolean(config.recordHref || config.recordHrefBase)
+
+  function recordRoute(record: CollectionRecord) {
+    if (config.recordHref) return config.recordHref(record)
+    if (config.recordHrefBase) {
+      return `${config.recordHrefBase}/${encodeURIComponent(record.id)}`
+    }
+    return collectionRoute(slug, record.id)
+  }
 
   useEffect(() => {
     const raw = window.sessionStorage.getItem(storageKey)
@@ -203,12 +213,12 @@ export function RecordCollectionWorkspace({ config, compact = false, onPrimaryAc
 
       {selected.length ? <div className="flex flex-wrap items-center justify-between gap-3 bg-brand-soft px-5 py-3 text-sm"><span><strong>{selected.length}</strong> selected</span><div className="flex gap-2">{config.contextualActions?.slice(0, 2).map((action) => <button key={action} type="button" onClick={() => openAction(action, `${selected.length} selected records`)} className="rounded-lg border border-brand/20 bg-card px-3 py-1.5 text-xs font-semibold">{action}</button>)}<button type="button" onClick={archiveSelected} className="inline-flex items-center gap-1 rounded-lg border border-destructive/20 bg-card px-3 py-1.5 text-xs font-semibold text-destructive"><Archive className="size-3.5" />Archive</button></div></div> : null}
 
-      {visible.length ? <div className="overflow-x-auto"><table className={`w-full text-left ${compact ? 'min-w-[720px]' : 'min-w-[920px]'}`}><thead><tr className="bg-muted/30 text-[0.65rem] font-semibold tracking-wide text-muted-foreground uppercase"><th className="w-12 px-5 py-3"><input type="checkbox" aria-label="Select all visible records" checked={paged.length > 0 && paged.every((record) => selected.includes(record.id))} onChange={(event) => setSelected(event.target.checked ? [...new Set([...selected, ...paged.map((record) => record.id)])] : selected.filter((id) => !paged.some((record) => record.id === id)))} /></th>{columns.map((column) => <th key={column.id} className="px-4 py-3">{column.label}</th>)}<th className="w-16 px-4 py-3">Actions</th></tr></thead><tbody>{paged.map((record) => <tr key={record.id} className="border-t border-border hover:bg-muted/25"><td className="px-5 py-3.5"><input type="checkbox" aria-label={`Select ${record.name}`} checked={selected.includes(record.id)} onChange={(event) => setSelected(event.target.checked ? [...selected, record.id] : selected.filter((id) => id !== record.id))} /></td>{columns.map((column, index) => <td key={column.id} className="max-w-64 px-4 py-3.5 text-xs">{index === 0 ? <a href={config.recordHref ? config.recordHref(record) : collectionRoute(slug, record.id)} onClick={config.recordHref ? undefined : (event) => { event.preventDefault(); openRecord('view', record) }} className="unison-record-name text-left text-sm hover:text-brand hover:underline">{String(record[column.id] ?? record.name)}</a> : column.id === 'status' ? <HealthBadge>{String(record.status)}</HealthBadge> : <span className="text-muted-foreground">{String(record[column.id] ?? '—')}</span>}</td>)}<td className="px-4 py-3.5"><RowActionMenu label={record.name} actions={record.archived ? [
-          { id: 'view', label: 'View', onSelect: () => config.recordHref ? router.push(config.recordHref(record)) : openRecord('view', record) },
+      {visible.length ? <div className="overflow-x-auto"><table className={`w-full text-left ${compact ? 'min-w-[720px]' : 'min-w-[920px]'}`}><thead><tr className="bg-muted/30 text-[0.65rem] font-semibold tracking-wide text-muted-foreground uppercase"><th className="w-12 px-5 py-3"><input type="checkbox" aria-label="Select all visible records" checked={paged.length > 0 && paged.every((record) => selected.includes(record.id))} onChange={(event) => setSelected(event.target.checked ? [...new Set([...selected, ...paged.map((record) => record.id)])] : selected.filter((id) => !paged.some((record) => record.id === id)))} /></th>{columns.map((column) => <th key={column.id} className="px-4 py-3">{column.label}</th>)}<th className="w-16 px-4 py-3">Actions</th></tr></thead><tbody>{paged.map((record) => <tr key={record.id} className="border-t border-border hover:bg-muted/25"><td className="px-5 py-3.5"><input type="checkbox" aria-label={`Select ${record.name}`} checked={selected.includes(record.id)} onChange={(event) => setSelected(event.target.checked ? [...selected, record.id] : selected.filter((id) => id !== record.id))} /></td>{columns.map((column, index) => <td key={column.id} className="max-w-64 px-4 py-3.5 text-xs">{index === 0 ? <a href={recordRoute(record)} onClick={hasConfiguredRecordRoute ? undefined : (event) => { event.preventDefault(); openRecord('view', record) }} className="unison-record-name text-left text-sm hover:text-brand hover:underline">{String(record[column.id] ?? record.name)}</a> : column.id === 'status' ? <HealthBadge>{String(record.status)}</HealthBadge> : <span className="text-muted-foreground">{String(record[column.id] ?? '—')}</span>}</td>)}<td className="px-4 py-3.5"><RowActionMenu label={record.name} actions={record.archived ? [
+          { id: 'view', label: 'View', onSelect: () => hasConfiguredRecordRoute ? router.push(recordRoute(record)) : openRecord('view', record) },
           { id: 'restore', label: 'Restore', onSelect: () => restore(record) },
         ] : [
-          { id: 'view', label: 'View', onSelect: () => config.recordHref ? router.push(config.recordHref(record)) : openRecord('view', record) },
-          { id: 'edit', label: 'Edit', onSelect: () => config.recordHref ? router.push(`${config.recordHref(record)}/edit`) : openRecord('edit', record) },
+          { id: 'view', label: 'View', onSelect: () => hasConfiguredRecordRoute ? router.push(recordRoute(record)) : openRecord('view', record) },
+          { id: 'edit', label: 'Edit', onSelect: () => hasConfiguredRecordRoute ? router.push(`${recordRoute(record)}/edit`) : openRecord('edit', record) },
           { id: 'duplicate', label: 'Duplicate', onSelect: () => duplicate(record) },
           ...(config.contextualActions ?? []).slice(0, 2).map((action) => ({ id: action.toLowerCase().replaceAll(' ', '-'), label: action, onSelect: () => openAction(action, record.name) })),
           { id: 'archive', label: 'Archive', tone: 'danger' as const, onSelect: () => setArchiveTarget(record) },
