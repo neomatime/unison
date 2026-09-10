@@ -1,8 +1,6 @@
-import { ModuleRecord } from '@/features/product-ui/components/module-record'
-import { moduleById } from '@/features/product-ui/registry'
+import { PhaseFourDetail } from '@/features/operations/components/phase-four-detail'
 
 export default async function Page({ params }: { params: Promise<{ taskId: string }> }) {
   const { taskId } = await params
-  return <ModuleRecord module={moduleById.tasks} recordId={taskId} />
+  return <PhaseFourDetail kind="task" id={taskId} />
 }
-

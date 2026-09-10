@@ -1,3 +1,3 @@
-import { VendorProfileScreen } from '@/features/delivery/components/vendor-profile-screen'
+import { PhaseFourDetail } from '@/features/operations/components/phase-four-detail'
 
-export default async function Page({ params }: { params: Promise<{ vendorId:string }> }) { const { vendorId } = await params; return <VendorProfileScreen vendorId={vendorId} /> }
+export default async function Page({ params }: { params: Promise<{ vendorId:string }> }) { const { vendorId } = await params; return <PhaseFourDetail kind="vendor" id={vendorId} /> }

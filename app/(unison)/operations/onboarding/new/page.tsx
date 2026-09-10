@@ -1,2 +1,3 @@
-import { OnboardingForm } from '@/features/delivery/components/onboarding-form'
-export default function Page(){return <OnboardingForm/>}
+import { PhaseFourForm } from '@/features/operations/components/phase-four-form'
+import { getPhaseFourOptions } from '@/features/operations/queries/phase-four'
+export default async function Page(){return <PhaseFourForm kind="onboarding" options={await getPhaseFourOptions()}/>}

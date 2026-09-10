@@ -1,3 +1,4 @@
-import { VendorForm } from '@/features/delivery/components/vendor-form'
+import { PhaseFourForm } from '@/features/operations/components/phase-four-form'
+import { getPhaseFourOptions } from '@/features/operations/queries/phase-four'
 
-export default function Page() { return <VendorForm /> }
+export default async function Page() { return <PhaseFourForm kind="vendor" options={await getPhaseFourOptions()} /> }

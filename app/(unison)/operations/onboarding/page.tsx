@@ -1,3 +1,3 @@
-import { OnboardingScreen } from '@/features/delivery/components/onboarding-screen'
+import { PhaseFourRegister } from '@/features/operations/components/phase-four-register'
 
-export default function Page() { return <OnboardingScreen /> }
+export default function Page() { return <PhaseFourRegister kind="onboarding" /> }

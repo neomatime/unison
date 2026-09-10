@@ -1,6 +1,6 @@
-import { TeamMemberProfile } from '@/features/team/components/team-member-profile'
+import { PhaseFourDetail } from '@/features/operations/components/phase-four-detail'
 
 export default async function Page({ params }: { params: Promise<{ employeeId: string }> }) {
   const { employeeId } = await params
-  return <TeamMemberProfile memberId={employeeId} />
+  return <PhaseFourDetail kind="team-member" id={employeeId} />
 }

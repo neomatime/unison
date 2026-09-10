@@ -1,5 +1,6 @@
-import { TeamMemberForm } from '@/features/team/components/team-member-form'
+import { PhaseFourForm } from '@/features/operations/components/phase-four-form'
+import { getPhaseFourOptions } from '@/features/operations/queries/phase-four'
 
-export default function Page() {
-  return <TeamMemberForm mode="invite" />
+export default async function Page() {
+  return <PhaseFourForm kind="team-member" options={await getPhaseFourOptions()} />
 }

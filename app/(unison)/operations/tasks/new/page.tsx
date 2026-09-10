@@ -1,7 +1,6 @@
-import { ModuleForm } from '@/features/product-ui/components/module-form'
-import { moduleById } from '@/features/product-ui/registry'
+import { PhaseFourForm } from '@/features/operations/components/phase-four-form'
+import { getPhaseFourOptions } from '@/features/operations/queries/phase-four'
 
-export default function Page() {
-  return <ModuleForm module={moduleById.tasks} mode="create" />
+export default async function Page() {
+  return <PhaseFourForm kind="task" options={await getPhaseFourOptions()} />
 }
-

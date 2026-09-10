@@ -1,3 +1,3 @@
-import { OnboardingDetailScreen } from '@/features/delivery/components/onboarding-detail-screen'
+import { PhaseFourDetail } from '@/features/operations/components/phase-four-detail'
 
-export default async function Page({ params }: { params: Promise<{ onboardingId:string }> }) { const { onboardingId } = await params; return <OnboardingDetailScreen onboardingId={onboardingId} /> }
+export default async function Page({ params }: { params: Promise<{ onboardingId:string }> }) { const { onboardingId } = await params; return <PhaseFourDetail kind="onboarding" id={onboardingId} /> }

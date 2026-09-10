@@ -241,7 +241,7 @@ test('HIMARK internal administration is isolated from tenant onboarding', () => 
   const internalLayout = readFileSync(join(internalRoot, 'layout.tsx'), 'utf8')
   const tenantOnboarding = readFileSync(join(unisonRoot, 'operations', 'onboarding', 'page.tsx'), 'utf8')
   assert.match(internalLayout, /resolveInternalAccess/)
-  assert.match(tenantOnboarding, /OnboardingScreen/)
+  assert.match(tenantOnboarding, /PhaseFourRegister/)
   assert.doesNotMatch(tenantOnboarding, /ProvisioningWizard|InternalAppShell/)
 })
 

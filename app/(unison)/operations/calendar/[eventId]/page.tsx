@@ -1,8 +1,6 @@
-import { ModuleRecord } from '@/features/product-ui/components/module-record'
-import { moduleById } from '@/features/product-ui/registry'
+import { PhaseFourDetail } from '@/features/operations/components/phase-four-detail'
 
 export default async function Page({ params }: { params: Promise<{ eventId: string }> }) {
   const { eventId } = await params
-  return <ModuleRecord module={moduleById.calendar} recordId={eventId} />
+  return <PhaseFourDetail kind="calendar-event" id={eventId} />
 }
-

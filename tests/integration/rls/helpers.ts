@@ -204,7 +204,19 @@ export async function cleanup(organizationIds: string[], userIds: string[]) {
       .from('audit_events')
       .select('id')
       .is('organization_id', null)
-      .in('resource', ['frameworks', 'framework_phases', 'projects', 'invitations', 'delivery_items'])
+      .in('resource', [
+        'frameworks',
+        'framework_phases',
+        'projects',
+        'invitations',
+        'delivery_items',
+        'team_members',
+        'project_assignments',
+        'client_onboardings',
+        'vendors',
+        'tasks',
+        'calendar_events',
+      ])
       .or(`old_value->>organization_id.eq.${id},new_value->>organization_id.eq.${id}`)
     if (deliveryEventsError) errors.push(deliveryEventsError)
 
