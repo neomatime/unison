@@ -136,6 +136,29 @@
     animation: unison-skeleton-pulse 1.6s var(--ease-unison) infinite;
   }
 
+  .unison-system-loading {
+    background: var(--card);
+  }
+
+  .unison-loading-aura {
+    background: color-mix(in oklab, var(--brand) 4%, var(--background));
+    clip-path: polygon(62% 0, 100% 0, 100% 100%, 28% 100%);
+    opacity: 0.72;
+  }
+
+  .unison-luxury-skeleton {
+    background: color-mix(in oklab, var(--muted) 82%, var(--brand) 3%);
+    animation: unison-skeleton-pulse 1.8s var(--ease-unison) infinite;
+  }
+
+  .unison-loading-ring {
+    animation: unison-loading-ring 2.4s var(--ease-unison) infinite;
+  }
+
+  .unison-loading-dot {
+    animation: unison-loading-dot 1.2s var(--ease-unison) infinite;
+  }
+
   .unison-dialog-enter {
     animation: unison-dialog-enter var(--motion-panel) var(--ease-unison) both;
   }

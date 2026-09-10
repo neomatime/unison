@@ -10,6 +10,11 @@ import { acceptInvitationAction } from '@/features/invitations/actions/accept-in
 
 import { signInAction } from './actions/sign-in'
 import { signInWithMicrosoftAction } from './actions/sign-in-with-microsoft'
+import {
+  requestPasswordResetAction,
+  resendVerificationAction,
+  updatePasswordAction,
+} from './actions/account-access'
 
 type AuthKind = 'sign-in' | 'forgot' | 'reset' | 'accept' | 'verify' | 'create-organization' | 'join-organization'
 type CompletionMethod = 'email' | null
@@ -33,6 +38,9 @@ export function AuthScreen({ kind, next, token, message, organizationName }: { k
   const [passwordVisible, setPasswordVisible] = useState(false)
   const [signInState, signInFormAction, signInPending] = useActionState(signInAction, undefined)
   const [acceptState, acceptFormAction, acceptPending] = useActionState(acceptInvitationAction, undefined)
+  const [recoveryState, recoveryAction, recoveryPending] = useActionState(requestPasswordResetAction, undefined)
+  const [resetState, resetAction, resetPending] = useActionState(updatePasswordAction, undefined)
+  const [verificationState, verificationAction, verificationPending] = useActionState(resendVerificationAction, undefined)
   const content = kind === 'accept' && organizationName
     ? {
         ...copy.accept,
@@ -44,6 +52,13 @@ export function AuthScreen({ kind, next, token, message, organizationName }: { k
   const organization = ['create-organization', 'join-organization'].includes(kind)
   const isSignIn = kind === 'sign-in'
   const isAccept = kind === 'accept'
+  const isForgot = kind === 'forgot'
+  const isReset = kind === 'reset'
+  const isVerify = kind === 'verify'
+  const accountAccessComplete = recoveryState?.sent || resetState?.updated || verificationState?.sent
+  const accountAccessError = recoveryState?.error || resetState?.error || verificationState?.error
+  const accountAccessPending = recoveryPending || resetPending || verificationPending
+  const accountAccessAction = isForgot ? recoveryAction : isReset ? resetAction : isVerify ? verificationAction : undefined
 
   if (isSignIn) {
     return (
@@ -126,21 +141,23 @@ export function AuthScreen({ kind, next, token, message, organizationName }: { k
           <h1 className="text-3xl font-medium tracking-[-0.025em]">{content.title}</h1>
           <p className="mt-3 text-sm leading-6 text-muted-foreground">{content.description}</p>
 
-          {completion ? <CompletionState kind={kind} /> : (
+          {completion || accountAccessComplete ? <CompletionState kind={kind} /> : (
             <form
-              action={isAccept ? acceptFormAction : undefined}
-              onSubmit={isAccept ? undefined : (event) => { event.preventDefault(); setCompletion('email') }}
+              action={isAccept ? acceptFormAction : accountAccessAction}
+              onSubmit={isAccept || accountAccessAction ? undefined : (event) => { event.preventDefault(); setCompletion('email') }}
               className="mt-8 space-y-5"
             >
               {isAccept ? <input type="hidden" name="token" value={token ?? ''} /> : null}
               {isAccept ? null : organization ? (
                 <label className="block text-sm font-medium">Organization name or code<input required defaultValue={kind === 'create-organization' ? 'HIMARK' : ''} className="mt-2 h-12 w-full border border-border bg-card px-3 outline-none transition-[border-color,box-shadow] duration-150 focus:border-ring focus:ring-2 focus:ring-ring/15 motion-reduce:transition-none" /></label>
               ) : (
-                <label className="block text-sm font-medium">Work email<div className="relative mt-2"><Mail className="absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted-foreground" /><input required type="email" defaultValue="" className="h-12 w-full border border-border bg-card pr-3 pl-10 outline-none transition-[border-color,box-shadow] duration-150 focus:border-ring focus:ring-2 focus:ring-ring/15 motion-reduce:transition-none" /></div></label>
+                <label className="block text-sm font-medium">Work email<div className="relative mt-2"><Mail className="absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted-foreground" /><input required type="email" name="email" autoComplete="email" defaultValue="" className="h-12 w-full border border-border bg-card pr-3 pl-10 outline-none transition-[border-color,box-shadow] duration-150 focus:border-ring focus:ring-2 focus:ring-ring/15 motion-reduce:transition-none" /></div></label>
               )}
-              {usesPassword ? <label className="block text-sm font-medium">Password<input required type="password" className="mt-2 h-12 w-full border border-border bg-card px-3 outline-none transition-[border-color,box-shadow] duration-150 focus:border-ring focus:ring-2 focus:ring-ring/15 motion-reduce:transition-none" /></label> : null}
+              {usesPassword ? <label className="block text-sm font-medium">Password<input required type="password" name="password" autoComplete={isReset ? 'new-password' : 'current-password'} className="mt-2 h-12 w-full border border-border bg-card px-3 outline-none transition-[border-color,box-shadow] duration-150 focus:border-ring focus:ring-2 focus:ring-ring/15 motion-reduce:transition-none" /></label> : null}
+              {isReset ? <label className="block text-sm font-medium">Confirm password<input required type="password" name="confirmPassword" autoComplete="new-password" className="mt-2 h-12 w-full border border-border bg-card px-3 outline-none transition-[border-color,box-shadow] duration-150 focus:border-ring focus:ring-2 focus:ring-ring/15 motion-reduce:transition-none" /></label> : null}
               {isAccept && acceptState?.error ? <p role="alert" className="border-l-2 border-destructive bg-destructive/5 px-4 py-3 text-sm text-destructive">{acceptState.error}</p> : null}
-              <button type="submit" disabled={isAccept && acceptPending} className="flex h-12 w-full items-center justify-center gap-2 bg-foreground text-sm font-medium text-primary-foreground transition-colors duration-150 hover:bg-foreground/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring motion-reduce:transition-none">{content.action}<ArrowRight className="size-4" /></button>
+              {accountAccessError ? <p role="alert" className="border-l-2 border-destructive bg-destructive/5 px-4 py-3 text-sm text-destructive">{accountAccessError}</p> : null}
+              <button type="submit" disabled={(isAccept && acceptPending) || accountAccessPending} className="flex h-12 w-full items-center justify-center gap-2 bg-foreground text-sm font-medium text-primary-foreground transition-colors duration-150 hover:bg-foreground/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:cursor-wait disabled:opacity-60 motion-reduce:transition-none">{accountAccessPending ? 'Working…' : content.action}<ArrowRight className="size-4" /></button>
             </form>
           )}
         </div>
@@ -230,13 +247,19 @@ function MicrosoftMark() {
 }
 
 function CompletionState({ kind }: { kind: AuthKind }) {
-  const signIn = kind === 'sign-in'
+  const content = kind === 'forgot'
+    ? { title: 'Check your email', description: 'If an account matches that address, a password reset link is on its way.', href: '/sign-in', link: 'Return to sign in' }
+    : kind === 'reset'
+      ? { title: 'Password updated', description: 'Your recovery session has ended. Sign in with your new password to continue.', href: '/sign-in', link: 'Sign in' }
+      : kind === 'verify'
+        ? { title: 'Check your email', description: 'If the address is awaiting confirmation, a new verification link is on its way.', href: '/sign-in', link: 'Return to sign in' }
+        : { title: 'Action complete', description: 'Follow the confirmation instructions to continue securely.', href: '/overview', link: 'Continue to UNISON' }
   return (
     <div className="mt-8 border-l-2 border-brand bg-brand-soft p-5">
       <CheckCircle2 className="size-5 text-brand" />
-      <h2 className="mt-3 font-medium">{signIn ? 'Sign-in ready' : 'Action complete'}</h2>
-      <p className="mt-1 text-sm leading-6 text-muted-foreground">Follow the confirmation instructions to continue securely.</p>
-      <Link href="/overview" className="mt-5 inline-flex items-center gap-2 text-sm font-medium">Continue to UNISON <ArrowRight className="size-4" /></Link>
+      <h2 className="mt-3 font-medium">{content.title}</h2>
+      <p className="mt-1 text-sm leading-6 text-muted-foreground">{content.description}</p>
+      <Link href={content.href} className="mt-5 inline-flex items-center gap-2 text-sm font-medium">{content.link} <ArrowRight className="size-4" /></Link>
     </div>
   )
 }

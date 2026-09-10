@@ -1,3 +1,5 @@
-import { LoadingSkeleton } from '@/components/shared/state-feedback'
+import { SystemLoading } from '@/components/shared/system-loading'
 
-export default function Loading() { return <section className="overflow-hidden rounded-2xl border border-border bg-card"><LoadingSkeleton /></section> }
+export default function Loading() {
+  return <SystemLoading label="Preparing internal operations" context="HIMARK Internal" />
+}

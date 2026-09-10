@@ -34,6 +34,7 @@ export async function GET(request: NextRequest) {
   const url = new URL(request.url)
   const code = url.searchParams.get('code')
   const next = safeRedirectPath(url.searchParams.get('next'))
+  const flow = url.searchParams.get('flow')
   // Production remains pinned to the configured app URL. A loopback origin is
   // accepted only in local development so the callback returns to whichever
   // localhost/127.0.0.1 port is serving the current preview.
@@ -73,6 +74,20 @@ export async function GET(request: NextRequest) {
     // would send them back through a provider that is working.
     const unavailable = isAuthServiceUnavailable(exchangeError)
     return signInFailure(origin, reason, next, unavailable ? AUTH_UNAVAILABLE_ERROR : 'microsoft')
+  }
+
+  // Password recovery and verification links also arrive here to complete the
+  // PKCE exchange, but they are not Microsoft directory sign-ins and must not
+  // call claim_directory_membership(), which deliberately requires an Azure
+  // identity. These branches can only reach public/auth-exempt destinations;
+  // they never grant access to a tenant workspace.
+  if (flow === 'recovery' && next === '/reset-password') {
+    return NextResponse.redirect(new URL(next, origin))
+  }
+  if (flow === 'verification' && next === '/sign-in?verified=1') {
+    const { error: signOutError } = await supabase.auth.signOut()
+    if (signOutError) console.warn('[auth/callback] sign-out after verification failed:', signOutError.message)
+    return NextResponse.redirect(new URL(next, origin))
   }
 
   const { data: organizationId, error: claimError } = await supabase.rpc('claim_directory_membership')

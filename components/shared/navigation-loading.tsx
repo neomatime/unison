@@ -67,6 +67,12 @@ export function NavigationLoading() {
 
   return <div role="status" aria-live="polite" aria-label="Loading next screen" className="pointer-events-none fixed inset-x-0 top-0 z-[100]">
     <span className="sr-only">Loading next screen</span>
-    <div className="h-px overflow-hidden bg-brand/10"><div className="h-full w-1/3 bg-brand/80 [animation:unison-navigation-progress_1s_var(--ease-unison)_infinite]" /></div>
+    <div className="relative h-0.5 overflow-hidden bg-brand/10">
+      <div className="absolute inset-y-0 w-2/5 bg-brand/85 [animation:unison-navigation-progress_1.15s_var(--ease-unison)_infinite]" />
+    </div>
+    <div className="mx-auto mt-2 flex w-fit items-center gap-2 border border-border/80 bg-card/95 px-3 py-1.5 text-[0.625rem] font-semibold tracking-[0.12em] text-muted-foreground uppercase shadow-sm">
+      <span className="unison-loading-dot size-1.5 bg-brand" />
+      Preparing view
+    </div>
   </div>
 }

@@ -1,5 +1,5 @@
-import { LoadingSkeleton } from '@/components/shared/state-feedback'
+import { SystemLoading } from '@/components/shared/system-loading'
 
 export default function FrameworksLoading() {
-  return <section className="overflow-hidden rounded-xl border border-border bg-card"><LoadingSkeleton /></section>
+  return <SystemLoading label="Preparing delivery frameworks" />
 }
