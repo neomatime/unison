@@ -631,6 +631,196 @@ export type Database = {
           },
         ]
       }
+      expenses: {
+        Row: {
+          amount: number
+          approved_at: string | null
+          approved_by: string | null
+          archived_at: string | null
+          category: string
+          client_id: string | null
+          created_at: string
+          currency: string
+          description: string
+          expense_date: string
+          id: string
+          notes: string | null
+          organization_id: string
+          project_id: string | null
+          receipt_reference: string | null
+          status: string
+          submitted_at: string | null
+          submitted_by: string | null
+          updated_at: string
+          vendor_id: string | null
+          vendor_name: string | null
+        }
+        Insert: {
+          amount: number
+          approved_at?: string | null
+          approved_by?: string | null
+          archived_at?: string | null
+          category?: string
+          client_id?: string | null
+          created_at?: string
+          currency?: string
+          description: string
+          expense_date: string
+          id?: string
+          notes?: string | null
+          organization_id: string
+          project_id?: string | null
+          receipt_reference?: string | null
+          status?: string
+          submitted_at?: string | null
+          submitted_by?: string | null
+          updated_at?: string
+          vendor_id?: string | null
+          vendor_name?: string | null
+        }
+        Update: {
+          amount?: number
+          approved_at?: string | null
+          approved_by?: string | null
+          archived_at?: string | null
+          category?: string
+          client_id?: string | null
+          created_at?: string
+          currency?: string
+          description?: string
+          expense_date?: string
+          id?: string
+          notes?: string | null
+          organization_id?: string
+          project_id?: string | null
+          receipt_reference?: string | null
+          status?: string
+          submitted_at?: string | null
+          submitted_by?: string | null
+          updated_at?: string
+          vendor_id?: string | null
+          vendor_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expenses_approved_by_organization_id_fkey"
+            columns: ["approved_by", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id", "organization_id"]
+          },
+          {
+            foreignKeyName: "expenses_client_id_organization_id_fkey"
+            columns: ["client_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id", "organization_id"]
+          },
+          {
+            foreignKeyName: "expenses_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expenses_project_id_organization_id_fkey"
+            columns: ["project_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id", "organization_id"]
+          },
+          {
+            foreignKeyName: "expenses_submitted_by_organization_id_fkey"
+            columns: ["submitted_by", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id", "organization_id"]
+          },
+          {
+            foreignKeyName: "expenses_vendor_id_organization_id_fkey"
+            columns: ["vendor_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id", "organization_id"]
+          },
+        ]
+      }
+      financial_forecasts: {
+        Row: {
+          actual_value: number
+          archived_at: string | null
+          assumptions: string | null
+          confidence_percent: number
+          created_at: string
+          currency: string
+          forecast_type: string
+          id: string
+          name: string
+          organization_id: string
+          owner_id: string | null
+          period_end: string | null
+          period_label: string
+          period_start: string | null
+          projected_value: number
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          actual_value?: number
+          archived_at?: string | null
+          assumptions?: string | null
+          confidence_percent?: number
+          created_at?: string
+          currency?: string
+          forecast_type?: string
+          id?: string
+          name: string
+          organization_id: string
+          owner_id?: string | null
+          period_end?: string | null
+          period_label: string
+          period_start?: string | null
+          projected_value?: number
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          actual_value?: number
+          archived_at?: string | null
+          assumptions?: string | null
+          confidence_percent?: number
+          created_at?: string
+          currency?: string
+          forecast_type?: string
+          id?: string
+          name?: string
+          organization_id?: string
+          owner_id?: string | null
+          period_end?: string | null
+          period_label?: string
+          period_start?: string | null
+          projected_value?: number
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financial_forecasts_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_forecasts_owner_id_organization_id_fkey"
+            columns: ["owner_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id", "organization_id"]
+          },
+        ]
+      }
       framework_phases: {
         Row: {
           archived_at: string | null
@@ -950,6 +1140,199 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      invoices: {
+        Row: {
+          archived_at: string | null
+          balance_amount: number
+          client_id: string | null
+          client_name: string
+          created_at: string
+          currency: string
+          due_date: string | null
+          id: string
+          invoice_number: string
+          issue_date: string | null
+          notes: string | null
+          opportunity_id: string | null
+          organization_id: string
+          owner_id: string | null
+          paid_at: string | null
+          payment_terms: string | null
+          project_id: string | null
+          quote_id: string | null
+          status: string
+          subtotal: number
+          tax_amount: number
+          total_amount: number
+          updated_at: string
+        }
+        Insert: {
+          archived_at?: string | null
+          balance_amount?: number
+          client_id?: string | null
+          client_name: string
+          created_at?: string
+          currency?: string
+          due_date?: string | null
+          id?: string
+          invoice_number: string
+          issue_date?: string | null
+          notes?: string | null
+          opportunity_id?: string | null
+          organization_id: string
+          owner_id?: string | null
+          paid_at?: string | null
+          payment_terms?: string | null
+          project_id?: string | null
+          quote_id?: string | null
+          status?: string
+          subtotal?: number
+          tax_amount?: number
+          total_amount?: number
+          updated_at?: string
+        }
+        Update: {
+          archived_at?: string | null
+          balance_amount?: number
+          client_id?: string | null
+          client_name?: string
+          created_at?: string
+          currency?: string
+          due_date?: string | null
+          id?: string
+          invoice_number?: string
+          issue_date?: string | null
+          notes?: string | null
+          opportunity_id?: string | null
+          organization_id?: string
+          owner_id?: string | null
+          paid_at?: string | null
+          payment_terms?: string | null
+          project_id?: string | null
+          quote_id?: string | null
+          status?: string
+          subtotal?: number
+          tax_amount?: number
+          total_amount?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoices_client_id_organization_id_fkey"
+            columns: ["client_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id", "organization_id"]
+          },
+          {
+            foreignKeyName: "invoices_opportunity_id_organization_id_fkey"
+            columns: ["opportunity_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "sales_opportunities"
+            referencedColumns: ["id", "organization_id"]
+          },
+          {
+            foreignKeyName: "invoices_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_owner_id_organization_id_fkey"
+            columns: ["owner_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id", "organization_id"]
+          },
+          {
+            foreignKeyName: "invoices_project_id_organization_id_fkey"
+            columns: ["project_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id", "organization_id"]
+          },
+          {
+            foreignKeyName: "invoices_quote_id_organization_id_fkey"
+            columns: ["quote_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id", "organization_id"]
+          },
+        ]
+      }
+      leads: {
+        Row: {
+          archived_at: string | null
+          company_name: string
+          contact_email: string | null
+          contact_name: string
+          contact_phone: string | null
+          created_at: string
+          currency: string
+          estimated_value: number
+          id: string
+          last_activity_at: string | null
+          notes: string | null
+          organization_id: string
+          owner_id: string | null
+          source: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          archived_at?: string | null
+          company_name: string
+          contact_email?: string | null
+          contact_name: string
+          contact_phone?: string | null
+          created_at?: string
+          currency?: string
+          estimated_value?: number
+          id?: string
+          last_activity_at?: string | null
+          notes?: string | null
+          organization_id: string
+          owner_id?: string | null
+          source?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          archived_at?: string | null
+          company_name?: string
+          contact_email?: string | null
+          contact_name?: string
+          contact_phone?: string | null
+          created_at?: string
+          currency?: string
+          estimated_value?: number
+          id?: string
+          last_activity_at?: string | null
+          notes?: string | null
+          organization_id?: string
+          owner_id?: string | null
+          source?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leads_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_owner_id_organization_id_fkey"
+            columns: ["owner_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id", "organization_id"]
           },
         ]
       }
@@ -1585,6 +1968,212 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "programmes"
             referencedColumns: ["id", "portfolio_id", "organization_id"]
+          },
+        ]
+      }
+      quotes: {
+        Row: {
+          accepted_at: string | null
+          archived_at: string | null
+          client_id: string | null
+          client_name: string
+          contact_name: string | null
+          created_at: string
+          currency: string
+          id: string
+          lead_id: string | null
+          notes: string | null
+          opportunity_id: string | null
+          organization_id: string
+          owner_id: string | null
+          quote_number: string
+          sent_at: string | null
+          status: string
+          subtotal: number
+          tax_amount: number
+          terms: string | null
+          total_amount: number
+          updated_at: string
+          valid_until: string | null
+        }
+        Insert: {
+          accepted_at?: string | null
+          archived_at?: string | null
+          client_id?: string | null
+          client_name: string
+          contact_name?: string | null
+          created_at?: string
+          currency?: string
+          id?: string
+          lead_id?: string | null
+          notes?: string | null
+          opportunity_id?: string | null
+          organization_id: string
+          owner_id?: string | null
+          quote_number: string
+          sent_at?: string | null
+          status?: string
+          subtotal?: number
+          tax_amount?: number
+          terms?: string | null
+          total_amount?: number
+          updated_at?: string
+          valid_until?: string | null
+        }
+        Update: {
+          accepted_at?: string | null
+          archived_at?: string | null
+          client_id?: string | null
+          client_name?: string
+          contact_name?: string | null
+          created_at?: string
+          currency?: string
+          id?: string
+          lead_id?: string | null
+          notes?: string | null
+          opportunity_id?: string | null
+          organization_id?: string
+          owner_id?: string | null
+          quote_number?: string
+          sent_at?: string | null
+          status?: string
+          subtotal?: number
+          tax_amount?: number
+          terms?: string | null
+          total_amount?: number
+          updated_at?: string
+          valid_until?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quotes_client_id_organization_id_fkey"
+            columns: ["client_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id", "organization_id"]
+          },
+          {
+            foreignKeyName: "quotes_lead_id_organization_id_fkey"
+            columns: ["lead_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id", "organization_id"]
+          },
+          {
+            foreignKeyName: "quotes_opportunity_id_organization_id_fkey"
+            columns: ["opportunity_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "sales_opportunities"
+            referencedColumns: ["id", "organization_id"]
+          },
+          {
+            foreignKeyName: "quotes_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quotes_owner_id_organization_id_fkey"
+            columns: ["owner_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id", "organization_id"]
+          },
+        ]
+      }
+      sales_opportunities: {
+        Row: {
+          archived_at: string | null
+          client_id: string | null
+          client_name: string
+          created_at: string
+          currency: string
+          expected_close: string | null
+          expected_value: number
+          id: string
+          lead_id: string | null
+          lost_reason: string | null
+          name: string
+          next_step: string | null
+          notes: string | null
+          organization_id: string
+          owner_id: string | null
+          probability_percent: number
+          stage: string
+          updated_at: string
+          won_at: string | null
+        }
+        Insert: {
+          archived_at?: string | null
+          client_id?: string | null
+          client_name: string
+          created_at?: string
+          currency?: string
+          expected_close?: string | null
+          expected_value?: number
+          id?: string
+          lead_id?: string | null
+          lost_reason?: string | null
+          name: string
+          next_step?: string | null
+          notes?: string | null
+          organization_id: string
+          owner_id?: string | null
+          probability_percent?: number
+          stage?: string
+          updated_at?: string
+          won_at?: string | null
+        }
+        Update: {
+          archived_at?: string | null
+          client_id?: string | null
+          client_name?: string
+          created_at?: string
+          currency?: string
+          expected_close?: string | null
+          expected_value?: number
+          id?: string
+          lead_id?: string | null
+          lost_reason?: string | null
+          name?: string
+          next_step?: string | null
+          notes?: string | null
+          organization_id?: string
+          owner_id?: string | null
+          probability_percent?: number
+          stage?: string
+          updated_at?: string
+          won_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_opportunities_client_id_organization_id_fkey"
+            columns: ["client_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id", "organization_id"]
+          },
+          {
+            foreignKeyName: "sales_opportunities_lead_id_organization_id_fkey"
+            columns: ["lead_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id", "organization_id"]
+          },
+          {
+            foreignKeyName: "sales_opportunities_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_opportunities_owner_id_organization_id_fkey"
+            columns: ["owner_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id", "organization_id"]
           },
         ]
       }

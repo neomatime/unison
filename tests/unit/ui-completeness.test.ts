@@ -73,10 +73,12 @@ test('approval and onboarding workflows expose create and detail experiences', (
 test('commercial and finance registers use the shared production register', () => {
   for (const route of ['commercial/leads', 'commercial/quotes', 'commercial/sales', 'finance/invoices', 'finance/expenses', 'finance/forecast']) {
     const source = readFileSync(join(unisonRoot, ...route.split('/'), 'page.tsx'), 'utf8')
-    assert.match(source, /DomainModuleWorkspace/, `${route} is not using the shared CRUD register`)
+    assert.match(source, /PhaseSixRegister/, `${route} is not using the persistent commercial-finance register`)
   }
-  const domainRegister = readFileSync(join(workspace, 'features', 'product-ui', 'components', 'domain-module-workspace.tsx'), 'utf8')
-  for (const action of ['Qualify', 'Convert', 'Submit', 'Mark Paid', 'Approve']) assert.match(domainRegister, new RegExp(action))
+  const phaseSixAction = readFileSync(join(workspace, 'features', 'commercial-finance', 'actions', 'phase-six.ts'), 'utf8')
+  for (const table of ['leads', 'quotes', 'sales_opportunities', 'invoices', 'expenses', 'financial_forecasts']) {
+    assert.match(phaseSixAction, new RegExp(`"${table}"`))
+  }
 })
 
 test('Team is the only People module and exposes the complete accountability workspace', () => {

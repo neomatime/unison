@@ -1,7 +1,6 @@
-import { ModuleForm } from '@/features/product-ui/components/module-form'
-import { moduleById } from '@/features/product-ui/registry'
+import { PhaseSixForm } from '@/features/commercial-finance/components/phase-six-form'
+import { getPhaseSixOptions } from '@/features/commercial-finance/queries/phase-six'
 
-export default function Page() {
-  return <ModuleForm module={moduleById.leads} mode="create" />
+export default async function Page() {
+  return <PhaseSixForm kind="lead" options={await getPhaseSixOptions()} />
 }
-

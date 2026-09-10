@@ -1,8 +1,11 @@
-import { ModuleForm } from '@/features/product-ui/components/module-form'
-import { moduleById } from '@/features/product-ui/registry'
+import { notFound } from 'next/navigation'
+
+import { PhaseSixForm } from '@/features/commercial-finance/components/phase-six-form'
+import { getPhaseSixOptions, getPhaseSixRecord } from '@/features/commercial-finance/queries/phase-six'
 
 export default async function Page({ params }: { params: Promise<{ quoteId: string }> }) {
   const { quoteId } = await params
-  return <ModuleForm module={moduleById.quotes} mode="edit" recordId={quoteId} />
+  const [record, options] = await Promise.all([getPhaseSixRecord('quote', quoteId), getPhaseSixOptions()])
+  if (!record) notFound()
+  return <PhaseSixForm kind="quote" record={record} options={options} />
 }
-

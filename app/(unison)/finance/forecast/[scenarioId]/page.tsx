@@ -1,8 +1,6 @@
-import { ModuleRecord } from '@/features/product-ui/components/module-record'
-import { moduleById } from '@/features/product-ui/registry'
+import { PhaseSixDetail } from '@/features/commercial-finance/components/phase-six-detail'
 
 export default async function Page({ params }: { params: Promise<{ scenarioId: string }> }) {
   const { scenarioId } = await params
-  return <ModuleRecord module={moduleById.forecast} recordId={scenarioId} />
+  return <PhaseSixDetail kind="forecast" id={scenarioId} />
 }
-
