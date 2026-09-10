@@ -31,7 +31,7 @@ export function DeliveryBriefingHeader({ dateTime, dateLabel }: DeliveryBriefing
       <header className="mb-5 flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
         <div className="min-w-0">
           <p className="text-sm font-medium text-[var(--briefing-muted)]">{greeting}, {firstName}.</p>
-          <h1 className="unison-page-title mt-2 text-[1.5rem] text-foreground sm:text-[1.75rem]">
+          <h1 className="mt-2 text-[1.625rem] leading-tight font-bold tracking-[-0.035em] text-foreground sm:text-[1.875rem]">
             Here&apos;s the delivery briefing.
           </h1>
           <p className="mt-1 text-sm leading-6 text-[var(--briefing-muted)] sm:text-[0.9375rem]">

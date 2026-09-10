@@ -64,6 +64,14 @@ test('the briefing header uses shell context and the intervention queue is a sem
   assert.match(tableSource, /<th\b[^>]*\bscope=['"]col['"]/)
 })
 
+test('the briefing title matches the overall-position headline typography', () => {
+  const typography = 'text-[1.625rem] leading-tight font-bold tracking-[-0.035em] text-foreground sm:text-[1.875rem]'
+
+  assert.match(briefingHeader, new RegExp(typography.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
+  assert.match(overviewComponents, new RegExp(typography.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
+  assert.doesNotMatch(briefingHeader, /<h1 className="[^"]*unison-page-title/)
+})
+
 test('the briefing preserves count reconciliation, compact previews and safe breakpoints', () => {
   assert.match(overviewComponents, /overview\.healthCounts\.Watch > 0/)
   assert.match(overviewComponents, /visibleRows = rows\.slice\(0, 3\)/)
