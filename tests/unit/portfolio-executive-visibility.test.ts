@@ -4,7 +4,7 @@ import test from "node:test";
 
 const read = (path: string) => readFileSync(path, "utf8");
 const migration = read(
-  "supabase/migrations/20260910122756_portfolio_executive_visibility.sql",
+  "supabase/migrations/20260910130142_portfolio_executive_visibility.sql",
 );
 const portfolioQuery = read(
   "features/delivery/queries/portfolio-management.ts",
