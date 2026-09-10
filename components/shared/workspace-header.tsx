@@ -30,7 +30,7 @@ export function WorkspaceHeader({ category, title, description, parent, breadcru
             {parent ? <><ChevronRight aria-hidden="true" className="size-3" /><Link href={parent.href} className="hover:text-foreground">{parent.label}</Link></> : null}
             <ChevronRight aria-hidden="true" className="size-3" /><span className="text-foreground">{breadcrumbLabel ?? title}</span>
           </nav>
-          <h1 className="unison-page-title text-2xl text-foreground sm:text-[1.75rem]">{title}</h1>
+          <h1 className="text-[1.625rem] leading-tight font-bold tracking-[-0.035em] text-foreground sm:text-[1.875rem]">{title}</h1>
           {description ? <p className="mt-1.5 max-w-3xl text-sm text-muted-foreground">{description}</p> : null}
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2">
