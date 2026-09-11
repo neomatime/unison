@@ -1,6 +1,7 @@
 import {
   Building2,
   Check,
+  CalendarClock,
   ExternalLink,
   FolderKanban,
   Globe2,
@@ -11,6 +12,7 @@ import {
   ReceiptText,
   Settings2,
   Users,
+  Workflow,
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -27,7 +29,7 @@ type OrganizationProfileScreenProps = {
   saved?: boolean
 }
 
-const unavailableTabs = ['Settings', 'Subscription & Billing', 'Integrations', 'Audit Log'] as const
+const unavailableTabs = ['Settings', 'Subscription & Billing', 'Audit Log'] as const
 
 export function OrganizationProfileScreen({ profile, saved = false }: OrganizationProfileScreenProps) {
   const headerActions = (
@@ -130,7 +132,13 @@ function OrganisationTabs() {
         <Link href="/settings" aria-current="page" className="border-b-2 border-foreground px-4 py-3 text-sm font-medium text-foreground">
           Overview
         </Link>
-        {unavailableTabs.slice(0, 3).map((tab) => <UnavailableTab key={tab} label={tab} />)}
+        {unavailableTabs.slice(0, 2).map((tab) => <UnavailableTab key={tab} label={tab} />)}
+        <Link href="/settings/integrations" className="border-b-2 border-transparent px-4 py-3 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
+          Integrations
+        </Link>
+        <Link href="/settings/automations" className="border-b-2 border-transparent px-4 py-3 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
+          Automations
+        </Link>
         <Link href="/people/team" className="border-b-2 border-transparent px-4 py-3 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
           Users
         </Link>
@@ -262,8 +270,24 @@ export function OrganisationSubscriptionPanel({ profile }: { profile: Organizati
 export function OrganisationIntegrationsPanel() {
   return (
     <ContentPanel title="Integrations" bodyClassName="pt-1">
-      <EmptyPanelMessage icon={Link2} title="No integrations connected" description="Connected services will appear here when integration support is available." />
+      <div className="divide-y divide-border">
+        <SettingsDestination href="/settings/integrations" icon={Link2} title="External integrations" description="Manage inbound connections and webhook credentials." />
+        <SettingsDestination href="/settings/automations" icon={Workflow} title="Automation engine" description="Create event, schedule and manual rules." />
+        <SettingsDestination href="/settings/jobs" icon={CalendarClock} title="Schedules & runs" description="Monitor schedules and background execution history." />
+      </div>
     </ContentPanel>
+  )
+}
+
+function SettingsDestination({ href, icon: Icon, title, description }: { href: string; icon: typeof Link2; title: string; description: string }) {
+  return (
+    <Link href={href} className="flex items-start gap-3 py-3 first:pt-1 last:pb-1 hover:text-brand">
+      <Icon aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
+      <span>
+        <span className="block text-sm font-medium">{title}</span>
+        <span className="mt-0.5 block text-xs leading-5 text-muted-foreground">{description}</span>
+      </span>
+    </Link>
   )
 }
 

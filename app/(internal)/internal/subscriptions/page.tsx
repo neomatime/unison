@@ -1,5 +1,6 @@
-import { SubscriptionsScreen } from '@/features/internal-provisioning/components/internal-registers'
+import { SubscriptionRegister } from '@/features/platform-admin/components/internal-screens'
+import { listPlatformSubscriptions } from '@/features/platform-admin/queries'
 
-export default function Page() {
-  return <SubscriptionsScreen />
+export default async function Page() {
+  return <SubscriptionRegister records={await listPlatformSubscriptions()} />
 }

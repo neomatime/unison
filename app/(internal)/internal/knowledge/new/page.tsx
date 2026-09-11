@@ -1,5 +1,5 @@
-import { InternalCreatePage } from '@/features/internal-provisioning/components/internal-action-pages'
+import { KnowledgeEditor } from '@/features/platform-admin/components/knowledge-screens'
 
 export default function Page() {
-  return <InternalCreatePage kind="knowledge" />
+  return <KnowledgeEditor scope="internal" />
 }

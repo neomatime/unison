@@ -1,5 +1,6 @@
-import { KnowledgeScreen } from '@/features/internal-provisioning/components/internal-registers'
+import { KnowledgeRegister } from '@/features/platform-admin/components/knowledge-screens'
+import { listInternalKnowledgeArticles } from '@/features/platform-admin/queries'
 
-export default function Page() {
-  return <KnowledgeScreen />
+export default async function Page() {
+  return <KnowledgeRegister scope="internal" records={await listInternalKnowledgeArticles()} />
 }
