@@ -150,3 +150,59 @@ test('the briefing reports blocked delivery items, and can tell none from absent
   // recorded no items at all — the honest-zero rule.
   assert.match(panel, /activeItemCount/, 'the focus list must tell "none blocked" from "none recorded"')
 })
+
+test('the briefing never denies that risks and dependencies are persisted', () => {
+  // This panel used to read "Risks, dependencies and downstream impacts are not
+  // persisted in the current delivery model." That was true when written and
+  // became false the moment project_risks and project_dependencies shipped,
+  // leaving the flagship screen understating the product to its own users.
+  //
+  // This guards the inverse of the usual defect. The codebase rule is that a
+  // field in the UI is a claim the product supports a capability; the mirror of
+  // it is that an empty state must not deny one the product has.
+  // Block comments are stripped first: the panel carries a comment recording
+  // this exact history, and a guard that cannot tell narration from rendered
+  // copy would force the explanation to be deleted to stay green.
+  const rendered = overviewComponents.split('/*').map((part, index) => (index === 0 ? part : part.slice(part.indexOf('*/') + 2))).join('')
+
+  for (const denial of [
+    'No structured register is connected',
+    'not persisted in the current delivery model',
+  ]) {
+    assert.ok(
+      !rendered.includes(denial),
+      `the briefing must not tell the user the product cannot hold this: "${denial}"`,
+    )
+  }
+})
+
+test('the risks panel reads the real register rather than rendering a fixed state', () => {
+  const start = overviewComponents.indexOf('function TopRisksDependencies')
+  assert.ok(start >= 0, 'TopRisksDependencies was not found')
+  const next = overviewComponents.indexOf('\nfunction ', start + 1)
+  const panel = overviewComponents.slice(start, next === -1 ? undefined : next)
+
+  for (const field of ['topRisks', 'openRiskCount', 'dependencyCount']) {
+    assert.ok(panel.includes(field), `the panel must read overview.${field}`)
+  }
+
+  // The panel taking no props at all is exactly how it came to be a hardcoded
+  // claim in the first place.
+  assert.match(panel, /TopRisksDependencies\(\{\s*overview\s*\}/, 'the panel must take the overview')
+  assert.match(
+    overviewComponents,
+    /<TopRisksDependencies overview=\{overview\}/,
+    'the call site must pass the overview through',
+  )
+})
+
+test('an empty risk register reports absent data, not an absent capability', () => {
+  const start = overviewComponents.indexOf('function TopRisksDependencies')
+  const next = overviewComponents.indexOf('\nfunction ', start + 1)
+  const panel = overviewComponents.slice(start, next === -1 ? undefined : next)
+
+  // "No open risks recorded" is a statement about this tenant. Anything phrased
+  // as the product lacking a register is the defect this whole panel had.
+  assert.match(panel, /No open risks recorded/, 'the empty state must describe the data, not the model')
+  assert.match(panel, /No project-to-project dependencies recorded/, 'the dependency line needs an honest zero too')
+})

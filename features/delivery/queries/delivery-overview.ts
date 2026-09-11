@@ -10,19 +10,24 @@ import {
   PROJECT_DATE_WINDOW_DAYS,
   type AttentionRow,
   type DeliveryOverview,
+  type TopRiskRow,
   type UpcomingProjectDate,
 } from '../overview-bands'
 import { summariseDeliveryItems } from '../item-briefing.ts'
+import { compareRisks, riskSeverity } from '../risk-severity.ts'
 
 export type { AttentionRow, DeliveryOverview, UpcomingProjectDate }
 
 const NEXT_SEVEN_DAYS = 7
+// The panel is a briefing line, not the register itself. Everything beyond this
+// limit is still counted, and openRiskCount is what says so.
+const TOP_RISK_LIMIT = 4
 
 export async function getDeliveryOverview(): Promise<DeliveryOverview> {
   const { organization } = await getSessionContext()
   const supabase = await createServerSupabase()
 
-  const [projectResult, members, itemResult] = await Promise.all([
+  const [projectResult, members, itemResult, riskResult, dependencyResult] = await Promise.all([
     supabase
       .from('projects')
       .select('id, name, status, health, due_date, next_gate, notes, owner_id, framework_id, phase_id, clients(name), frameworks(id, name), framework_phases(id, name, position)')
@@ -34,15 +39,56 @@ export async function getDeliveryOverview(): Promise<DeliveryOverview> {
       .select('project_id, current_phase_id, health, status')
       .eq('organization_id', organization.id)
       .is('archived_at', null),
+    // Accepted and Closed risks are resolved positions, not live exposure.
+    supabase
+      .from('project_risks')
+      .select('id, project_id, title, probability, impact, status, owner_id, target_date')
+      .eq('organization_id', organization.id)
+      .in('status', ['Open', 'Mitigating']),
+    supabase
+      .from('project_dependencies')
+      .select('dependent_project_id')
+      .eq('organization_id', organization.id),
   ])
   const { data, error } = projectResult
   if (error) throw error
   if (itemResult.error) throw itemResult.error
+  if (riskResult.error) throw riskResult.error
+  if (dependencyResult.error) throw dependencyResult.error
 
   const rows = data ?? []
   const active = rows.filter((row) => row.status === 'Active')
   const today = new Date().toISOString().slice(0, 10)
   const memberNames = new Map(members.map((member) => [member.userId, member.displayName]))
+
+  // Risks and dependencies are framed by active projects, like every other
+  // number on this briefing. A risk on a completed project is history.
+  const activeProjectIds = new Set(active.map((row) => row.id))
+  const projectNames = new Map(rows.map((row) => [row.id, row.name]))
+
+  const openRisks: TopRiskRow[] = (riskResult.data ?? [])
+    .filter((row) => activeProjectIds.has(row.project_id))
+    .map((row) => ({
+      id: row.id,
+      title: row.title,
+      projectId: row.project_id,
+      projectName: projectNames.get(row.project_id) ?? 'Unknown project',
+      band: riskSeverity(row.probability, row.impact).band,
+      probability: row.probability,
+      impact: row.impact,
+      status: row.status,
+      // A removed member keeps their name here rather than becoming a blank:
+      // nulling ownership when someone leaves erases who was accountable.
+      owner: row.owner_id ? memberNames.get(row.owner_id) ?? 'Former member' : 'Unassigned',
+      targetDate: row.target_date,
+      targetDateLabel: row.target_date ? formatDate(row.target_date) : 'No target date',
+    }))
+
+  const topRisks = [...openRisks].sort(compareRisks).slice(0, TOP_RISK_LIMIT)
+
+  const dependencyRows = (dependencyResult.data ?? []).filter((row) =>
+    activeProjectIds.has(row.dependent_project_id),
+  )
 
   const healthCounts = Object.fromEntries(HEALTH_BANDS.map((band) => [band, 0])) as DeliveryOverview['healthCounts']
   for (const row of active) healthCounts[bandFor(row.health)] += 1
@@ -161,6 +207,10 @@ export async function getDeliveryOverview(): Promise<DeliveryOverview> {
     portfolioHealth: active.length === 0 ? null : Math.round((healthCounts['On Track / Healthy'] / active.length) * 100),
     framework,
     ...itemBriefing,
+    topRisks,
+    openRiskCount: openRisks.length,
+    dependencyCount: dependencyRows.length,
+    dependencyProjectCount: new Set(dependencyRows.map((row) => row.dependent_project_id)).size,
     attention,
     upcomingProjectDates,
   }
