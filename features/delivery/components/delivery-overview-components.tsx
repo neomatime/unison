@@ -14,7 +14,7 @@ import {
 import Link from 'next/link'
 
 import { cn } from '@/lib/utils'
-import { positionNarrative, type AttentionRow, type DeliveryOverview, type PhaseColumn, type UpcomingProjectDate } from '../overview-bands'
+import { positionNarrative, type AttentionRow, type DeliveryOverview, type PhaseColumn, type TopRiskRow, type UpcomingProjectDate } from '../overview-bands'
 import { HealthBadge } from './delivery-primitives'
 
 export function OverallPositionBrief({ overview }: { overview: DeliveryOverview }) {
@@ -311,7 +311,7 @@ export function DeliveryHorizon({ overview }: { overview: DeliveryOverview }) {
           itemCount={overview.leadingFrameworkItemCount}
           itemsWithoutPhaseCount={overview.itemsWithoutPhaseCount}
         />
-        <TopRisksDependencies />
+        <TopRisksDependencies overview={overview} />
       </div>
     </section>
   )
@@ -429,15 +429,67 @@ function PhaseDistribution({
   )
 }
 
-function TopRisksDependencies() {
+const riskBandTone: Record<TopRiskRow['band'], string> = {
+  Critical: 'border-destructive/40 bg-destructive/5 text-destructive',
+  High: 'border-amber-500/40 bg-amber-500/5 text-amber-700',
+  Moderate: 'border-border bg-muted text-[var(--briefing-muted)]',
+  Low: 'border-border bg-muted text-[var(--briefing-muted)]',
+}
+
+function RiskBandBadge({ band }: { band: TopRiskRow['band'] }) {
+  return <span className={cn('inline-flex items-center border px-1.5 py-0.5 text-[0.625rem] font-semibold tracking-[0.06em] uppercase', riskBandTone[band])}>{band}</span>
+}
+
+/**
+ * The project risk register, ranked.
+ *
+ * This panel used to state that "risks, dependencies and downstream impacts are
+ * not persisted in the current delivery model". That was true when it was
+ * written and stopped being true once project_risks and project_dependencies
+ * shipped -- leaving the briefing denying a capability the product had. An
+ * empty register is a fact about this tenant's data; it is never a fact about
+ * what the product can hold.
+ */
+function TopRisksDependencies({ overview }: { overview: DeliveryOverview }) {
+  const { topRisks, openRiskCount, dependencyCount, dependencyProjectCount, activeProjects } = overview
+  const withheld = openRiskCount - topRisks.length
+
   return (
     <div className="p-5 sm:p-6">
-      <h3 className="text-xs font-semibold tracking-[0.08em] text-[var(--briefing-muted)] uppercase">Top risks &amp; dependencies</h3>
-      <BriefingEmptyState
-        icon={ShieldAlert}
-        title="No structured register is connected"
-        description="Risks, dependencies and downstream impacts are not persisted in the current delivery model. Current project health signals remain visible in the intervention queue."
-      />
+      <h3 className="text-xs font-semibold tracking-[0.08em] text-[var(--briefing-muted)] uppercase">
+        Top risks &amp; dependencies{withheld > 0 ? ` · showing ${topRisks.length} of ${openRiskCount}` : ''}
+      </h3>
+      {topRisks.length === 0 ? (
+        <BriefingEmptyState
+          icon={ShieldAlert}
+          title={activeProjects === 0 ? 'No active delivery yet' : 'No open risks recorded'}
+          description={activeProjects === 0
+            ? 'Risks recorded against active projects will appear here, worst first.'
+            : 'No risk on an active project is currently Open or Mitigating.'}
+        />
+      ) : (
+        <ol className="mt-4 space-y-3.5">
+          {topRisks.map((risk) => (
+            <li key={risk.id} className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-2.5 gap-y-1">
+              <RiskBandBadge band={risk.band} />
+              <Link
+                href={`/operations/projects/${risk.projectId}`}
+                className="min-w-0 truncate text-xs font-semibold text-foreground hover:text-brand focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+              >
+                {risk.title}
+              </Link>
+              <p className="col-start-2 text-xs leading-5 text-[var(--briefing-muted)]">
+                {risk.projectName} · {risk.probability} / {risk.impact} · {risk.owner} · {risk.targetDateLabel}
+              </p>
+            </li>
+          ))}
+        </ol>
+      )}
+      <p className="mt-4 border-t border-border pt-3 text-xs leading-5 text-[var(--briefing-muted)]">
+        {dependencyCount === 0
+          ? 'No project-to-project dependencies recorded.'
+          : `${dependencyCount} project ${plural('dependency', dependencyCount)} recorded across ${dependencyProjectCount} ${plural('project', dependencyProjectCount)}.`}
+      </p>
       <Link href="/operations/projects" className="inline-flex items-center gap-2 text-xs font-semibold text-brand hover:text-brand/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">
         Review project health <ArrowRight aria-hidden="true" className="size-4" />
       </Link>

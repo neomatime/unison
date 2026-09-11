@@ -3,6 +3,8 @@
  * remain free of `server-only` imports.
  */
 
+import type { RiskBand } from './risk-severity.ts'
+
 /**
  * The database permits both `On Track` and `Healthy`. The executive briefing
  * intentionally groups those positive states, and the label names both so the
@@ -67,6 +69,23 @@ export type UpcomingProjectDate = {
   nextGate: string | null
 }
 
+
+/** One row of the briefing's risk register panel. */
+export type TopRiskRow = {
+  id: string
+  title: string
+  projectId: string
+  projectName: string
+  band: RiskBand
+  probability: string
+  impact: string
+  status: string
+  /** Resolved name, or 'Unassigned' / 'Former member'. Never a raw uuid. */
+  owner: string
+  targetDate: string | null
+  targetDateLabel: string
+}
+
 export type DeliveryOverview = {
   activeProjects: number
   healthCounts: Record<HealthBand, number>
@@ -97,6 +116,18 @@ export type DeliveryOverview = {
   blockedItemProjectCount: number
   /** Delivery items across every active project, blocked or not. */
   activeItemCount: number
+  /**
+   * The worst open risks on active projects, already ranked. Empty when the
+   * register holds none -- which is a statement about this tenant's data, not
+   * about whether the product persists risks. It does.
+   */
+  topRisks: TopRiskRow[]
+  /** Open or mitigating risks across active projects, including those not shown. */
+  openRiskCount: number
+  /** Project-to-project dependencies recorded across active projects. */
+  dependencyCount: number
+  /** Distinct active projects those dependencies touch. */
+  dependencyProjectCount: number
   /** All active At Risk or Critical projects, in deterministic triage order. */
   attention: AttentionRow[]
   /** Active project due dates in the end-exclusive 30-day window. */

@@ -1,7 +1,7 @@
-import { ModuleWorkspace } from '@/features/product-ui/components/module-workspace'
-import { moduleFixtures } from '@/features/product-ui/mocks/modules'
-import { moduleById } from '@/features/product-ui/registry'
+import { KnowledgeRegister } from '@/features/platform-admin/components/knowledge-screens'
+import { canManageTenantKnowledge, listTenantKnowledgeArticles } from '@/features/platform-admin/queries'
 
-export default function Page() {
-  return <ModuleWorkspace module={moduleById.knowledge} records={moduleFixtures.knowledge ?? []} />
+export default async function Page() {
+  const [records, canManage] = await Promise.all([listTenantKnowledgeArticles(), canManageTenantKnowledge()])
+  return <KnowledgeRegister scope="tenant" records={records} canManage={canManage} />
 }

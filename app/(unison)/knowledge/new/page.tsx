@@ -1,7 +1,7 @@
-import { ModuleForm } from '@/features/product-ui/components/module-form'
-import { moduleById } from '@/features/product-ui/registry'
+import { KnowledgeEditor } from '@/features/platform-admin/components/knowledge-screens'
+import { requireTenantKnowledgeAdministrator } from '@/features/platform-admin/authorization'
 
-export default function Page() {
-  return <ModuleForm module={moduleById.knowledge} mode="create" />
+export default async function Page() {
+  await requireTenantKnowledgeAdministrator()
+  return <KnowledgeEditor scope="tenant" />
 }
-

@@ -8,7 +8,16 @@ const PUBLIC_PATHS = ['/', '/sign-in', '/forgot-password']
 const AUTH_ENTRY_PATHS = ['/sign-in', '/forgot-password']
 // Reachable while signed in: an existing user joining a second organization,
 // and links that arrive in an already-authenticated session.
-const AUTH_EXEMPT = ['/accept-invitation', '/verify-email', '/reset-password', '/auth/callback']
+const AUTH_EXEMPT = [
+  '/accept-invitation',
+  '/verify-email',
+  '/reset-password',
+  '/auth/callback',
+  // External systems have no UNISON browser session. The route performs its
+  // own credential check through `ingest_integration_event`; keeping the
+  // prefix this narrow prevents unrelated API routes from bypassing sign-in.
+  '/api/integrations/webhook',
+]
 
 // A plain startsWith would also match e.g. /auth/callback-admin or
 // /reset-password-debug, silently granting them the same unauthenticated

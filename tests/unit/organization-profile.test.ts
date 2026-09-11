@@ -47,11 +47,13 @@ test('organisation editing follows the existing owner-only permission contract',
   assert.doesNotMatch(action, /slug:|tier:|status:|email_domain:/)
 })
 
-test('unsupported organisation capabilities are represented truthfully', () => {
+test('organisation capabilities distinguish implemented destinations from unavailable settings', () => {
   assert.match(screen, /No custom branding configured/)
-  assert.match(screen, /No integrations connected/)
+  assert.match(screen, /href="\/settings\/integrations"/)
+  assert.match(screen, /href="\/settings\/automations"/)
+  assert.match(screen, /href="\/settings\/jobs"/)
   assert.match(screen, /not available in this release/)
-  for (const fabricatedValue of ['Microsoft Azure DevOps', 'Atlassian Jira', 'Microsoft 365']) {
+  for (const fabricatedValue of ['Microsoft Azure DevOps', 'Atlassian Jira']) {
     assert.doesNotMatch(screen, new RegExp(fabricatedValue))
   }
   for (const billingField of ['Renewal date', 'Billing cycle', 'Payment method']) {

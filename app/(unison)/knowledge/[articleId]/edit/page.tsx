@@ -1,8 +1,9 @@
-import { ModuleForm } from '@/features/product-ui/components/module-form'
-import { moduleById } from '@/features/product-ui/registry'
+import { KnowledgeEditor } from '@/features/platform-admin/components/knowledge-screens'
+import { requireTenantKnowledgeAdministrator } from '@/features/platform-admin/authorization'
+import { getTenantKnowledgeArticle } from '@/features/platform-admin/queries'
 
 export default async function Page({ params }: { params: Promise<{ articleId: string }> }) {
   const { articleId } = await params
-  return <ModuleForm module={moduleById.knowledge} mode="edit" recordId={articleId} />
+  await requireTenantKnowledgeAdministrator()
+  return <KnowledgeEditor scope="tenant" article={await getTenantKnowledgeArticle(articleId)} />
 }
-

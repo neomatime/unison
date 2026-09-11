@@ -1,5 +1,6 @@
-import { TenantsScreen } from '@/features/internal-provisioning/components/internal-registers'
+import { TenantConfigurationRegister } from '@/features/platform-admin/components/internal-screens'
+import { listTenantConfigurations } from '@/features/platform-admin/queries'
 
-export default function Page() {
-  return <TenantsScreen />
+export default async function Page() {
+  return <TenantConfigurationRegister records={await listTenantConfigurations()} />
 }
