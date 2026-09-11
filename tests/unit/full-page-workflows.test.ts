@@ -48,7 +48,7 @@ test('evidence upload and Team mutations use full-page routes', () => {
   assert.match(moduleRecord, /records\/documents\/upload/)
   assert.doesNotMatch(teamPanel, /Save changes|Change Team|Change Role|Update Availability/)
   assert.ok(existsSync(join(app, 'records', 'documents', 'upload', 'page.tsx')))
-  assert.ok(existsSync(join(app, 'people', 'team', '[memberId]', 'action', 'page.tsx')))
+  assert.ok(existsSync(join(app, 'people', 'team', '[employeeId]', 'action', 'page.tsx')))
 })
 
 test('lightweight utility and activity panels remain contextual', () => {
