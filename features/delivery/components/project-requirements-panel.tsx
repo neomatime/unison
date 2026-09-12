@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import {
   createRequirementAction,
   deleteRequirementAction,
@@ -202,6 +202,15 @@ function EditRequirementForm({
     updateRequirementAction.bind(null, requirement.id),
     undefined,
   );
+  // React resets this form's uncontrolled fields to their defaultValue after
+  // a successful action, and revalidatePath's refreshed props can arrive
+  // after that reset -- so a form left open shows the pre-edit value (e.g.
+  // status snapping back to "Draft") even though the write succeeded.
+  // Closing on success avoids the stale reset entirely; matches
+  // AddDependencyForm's onSaved pattern.
+  useEffect(() => {
+    if (state?.success) onCancel();
+  }, [state, onCancel]);
   // The current owner, even one since removed from the organisation, must
   // still appear -- this is the retention pattern the delivery-item,
   // framework, phase, owner and client pickers already needed, applied here
