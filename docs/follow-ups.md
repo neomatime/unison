@@ -842,3 +842,13 @@ not block anything.
 **The cycle tests prove the recursive CTE, not the advisory lock.** They run
 single-threaded, one insert at a time, so a full green suite is evidence the
 graph walk is correct, not evidence the concurrency hole noted above is closed.
+
+## Final review of feat/requirements (2026-09-12)
+
+The slice built the Requirements tab: full CRUD, owner picker with retention, and
+a status and priority register. Carried out of the execution ledger and the
+review report before that workspace was deleted.
+
+- **Governance has no RLS test coverage at all** -- `project_risks`, `project_decisions`, `approvals`, `approval_decisions` and `governance_artefacts` all ship with full CRUD RLS policies and zero tests proving any of the four operations are actually tenant-isolated. This was found while building Requirements, not caused by it.
+- **The Overview tab's "what this project tracks" copy is still wrong for risks, decisions and governance** -- it claims those "do not exist as tables yet," which stopped being true when the Governance tab shipped. This slice fixed only the "requirements" clause it made false; the other three are pre-existing and still need a correction.
+- **Requirements is now more capable than its four Governance siblings** (full CRUD vs. create-only, an owner picker vs. none) -- a real, visible inconsistency, decided deliberately rather than discovered by accident. Worth a future pass bringing Governance up to the same bar, not worth blocking this slice on.

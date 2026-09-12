@@ -880,3 +880,8 @@ test('the delivery-item edit page wires its own owner and phase into the picker-
   assert.match(wiring, /selectPhaseOptions\(\s*[\s\S]*?,\s*current\.phaseId\s*,?\s*\)/, 'listDeliveryItemFormOptions must forward current.phaseId into selectPhaseOptions, not drop it')
   assert.match(wiring, /selectOwnerOptions\(\s*members\s*,\s*current\.ownerId\s*\)/, 'listDeliveryItemFormOptions must forward current.ownerId into selectOwnerOptions, not drop it')
 })
+
+test('the requirements panel retains a removed owner rather than silently dropping the selection', () => {
+  const panel = readFileSync(join(workspace, 'features', 'delivery', 'components', 'project-requirements-panel.tsx'), 'utf8')
+  assert.match(panel, /selectOwnerOptions/, 'the owner picker must go through the retention pattern, not a raw member list')
+})
