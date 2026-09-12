@@ -123,10 +123,23 @@ cleared, never with a dangling reference.
 ## UI
 
 A fifth tab on the project detail screen — **Requirements**, alongside
-Overview / Framework / Delivery / Governance / Dependencies — following the
-Governance tab's existing structure: a register with add and edit, no
-read-only counterpart section (unlike Dependencies, which has one because a
-dependency is visible from both ends of the edge; a requirement belongs to
+Overview / Framework / Delivery / Governance / Dependencies.
+
+**Correction found during planning, resolved with the user:** the Governance
+tab (Risks/Decisions/Approvals/Evidence) is genuinely create-only today — no
+edit, no delete, no owner assignment on any of its four registers, despite the
+database permitting all of it. This spec originally said Requirements would
+follow "the Governance tab's existing structure" while also requiring an edit
+path and an owner picker — those two statements were in tension, since
+Governance has neither. Decided: **Requirements gets full CRUD** — add, edit
+(including moving status through its lifecycle and assigning an owner), and
+delete. A status lifecycle that can never move is decorative, not a feature.
+This makes Requirements more capable than its four Governance siblings today;
+that is a real, visible inconsistency worth a follow-up note, not a reason to
+hold Requirements back to match a thinner precedent.
+
+No read-only counterpart section (unlike Dependencies, which has one because
+a dependency is visible from both ends of the edge; a requirement belongs to
 exactly one project and is never visible from anywhere else).
 
 Fields on the form: title, description, priority, status, owner, target date
