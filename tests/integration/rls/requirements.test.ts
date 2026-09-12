@@ -10,6 +10,10 @@ let outsider: { id: string; email: string; password: string }
 let frameworkId: string
 let projectId: string
 let outsiderProjectId: string
+// Declared at module scope (not inside the test body) so `after` can always
+// reach it for cleanup, even if the test that creates it fails before its own
+// teardown runs -- see the "removing a member sets owner_id null..." spec below.
+let removable: { id: string; email: string; password: string } | undefined
 
 before(async () => {
   orgId = await createFixtureOrg('requirements')
@@ -41,7 +45,9 @@ before(async () => {
   outsiderProjectId = outsiderProject.data.id
 })
 
-after(async () => { await cleanup([orgId, outsiderOrg], [member.id, outsider.id]) })
+after(async () => {
+  await cleanup([orgId, outsiderOrg], [member.id, outsider.id, removable?.id].filter(Boolean) as string[])
+})
 
 function requirement(over: Record<string, unknown> = {}) {
   return { organization_id: orgId, project_id: projectId, title: 'A requirement', ...over }
@@ -133,7 +139,7 @@ test('a member of the organisation can read, write and delete', async () => {
 })
 
 test('removing a member sets owner_id null rather than orphaning the row', async () => {
-  const removable = await createFixtureUser(orgId, 'admin')
+  removable = await createFixtureUser(orgId, 'admin')
   const created = await admin.from('requirements')
     .insert(requirement({ owner_id: removable.id })).select('id, owner_id').single()
   assert.equal(created.error, null)

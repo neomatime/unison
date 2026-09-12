@@ -75,20 +75,19 @@ export async function updateRequirementAction(
 }
 
 export async function deleteRequirementAction(
-  projectId: string,
   requirementId: string,
   _previous: RequirementActionState,
   form: FormData,
 ): Promise<RequirementActionState> {
-  if (!isUuid(projectId) || !isUuid(requirementId)) return { error: 'That requirement is invalid.' }
+  if (!isUuid(requirementId)) return { error: 'That requirement is invalid.' }
   const { organization, supabase } = await context()
   // organization_id is redundant with RLS and stated anyway: a delete whose
   // filter is wrong deletes nothing rather than something else.
   const { data, error } = await supabase.from('requirements')
     .delete().eq('id', requirementId).eq('organization_id', organization.id)
-    .select('id')
+    .select('id, project_id')
   if (error) return { error: 'The requirement could not be removed.' }
   if (!data || data.length === 0) return { error: 'That requirement no longer exists, or is not yours.' }
-  revalidatePath(`/operations/projects/${projectId}`)
+  revalidatePath(`/operations/projects/${data[0].project_id}`)
   return { success: 'Requirement removed.' }
 }

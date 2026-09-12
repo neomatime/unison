@@ -883,5 +883,5 @@ test('the delivery-item edit page wires its own owner and phase into the picker-
 
 test('the requirements panel retains a removed owner rather than silently dropping the selection', () => {
   const panel = readFileSync(join(workspace, 'features', 'delivery', 'components', 'project-requirements-panel.tsx'), 'utf8')
-  assert.match(panel, /selectOwnerOptions/, 'the owner picker must go through the retention pattern, not a raw member list')
+  assert.match(panel, /selectOwnerOptions\(\s*members\s*,\s*requirement\.ownerId\s*,?\s*\)/, 'the edit form must forward requirement.ownerId into selectOwnerOptions, not drop it')
 })

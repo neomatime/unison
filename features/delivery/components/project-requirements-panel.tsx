@@ -294,7 +294,7 @@ function DeleteRequirementButton({
   requirement: RequirementRow;
 }) {
   const [state, action, pending] = useActionState(
-    deleteRequirementAction.bind(null, projectId, requirement.id),
+    deleteRequirementAction.bind(null, requirement.id),
     undefined,
   );
   return (
