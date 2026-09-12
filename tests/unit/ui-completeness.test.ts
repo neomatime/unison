@@ -806,9 +806,11 @@ test('the project detail page offers no tab without a table behind it', () => {
   // Dependencies joined the three once project_dependencies existed to back
   // it -- both directions read from that table, not a fixture. See
   // list-project-dependencies.ts and project-dependencies-panel.tsx.
-  assert.deepEqual(tabs, ['Overview', 'Framework', 'Delivery', 'Governance', 'Dependencies'])
+  // Requirements joined next once public.requirements existed to back it --
+  // see list-requirements.ts and project-requirements-panel.tsx.
+  assert.deepEqual(tabs, ['Overview', 'Framework', 'Delivery', 'Governance', 'Dependencies', 'Requirements'])
 
-  for (const gone of ['Workstreams', 'Requirements', 'Documents', 'Processes', 'Testing', 'Benefits']) {
+  for (const gone of ['Workstreams', 'Documents', 'Processes', 'Testing', 'Benefits']) {
     // Matched as a quoted string anywhere in the file, not just inside the
     // tabs array literal above -- that array only proves what the tab strip
     // renders today. This loop exists for the other half: a fabricated name

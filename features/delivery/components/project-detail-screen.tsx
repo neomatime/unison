@@ -9,6 +9,7 @@ import { WorkspaceHeader } from "@/components/shared/workspace-header";
 import { archiveProjectAction } from "@/features/delivery/actions/archive-project";
 import type { DeliveryItemNode } from "@/features/delivery/queries/list-delivery-items";
 import type { DependencyRow } from "@/features/delivery/queries/list-project-dependencies";
+import type { OrganizationMember } from "@/features/memberships/queries/list-organization-members";
 import { DeliveryItemsPanel } from "./delivery-items-panel";
 import {
   HealthBadge,
@@ -18,9 +19,11 @@ import {
 } from "./delivery-primitives";
 import { ProjectDependenciesPanel } from "./project-dependencies-panel";
 import { ProjectGovernancePanel } from "./project-governance-panel";
+import { ProjectRequirementsPanel } from "./project-requirements-panel";
 import type { getProjectGovernance } from "../queries/get-project-governance";
+import type { RequirementRow } from "../queries/list-requirements";
 
-const tabs = ["Overview", "Framework", "Delivery", "Governance", "Dependencies"] as const;
+const tabs = ["Overview", "Framework", "Delivery", "Governance", "Dependencies", "Requirements"] as const;
 
 // Everything on this screen comes from public.projects. The page resolves the
 // record and 404s on a miss; nothing here falls back to another project, and
@@ -55,6 +58,8 @@ export function ProjectDetailScreen({
   dependsOn,
   dependedOnBy,
   governance,
+  requirements,
+  members,
 }: {
   project: ProjectDetail;
   items: DeliveryItemNode[];
@@ -62,6 +67,8 @@ export function ProjectDetailScreen({
   dependsOn: DependencyRow[];
   dependedOnBy: DependencyRow[];
   governance: Awaited<ReturnType<typeof getProjectGovernance>>;
+  requirements: RequirementRow[];
+  members: OrganizationMember[];
 }) {
   const [activeTab, setActiveTab] = useState<(typeof tabs)[number]>("Overview");
   const [confirmArchive, setConfirmArchive] = useState(false);
@@ -201,11 +208,17 @@ export function ProjectDetailScreen({
           />
         ) : activeTab === "Governance" ? (
           <ProjectGovernancePanel projectId={project.id} governance={governance} />
-        ) : (
+        ) : activeTab === "Dependencies" ? (
           <ProjectDependenciesPanel
             projectId={project.id}
             dependsOn={dependsOn}
             dependedOnBy={dependedOnBy}
+          />
+        ) : (
+          <ProjectRequirementsPanel
+            projectId={project.id}
+            requirements={requirements}
+            members={members}
           />
         )}
       </div>
@@ -276,8 +289,8 @@ function ProjectOverview({ project }: { project: ProjectDetail }) {
           <p>
             This project record, its applied framework, and its delivery items
             are what UNISON tracks here today. There is no separate register for
-            workstreams, requirements, risks, decisions, governance or benefits
-            — those do not exist as tables yet, so they are not offered as tabs.
+            workstreams, risks, decisions, governance or benefits — those do
+            not exist as tables yet, so they are not offered as tabs.
           </p>
           <p className="mt-3">
             Health, progress, gate and date figures shown here are the values

@@ -5,6 +5,7 @@ import { getProject } from "@/features/delivery/queries/get-project";
 import { listDeliveryItems } from "@/features/delivery/queries/list-delivery-items";
 import { listProjectDependencies } from "@/features/delivery/queries/list-project-dependencies";
 import { getProjectGovernance } from "@/features/delivery/queries/get-project-governance";
+import { listRequirements } from "@/features/delivery/queries/list-requirements";
 import { listOrganizationMembers } from "@/features/memberships/queries/list-organization-members";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -46,26 +47,31 @@ export default async function Page({
   // dropped by this mapper. Resolved the same way list-projects.ts does, with
   // the same 'Former member' fallback for an owner whose membership row was
   // deleted outright rather than marked removed.
-  const members = project.owner_id ? await listOrganizationMembers() : [];
+  //
+  // The Delivery tab's own hierarchy, the Dependencies tab's two directions,
+  // the picker options for its add form, the organisation's members, and the
+  // Requirements register -- none of these five depends on any of the others,
+  // so they run together rather than adding sequential round trips to the
+  // render. (Unlike DeliveryItemsPanel's per-item retention case, there is
+  // nothing here that varies by which row is being edited.) members is now
+  // fetched unconditionally rather than only when the project has an owner:
+  // the Requirements tab's owner picker needs the full list regardless of
+  // whether this project itself has an owner, and listOrganizationMembers is
+  // wrapped in React's cache() and was already being called from within
+  // listProjectDependencies on every render, so making it unconditional here
+  // costs no additional round trip.
+  const [items, { dependsOn, dependedOnBy }, governance, members, requirements] =
+    await Promise.all([
+      listDeliveryItems(projectId),
+      listProjectDependencies(projectId),
+      getProjectGovernance(projectId),
+      listOrganizationMembers(),
+      listRequirements(projectId),
+    ]);
   const ownerName = project.owner_id
     ? (members.find((member) => member.userId === project.owner_id)
         ?.displayName ?? "Former member")
     : "Unassigned";
-
-  // The Delivery tab's own hierarchy, the Dependencies tab's two directions,
-  // and the picker options for its add form -- none of these three depends on
-  // either of the others, so they run together rather than adding sequential
-  // round trips to the render. (Unlike DeliveryItemsPanel's per-item retention
-  // case, there is nothing here that varies by which row is being edited.)
-  // Each of listProjectDependencies and listDependencyFormOptions also calls
-  // listOrganizationMembers, as does this page above when there is an owner
-  // to resolve; that function is wrapped in React's cache() precisely so
-  // those calls collapse into one RPC round trip rather than three.
-  const [items, { dependsOn, dependedOnBy }, governance] = await Promise.all([
-    listDeliveryItems(projectId),
-    listProjectDependencies(projectId),
-    getProjectGovernance(projectId),
-  ]);
   const labels = {
     level1Label: project.frameworks?.level_1_label ?? null,
     level2Label: project.frameworks?.level_2_label ?? null,
@@ -78,6 +84,8 @@ export default async function Page({
       dependsOn={dependsOn}
       dependedOnBy={dependedOnBy}
       governance={governance}
+      requirements={requirements}
+      members={members}
       project={{
         id: project.id,
         owner: ownerName,
