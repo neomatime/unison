@@ -1,4 +1,4 @@
-export type Json =
+﻿export type Json =
   | string
   | number
   | boolean
@@ -2830,6 +2830,70 @@ export type Database = {
           },
         ]
       }
+      requirements: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          organization_id: string
+          owner_id: string | null
+          priority: string
+          project_id: string
+          status: string
+          target_date: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          organization_id: string
+          owner_id?: string | null
+          priority?: string
+          project_id: string
+          status?: string
+          target_date?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          organization_id?: string
+          owner_id?: string | null
+          priority?: string
+          project_id?: string
+          status?: string
+          target_date?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "requirements_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "requirements_owner_fkey"
+            columns: ["organization_id", "owner_id"]
+            isOneToOne: false
+            referencedRelation: "memberships"
+            referencedColumns: ["organization_id", "user_id"]
+          },
+          {
+            foreignKeyName: "requirements_project_fkey"
+            columns: ["project_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id", "organization_id"]
+          },
+        ]
+      }
       sales_opportunities: {
         Row: {
           archived_at: string | null
@@ -3672,3 +3736,4 @@ export const Constants = {
     Enums: {},
   },
 } as const
+
