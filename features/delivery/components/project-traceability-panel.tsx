@@ -170,6 +170,10 @@ function LinkedItems({
         <p role="alert" className="mt-1 text-xs text-destructive">
           {linkState.error}
         </p>
+      ) : linkState?.success ? (
+        <p role="status" className="mt-1 text-xs text-success">
+          {linkState.success}
+        </p>
       ) : null}
     </div>
   );
@@ -201,6 +205,10 @@ function UnlinkRow({
       {state?.error ? (
         <p role="alert" className="mt-1 text-xs text-destructive">
           {state.error}
+        </p>
+      ) : state?.success ? (
+        <p role="status" className="mt-1 text-xs text-success">
+          {state.success}
         </p>
       ) : null}
     </li>
