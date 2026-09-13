@@ -232,6 +232,8 @@ export async function cleanup(organizationIds: string[], userIds: string[]) {
         'automation_rules',
         'automation_schedules',
         'requirements',
+        'requirement_delivery_items',
+        'requirement_evidence',
       ])
       .or(`old_value->>organization_id.eq.${id},new_value->>organization_id.eq.${id}`)
     if (deliveryEventsError) errors.push(deliveryEventsError)
