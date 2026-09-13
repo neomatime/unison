@@ -2830,6 +2830,104 @@ export type Database = {
           },
         ]
       }
+      requirement_delivery_items: {
+        Row: {
+          created_at: string
+          delivery_item_id: string
+          id: string
+          organization_id: string
+          project_id: string
+          requirement_id: string
+        }
+        Insert: {
+          created_at?: string
+          delivery_item_id: string
+          id?: string
+          organization_id: string
+          project_id: string
+          requirement_id: string
+        }
+        Update: {
+          created_at?: string
+          delivery_item_id?: string
+          id?: string
+          organization_id?: string
+          project_id?: string
+          requirement_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "requirement_delivery_items_delivery_item_fkey"
+            columns: ["delivery_item_id", "project_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_items"
+            referencedColumns: ["id", "project_id", "organization_id"]
+          },
+          {
+            foreignKeyName: "requirement_delivery_items_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "requirement_delivery_items_requirement_fkey"
+            columns: ["requirement_id", "project_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "requirements"
+            referencedColumns: ["id", "project_id", "organization_id"]
+          },
+        ]
+      }
+      requirement_evidence: {
+        Row: {
+          created_at: string
+          evidence_id: string
+          id: string
+          organization_id: string
+          project_id: string
+          requirement_id: string
+        }
+        Insert: {
+          created_at?: string
+          evidence_id: string
+          id?: string
+          organization_id: string
+          project_id: string
+          requirement_id: string
+        }
+        Update: {
+          created_at?: string
+          evidence_id?: string
+          id?: string
+          organization_id?: string
+          project_id?: string
+          requirement_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "requirement_evidence_evidence_fkey"
+            columns: ["evidence_id", "project_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "governance_artefacts"
+            referencedColumns: ["id", "project_id", "organization_id"]
+          },
+          {
+            foreignKeyName: "requirement_evidence_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "requirement_evidence_requirement_fkey"
+            columns: ["requirement_id", "project_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "requirements"
+            referencedColumns: ["id", "project_id", "organization_id"]
+          },
+        ]
+      }
       requirements: {
         Row: {
           created_at: string
