@@ -890,6 +890,13 @@ test('the requirements panel retains a removed owner rather than silently droppi
 })
 
 test('the traceability panel filters already-linked options rather than offering a raw list', () => {
+  // A bare /unlinkedOptions/ match is satisfied by the import statement alone,
+  // so it would still pass with either call site's filtering silently removed
+  // (the string survives via the import and the other, untouched call site) --
+  // the same defect class the selectOwnerOptions retention guard above was
+  // once weak to. Each picker gets its own assertion tied to its real call-site
+  // arguments, so either one regressing independently fails its own line.
   const panel = readFileSync(join(workspace, 'features', 'delivery', 'components', 'project-traceability-panel.tsx'), 'utf8')
-  assert.match(panel, /unlinkedOptions/, 'the add pickers must filter out options already linked to the requirement')
+  assert.match(panel, /unlinkedOptions\(allDeliveryItems, row\.deliveryItemIds\)/, 'the delivery-item picker must filter through unlinkedOptions')
+  assert.match(panel, /unlinkedOptions\(evidence, row\.evidenceIds\)/, 'the evidence picker must filter through unlinkedOptions')
 })
