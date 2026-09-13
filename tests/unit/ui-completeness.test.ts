@@ -808,7 +808,10 @@ test('the project detail page offers no tab without a table behind it', () => {
   // list-project-dependencies.ts and project-dependencies-panel.tsx.
   // Requirements joined next once public.requirements existed to back it --
   // see list-requirements.ts and project-requirements-panel.tsx.
-  assert.deepEqual(tabs, ['Overview', 'Framework', 'Delivery', 'Governance', 'Dependencies', 'Requirements'])
+  // Traceability joined last once requirement_delivery_items and
+  // requirement_evidence existed to back it -- see list-traceability.ts and
+  // project-traceability-panel.tsx.
+  assert.deepEqual(tabs, ['Overview', 'Framework', 'Delivery', 'Governance', 'Dependencies', 'Requirements', 'Traceability'])
 
   for (const gone of ['Workstreams', 'Documents', 'Processes', 'Testing', 'Benefits']) {
     // Matched as a quoted string anywhere in the file, not just inside the
@@ -884,4 +887,9 @@ test('the delivery-item edit page wires its own owner and phase into the picker-
 test('the requirements panel retains a removed owner rather than silently dropping the selection', () => {
   const panel = readFileSync(join(workspace, 'features', 'delivery', 'components', 'project-requirements-panel.tsx'), 'utf8')
   assert.match(panel, /selectOwnerOptions\(\s*members\s*,\s*requirement\.ownerId\s*,?\s*\)/, 'the edit form must forward requirement.ownerId into selectOwnerOptions, not drop it')
+})
+
+test('the traceability panel filters already-linked options rather than offering a raw list', () => {
+  const panel = readFileSync(join(workspace, 'features', 'delivery', 'components', 'project-traceability-panel.tsx'), 'utf8')
+  assert.match(panel, /unlinkedOptions/, 'the add pickers must filter out options already linked to the requirement')
 })

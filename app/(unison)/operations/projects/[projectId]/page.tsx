@@ -6,6 +6,7 @@ import { listDeliveryItems } from "@/features/delivery/queries/list-delivery-ite
 import { listProjectDependencies } from "@/features/delivery/queries/list-project-dependencies";
 import { getProjectGovernance } from "@/features/delivery/queries/get-project-governance";
 import { listRequirements } from "@/features/delivery/queries/list-requirements";
+import { listTraceability } from "@/features/delivery/queries/list-traceability";
 import { listOrganizationMembers } from "@/features/memberships/queries/list-organization-members";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -49,24 +50,26 @@ export default async function Page({
   // deleted outright rather than marked removed.
   //
   // The Delivery tab's own hierarchy, the Dependencies tab's two directions,
-  // the picker options for its add form, the organisation's members, and the
-  // Requirements register -- none of these five depends on any of the others,
-  // so they run together rather than adding sequential round trips to the
-  // render. (Unlike DeliveryItemsPanel's per-item retention case, there is
-  // nothing here that varies by which row is being edited.) members is now
+  // the picker options for its add form, the organisation's members, the
+  // Requirements register, and the Traceability rows -- none of these six
+  // depends on any of the others, so they run together rather than adding
+  // sequential round trips to the render. (Unlike DeliveryItemsPanel's
+  // per-item retention case, there is nothing here that varies by which row
+  // is being edited.) members is now
   // fetched unconditionally rather than only when the project has an owner:
   // the Requirements tab's owner picker needs the full list regardless of
   // whether this project itself has an owner, and listOrganizationMembers is
   // wrapped in React's cache() and was already being called from within
   // listProjectDependencies on every render, so making it unconditional here
   // costs no additional round trip.
-  const [items, { dependsOn, dependedOnBy }, governance, members, requirements] =
+  const [items, { dependsOn, dependedOnBy }, governance, members, requirements, traceability] =
     await Promise.all([
       listDeliveryItems(projectId),
       listProjectDependencies(projectId),
       getProjectGovernance(projectId),
       listOrganizationMembers(),
       listRequirements(projectId),
+      listTraceability(projectId),
     ]);
   const ownerName = project.owner_id
     ? (members.find((member) => member.userId === project.owner_id)
@@ -85,6 +88,7 @@ export default async function Page({
       dependedOnBy={dependedOnBy}
       governance={governance}
       requirements={requirements}
+      traceability={traceability}
       members={members}
       project={{
         id: project.id,

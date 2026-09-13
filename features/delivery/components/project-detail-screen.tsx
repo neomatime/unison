@@ -20,10 +20,12 @@ import {
 import { ProjectDependenciesPanel } from "./project-dependencies-panel";
 import { ProjectGovernancePanel } from "./project-governance-panel";
 import { ProjectRequirementsPanel } from "./project-requirements-panel";
+import { ProjectTraceabilityPanel } from "./project-traceability-panel";
 import type { getProjectGovernance } from "../queries/get-project-governance";
 import type { RequirementRow } from "../queries/list-requirements";
+import type { TraceabilityRow } from "../queries/list-traceability";
 
-const tabs = ["Overview", "Framework", "Delivery", "Governance", "Dependencies", "Requirements"] as const;
+const tabs = ["Overview", "Framework", "Delivery", "Governance", "Dependencies", "Requirements", "Traceability"] as const;
 
 // Everything on this screen comes from public.projects. The page resolves the
 // record and 404s on a miss; nothing here falls back to another project, and
@@ -59,6 +61,7 @@ export function ProjectDetailScreen({
   dependedOnBy,
   governance,
   requirements,
+  traceability,
   members,
 }: {
   project: ProjectDetail;
@@ -68,6 +71,7 @@ export function ProjectDetailScreen({
   dependedOnBy: DependencyRow[];
   governance: Awaited<ReturnType<typeof getProjectGovernance>>;
   requirements: RequirementRow[];
+  traceability: TraceabilityRow[];
   members: OrganizationMember[];
 }) {
   const [activeTab, setActiveTab] = useState<(typeof tabs)[number]>("Overview");
@@ -214,11 +218,17 @@ export function ProjectDetailScreen({
             dependsOn={dependsOn}
             dependedOnBy={dependedOnBy}
           />
-        ) : (
+        ) : activeTab === "Requirements" ? (
           <ProjectRequirementsPanel
             projectId={project.id}
             requirements={requirements}
             members={members}
+          />
+        ) : (
+          <ProjectTraceabilityPanel
+            traceability={traceability}
+            deliveryItems={items}
+            evidence={governance.artefacts}
           />
         )}
       </div>

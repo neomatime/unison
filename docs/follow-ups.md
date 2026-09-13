@@ -852,3 +852,8 @@ review report before that workspace was deleted.
 - **Governance has no RLS test coverage at all** -- `project_risks`, `project_decisions`, `approvals`, `approval_decisions` and `governance_artefacts` all ship with full CRUD RLS policies and zero tests proving any of the four operations are actually tenant-isolated. This was found while building Requirements, not caused by it.
 - **The Overview tab's "what this project tracks" copy is still wrong for risks, decisions and governance** -- it claims those "do not exist as tables yet," which stopped being true when the Governance tab shipped. This slice fixed only the "requirements" clause it made false; the other three are pre-existing and still need a correction.
 - **Requirements is now more capable than its four Governance siblings** (full CRUD vs. create-only, an owner picker vs. none) -- a real, visible inconsistency, decided deliberately rather than discovered by accident. Worth a future pass bringing Governance up to the same bar, not worth blocking this slice on.
+
+## From the traceability slice (2026-09-13)
+
+- **Traceability only offers project-scoped evidence as linkable** — `governance_artefacts` rows scoped to a framework or an approval rather than a project have no project to pin the link's composite foreign key to, and are structurally unlinkable here, not merely unoffered by the UI. A future need to trace against framework-level evidence is a separate design question.
+- **No coverage rollup or percentage view exists yet** — Traceability shows a per-requirement badge only. An aggregate dashboard is a real, separate feature to build once the per-requirement mechanics here are validated in the pilot.
