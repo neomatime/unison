@@ -30,6 +30,9 @@ export async function updateDeliveryItemAction(
     current_phase_id: parsed.data.currentPhaseId,
     start_date: parsed.data.startDate,
     target_date: parsed.data.targetDate,
+    source_system: parsed.data.sourceSystem,
+    external_reference: parsed.data.externalReference,
+    external_url: parsed.data.externalUrl,
   }).eq('id', id).eq('organization_id', organization.id).select('id')
 
   // What the database can still refuse after zod: an owner from another

@@ -23,7 +23,7 @@ export async function listDeliveryItems(projectId: string): Promise<DeliveryItem
 
   const [rows, members] = await Promise.all([
     supabase.from('delivery_items')
-      .select('id, level, parent_id, name, description, owner_id, status, health, start_date, target_date, archived_at, current_phase_id, framework_phases(name, archived_at)')
+      .select('id, level, parent_id, name, description, owner_id, status, health, start_date, target_date, archived_at, current_phase_id, source_system, external_reference, external_url, framework_phases(name, archived_at)')
       .eq('project_id', projectId)
       .eq('organization_id', organization.id)
       .order('level')
@@ -52,6 +52,9 @@ export async function listDeliveryItems(projectId: string): Promise<DeliveryItem
     startDate: row.start_date,
     targetDate: row.target_date,
     archivedAt: row.archived_at,
+    sourceSystem: row.source_system,
+    externalReference: row.external_reference,
+    externalUrl: row.external_url,
   })
 
   return assembleDeliveryItemTree((rows.data ?? []).map(map))

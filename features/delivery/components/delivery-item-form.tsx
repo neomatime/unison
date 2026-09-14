@@ -11,7 +11,7 @@ import type { DeliveryItemFormOptions } from '../queries/list-project-form-optio
 // builds its enums from, and delivery_items_status_check /
 // delivery_items_health_check its database constraints from. Copying them
 // here would let the form drift from what the schema and database accept.
-import { DELIVERY_ITEM_HEALTHS, DELIVERY_ITEM_STATUSES } from '../schemas/delivery-item'
+import { DELIVERY_ITEM_HEALTHS, DELIVERY_ITEM_STATUSES, SOURCE_SYSTEMS } from '../schemas/delivery-item'
 
 type ActionState = { error?: string } | undefined
 type DeliveryItemFormAction = (prevState: ActionState, formData: FormData) => Promise<ActionState>
@@ -25,6 +25,9 @@ export type DeliveryItemFormValues = {
   currentPhaseId: string | null
   startDate: string | null
   targetDate: string | null
+  sourceSystem: string | null
+  externalReference: string | null
+  externalUrl: string | null
 }
 
 /**
@@ -90,6 +93,22 @@ export function DeliveryItemForm({
         <SelectField name="health" label="Health" options={DELIVERY_ITEM_HEALTHS} defaultValue={item?.health ?? DELIVERY_ITEM_HEALTHS[0]} />
         <TextField name="startDate" label="Start date" type="date" defaultValue={item?.startDate} />
         <TextField name="targetDate" label="Target date" type="date" defaultValue={item?.targetDate} />
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        {/* EntitySelectField reused for a plain-string choice, not an entity
+            picker: SOURCE_SYSTEMS mapped to {id, name} pairs where both are
+            the same string. There is exactly one optional plain-string select
+            in this codebase so far, so this is a reuse rather than a new
+            shared field component -- see the spec's UI section. */}
+        <EntitySelectField
+          name="sourceSystem"
+          label="External system"
+          options={SOURCE_SYSTEMS.map((system) => ({ id: system, name: system }))}
+          defaultValue={item?.sourceSystem}
+          emptyLabel="— None —"
+        />
+        <TextField name="externalReference" label="Reference / ID" defaultValue={item?.externalReference} placeholder="e.g. PROJ-56" />
+        <TextField name="externalUrl" label="URL" type="url" defaultValue={item?.externalUrl} placeholder="https://…" className="sm:col-span-2" />
       </div>
       <FormError message={state?.error} />
       <div className="flex justify-end gap-2 pt-2">

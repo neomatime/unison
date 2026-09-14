@@ -15,6 +15,9 @@ const BASE: Omit<DeliveryItemRow, 'id' | 'level' | 'parentId' | 'name' | 'archiv
   currentPhaseId: null,
   startDate: null,
   targetDate: null,
+  sourceSystem: null,
+  externalReference: null,
+  externalUrl: null,
 }
 
 function row(overrides: Partial<DeliveryItemRow> & Pick<DeliveryItemRow, 'id' | 'level' | 'name'>): DeliveryItemRow {

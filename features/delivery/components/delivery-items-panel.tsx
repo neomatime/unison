@@ -13,6 +13,21 @@ import { SectionCard } from './delivery-primitives'
 
 type FrameworkLabels = { level1Label: string | null; level2Label: string | null }
 
+// Always included in `sections`, matching how 'Current phase' and 'Target
+// date' already render an em dash rather than omitting their row when
+// unset -- an absent external reference reads the same way, not as a
+// special "not linked" case.
+function externalReferenceValue(item: DeliveryItem): ReactNode {
+  const label = [item.sourceSystem, item.externalReference].filter(Boolean).join(' · ')
+  if (!label) return '—'
+  if (!item.externalUrl) return label
+  return (
+    <a href={item.externalUrl} target="_blank" rel="noreferrer" className="font-semibold text-brand">
+      {label}
+    </a>
+  )
+}
+
 /**
  * The Delivery tab: a project's two-level delivery-item hierarchy.
  *
@@ -118,6 +133,7 @@ function DeliveryItemRow({
       </>,
     ],
     ['Target date', item.targetDate ?? '—'],
+    ['External reference', externalReferenceValue(item)],
   ]
 
   return (

@@ -34,6 +34,9 @@ export async function createDeliveryItemAction(projectId: string, _prev: { error
     current_phase_id: parsed.data.currentPhaseId,
     start_date: parsed.data.startDate,
     target_date: parsed.data.targetDate,
+    source_system: parsed.data.sourceSystem,
+    external_reference: parsed.data.externalReference,
+    external_url: parsed.data.externalUrl,
   }).select('id').single()
 
   // What the database can still refuse after zod: an owner from another

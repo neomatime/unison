@@ -30,6 +30,12 @@ export type DeliveryItem = {
   startDate: string | null
   targetDate: string | null
   archivedAt: string | null
+  /** Which external tracker this item maps to, or null. One of SOURCE_SYSTEMS. */
+  sourceSystem: string | null
+  /** The external tracker's own id/key for this item, or null. Free text. */
+  externalReference: string | null
+  /** A direct link to the item in its external tracker, or null. */
+  externalUrl: string | null
 }
 
 export type DeliveryItemNode = DeliveryItem & { children: DeliveryItem[] }

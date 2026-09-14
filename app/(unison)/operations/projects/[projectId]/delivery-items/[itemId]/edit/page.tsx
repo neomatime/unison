@@ -19,7 +19,7 @@ export default async function Page({ params }: { params: Promise<{ projectId: st
 
   return <WorkPage category="Delivery" title={`Edit ${item.name}`} description="Update the record's delivery ownership, position and target dates." parent={{ label: project.name, href: returnHref }}>
     <section className="border border-border bg-card p-6 lg:p-8">
-      <DeliveryItemForm mode="edit" level={item.level} parentId={parentId} item={{ name: item.name, description: item.description, ownerId: item.ownerId, status: item.status, health: item.health, currentPhaseId: item.currentPhaseId, startDate: item.startDate, targetDate: item.targetDate }} options={options} action={updateDeliveryItemAction.bind(null, item.id, projectId)} cancelHref={returnHref} />
+      <DeliveryItemForm mode="edit" level={item.level} parentId={parentId} item={{ name: item.name, description: item.description, ownerId: item.ownerId, status: item.status, health: item.health, currentPhaseId: item.currentPhaseId, startDate: item.startDate, targetDate: item.targetDate, sourceSystem: item.sourceSystem, externalReference: item.externalReference, externalUrl: item.externalUrl }} options={options} action={updateDeliveryItemAction.bind(null, item.id, projectId)} cancelHref={returnHref} />
     </section>
   </WorkPage>
 }
