@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import type { ReactNode } from "react";
 
 import { WorkPage } from "@/components/shared/work-page";
+import { externalReferenceValue } from "@/features/delivery/components/delivery-items-panel";
 import { getProject } from "@/features/delivery/queries/get-project";
 import { listDeliveryItems } from "@/features/delivery/queries/list-delivery-items";
 import { listDeliveryItemPhaseHistory } from "@/features/delivery/queries/list-delivery-item-phase-history";
@@ -23,13 +25,14 @@ export default async function Page({
     .find((entry) => entry.id === itemId);
   if (!item) notFound();
   const returnHref = `/operations/projects/${projectId}`;
-  const values = [
+  const values: Array<[string, ReactNode]> = [
     ["Owner", item.ownerName],
     ["Status", item.status],
     ["Health", item.health],
     ["Current phase", item.phaseName ?? "Not set"],
     ["Start date", item.startDate ?? "Not set"],
     ["Target date", item.targetDate ?? "Not set"],
+    ["External reference", externalReferenceValue(item, "Not set")],
     ["Description", item.description ?? "No description"],
   ];
 

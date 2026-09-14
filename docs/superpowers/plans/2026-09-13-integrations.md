@@ -306,14 +306,15 @@ In `features/delivery/components/delivery-items-panel.tsx`, add this function ab
 // Always included in `sections`, matching how 'Current phase' and 'Target
 // date' already render an em dash rather than omitting their row when
 // unset -- an absent external reference reads the same way, not as a
-// special "not linked" case.
-function externalReferenceValue(item: DeliveryItem): ReactNode {
+// special "not linked" case. Exported so the delivery item's own detail
+// page can render the same value with its own empty-state convention.
+export function externalReferenceValue(item: DeliveryItem, emptyLabel: ReactNode = '—'): ReactNode {
   const label = [item.sourceSystem, item.externalReference].filter(Boolean).join(' · ')
-  if (!label) return '—'
+  if (!label && !item.externalUrl) return emptyLabel
   if (!item.externalUrl) return label
   return (
     <a href={item.externalUrl} target="_blank" rel="noreferrer" className="font-semibold text-brand">
-      {label}
+      {label || item.externalUrl}
     </a>
   )
 }
