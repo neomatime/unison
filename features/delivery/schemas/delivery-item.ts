@@ -1,6 +1,7 @@
 import { z } from 'zod'
 
 import { isValidIsoDate } from './date.ts'
+import { isHttpsUrl } from './url.ts'
 
 /** Where the work is. */
 export const DELIVERY_ITEM_STATUSES = ['Not Started', 'In Progress', 'Blocked', 'Complete'] as const
@@ -15,6 +16,9 @@ export const DELIVERY_ITEM_STATUSES = ['Not Started', 'In Progress', 'Blocked', 
  * narrowing of the project vocabulary rather than a second one.
  */
 export const DELIVERY_ITEM_HEALTHS = ['Healthy', 'Watch', 'At Risk', 'Critical'] as const
+
+/** The two tracking systems this slice names. Widening this is a future, separate decision. */
+export const SOURCE_SYSTEMS = ['Azure DevOps', 'Jira'] as const
 
 const optionalUuid = z.string().uuid().optional().or(z.literal('')).transform((value) => value || null)
 const optionalText = z.string().trim().optional().or(z.literal('')).transform((value) => value || null)
@@ -39,6 +43,10 @@ export const deliveryItemInputSchema = z.object({
   currentPhaseId: optionalUuid,
   startDate: optionalDate,
   targetDate: optionalDate,
+  sourceSystem: z.enum(SOURCE_SYSTEMS).optional().or(z.literal('')).transform((value) => value || null),
+  externalReference: optionalText,
+  externalUrl: z.string().trim().optional().or(z.literal('')).transform((value) => value || null)
+    .refine((value) => value === null || isHttpsUrl(value), 'Enter a valid HTTPS URL.'),
 }).refine(
   (value) => (value.level === 1 ? value.parentId === null : value.parentId !== null),
   { message: 'A level 2 item needs a parent, and a level 1 item cannot have one.', path: ['parentId'] },

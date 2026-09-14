@@ -3,7 +3,8 @@ import test from 'node:test'
 
 import { bandFor, HEALTH_BANDS } from '../../features/delivery/overview-bands.ts'
 import { PROJECT_HEALTHS } from '../../features/delivery/schemas/project.ts'
-import { DELIVERY_ITEM_HEALTHS, DELIVERY_ITEM_STATUSES, deliveryItemInputSchema } from '../../features/delivery/schemas/delivery-item.ts'
+import { DELIVERY_ITEM_HEALTHS, DELIVERY_ITEM_STATUSES, deliveryItemInputSchema, SOURCE_SYSTEMS } from '../../features/delivery/schemas/delivery-item.ts'
+import { isHttpsUrl } from '../../features/delivery/schemas/url.ts'
 
 test('status is the four work states, and health omits On Track', () => {
   assert.deepEqual([...DELIVERY_ITEM_STATUSES], ['Not Started', 'In Progress', 'Blocked', 'Complete'])
@@ -83,4 +84,49 @@ test('a malformed date string is rejected as a field error, not a throw', () => 
     result = deliveryItemInputSchema.safeParse({ ...dateBase, startDate: 'not-a-date' })
   })
   assert.equal(result!.success, false)
+})
+
+test('the two named external systems are Azure DevOps and Jira, nothing else', () => {
+  assert.deepEqual([...SOURCE_SYSTEMS], ['Azure DevOps', 'Jira'])
+})
+
+test('isHttpsUrl accepts an https url and refuses everything else', () => {
+  assert.equal(isHttpsUrl('https://dev.azure.com/org/project/_workitems/edit/123'), true)
+  assert.equal(isHttpsUrl('http://dev.azure.com/org/project/_workitems/edit/123'), false)
+  assert.equal(isHttpsUrl('not a url'), false)
+  assert.equal(isHttpsUrl(''), false)
+})
+
+test('a blank source system, reference and url all parse to null', () => {
+  const result = deliveryItemInputSchema.safeParse({ ...dateBase, sourceSystem: '', externalReference: '', externalUrl: '' })
+  assert.equal(result.success, true)
+  assert.equal(result.data!.sourceSystem, null)
+  assert.equal(result.data!.externalReference, null)
+  assert.equal(result.data!.externalUrl, null)
+})
+
+test('a valid source system and reference parse through unchanged', () => {
+  const result = deliveryItemInputSchema.safeParse({ ...dateBase, sourceSystem: 'Jira', externalReference: 'PROJ-56' })
+  assert.equal(result.success, true)
+  assert.equal(result.data!.sourceSystem, 'Jira')
+  assert.equal(result.data!.externalReference, 'PROJ-56')
+})
+
+test('a source system outside the fixed vocabulary is rejected', () => {
+  const result = deliveryItemInputSchema.safeParse({ ...dateBase, sourceSystem: 'Trello' })
+  assert.equal(result.success, false)
+})
+
+test('a non-https external url is rejected with a field error, not a throw', () => {
+  let result
+  assert.doesNotThrow(() => {
+    result = deliveryItemInputSchema.safeParse({ ...dateBase, externalUrl: 'http://example.com/1' })
+  })
+  assert.equal(result!.success, false)
+})
+
+test('a well-formed https external url parses through unchanged', () => {
+  const result = deliveryItemInputSchema.safeParse({ ...dateBase, externalUrl: 'https://example.atlassian.net/browse/PROJ-56' })
+  assert.equal(result.success, true)
+  assert.equal(result.data!.externalUrl, 'https://example.atlassian.net/browse/PROJ-56')
 })
