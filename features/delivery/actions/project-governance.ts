@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getSessionContext } from "@/lib/auth/get-session-context";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { isUuid } from "@/lib/utils";
+import { readArtefactFields, readRiskFields } from "../governance-fields";
 
 export type GovernanceActionState = { error?: string; success?: string };
 
@@ -22,8 +23,8 @@ export async function createRiskAction(
   _previous: GovernanceActionState | undefined,
   form: FormData,
 ): Promise<GovernanceActionState> {
-  const title = value(form, "title");
-  if (!title) return { error: "Risk title is required." };
+  const fields = readRiskFields(form);
+  if ("error" in fields) return { error: fields.error };
   const ctx = await context(projectId);
   if (!ctx) return { error: "That project is invalid." };
   const { error } = await ctx.supabase
@@ -31,17 +32,57 @@ export async function createRiskAction(
     .insert({
       organization_id: ctx.organization.id,
       project_id: projectId,
-      title,
-      description: optional(form, "description"),
-      probability: value(form, "probability") || "Possible",
-      impact: value(form, "impact") || "Moderate",
-      status: "Open",
-      mitigation: optional(form, "mitigation"),
-      target_date: optional(form, "targetDate"),
+      ...fields,
     });
   if (error) return { error: "The risk could not be recorded." };
   revalidatePath(`/operations/projects/${projectId}`);
   return { success: "Risk recorded." };
+}
+
+export async function updateRiskAction(
+  riskId: string,
+  _previous: GovernanceActionState | undefined,
+  form: FormData,
+): Promise<GovernanceActionState> {
+  if (!isUuid(riskId)) return { error: "That risk is invalid." };
+  const fields = readRiskFields(form);
+  if ("error" in fields) return { error: fields.error };
+  const { organization } = await getSessionContext();
+  const supabase = (await createServerSupabase()) as any;
+  // organization_id is redundant with RLS and stated anyway. .select() is what
+  // distinguishes "saved" from "matched nothing": RLS and the organisation
+  // filter both express "not yours" as zero rows, not as an error.
+  const { data, error } = await supabase
+    .from("project_risks")
+    .update(fields)
+    .eq("id", riskId)
+    .eq("organization_id", organization.id)
+    .select("project_id")
+    .maybeSingle();
+  if (error || !data) return { error: "The risk could not be updated." };
+  revalidatePath(`/operations/projects/${data.project_id}`);
+  return { success: "Risk updated." };
+}
+
+export async function deleteRiskAction(
+  riskId: string,
+  _previous: GovernanceActionState | undefined,
+  _form: FormData,
+): Promise<GovernanceActionState> {
+  if (!isUuid(riskId)) return { error: "That risk is invalid." };
+  const { organization } = await getSessionContext();
+  const supabase = (await createServerSupabase()) as any;
+  const { data, error } = await supabase
+    .from("project_risks")
+    .delete()
+    .eq("id", riskId)
+    .eq("organization_id", organization.id)
+    .select("id, project_id");
+  if (error) return { error: "The risk could not be removed." };
+  if (!data || data.length === 0)
+    return { error: "That risk no longer exists, or is not yours." };
+  revalidatePath(`/operations/projects/${data[0].project_id}`);
+  return { success: "Risk removed." };
 }
 
 export async function createDecisionAction(
@@ -77,16 +118,8 @@ export async function createArtefactAction(
   _previous: GovernanceActionState | undefined,
   form: FormData,
 ): Promise<GovernanceActionState> {
-  const name = value(form, "name"),
-    externalUrl = value(form, "externalUrl");
-  if (!name || !externalUrl)
-    return { error: "An artefact name and secure URL are required." };
-  try {
-    const url = new URL(externalUrl);
-    if (url.protocol !== "https:") throw new Error();
-  } catch {
-    return { error: "Use a valid HTTPS evidence URL." };
-  }
+  const fields = readArtefactFields(form);
+  if ("error" in fields) return { error: fields.error };
   const ctx = await context(projectId);
   if (!ctx) return { error: "That project is invalid." };
   const { error } = await ctx.supabase
@@ -94,14 +127,58 @@ export async function createArtefactAction(
     .insert({
       organization_id: ctx.organization.id,
       project_id: projectId,
-      name,
-      external_url: externalUrl,
-      notes: optional(form, "notes"),
+      ...fields,
       uploaded_by: ctx.user.id,
     });
   if (error) return { error: "The evidence could not be attached." };
   revalidatePath(`/operations/projects/${projectId}`);
   return { success: "Evidence attached." };
+}
+
+export async function updateArtefactAction(
+  artefactId: string,
+  _previous: GovernanceActionState | undefined,
+  form: FormData,
+): Promise<GovernanceActionState> {
+  if (!isUuid(artefactId)) return { error: "That evidence is invalid." };
+  const fields = readArtefactFields(form);
+  if ("error" in fields) return { error: fields.error };
+  const { organization } = await getSessionContext();
+  const supabase = (await createServerSupabase()) as any;
+  // uploaded_by is set at creation and deliberately absent from this update.
+  const { data, error } = await supabase
+    .from("governance_artefacts")
+    .update(fields)
+    .eq("id", artefactId)
+    .eq("organization_id", organization.id)
+    .select("project_id")
+    .maybeSingle();
+  if (error || !data) return { error: "The evidence could not be updated." };
+  if (data.project_id) revalidatePath(`/operations/projects/${data.project_id}`);
+  return { success: "Evidence updated." };
+}
+
+export async function deleteArtefactAction(
+  artefactId: string,
+  _previous: GovernanceActionState | undefined,
+  _form: FormData,
+): Promise<GovernanceActionState> {
+  if (!isUuid(artefactId)) return { error: "That evidence is invalid." };
+  const { organization } = await getSessionContext();
+  const supabase = (await createServerSupabase()) as any;
+  // Any requirement links to this evidence are removed with it: requirement_evidence
+  // cascades from governance_artefacts.
+  const { data, error } = await supabase
+    .from("governance_artefacts")
+    .delete()
+    .eq("id", artefactId)
+    .eq("organization_id", organization.id)
+    .select("id, project_id");
+  if (error) return { error: "The evidence could not be removed." };
+  if (!data || data.length === 0)
+    return { error: "That evidence no longer exists, or is not yours." };
+  if (data[0].project_id) revalidatePath(`/operations/projects/${data[0].project_id}`);
+  return { success: "Evidence removed." };
 }
 
 export async function createApprovalAction(
