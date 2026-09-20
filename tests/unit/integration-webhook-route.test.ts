@@ -10,8 +10,9 @@ const route = readFileSync(
 )
 const proxy = readFileSync(join(workspace, 'proxy.ts'), 'utf8')
 
-test('the public proxy exemption is limited to the integration webhook route family', () => {
+test('public integration exemptions stay limited to routes with their own credentials', () => {
   assert.match(proxy, /['"]\/api\/integrations\/webhook['"]/, 'the webhook route must pass the browser-session proxy')
+  assert.match(proxy, /['"]\/api\/integrations\/website-leads['"]/, 'the signed website lead route must pass the browser-session proxy')
   assert.doesNotMatch(proxy, /AUTH_EXEMPT\s*=\s*\[[\s\S]*?['"]\/api['"]/, 'the whole API surface must not bypass sign-in')
   assert.doesNotMatch(proxy, /AUTH_EXEMPT\s*=\s*\[[\s\S]*?['"]\/api\/integrations['"]/, 'unrelated integration APIs must remain protected')
 
@@ -22,6 +23,8 @@ test('the public proxy exemption is limited to the integration webhook route fam
   const isExempt = (path: string) => entries.some((entry) => matchesPath(path, entry))
 
   assert.equal(isExempt('/api/integrations/webhook/3f0d1e34-6024-4e1e-9eb7-988513913c16'), true)
+  assert.equal(isExempt('/api/integrations/website-leads'), true)
+  assert.equal(isExempt('/api/integrations/website-leads-debug'), false)
   assert.equal(isExempt('/api/integrations/webhooks/3f0d1e34-6024-4e1e-9eb7-988513913c16'), false)
   assert.equal(isExempt('/api/integrations/connections'), false)
   assert.equal(isExempt('/api/integrations-webhook/3f0d1e34-6024-4e1e-9eb7-988513913c16'), false)

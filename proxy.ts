@@ -17,6 +17,9 @@ const AUTH_EXEMPT = [
   // own credential check through `ingest_integration_event`; keeping the
   // prefix this narrow prevents unrelated API routes from bypassing sign-in.
   '/api/integrations/webhook',
+  // The HIMARK website signs each exact request body. This endpoint verifies
+  // that signature and accepts no browser session as an alternative credential.
+  '/api/integrations/website-leads',
 ]
 
 // A plain startsWith would also match e.g. /auth/callback-admin or
