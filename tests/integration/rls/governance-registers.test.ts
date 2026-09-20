@@ -128,7 +128,7 @@ test('decisions: a decided_by outside the organisation is refused', async () => 
   assert.match(error!.message, /project_decisions_organization_id_decided_by_fkey/)
 })
 
-test('decisions: an outsider can neither read, write nor delete', async () => {
+test('decisions: an outsider can neither read, write, update nor delete', async () => {
   const seeded = await admin.from('project_decisions').insert(decision()).select('id').single()
   assert.equal(seeded.error, null)
   const client = await signedInClient(outsider.email, outsider.password)
@@ -141,11 +141,16 @@ test('decisions: an outsider can neither read, write nor delete', async () => {
   assert.ok(write.error)
   assert.equal(write.error!.code, '42501')
 
+  const update = await client.from('project_decisions').update({ title: 'Hijacked' }).eq('id', seeded.data!.id).select('id')
+  assert.equal(update.error, null)
+  assert.deepEqual(update.data, [], "an outsider's update must match no rows")
+
   const remove = await client.from('project_decisions').delete().eq('id', seeded.data!.id).select('id')
   assert.equal(remove.error, null)
   assert.deepEqual(remove.data, [])
-  const stillThere = await admin.from('project_decisions').select('id').eq('id', seeded.data!.id)
+  const stillThere = await admin.from('project_decisions').select('id, title').eq('id', seeded.data!.id)
   assert.equal(stillThere.data!.length, 1)
+  assert.equal(stillThere.data![0].title, 'A decision', "the outsider's update must not have changed the row")
 
   await admin.from('project_decisions').delete().eq('id', seeded.data!.id)
 })
@@ -237,7 +242,7 @@ test('approvals: an approver outside the organisation is refused', async () => {
   assert.match(error!.message, /approvals_organization_id_approver_id_fkey/)
 })
 
-test('approvals: an outsider can neither read, write nor delete', async () => {
+test('approvals: an outsider can neither read, write, update nor delete', async () => {
   const seeded = await admin.from('approvals').insert(approval()).select('id').single()
   assert.equal(seeded.error, null)
   const client = await signedInClient(outsider.email, outsider.password)
@@ -250,11 +255,16 @@ test('approvals: an outsider can neither read, write nor delete', async () => {
   assert.ok(write.error)
   assert.equal(write.error!.code, '42501')
 
+  const update = await client.from('approvals').update({ title: 'Hijacked' }).eq('id', seeded.data!.id).select('id')
+  assert.equal(update.error, null)
+  assert.deepEqual(update.data, [], "an outsider's update must match no rows")
+
   const remove = await client.from('approvals').delete().eq('id', seeded.data!.id).select('id')
   assert.equal(remove.error, null)
   assert.deepEqual(remove.data, [])
-  const stillThere = await admin.from('approvals').select('id').eq('id', seeded.data!.id)
+  const stillThere = await admin.from('approvals').select('id, title').eq('id', seeded.data!.id)
   assert.equal(stillThere.data!.length, 1)
+  assert.equal(stillThere.data![0].title, 'An approval', "the outsider's update must not have changed the row")
 
   await admin.from('approvals').delete().eq('id', seeded.data!.id)
 })
@@ -330,7 +340,7 @@ test('approval history: an assignee outside the organisation is refused', async 
   assert.match(error!.message, /approval_decisions_organization_id_assignee_id_fkey/)
 })
 
-test('approval history: an outsider can neither read, write nor delete', async () => {
+test('approval history: an outsider can neither read, write, update nor delete', async () => {
   const seeded = await admin.from('approval_decisions').insert(approvalDecision()).select('id').single()
   assert.equal(seeded.error, null)
   const client = await signedInClient(outsider.email, outsider.password)
@@ -343,11 +353,16 @@ test('approval history: an outsider can neither read, write nor delete', async (
   assert.ok(write.error)
   assert.equal(write.error!.code, '42501')
 
+  const update = await client.from('approval_decisions').update({ comment: 'Hijacked' }).eq('id', seeded.data!.id).select('id')
+  assert.equal(update.error, null)
+  assert.deepEqual(update.data, [], "an outsider's update must match no rows")
+
   const remove = await client.from('approval_decisions').delete().eq('id', seeded.data!.id).select('id')
   assert.equal(remove.error, null)
   assert.deepEqual(remove.data, [])
-  const stillThere = await admin.from('approval_decisions').select('id').eq('id', seeded.data!.id)
+  const stillThere = await admin.from('approval_decisions').select('id, comment').eq('id', seeded.data!.id)
   assert.equal(stillThere.data!.length, 1)
+  assert.equal(stillThere.data![0].comment, null, "the outsider's update must not have changed the row")
 
   await admin.from('approval_decisions').delete().eq('id', seeded.data!.id)
 })
@@ -435,7 +450,7 @@ test('gates: a cross-tenant framework is unrepresentable', async () => {
   assert.match(error!.message, /governance_gates_framework_id_organization_id_fkey/)
 })
 
-test('gates: an outsider can neither read, write nor delete', async () => {
+test('gates: an outsider can neither read, write, update nor delete', async () => {
   const seeded = await admin.from('governance_gates').insert(gate()).select('id').single()
   assert.equal(seeded.error, null)
   const client = await signedInClient(outsider.email, outsider.password)
@@ -448,11 +463,16 @@ test('gates: an outsider can neither read, write nor delete', async () => {
   assert.ok(write.error)
   assert.equal(write.error!.code, '42501')
 
+  const update = await client.from('governance_gates').update({ description: 'Hijacked' }).eq('id', seeded.data!.id).select('id')
+  assert.equal(update.error, null)
+  assert.deepEqual(update.data, [], "an outsider's update must match no rows")
+
   const remove = await client.from('governance_gates').delete().eq('id', seeded.data!.id).select('id')
   assert.equal(remove.error, null)
   assert.deepEqual(remove.data, [])
-  const stillThere = await admin.from('governance_gates').select('id').eq('id', seeded.data!.id)
+  const stillThere = await admin.from('governance_gates').select('id, description').eq('id', seeded.data!.id)
   assert.equal(stillThere.data!.length, 1)
+  assert.equal(stillThere.data![0].description, null, "the outsider's update must not have changed the row")
 
   await admin.from('governance_gates').delete().eq('id', seeded.data!.id)
 })
