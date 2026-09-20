@@ -916,3 +916,22 @@ test('the delivery item detail page calls externalReferenceValue from a module t
   assert.ok(source, `${imported![1]} must resolve to a source file`)
   assert.doesNotMatch(readFileSync(source!, 'utf8'), /^\s*['"]use client['"]/m, `${imported![1]} is imported by a Server Component and must not be a 'use client' module`)
 })
+
+test('the risk register retains a removed owner rather than silently dropping the selection', () => {
+  // A bare /selectOwnerOptions/ match is satisfied by the add form's
+  // zero-argument call, so it would pass with the edit form's retention
+  // argument dropped entirely. Tie each form to its real call.
+  const register = readFileSync(join(workspace, 'features', 'delivery', 'components', 'project-risks-register.tsx'), 'utf8')
+  assert.match(register, /selectOwnerOptions\(\s*members\s*,\s*risk\.owner_id\s*,?\s*\)/, 'the edit form must forward risk.owner_id into selectOwnerOptions, not drop it')
+  assert.match(register, /selectOwnerOptions\(members\)/, 'the add form must offer active members only')
+})
+
+test('the governance panel is handed the raw, unfiltered member list', () => {
+  // selectOwnerOptions filters and retains internally; a list filtered on the way
+  // in would leave it nothing to retain a removed owner against.
+  const screen = readFileSync(join(workspace, 'features', 'delivery', 'components', 'project-detail-screen.tsx'), 'utf8')
+  // [^>]* cannot cross the end of the element's own opening tag. A looser
+  // [\s\S]*? would also match the later <ProjectRequirementsPanel ... members={members}>
+  // and pass even if Governance were never given the list.
+  assert.match(screen, /<ProjectGovernancePanel[^>]*\bmembers=\{members\}/, 'ProjectGovernancePanel must receive members={members} straight through')
+})

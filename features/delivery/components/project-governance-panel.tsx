@@ -5,24 +5,24 @@ import {
   createApprovalAction,
   createArtefactAction,
   createDecisionAction,
-  createRiskAction,
-  type GovernanceActionState,
 } from "../actions/project-governance";
+import type { SelectableMember } from "../form-options";
 import type { getProjectGovernance } from "../queries/get-project-governance";
 import { SectionCard } from "./delivery-primitives";
+import { area, Feedback, input } from "./governance-form-parts";
+import { ProjectRisksRegister } from "./project-risks-register";
 
 type Governance = Awaited<ReturnType<typeof getProjectGovernance>>;
 const tabs = ["Gates & approvals", "Risks", "Decisions", "Evidence"] as const;
-const input =
-  "h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-brand";
-const area = `${input} min-h-24 py-2`;
 
 export function ProjectGovernancePanel({
   projectId,
   governance,
+  members,
 }: {
   projectId: string;
   governance: Governance;
+  members: SelectableMember[];
 }) {
   const [tab, setTab] = useState<(typeof tabs)[number]>("Gates & approvals");
   return (
@@ -45,7 +45,11 @@ export function ProjectGovernancePanel({
       {tab === "Gates & approvals" ? (
         <ApprovalRegister projectId={projectId} rows={governance.approvals} />
       ) : tab === "Risks" ? (
-        <RiskRegister projectId={projectId} rows={governance.risks} />
+        <ProjectRisksRegister
+          projectId={projectId}
+          risks={governance.risks}
+          members={members}
+        />
       ) : tab === "Decisions" ? (
         <DecisionRegister projectId={projectId} rows={governance.decisions} />
       ) : (
@@ -53,18 +57,6 @@ export function ProjectGovernancePanel({
       )}
     </div>
   );
-}
-
-function Feedback({ state }: { state: GovernanceActionState | undefined }) {
-  return state?.error ? (
-    <p role="alert" className="text-sm text-destructive">
-      {state.error}
-    </p>
-  ) : state?.success ? (
-    <p role="status" className="text-sm text-success">
-      {state.success}
-    </p>
-  ) : null;
 }
 
 function ApprovalRegister({
@@ -129,78 +121,6 @@ function ApprovalRegister({
             className="bg-brand px-4 py-2 text-sm font-semibold text-white"
           >
             Submit
-          </button>
-        </div>
-      </form>
-    </Register>
-  );
-}
-
-function RiskRegister({
-  projectId,
-  rows,
-}: {
-  projectId: string;
-  rows: Governance["risks"];
-}) {
-  const [state, action, pending] = useActionState(
-    createRiskAction.bind(null, projectId),
-    undefined,
-  );
-  return (
-    <Register
-      title="Risk register"
-      description="Project threats, exposure and mitigation ownership"
-      headings={["Risk", "Probability", "Impact", "Status"]}
-      rows={rows.map((row) => [
-        row.title,
-        row.probability,
-        row.impact,
-        row.status,
-      ])}
-    >
-      <form
-        action={action}
-        className="grid gap-3 border-t border-border p-5 md:grid-cols-2"
-      >
-        <input
-          name="title"
-          required
-          placeholder="Risk title"
-          className={input}
-        />
-        <div className="grid grid-cols-2 gap-3">
-          <select name="probability" className={input}>
-            {["Rare", "Unlikely", "Possible", "Likely", "Almost Certain"].map(
-              (x) => (
-                <option key={x}>{x}</option>
-              ),
-            )}
-          </select>
-          <select name="impact" className={input}>
-            {["Minor", "Moderate", "Major", "Severe"].map((x) => (
-              <option key={x}>{x}</option>
-            ))}
-          </select>
-        </div>
-        <textarea
-          name="description"
-          placeholder="Risk description"
-          className={area}
-        />
-        <textarea
-          name="mitigation"
-          placeholder="Mitigation plan"
-          className={area}
-        />
-        <input name="targetDate" type="date" className={input} />
-        <div>
-          <Feedback state={state} />
-          <button
-            disabled={pending}
-            className="mt-2 bg-brand px-4 py-2 text-sm font-semibold text-white"
-          >
-            Add risk
           </button>
         </div>
       </form>

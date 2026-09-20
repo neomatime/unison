@@ -211,7 +211,7 @@ export function ProjectDetailScreen({
             labels={labels}
           />
         ) : activeTab === "Governance" ? (
-          <ProjectGovernancePanel projectId={project.id} governance={governance} />
+          <ProjectGovernancePanel projectId={project.id} governance={governance} members={members} />
         ) : activeTab === "Dependencies" ? (
           <ProjectDependenciesPanel
             projectId={project.id}
