@@ -24,6 +24,10 @@ export function readSupabaseSecretKey(source: Source): string {
   return required(source, 'SUPABASE_SECRET_KEY')
 }
 
+export function readWebsiteLeadIngestSecret(source: Source): string {
+  return required(source, 'WEBSITE_LEADS_INGEST_SECRET')
+}
+
 // Microsoft 365 blocks SMTP AUTH while security defaults are enabled, so mail
 // goes through the Graph API with an OAuth2 client-credentials grant instead of
 // a mailbox password. These are read lazily at send time, never at import: a

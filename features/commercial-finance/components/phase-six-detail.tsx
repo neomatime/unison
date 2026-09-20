@@ -20,7 +20,15 @@ const meta: Record<PhaseSixKind, { category: string; parent: string; base: strin
 const fields: Record<PhaseSixKind, Array<[string, string]>> = {
   lead: [
     ["Primary contact", "contactName"], ["Contact email", "contactEmail"],
-    ["Contact phone", "contactPhone"], ["Source", "source"], ["Owner", "owner"],
+    ["Contact phone", "contactPhone"], ["Role", "contactRole"],
+    ["Organisation size", "organizationSize"], ["Industry", "industry"],
+    ["Areas of interest", "areasOfInterest"], ["Primary challenge", "primaryChallenge"],
+    ["Business impact", "businessImpact"], ["Impact severity", "impactSeverity"],
+    ["Urgency", "urgency"], ["Buying stage", "buyingStage"],
+    ["Engagement preference", "engagementType"], ["Qualification", "qualificationOutcome"],
+    ["Qualification score", "qualificationScore"], ["Signals", "qualificationSignals"],
+    ["Manual review", "manualReviewRequired"], ["Review override", "reviewOverride"],
+    ["Website submitted", "websiteSubmittedAt"], ["Source", "source"], ["Owner", "owner"],
     ["Estimated value", "estimatedValue"], ["Status", "status"],
     ["Last activity", "lastActivityAt"], ["Notes", "notes"],
   ],
@@ -113,6 +121,13 @@ export async function PhaseSixDetail({ kind, id }: { kind: PhaseSixKind; id: str
 
 function formatValue(key: string, value: unknown, record: PhaseSixRecord) {
   if (value === null || value === undefined || value === "") return "—";
+  if (Array.isArray(value)) return value.join(", ");
+  if (key === "qualificationSignals" && typeof value === "object") {
+    return Object.entries(value as Record<string, unknown>)
+      .map(([signal, active]) => `${signal}: ${active ? "yes" : "no"}`)
+      .join("\n");
+  }
+  if (key === "manualReviewRequired") return value ? "Required" : "No";
   if (moneyKeys.has(key)) {
     return new Intl.NumberFormat("en-ZA", {
       style: "currency",

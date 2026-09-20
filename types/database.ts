@@ -1830,57 +1830,108 @@ export type Database = {
       leads: {
         Row: {
           archived_at: string | null
+          areas_of_interest: string[] | null
+          business_impact: string[] | null
+          buying_stage: string | null
           company_name: string
           contact_email: string | null
           contact_name: string
           contact_phone: string | null
+          contact_role: string | null
           created_at: string
           currency: string
+          engagement_type: string | null
           estimated_value: number
           id: string
+          impact_severity: string | null
+          industry: string | null
           last_activity_at: string | null
+          manual_review_required: boolean | null
           notes: string | null
           organization_id: string
+          organization_size: string | null
           owner_id: string | null
+          primary_challenge: string | null
+          qualification_outcome: string | null
+          qualification_score: number | null
+          qualification_signals: Json | null
+          review_override: string | null
           source: string
           status: string
+          urgency: string | null
           updated_at: string
+          website_submission_key: string | null
+          website_submitted_at: string | null
         }
         Insert: {
           archived_at?: string | null
+          areas_of_interest?: string[] | null
+          business_impact?: string[] | null
+          buying_stage?: string | null
           company_name: string
           contact_email?: string | null
           contact_name: string
           contact_phone?: string | null
+          contact_role?: string | null
           created_at?: string
           currency?: string
+          engagement_type?: string | null
           estimated_value?: number
           id?: string
+          impact_severity?: string | null
+          industry?: string | null
           last_activity_at?: string | null
+          manual_review_required?: boolean | null
           notes?: string | null
           organization_id: string
+          organization_size?: string | null
           owner_id?: string | null
+          primary_challenge?: string | null
+          qualification_outcome?: string | null
+          qualification_score?: number | null
+          qualification_signals?: Json | null
+          review_override?: string | null
           source?: string
           status?: string
+          urgency?: string | null
           updated_at?: string
+          website_submission_key?: string | null
+          website_submitted_at?: string | null
         }
         Update: {
           archived_at?: string | null
+          areas_of_interest?: string[] | null
+          business_impact?: string[] | null
+          buying_stage?: string | null
           company_name?: string
           contact_email?: string | null
           contact_name?: string
           contact_phone?: string | null
+          contact_role?: string | null
           created_at?: string
           currency?: string
+          engagement_type?: string | null
           estimated_value?: number
           id?: string
+          impact_severity?: string | null
+          industry?: string | null
           last_activity_at?: string | null
+          manual_review_required?: boolean | null
           notes?: string | null
           organization_id?: string
+          organization_size?: string | null
           owner_id?: string | null
+          primary_challenge?: string | null
+          qualification_outcome?: string | null
+          qualification_score?: number | null
+          qualification_signals?: Json | null
+          review_override?: string | null
           source?: string
           status?: string
+          urgency?: string | null
           updated_at?: string
+          website_submission_key?: string | null
+          website_submitted_at?: string | null
         }
         Relationships: [
           {

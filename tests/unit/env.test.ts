@@ -1,6 +1,13 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { MissingEnvError, readAppUrl, readGraphEnv, readSupabasePublicEnv, readSupabaseSecretKey } from '../../lib/env.ts'
+import {
+  MissingEnvError,
+  readAppUrl,
+  readGraphEnv,
+  readSupabasePublicEnv,
+  readSupabaseSecretKey,
+  readWebsiteLeadIngestSecret,
+} from '../../lib/env.ts'
 
 const supabasePublicVars = {
   NEXT_PUBLIC_SUPABASE_URL: 'https://example.supabase.co',
@@ -51,6 +58,14 @@ test('readSupabaseSecretKey names the missing variable', () => {
     assert.match((error as Error).message, /SUPABASE_SECRET_KEY/)
     return true
   })
+})
+
+test('readWebsiteLeadIngestSecret reads only the dedicated integration secret', () => {
+  assert.equal(
+    readWebsiteLeadIngestSecret({ WEBSITE_LEADS_INGEST_SECRET: 'ingest-secret' }),
+    'ingest-secret',
+  )
+  assert.throws(() => readWebsiteLeadIngestSecret({}), /WEBSITE_LEADS_INGEST_SECRET/)
 })
 
 test('readGraphEnv returns the Graph credentials when present', () => {
