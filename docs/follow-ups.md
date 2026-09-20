@@ -891,10 +891,18 @@ copied here) and out of debugging the "framework could not be saved" report.
   `security definer` (`20260920160000`, `20260920161000`), pinned by `tests/integration/rls/history-triggers.test.ts`.
   The audit query `pg_proc where prorettype = 'trigger' and not prosecdef and prosrc ilike '%insert into%'` returns
   nothing in the `public` schema afterwards. Other schemas were not checked.
-- **`anon` still holds write privileges on five older tables** -- `frameworks`, `framework_phases`, `projects`,
-  `delivery_items` and `project_dependencies` predate the revoke-from-anon convention that `requirements` and the
-  Traceability tables follow. RLS and the `is_member_of` execute-revoke stop this being exploitable in practice, so
-  it is defence in depth; a migration revoking `all` from `anon` on those five would align them.
+- **Fixed: `anon` held full privileges on five older tables** -- `frameworks`, `framework_phases`, `projects`,
+  `delivery_items` and `project_dependencies` predated the revoke-from-anon convention that `requirements` and the
+  Traceability tables follow. RLS and the `is_member_of` execute-revoke stopped it being exploitable in practice, so
+  it was defence in depth. `20260920170000_revoke_anon_older_tables.sql` revokes it; `anon` now holds no privilege on
+  any of the 52 `public` tables, pinned for eight tables by `tests/integration/rls/anon-privileges.test.ts`. That
+  test asserts "permission denied for table <name>", not just "permission denied": a policy that calls
+  `is_member_of()` makes `anon` fail with "permission denied for function", and a looser match passed for
+  `project_dependencies` while it still held every privilege.
+- **`authenticated` holds `TRUNCATE`, `REFERENCES` and `TRIGGER` on all 52 `public` tables** -- Supabase's default
+  grant, never narrowed: the revoke-from-anon migrations `grant select, insert, ...` to `authenticated`, which adds
+  to the defaults rather than replacing them. PostgREST exposes no `TRUNCATE`, so it is not reachable through the
+  API, but `TRUNCATE` ignores RLS. Narrowing it is a schema-wide decision, not a per-table one.
 - **Unresolved: an unchanged framework form may not be a true no-op.** The first failed save was on a form nobody had
   edited, yet the trigger only inserts when a tracked field differs. A later pair of saves recorded both frameworks
   changing their level terms from empty to Epic/Feature, which is consistent with typing them but was never
