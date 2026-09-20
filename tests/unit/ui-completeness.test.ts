@@ -900,3 +900,19 @@ test('the traceability panel filters already-linked options rather than offering
   assert.match(panel, /unlinkedOptions\(allDeliveryItems, row\.deliveryItemIds\)/, 'the delivery-item picker must filter through unlinkedOptions')
   assert.match(panel, /unlinkedOptions\(evidence, row\.evidenceIds\)/, 'the evidence picker must filter through unlinkedOptions')
 })
+
+test('the delivery item detail page calls externalReferenceValue from a module that is not "use client"', () => {
+  // externalReferenceValue is a plain function returning JSX. Exported from a
+  // 'use client' file it becomes a client reference, and a Server Component
+  // that CALLS it throws at render ("Attempted to call externalReferenceValue()
+  // from the server but it is on the client") -- every item's View page 500'd.
+  // Typecheck, unit tests and `next build` all pass in that state, because the
+  // page is dynamic and only renders on request; only this source check does not.
+  const page = readFileSync(join(unisonRoot, 'operations', 'projects', '[projectId]', 'delivery-items', '[itemId]', 'page.tsx'), 'utf8')
+  assert.doesNotMatch(page, /^\s*['"]use client['"]/m, 'the detail page is a Server Component')
+  const imported = page.match(/import\s*\{[^}]*\bexternalReferenceValue\b[^}]*\}\s*from\s*['"]@\/([^'"]+)['"]/)
+  assert.ok(imported, 'the detail page must import externalReferenceValue')
+  const source = ['.tsx', '.ts'].map((extension) => join(workspace, `${imported![1]}${extension}`)).find((candidate) => existsSync(candidate))
+  assert.ok(source, `${imported![1]} must resolve to a source file`)
+  assert.doesNotMatch(readFileSync(source!, 'utf8'), /^\s*['"]use client['"]/m, `${imported![1]} is imported by a Server Component and must not be a 'use client' module`)
+})

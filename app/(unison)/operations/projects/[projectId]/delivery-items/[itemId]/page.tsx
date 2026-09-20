@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { WorkPage } from "@/components/shared/work-page";
-import { externalReferenceValue } from "@/features/delivery/components/delivery-items-panel";
+import { externalReferenceValue } from "@/features/delivery/components/external-reference";
 import { getProject } from "@/features/delivery/queries/get-project";
 import { listDeliveryItems } from "@/features/delivery/queries/list-delivery-items";
 import { listDeliveryItemPhaseHistory } from "@/features/delivery/queries/list-delivery-item-phase-history";

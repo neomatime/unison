@@ -10,24 +10,9 @@ import { setDeliveryItemArchivedAction } from '../actions/set-delivery-item-arch
 import type { DeliveryItem, DeliveryItemNode } from '../queries/list-delivery-items'
 import { levelLabel } from '../schemas/framework'
 import { SectionCard } from './delivery-primitives'
+import { externalReferenceValue } from './external-reference'
 
 type FrameworkLabels = { level1Label: string | null; level2Label: string | null }
-
-// Always included in `sections`, matching how 'Current phase' and 'Target
-// date' already render an em dash rather than omitting their row when
-// unset -- an absent external reference reads the same way, not as a
-// special "not linked" case. Exported so the delivery item's own detail
-// page can render the same value with its own empty-state convention.
-export function externalReferenceValue(item: DeliveryItem, emptyLabel: ReactNode = '—'): ReactNode {
-  const label = [item.sourceSystem, item.externalReference].filter(Boolean).join(' · ')
-  if (!label && !item.externalUrl) return emptyLabel
-  if (!item.externalUrl) return label
-  return (
-    <a href={item.externalUrl} target="_blank" rel="noreferrer" className="font-semibold text-brand">
-      {label || item.externalUrl}
-    </a>
-  )
-}
 
 /**
  * The Delivery tab: a project's two-level delivery-item hierarchy.
