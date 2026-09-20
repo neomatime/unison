@@ -81,8 +81,12 @@ product supports that capability.
   first option. Owner, client, phase, framework and delivery items were the first five
   places this defect class was found and fixed, and Requirements the sixth; this is the seventh.
 - **The add form gains status (default Open) and owner (default Unassigned).**
-- **The register gains Owner and Target date columns.** A removed owner displays as "Former
-  member", never blank.
+- **The register gains Owner and Target date columns.** A blank is never shown. A member
+  whose membership was soft-removed (status `removed`) keeps their membership row, so
+  their real name still displays; a membership row deleted outright has the foreign key set
+  `owner_id` to null (`on delete set null (owner_id)`), so the risk shows "Unassigned".
+  "Former member" is only the fallback for a name that cannot be resolved, and is not
+  expected to appear.
 - **Delete is a hard delete** behind a `window.confirm` naming the risk and saying it cannot
   be undone, matching Requirements. `project_risks` has no `archived_at`, and `Closed` is
   the lifecycle end; deletion is for records made by mistake.
@@ -171,8 +175,8 @@ does. Editing or deleting a record that no longer exists, or is not the caller's
 ## Success criteria
 
 A PM can edit a risk, move its status through all four values, reassign its owner, and delete
-it. A removed owner still shows on the risk as "Former member" and stays in the edit
-picker. A PM can edit and delete evidence, and the delete says it also removes requirement
+it. A soft-removed owner still shows by name on the risk, and stays in the edit picker
+labelled "(removed)" so saving never erases them. A PM can edit and delete evidence, and the delete says it also removes requirement
 links. Every Governance table has RLS coverage. `pnpm typecheck`, `pnpm test`,
 `pnpm test:rls` and `pnpm build` are green from a clean tree.
 
