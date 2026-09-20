@@ -858,3 +858,50 @@ review report before that workspace was deleted.
 - **Traceability only offers project-scoped evidence as linkable** — `governance_artefacts` rows scoped to a framework or an approval rather than a project have no project to pin the link's composite foreign key to, and are structurally unlinkable here, not merely unoffered by the UI. A future need to trace against framework-level evidence is a separate design question.
 - **No coverage rollup or percentage view exists yet** — Traceability shows a per-requirement badge only. An aggregate dashboard is a real, separate feature to build once the per-requirement mechanics here are validated in the pilot.
 - **Traceability's RLS cascade test coverage is asymmetric** — deleting a delivery item removing its requirement link, deleting a requirement removing its evidence links, and evidence's cross-project refusal (`requirement_evidence_requirement_fkey`) all lack direct tests, though all three are structurally identical to cases that ARE tested and all six composite foreign keys were confirmed identically shaped in production. Found during final review, not caused by any implementation defect.
+
+## From the integrations slice and the history-trigger fix (2026-09-20)
+
+Carried out of the Integrations execution ledger (deleted with its workspace before these were
+copied here) and out of debugging the "framework could not be saved" report.
+
+**Integrations (deferred minors from its final review)**
+
+- **`isHttpsUrl`'s comment overstates what was done** -- `features/delivery/schemas/url.ts` says the rule was
+  "extracted", but `createArtefactAction` (`features/delivery/actions/project-governance.ts`) still carries its
+  own inline `new URL(...)` / `https:` check, so the rule now lives in two places. Either point that call site
+  at `isHttpsUrl` or soften the comment.
+- **`external_url` has no database-level guard, unlike `source_system`** -- `source_system` is checked by both Zod
+  and `delivery_items_source_system_check`; `external_url`, the column rendered into an `href`, is Zod-only. No
+  other write path exists today, so this is defence in depth, not an open hole. A check such as
+  `external_url is null or external_url like 'https://%'` would close it.
+- **A tampered `sourceSystem` surfaces Zod's default enum message** rather than friendly copy, because both delivery
+  item actions return `issues[0].message`. Only reachable by bypassing the select.
+- **`externalUrl` re-spells `optionalText`'s transform** instead of chaining `.refine()` onto it. Cosmetic.
+- **`types/database.ts` has a UTF-8 BOM** from the regeneration, and the Integrations migration's filename
+  timestamp (`20260913120000`) differs from the version `apply_migration` recorded. Both are harmless tooling
+  quirks; the BOM disappears on the next regeneration.
+- **The Integrations signed-in checklist has not been completed** -- the URL-only item, the blank item showing "Not
+  set" on the detail page, and a `http://` URL being refused are still unchecked by a person.
+
+**History triggers (fixed, with what is still open)**
+
+- **Fixed:** `record_framework_version()` and `record_delivery_item_phase()` were `security invoker` but write tables
+  signed-in users can only read, so every real framework edit and every delivery-item phase change failed with
+  42501 ("The framework could not be saved"); both history tables had never held a row. They now run as
+  `security definer` (`20260920160000`, `20260920161000`), pinned by `tests/integration/rls/history-triggers.test.ts`.
+  The audit query `pg_proc where prorettype = 'trigger' and not prosecdef and prosrc ilike '%insert into%'` returns
+  nothing in the `public` schema afterwards. Other schemas were not checked.
+- **`anon` still holds write privileges on five older tables** -- `frameworks`, `framework_phases`, `projects`,
+  `delivery_items` and `project_dependencies` predate the revoke-from-anon convention that `requirements` and the
+  Traceability tables follow. RLS and the `is_member_of` execute-revoke stop this being exploitable in practice, so
+  it is defence in depth; a migration revoking `all` from `anon` on those five would align them.
+- **Unresolved: an unchanged framework form may not be a true no-op.** The first failed save was on a form nobody had
+  edited, yet the trigger only inserts when a tracked field differs. A later pair of saves recorded both frameworks
+  changing their level terms from empty to Epic/Feature, which is consistent with typing them but was never
+  separated from the form altering them itself. Saving Automation Implementation with no edits and checking that
+  `framework_versions` does not gain a row would settle it.
+- **No automated check renders server pages.** The Integrations fix round shipped a View page that threw on every
+  request (a `'use client'` module's function called from a Server Component); typecheck, unit tests, `next build`
+  and four independent reviews all passed because the route is dynamic and only renders on request. A source guard
+  now pins that one case, but a signed-in render is the only thing that catches the class. A smoke test that renders
+  each route once would.
