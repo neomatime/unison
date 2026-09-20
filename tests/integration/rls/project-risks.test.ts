@@ -98,9 +98,12 @@ test('a member can move a risk through every status in the vocabulary', async ()
   const created = await client.from('project_risks').insert(risk()).select('id').single()
   assert.equal(created.error, null)
 
+  // Hoisted: reading `created.data` inside the loop makes `moved` circular for the
+  // type checker (TS7022, 'moved' implicitly has type 'any').
+  const createdId = created.data!.id
   for (const status of ['Mitigating', 'Accepted', 'Closed', 'Open']) {
     const moved = await client.from('project_risks')
-      .update({ status }).eq('id', created.data!.id).select('status').single()
+      .update({ status }).eq('id', createdId).select('status').single()
     assert.equal(moved.error, null, `status ${status} must be reachable`)
     assert.equal(moved.data!.status, status)
   }
