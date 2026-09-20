@@ -935,3 +935,11 @@ test('the governance panel is handed the raw, unfiltered member list', () => {
   // and pass even if Governance were never given the list.
   assert.match(screen, /<ProjectGovernancePanel[^>]*\bmembers=\{members\}/, 'ProjectGovernancePanel must receive members={members} straight through')
 })
+
+test('the evidence register warns that removing evidence also removes its requirement links', () => {
+  // True because requirement_evidence cascades from governance_artefacts (proved
+  // by tests/integration/rls/traceability.test.ts). A PM deleting evidence would
+  // otherwise lose Traceability coverage with no warning.
+  const register = readFileSync(join(workspace, 'features', 'delivery', 'components', 'project-evidence-register.tsx'), 'utf8')
+  assert.match(register, /any requirement links to it are removed too/)
+})

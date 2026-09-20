@@ -3,13 +3,13 @@
 import { useActionState, useState } from "react";
 import {
   createApprovalAction,
-  createArtefactAction,
   createDecisionAction,
 } from "../actions/project-governance";
 import type { SelectableMember } from "../form-options";
 import type { getProjectGovernance } from "../queries/get-project-governance";
 import { SectionCard } from "./delivery-primitives";
 import { area, Feedback, input } from "./governance-form-parts";
+import { ProjectEvidenceRegister } from "./project-evidence-register";
 import { ProjectRisksRegister } from "./project-risks-register";
 
 type Governance = Awaited<ReturnType<typeof getProjectGovernance>>;
@@ -53,7 +53,10 @@ export function ProjectGovernancePanel({
       ) : tab === "Decisions" ? (
         <DecisionRegister projectId={projectId} rows={governance.decisions} />
       ) : (
-        <EvidenceRegister projectId={projectId} rows={governance.artefacts} />
+        <ProjectEvidenceRegister
+          projectId={projectId}
+          artefacts={governance.artefacts}
+        />
       )}
     </div>
   );
@@ -171,72 +174,6 @@ function DecisionRegister({
             className="bg-brand px-4 py-2 text-sm font-semibold text-white"
           >
             Record decision
-          </button>
-        </div>
-      </form>
-    </Register>
-  );
-}
-
-function EvidenceRegister({
-  projectId,
-  rows,
-}: {
-  projectId: string;
-  rows: Governance["artefacts"];
-}) {
-  const [state, action, pending] = useActionState(
-    createArtefactAction.bind(null, projectId),
-    undefined,
-  );
-  return (
-    <Register
-      title="Governance evidence"
-      description="Controlled links to artefacts supporting gates and approvals"
-      headings={["Artefact", "Notes", "Added"]}
-      rows={rows.map((row) => [
-        row.external_url ? (
-          <a
-            key={row.id}
-            href={row.external_url}
-            target="_blank"
-            rel="noreferrer"
-            className="font-semibold text-brand"
-          >
-            {row.name}
-          </a>
-        ) : (
-          row.name
-        ),
-        row.notes ?? "—",
-        new Date(row.created_at).toLocaleDateString("en-ZA"),
-      ])}
-    >
-      <form
-        action={action}
-        className="grid gap-3 border-t border-border p-5 md:grid-cols-2"
-      >
-        <input
-          name="name"
-          required
-          placeholder="Artefact name"
-          className={input}
-        />
-        <input
-          name="externalUrl"
-          required
-          type="url"
-          placeholder="https://…"
-          className={input}
-        />
-        <textarea name="notes" placeholder="Evidence notes" className={area} />
-        <div>
-          <Feedback state={state} />
-          <button
-            disabled={pending}
-            className="mt-2 bg-brand px-4 py-2 text-sm font-semibold text-white"
-          >
-            Attach evidence
           </button>
         </div>
       </form>

@@ -913,3 +913,34 @@ copied here) and out of debugging the "framework could not be saved" report.
   and four independent reviews all passed because the route is dynamic and only renders on request. A source guard
   now pins that one case, but a signed-in render is the only thing that catches the class. A smoke test that renders
   each route once would.
+
+## From the governance parity slice (2026-09-20)
+
+Risks and Evidence now have full CRUD, Risks has an owner picker with removed-owner retention and a
+status that can move, and every Governance table has RLS coverage. What that slice deliberately left,
+and what its tests found:
+
+- **Decisions and Approvals are still create-only** and are their own slice. Open questions for it: whether
+  a recorded decision may be edited or deleted at all (it is a log), whether an approval may be edited
+  only while Draft, whether only Drafts may be deleted (with Withdraw for the rest), and how an approver
+  is assigned.
+- **Approval history is not append-only.** `approval_decisions` is meant to be immutable (the migration that
+  created it says "History rows are append-only") but gets the same four policies as every other table, so any
+  active member can rewrite or delete it; an audit trigger records the change and nothing prevents it.
+  `tests/integration/rls/governance-registers.test.ts` states the intended behaviour as a `todo` test that
+  fails today. Fix it by dropping the update and delete policies (and the UPDATE and DELETE grants) on that
+  table, in the Approvals slice.
+- **The project panel's approval submit writes no history.** `createApprovalAction` sets status Pending but,
+  unlike `createStandaloneApprovalAction` in the Approvals module, never writes the "Submitted"
+  `approval_decisions` row, though the register describes itself as having "durable status history".
+- **`governance_gates` has RLS tests but no UI.** Gates are seeded per framework and cannot be managed
+  from anywhere.
+- **`risk-severity.ts` keeps its own private copy of the probability and impact vocabularies.** They match the
+  check constraints today; `governance-vocabulary.ts` is now the tested statement of them and the two could
+  share it.
+- **A risk's owner is never shown as "Former member" in practice.** A member whose membership was soft-removed keeps their membership row, so their real name still shows (and the edit picker labels them "(removed)"); a membership row deleted outright has owner_id set to null by the foreign key (`on delete set null (owner_id)`), so the risk shows "Unassigned". The "Former member" branch in `get-project-governance.ts` is only a fallback for a name that cannot be resolved, and its code comment there overstates it. The same is true of Requirements.
+- **`isHttpsUrl` validates with `new URL()` but the raw string is stored.** `https://user:pw@host`, embedded newlines, `https:example.com` and `https://localhost` are all accepted. This is parity with the original `createArtefactAction`. Storing `new URL(x).href` and/or rejecting credentials would harden it.
+- **The Governance risk form's probability, impact, status and owner selects have no accessible label**, so a user sees "Possible / Moderate / Open" with no field names; the actions column header has no accessible name either. This matches the existing panel pattern.
+- **The panel-to-register hop that carries the member list is guarded only by a required prop's type.** `ui-completeness.test.ts` pins the detail-screen-to-panel hop and the register's own `selectOwnerOptions` calls, but a `members={members.filter(...)}` between the panel and the register would compile and defeat retention.
+- **`anon-privileges.test.ts` does not list the Governance tables.** `project_risks`, `project_decisions`, `approvals`, `approval_decisions`, `governance_artefacts` and `governance_gates` correctly grant nothing to anon today (verified), but nothing guards it; adding them to that file's `TABLES` array is a one-line change.
+- **`approvals.requested_by` and `approval_decisions.actor_id` reference `auth.users`, not `memberships`**, so unlike every other person column on these tables they are not tenant-constrained. Worth deciding in the Decisions and Approvals slice.
