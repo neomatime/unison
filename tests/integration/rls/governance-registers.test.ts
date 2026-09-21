@@ -341,6 +341,28 @@ for (const [column, value] of lockedEdits) {
   })
 }
 
+// A status-only update touches no locked column, so without its own rule a member
+// could reopen a submitted approval as Draft and then edit and delete it.
+for (const from of ['Pending', 'Approved', 'Changes Requested', 'Rejected', 'Withdrawn']) {
+  test(`approvals: a ${from} approval cannot return to Draft`, async () => {
+    const seeded = await admin.from('approvals').insert(approval({ status: from })).select('id').single()
+    assert.equal(seeded.error, null)
+    try {
+      const client = await signedInClient(member.email, member.password)
+      const update = await client.from('approvals')
+        .update({ status: 'Draft' }).eq('id', seeded.data!.id).select('id')
+      assert.ok(update.error, `a member must not reopen a ${from} approval as Draft`)
+      assert.equal(update.error!.code, '23514')
+      assert.match(update.error!.message, /approvals_content_locked/)
+
+      const unchanged = await admin.from('approvals').select('status').eq('id', seeded.data!.id).single()
+      assert.equal(unchanged.data!.status, from)
+    } finally {
+      await admin.from('approvals').delete().eq('id', seeded.data!.id)
+    }
+  })
+}
+
 test('approvals: the decide flow can still change status of a submitted approval', async () => {
   const seeded = await admin.from('approvals').insert(approval({ status: 'Pending' })).select('id').single()
   assert.equal(seeded.error, null)
