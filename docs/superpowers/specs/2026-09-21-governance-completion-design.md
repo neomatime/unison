@@ -87,7 +87,7 @@ and Gates for this one. The user chose the policy below on 2026-09-21.
 - `unison-uat` is production: no separate test database; every test row is deleted; RLS
   fixtures are cleaned up including their audit events (the sweep in
   `tests/integration/rls/helpers.ts` already lists the Governance resources).
-- Migrations are append-only and this slice adds exactly one; it is applied to production only
+- Migrations are append-only and this slice adds two (the second closes a hole found in review: a submitted approval could be set back to Draft); each is applied to production only
   after review and its effect verified with a rollback-probe or `has_table_privilege` and policy
   queries.
 - Integrity rules are enforced structurally, not only in the UI.

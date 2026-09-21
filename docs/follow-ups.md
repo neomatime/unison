@@ -895,11 +895,11 @@ copied here) and out of debugging the "framework could not be saved" report.
   `delivery_items` and `project_dependencies` predated the revoke-from-anon convention that `requirements` and the
   Traceability tables follow. RLS and the `is_member_of` execute-revoke stopped it being exploitable in practice, so
   it was defence in depth. `20260920170000_revoke_anon_older_tables.sql` revokes it; `anon` now holds no privilege on
-  any of the 52 `public` tables, pinned for eight tables by `tests/integration/rls/anon-privileges.test.ts`. That
+  any of the 52 `public` tables, pinned for fourteen tables by `tests/integration/rls/anon-privileges.test.ts`. That
   test asserts "permission denied for table <name>", not just "permission denied": a policy that calls
   `is_member_of()` makes `anon` fail with "permission denied for function", and a looser match passed for
   `project_dependencies` while it still held every privilege.
-- **`authenticated` holds `TRUNCATE`, `REFERENCES` and `TRIGGER` on all 52 `public` tables** -- Supabase's default
+- **`authenticated` holds `TRUNCATE`, `REFERENCES` and `TRIGGER` on all 52 `public` tables (except `TRUNCATE` on `approval_decisions`, revoked 2026-09-21)** -- Supabase's default
   grant, never narrowed: the revoke-from-anon migrations `grant select, insert, ...` to `authenticated`, which adds
   to the defaults rather than replacing them. PostgREST exposes no `TRUNCATE`, so it is not reachable through the
   API, but `TRUNCATE` ignores RLS. Narrowing it is a schema-wide decision, not a per-table one.
@@ -931,7 +931,7 @@ and what its tests found:
 - **A risk's owner is never shown as "Former member" in practice.** A member whose membership was soft-removed keeps their membership row, so their real name still shows (and the edit picker labels them "(removed)"); a membership row deleted outright has owner_id set to null by the foreign key (`on delete set null (owner_id)`), so the risk shows "Unassigned". The "Former member" branch in `get-project-governance.ts` is only a fallback for a name that cannot be resolved, and its code comment there overstates it. The same is true of Requirements.
 - **`isHttpsUrl` validates with `new URL()` but the raw string is stored.** `https://user:pw@host`, embedded newlines, `https:example.com` and `https://localhost` are all accepted. This is parity with the original `createArtefactAction`. Storing `new URL(x).href` and/or rejecting credentials would harden it.
 - **The panel-to-register hop that carries the member list is guarded only by a required prop's type.** `ui-completeness.test.ts` pins the detail-screen-to-panel hop and the register's own `selectOwnerOptions` calls, but a `members={members.filter(...)}` between the panel and the register would compile and defeat retention.
-- **`approvals.requested_by`, `approval_decisions.actor_id` and `governance_artefacts.uploaded_by` reference `auth.users`, not `memberships`**, so unlike the other person columns on these tables (`owner_id`, `decided_by`, `approver_id`, `assignee_id`) they are not tenant-constrained. Worth deciding in the Decisions and Approvals slice.
+- **`approvals.requested_by`, `approval_decisions.actor_id` and `governance_artefacts.uploaded_by` reference `auth.users`, not `memberships`**, so unlike the other person columns on these tables (`owner_id`, `decided_by`, `approver_id`, `assignee_id`) they are not tenant-constrained. Not decided in the governance completion slice either.
 - **A failed save reverts the field the user just typed.** React resets an action-bound form's uncontrolled fields after any completed action, including one that returns an error, so a rejected `http://` URL shows the error beside the stored value, and a failed add clears every field. The Risks and Requirements forms behave the same way. Controlled inputs, or preserving submitted values in the action state, would fix it.
 
 ## From the governance completion slice (2026-09-21)
@@ -959,8 +959,21 @@ its history row. What that slice left, and what its reviews found:
 - **`approvals_lock_content` locks only `title`, `description`, `priority` and `due_date`**, not `project_id`,
   `approver_id` or `organization_id`. A submitted approval can never return to Draft (a separate check added in
   `20260921110000`).
-- **Deleting a project or an organisation still cascades to non-Draft approvals and their history.** That is a
-  referential action (`on delete cascade`), not a policy, so the Draft-only `approvals_delete` policy does not stop it.
+- **Deleting a project, a framework or an organisation still cascades to non-Draft approvals and their history.**
+  That is a referential action (`on delete cascade`), not a policy, so the Draft-only `approvals_delete` policy does
+  not stop it.
+- **Approval history rows can be forged, and now cannot be removed.** `approval_decisions_insert` checks only
+  `is_member_of(organization_id)`, and `actor_id` is not constrained to the caller, so a member can append
+  `action: 'Approved'` with any `actor_id` to any approval in their organisation. Only `service_role` can delete it.
+  This is not a regression (before, a member could forge and also erase), but it is the weakest link in the
+  "durable history" claim. Adding `with check (actor_id = auth.uid())` to the insert policy would close it.
+- **`createStandaloneApprovalAction` swallows a failed "Submitted" history insert** (`features/delivery/actions/
+  approval-decisions.ts`), while the project panel's create and update actions report it. The Approvals module is the
+  weaker of the two.
+- **The project tab labelled "Gates & approvals" shows only approvals.** Gates are managed on the Framework page.
+- **`project_dependencies` is missing from the audit-event cleanup sweep in `tests/integration/rls/helpers.ts`**, so
+  its RLS tests leave orphaned `audit_events` rows in production (about 570 at the time of the final review). Add it
+  to the sweep and delete the orphans with a tightly scoped query.
 - **`TRUNCATE` is still held by `authenticated` on every other public table.** The slice revoked it only on
   `approval_decisions`; the schema-wide question in the 2026-09-20 section stands.
 - **`approvals.requested_by`, `approval_decisions.actor_id` and `governance_artefacts.uploaded_by` still reference
