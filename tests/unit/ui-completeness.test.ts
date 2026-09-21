@@ -967,3 +967,9 @@ test('the decisions delete confirm names the decision', () => {
   const register = readFileSync(join(workspace, 'features', 'delivery', 'components', 'project-decisions-register.tsx'), 'utf8')
   assert.match(register, /window\.confirm\(\s*`[^`]*decision[^`]*\$\{decision\.title\}/)
 })
+
+test('the gate remove confirm warns that attached evidence is removed too', () => {
+  // True because governance_artefacts.gate_id cascades from governance_gates.
+  const gates = readFileSync(join(workspace, 'features', 'delivery', 'components', 'framework-governance.tsx'), 'utf8')
+  assert.match(gates, /window\.confirm\(\s*`[^`]*any evidence attached to this gate is removed too/)
+})
