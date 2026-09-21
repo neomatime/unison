@@ -118,7 +118,7 @@ test('a cross-tenant framework is unrepresentable', async () => {
   assert.match(error!.message, /governance_artefacts_framework_id_organization_id_fkey/)
 })
 
-test('an outsider can neither read, write nor delete', async () => {
+test('an outsider can neither read, write, update nor delete', async () => {
   const seeded = await admin.from('governance_artefacts').insert(artefact()).select('id').single()
   assert.equal(seeded.error, null)
 

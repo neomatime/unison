@@ -36,6 +36,13 @@ const TABLES = [
   'requirements',
   'requirement_delivery_items',
   'requirement_evidence',
+  // Governance registers.
+  'project_risks',
+  'project_decisions',
+  'approvals',
+  'approval_decisions',
+  'governance_artefacts',
+  'governance_gates',
 ] as const
 
 for (const table of TABLES) {

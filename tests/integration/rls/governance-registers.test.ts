@@ -274,15 +274,104 @@ test('approvals: a member can read, write, update and delete', async () => {
   const created = await client.from('approvals').insert(approval()).select('id').single()
   assert.equal(created.error, null)
 
-  const updated = await client.from('approvals')
-    .update({ status: 'Pending' }).eq('id', created.data!.id).select('status').single()
-  assert.equal(updated.error, null)
-  assert.equal(updated.data!.status, 'Pending')
+  try {
+    const updated = await client.from('approvals')
+      .update({ title: 'Renamed approval' }).eq('id', created.data!.id).select('title').single()
+    assert.equal(updated.error, null)
+    assert.equal(updated.data!.title, 'Renamed approval')
 
-  const removed = await client.from('approvals').delete().eq('id', created.data!.id)
-  assert.equal(removed.error, null)
-  const after = await client.from('approvals').select('id').eq('id', created.data!.id)
-  assert.deepEqual(after.data, [])
+    // Still a Draft, so the delete policy lets it through.
+    const removed = await client.from('approvals').delete().eq('id', created.data!.id).select('id')
+    assert.equal(removed.error, null)
+    assert.equal(removed.data!.length, 1)
+    const after = await client.from('approvals').select('id').eq('id', created.data!.id)
+    assert.deepEqual(after.data, [])
+    const gone = await admin.from('approvals').select('id').eq('id', created.data!.id)
+    assert.deepEqual(gone.data, [])
+  } finally {
+    await admin.from('approvals').delete().eq('id', created.data!.id)
+  }
+})
+
+test('approvals: a member cannot delete an approval once submitted', async () => {
+  const seeded = await admin.from('approvals').insert(approval({ status: 'Pending' })).select('id').single()
+  assert.equal(seeded.error, null)
+  try {
+    const client = await signedInClient(member.email, member.password)
+    const remove = await client.from('approvals').delete().eq('id', seeded.data!.id).select('id')
+    assert.equal(remove.error, null)
+    assert.deepEqual(remove.data, [], 'the delete policy must filter a non-Draft approval out')
+
+    const stillThere = await admin.from('approvals').select('id').eq('id', seeded.data!.id)
+    assert.equal(stillThere.data!.length, 1)
+  } finally {
+    await admin.from('approvals').delete().eq('id', seeded.data!.id)
+  }
+})
+
+const lockedEdits = [
+  ['title', 'Changed'],
+  ['description', 'Changed'],
+  ['priority', 'High'], // the seeded approval is Medium
+  ['due_date', '2030-01-01'],
+] as const
+
+for (const [column, value] of lockedEdits) {
+  test(`approvals: a submitted approval's ${column} is locked`, async () => {
+    const seeded = await admin.from('approvals').insert(approval({ status: 'Pending' })).select('id').single()
+    assert.equal(seeded.error, null)
+    try {
+      const client = await signedInClient(member.email, member.password)
+      const update = await client.from('approvals')
+        .update({ [column]: value }).eq('id', seeded.data!.id).select('id')
+      assert.ok(update.error, `a member must not change ${column} of a submitted approval`)
+      assert.equal(update.error!.code, '23514')
+      assert.match(update.error!.message, /approvals_content_locked/)
+
+      const unchanged = await admin.from('approvals')
+        .select('title, description, priority, due_date').eq('id', seeded.data!.id).single()
+      assert.equal(unchanged.error, null)
+      assert.equal(unchanged.data!.title, 'An approval')
+      assert.equal(unchanged.data!.description, null)
+      assert.equal(unchanged.data!.priority, 'Medium')
+      assert.equal(unchanged.data!.due_date, null)
+    } finally {
+      await admin.from('approvals').delete().eq('id', seeded.data!.id)
+    }
+  })
+}
+
+test('approvals: the decide flow can still change status of a submitted approval', async () => {
+  const seeded = await admin.from('approvals').insert(approval({ status: 'Pending' })).select('id').single()
+  assert.equal(seeded.error, null)
+  try {
+    const client = await signedInClient(member.email, member.password)
+    const decided = await client.from('approvals')
+      .update({ status: 'Approved', decided_at: new Date().toISOString() })
+      .eq('id', seeded.data!.id).select('status')
+    assert.equal(decided.error, null)
+    assert.equal(decided.data!.length, 1)
+    assert.equal(decided.data![0].status, 'Approved')
+  } finally {
+    await admin.from('approvals').delete().eq('id', seeded.data!.id)
+  }
+})
+
+test('approvals: a Draft can be edited and submitted in one update', async () => {
+  const seeded = await admin.from('approvals').insert(approval()).select('id').single()
+  assert.equal(seeded.error, null)
+  try {
+    const client = await signedInClient(member.email, member.password)
+    const submitted = await client.from('approvals')
+      .update({ title: 'Edited', status: 'Pending', submitted_at: new Date().toISOString() })
+      .eq('id', seeded.data!.id).select('title, status')
+    assert.equal(submitted.error, null)
+    assert.equal(submitted.data!.length, 1)
+    assert.equal(submitted.data![0].title, 'Edited')
+    assert.equal(submitted.data![0].status, 'Pending')
+  } finally {
+    await admin.from('approvals').delete().eq('id', seeded.data!.id)
+  }
 })
 
 test('approvals: removing a member sets approver_id null rather than orphaning the row', async () => {
@@ -354,12 +443,16 @@ test('approval history: an outsider can neither read, write, update nor delete',
   assert.equal(write.error!.code, '42501')
 
   const update = await client.from('approval_decisions').update({ comment: 'Hijacked' }).eq('id', seeded.data!.id).select('id')
-  assert.equal(update.error, null)
-  assert.deepEqual(update.data, [], "an outsider's update must match no rows")
+  // UPDATE and DELETE are revoked from authenticated on this table, so an
+  // outsider is refused at the privilege layer rather than filtered by RLS.
+  assert.ok(update.error, "an outsider's update must be refused")
+  assert.equal(update.error!.code, '42501')
+  assert.match(update.error!.message, /permission denied for table approval_decisions/)
 
   const remove = await client.from('approval_decisions').delete().eq('id', seeded.data!.id).select('id')
-  assert.equal(remove.error, null)
-  assert.deepEqual(remove.data, [])
+  assert.ok(remove.error, "an outsider's delete must be refused")
+  assert.equal(remove.error!.code, '42501')
+  assert.match(remove.error!.message, /permission denied for table approval_decisions/)
   const stillThere = await admin.from('approval_decisions').select('id, comment').eq('id', seeded.data!.id)
   assert.equal(stillThere.data!.length, 1)
   assert.equal(stillThere.data![0].comment, null, "the outsider's update must not have changed the row")
@@ -395,15 +488,9 @@ test('approval history: removing a member sets assignee_id null rather than orph
   await admin.from('approval_decisions').delete().eq('id', created.data!.id)
 })
 
-// The migration that created this table says "History rows are append-only",
-// but it gives every table the same four policies, so any active member can
-// rewrite or delete approval history (an audit trigger records it, nothing
-// prevents it). This states the intended behaviour and is expected to FAIL
-// today; `todo` reports it without failing the suite. The fix belongs to the
-// Decisions and Approvals slice: see docs/follow-ups.md.
-test('approval history is append-only', {
-  todo: 'approval_decisions grants UPDATE and DELETE to every active member',
-}, async () => {
+// UPDATE, DELETE and TRUNCATE are revoked from authenticated on this table, so
+// a member is refused at the privilege layer rather than filtered by RLS.
+test('approval history is append-only', async () => {
   const seeded = await admin.from('approval_decisions').insert(approvalDecision()).select('id').single()
   assert.equal(seeded.error, null)
   try {
@@ -411,12 +498,43 @@ test('approval history is append-only', {
 
     const update = await client.from('approval_decisions')
       .update({ comment: 'rewritten' }).eq('id', seeded.data!.id).select('id')
-    assert.ok(update.error || update.data!.length === 0, 'a member must not be able to rewrite approval history')
+    assert.ok(update.error, 'a member must not be able to rewrite approval history')
+    assert.equal(update.error!.code, '42501')
+    assert.match(update.error!.message, /permission denied for table approval_decisions/)
 
     const remove = await client.from('approval_decisions').delete().eq('id', seeded.data!.id).select('id')
-    assert.ok(remove.error || remove.data!.length === 0, 'a member must not be able to delete approval history')
+    assert.ok(remove.error, 'a member must not be able to delete approval history')
+    assert.equal(remove.error!.code, '42501')
+    assert.match(remove.error!.message, /permission denied for table approval_decisions/)
+
+    const row = await admin.from('approval_decisions').select('id, comment').eq('id', seeded.data!.id)
+    assert.equal(row.error, null)
+    assert.equal(row.data!.length, 1, 'the history row must still exist')
+    assert.equal(row.data![0].comment, null, 'the history row must be unchanged')
   } finally {
     await admin.from('approval_decisions').delete().eq('id', seeded.data!.id)
+  }
+})
+
+test('approval history: deleting a Draft approval still cascades its history', async () => {
+  const seeded = await admin.from('approvals').insert(approval()).select('id').single()
+  assert.equal(seeded.error, null)
+  try {
+    const entry = await admin.from('approval_decisions')
+      .insert(approvalDecision({ approval_id: seeded.data!.id })).select('id').single()
+    assert.equal(entry.error, null)
+
+    const client = await signedInClient(member.email, member.password)
+    const remove = await client.from('approvals').delete().eq('id', seeded.data!.id).select('id')
+    assert.equal(remove.error, null)
+    assert.equal(remove.data!.length, 1)
+
+    const history = await admin.from('approval_decisions').select('id').eq('approval_id', seeded.data!.id)
+    assert.equal(history.error, null)
+    assert.deepEqual(history.data, [], 'the approval history must cascade with its Draft approval')
+  } finally {
+    await admin.from('approval_decisions').delete().eq('approval_id', seeded.data!.id)
+    await admin.from('approvals').delete().eq('id', seeded.data!.id)
   }
 })
 
