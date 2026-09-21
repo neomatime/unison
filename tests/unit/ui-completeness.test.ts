@@ -941,5 +941,6 @@ test('the evidence register warns that removing evidence also removes its requir
   // by tests/integration/rls/traceability.test.ts). A PM deleting evidence would
   // otherwise lose Traceability coverage with no warning.
   const register = readFileSync(join(workspace, 'features', 'delivery', 'components', 'project-evidence-register.tsx'), 'utf8')
-  assert.match(register, /any requirement links to it are removed too/)
+  // Tied to the window.confirm( call so a comment or dead string cannot satisfy it.
+  assert.match(register, /window\.confirm\(\s*`[^`]*any requirement links to it are removed too/)
 })

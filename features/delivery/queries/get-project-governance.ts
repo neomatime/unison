@@ -63,9 +63,10 @@ export async function getProjectGovernance(projectId: string): Promise<ProjectGo
   return {
     risks: (risks.data ?? []).map((row: Omit<ProjectGovernance["risks"][number], "owner">) => ({
       ...row,
-      // A removed member keeps their place here as "Former member" rather than
-      // becoming a blank: nulling ownership when someone leaves would erase who
-      // was accountable.
+      // A soft-removed member keeps their membership row, so their real name still
+      // resolves. A membership deleted outright has owner_id nulled by the foreign
+      // key (on delete set null), which shows as "Unassigned". "Former member" is
+      // only a fallback for an owner_id whose name cannot be resolved.
       owner: row.owner_id ? (memberNames.get(row.owner_id) ?? "Former member") : "Unassigned",
     })),
     decisions: decisions.data ?? [],

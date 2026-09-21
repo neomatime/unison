@@ -59,7 +59,8 @@ export async function updateRiskAction(
     .eq("organization_id", organization.id)
     .select("project_id")
     .maybeSingle();
-  if (error || !data) return { error: "The risk could not be updated." };
+  if (error) return { error: "The risk could not be updated." };
+  if (!data) return { error: "That risk no longer exists, or is not yours." };
   revalidatePath(`/operations/projects/${data.project_id}`);
   return { success: "Risk updated." };
 }
@@ -153,7 +154,8 @@ export async function updateArtefactAction(
     .eq("organization_id", organization.id)
     .select("project_id")
     .maybeSingle();
-  if (error || !data) return { error: "The evidence could not be updated." };
+  if (error) return { error: "The evidence could not be updated." };
+  if (!data) return { error: "That evidence no longer exists, or is not yours." };
   if (data.project_id) revalidatePath(`/operations/projects/${data.project_id}`);
   return { success: "Evidence updated." };
 }
