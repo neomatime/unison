@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils'
 import type { DeliveryHealth } from '../data'
 
 export function MetricCard({ label, value, detail, icon: Icon }: { label: string; value: string; detail: string; icon?: LucideIcon }) {
-  return <article className="rounded-none border border-border bg-card px-4 py-4">
+  return <article className="relative overflow-hidden rounded-none border border-border bg-card px-4 py-4 before:absolute before:inset-x-0 before:top-0 before:h-0.5 before:bg-brand">
     {/* The label block reserves two lines whether or not it needs them. Without
         it, a label that wraps ("Outstanding approvals") pushes its own value down
         a line while its neighbours' values stay put, and the row of numbers sits
@@ -25,7 +25,7 @@ export function MetricGrid({ items }: { items: ReadonlyArray<readonly [string, s
 }
 
 export function SectionCard({ title, description, action, children, className }: { title: string; description?: string; action?: ReactNode; children: ReactNode; className?: string }) {
-  return <section className={cn('overflow-hidden rounded-none border border-border bg-card', className)}>
+  return <section className={cn('overflow-hidden rounded-none border border-border bg-card transition-colors focus-within:border-brand/60', className)}>
     <header className="flex flex-wrap items-start justify-between gap-3 border-b border-border px-5 py-4"><div><h2 className="unison-section-title text-xs text-foreground">{title}</h2>{description ? <p className="mt-1 text-xs text-muted-foreground">{description}</p> : null}</div>{action}</header>
     {children}
   </section>
@@ -47,7 +47,7 @@ const healthStyles: Record<string, string> = {
 export function HealthBadge({ children }: { children: DeliveryHealth | ReactNode }) {
   const label = String(children)
 
-  return <span className={cn('inline-flex rounded-none border border-current/10 px-2 py-1 text-[0.6875rem] font-medium whitespace-nowrap', healthStyles[label] ?? 'bg-muted text-foreground')}>{label}</span>
+  return <span className={cn('unison-status-transition inline-flex items-center gap-1.5 rounded-none border border-current/10 px-2 py-1 text-[0.6875rem] font-medium whitespace-nowrap', healthStyles[label] ?? 'bg-muted text-foreground')}><span aria-hidden="true" className="size-1.5 rounded-full bg-current/70" />{label}</span>
 }
 
 export function PhaseStepper({ phases, active }: { phases: ReadonlyArray<{ name: string; projects?: number }>; active?: string }) {

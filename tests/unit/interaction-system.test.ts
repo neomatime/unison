@@ -15,6 +15,8 @@ test('the interaction system has shared motion, focus and reduced-motion safegua
   assert.match(styles, /\.unison-interactive-card/)
   assert.match(styles, /prefers-reduced-motion: reduce/)
   assert.match(styles, /\.unison-live-region/)
+  assert.match(styles, /box-shadow: inset 3px 0 0 var\(--tenant-brand\)/)
+  assert.match(styles, /\[role='tab'\]\[aria-selected='true'\]/)
 })
 
 test('shared controls communicate pending, focus and disabled states', () => {
@@ -44,4 +46,7 @@ test('registers expose row and state feedback affordances', () => {
   assert.match(workspaceSource, /className="group border-t border-border hover:bg-muted\/25"/)
   assert.match(workspaceSource, /role="status" aria-live="polite"/)
   assert.match(workspaceSource, /unison-action-control/)
+  const primitives = source('features', 'delivery', 'components', 'delivery-primitives.tsx')
+  assert.match(primitives, /before:bg-brand/)
+  assert.match(primitives, /size-1\.5 rounded-full bg-current\/70/)
 })

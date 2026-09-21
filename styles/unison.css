@@ -124,7 +124,28 @@
   }
 
   .unison-tenant table tbody tr:hover {
-    background-color: color-mix(in oklab, var(--tenant-surface-muted) 62%, white);
+    background-color: color-mix(in oklab, var(--tenant-brand-soft) 58%, white);
+    box-shadow: inset 3px 0 0 var(--tenant-brand);
+  }
+
+  .unison-tenant [role='tab'][aria-selected='true'] {
+    background-color: color-mix(in oklab, var(--tenant-brand-soft) 48%, white);
+  }
+
+  .unison-tenant :where(button, a[href], [role='tab']) {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  @media (hover: hover) {
+    .unison-tenant button:not(:disabled):not([class*='bg-brand']):not([class*='bg-destructive']):hover {
+      border-color: color-mix(in oklab, var(--tenant-border) 35%, var(--tenant-brand));
+      background-color: var(--tenant-brand-soft);
+      color: var(--tenant-foreground);
+    }
+
+    .unison-tenant a[href]:not([class*='bg-']):not([class*='text-destructive']):hover {
+      color: var(--tenant-brand);
+    }
   }
 
   .unison-interface table {

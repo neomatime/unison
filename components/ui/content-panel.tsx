@@ -1,5 +1,6 @@
 import type React from 'react'
 import Link from 'next/link'
+import { ArrowRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 type ContentPanelProps = {
@@ -49,9 +50,9 @@ export function ViewAllLink({ label = 'View all', href = '/overview' }: { label?
   return (
     <Link
       href={href}
-      className="unison-action-control text-sm font-medium text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20"
+      className="unison-action-control group inline-flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20"
     >
-      {label}
+      {label}<ArrowRight className="size-3.5 transition-transform duration-[var(--motion-micro)] group-hover:translate-x-0.5" />
     </Link>
   )
 }
