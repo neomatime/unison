@@ -20,7 +20,7 @@ export type ProjectGovernance = {
     created_at: string;
   }>;
   decisions: Array<{ id: string; title: string; decision: string; rationale: string | null; decided_at: string; created_at: string }>;
-  approvals: Array<{ id: string; title: string; status: string; priority: string; due_date: string | null; submitted_at: string | null; decided_at: string | null }>;
+  approvals: Array<{ id: string; title: string; description: string | null; status: string; priority: string; due_date: string | null; submitted_at: string | null; decided_at: string | null }>;
   artefacts: Array<{ id: string; name: string; external_url: string | null; notes: string | null; created_at: string }>;
 };
 
@@ -45,7 +45,7 @@ export async function getProjectGovernance(projectId: string): Promise<ProjectGo
       .order("decided_at", { ascending: false }),
     db
       .from("approvals")
-      .select("id,title,status,priority,due_date,submitted_at,decided_at")
+      .select("id,title,description,status,priority,due_date,submitted_at,decided_at")
       .eq("organization_id", organization.id)
       .eq("project_id", projectId)
       .order("created_at", { ascending: false }),
