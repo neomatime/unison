@@ -2,7 +2,7 @@
 // depend on is unit testable. Relative imports only: Node's test runner cannot
 // resolve the '@/' alias, and 'use server' modules cannot be imported by a test.
 import { isUuid } from '../../lib/utils/index.ts'
-import { RISK_IMPACTS, RISK_PROBABILITIES, RISK_STATUSES } from './governance-vocabulary.ts'
+import { APPROVAL_PRIORITIES, RISK_IMPACTS, RISK_PROBABILITIES, RISK_STATUSES } from './governance-vocabulary.ts'
 import { isValidIsoDate } from './schemas/date.ts'
 import { isHttpsUrl } from './schemas/url.ts'
 
@@ -59,4 +59,47 @@ export function readArtefactFields(form: FormData): ArtefactFields | { error: st
   if (!name || !externalUrl) return { error: 'An artefact name and secure URL are required.' }
   if (!isHttpsUrl(externalUrl)) return { error: 'Use a valid HTTPS evidence URL.' }
   return { name, external_url: externalUrl, notes: optional(form, 'notes') }
+}
+
+export type DecisionFields = { title: string; decision: string; rationale: string | null; decided_at: string | null }
+
+export function readDecisionFields(form: FormData): DecisionFields | { error: string } {
+  const title = value(form, 'title')
+  if (!title) return { error: 'A decision title is required.' }
+  const decision = value(form, 'decision')
+  if (!decision) return { error: 'The decision text is required.' }
+
+  const decidedAt = optional(form, 'decidedAt')
+  if (decidedAt && !isValidIsoDate(decidedAt)) return { error: 'Enter a valid decision date.' }
+
+  return { title, decision, rationale: optional(form, 'rationale'), decided_at: decidedAt }
+}
+
+export type ApprovalFields = { title: string; description: string | null; priority: string; due_date: string | null }
+
+export function readApprovalFields(form: FormData): ApprovalFields | { error: string } {
+  const title = value(form, 'title')
+  if (!title) return { error: 'An approval title is required.' }
+
+  // No default: a missing priority is a malformed request, not "Medium".
+  const priority = value(form, 'priority')
+  if (!isOneOf(APPROVAL_PRIORITIES, priority)) return { error: 'Choose a valid priority.' }
+
+  const dueDate = optional(form, 'dueDate')
+  if (dueDate && !isValidIsoDate(dueDate)) return { error: 'Enter a valid due date.' }
+
+  return { title, description: optional(form, 'description'), priority, due_date: dueDate }
+}
+
+export type GateFields = { name: string; description: string | null; approval_required: boolean; evidence_required: boolean }
+
+export function readGateFields(form: FormData): GateFields | { error: string } {
+  const name = value(form, 'name')
+  if (!name) return { error: 'A gate name is required.' }
+  return {
+    name,
+    description: optional(form, 'description'),
+    approval_required: form.get('approvalRequired') === 'on',
+    evidence_required: form.get('evidenceRequired') === 'on',
+  }
 }

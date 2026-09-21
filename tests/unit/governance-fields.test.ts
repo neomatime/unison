@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { readArtefactFields, readRiskFields } from '../../features/delivery/governance-fields.ts'
+import { readApprovalFields, readArtefactFields, readDecisionFields, readGateFields, readRiskFields } from '../../features/delivery/governance-fields.ts'
 
 const OWNER = '3f3b2bbc-a9e8-46d4-8dfb-083cc5a2b5a0'
 
@@ -104,4 +104,88 @@ test('an artefact url must be https', () => {
   const message = { error: 'Use a valid HTTPS evidence URL.' }
   assert.deepEqual(readArtefactFields(form({ name: 'Report', externalUrl: 'http://example.com' })), message)
   assert.deepEqual(readArtefactFields(form({ name: 'Report', externalUrl: 'not a url' })), message)
+})
+
+const validDecision = { title: 'Adopt vendor X', decision: 'We will use vendor X.' }
+
+test('a minimal valid decision reads through, with optional fields null', () => {
+  assert.deepEqual(readDecisionFields(form(validDecision)), {
+    title: 'Adopt vendor X',
+    decision: 'We will use vendor X.',
+    rationale: null,
+    decided_at: null,
+  })
+})
+
+test('a decision is trimmed, and keeps a rationale and date', () => {
+  assert.deepEqual(
+    readDecisionFields(form({ title: '  Adopt vendor X ', decision: ' We will use vendor X. ', rationale: ' Cheaper ', decidedAt: '2026-09-01' })),
+    { title: 'Adopt vendor X', decision: 'We will use vendor X.', rationale: 'Cheaper', decided_at: '2026-09-01' },
+  )
+})
+
+test('a decision needs a title and decision text', () => {
+  assert.deepEqual(readDecisionFields(form({ ...validDecision, title: '  ' })), { error: 'A decision title is required.' })
+  assert.deepEqual(readDecisionFields(form({ ...validDecision, decision: '' })), { error: 'The decision text is required.' })
+})
+
+test('an invalid decision date is refused, and a blank one is null', () => {
+  assert.deepEqual(readDecisionFields(form({ ...validDecision, decidedAt: '2026-02-30' })), { error: 'Enter a valid decision date.' })
+  const blank = readDecisionFields(form({ ...validDecision, decidedAt: '' }))
+  assert.ok(!('error' in blank))
+  assert.equal(blank.decided_at, null)
+})
+
+const validApproval = { title: 'Release sign-off', priority: 'High' }
+
+test('a minimal valid approval reads through, with optional fields null', () => {
+  assert.deepEqual(readApprovalFields(form(validApproval)), {
+    title: 'Release sign-off',
+    description: null,
+    priority: 'High',
+    due_date: null,
+  })
+})
+
+test('a populated approval reads through, trimmed', () => {
+  assert.deepEqual(
+    readApprovalFields(form({ title: ' Release sign-off ', description: ' Final ', priority: ' High ', dueDate: '2026-10-01' })),
+    { title: 'Release sign-off', description: 'Final', priority: 'High', due_date: '2026-10-01' },
+  )
+})
+
+test('an approval needs a title', () => {
+  assert.deepEqual(readApprovalFields(form({ ...validApproval, title: ' ' })), { error: 'An approval title is required.' })
+})
+
+test('an approval priority must be in the vocabulary, with no default', () => {
+  assert.deepEqual(readApprovalFields(form({ ...validApproval, priority: 'high' })), { error: 'Choose a valid priority.' })
+  assert.deepEqual(readApprovalFields(form({ ...validApproval, priority: 'Urgent' })), { error: 'Choose a valid priority.' })
+  assert.deepEqual(readApprovalFields(form({ title: 'Release sign-off' })), { error: 'Choose a valid priority.' })
+})
+
+test('an invalid approval due date is refused, and a blank one is null', () => {
+  assert.deepEqual(readApprovalFields(form({ ...validApproval, dueDate: '2026-13-01' })), { error: 'Enter a valid due date.' })
+  const blank = readApprovalFields(form({ ...validApproval, dueDate: '' }))
+  assert.ok(!('error' in blank))
+  assert.equal(blank.due_date, null)
+})
+
+test('a gate needs a name', () => {
+  assert.deepEqual(readGateFields(form({ name: '  ' })), { error: 'A gate name is required.' })
+})
+
+test('gate checkboxes read false when absent and true when on', () => {
+  assert.deepEqual(readGateFields(form({ name: 'Go-live' })), {
+    name: 'Go-live',
+    description: null,
+    approval_required: false,
+    evidence_required: false,
+  })
+  assert.deepEqual(readGateFields(form({ name: ' Go-live ', description: ' Ready ', approvalRequired: 'on', evidenceRequired: 'on' })), {
+    name: 'Go-live',
+    description: 'Ready',
+    approval_required: true,
+    evidence_required: true,
+  })
 })

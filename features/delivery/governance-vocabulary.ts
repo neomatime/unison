@@ -12,3 +12,6 @@ export const RISK_IMPACTS = ['Minor', 'Moderate', 'Major', 'Severe'] as const
 
 /** Matches project_risks_status_check. */
 export const RISK_STATUSES = ['Open', 'Mitigating', 'Accepted', 'Closed'] as const
+
+/** Matches approvals_priority_check. */
+export const APPROVAL_PRIORITIES = ['Low', 'Medium', 'High', 'Critical'] as const
