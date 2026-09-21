@@ -14,7 +14,7 @@ import {
 } from "../governance-vocabulary";
 import type { ProjectGovernance } from "../queries/get-project-governance";
 import { SectionCard } from "./delivery-primitives";
-import { area, Feedback, input } from "./governance-form-parts";
+import { area, Feedback, formatDate, input } from "./governance-form-parts";
 
 type Risk = ProjectGovernance["risks"][number];
 
@@ -49,7 +49,9 @@ export function ProjectRisksRegister({
                 <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3">Owner</th>
                 <th className="px-4 py-3">Target date</th>
-                <th className="px-4 py-3" />
+                <th className="px-4 py-3">
+                  <span className="sr-only">Actions</span>
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -71,7 +73,7 @@ export function ProjectRisksRegister({
                     <td className="px-4 py-3 text-sm">{risk.impact}</td>
                     <td className="px-4 py-3 text-sm">{risk.status}</td>
                     <td className="px-4 py-3 text-sm">{risk.owner}</td>
-                    <td className="px-4 py-3 text-sm">{risk.target_date ?? "—"}</td>
+                    <td className="px-4 py-3 text-sm">{risk.target_date ? formatDate(risk.target_date) : "—"}</td>
                     <td className="px-4 py-3 text-right text-sm">
                       <div className="flex justify-end gap-2">
                         <button
@@ -118,39 +120,39 @@ function AddRiskForm({
       className="grid gap-3 border-t border-border p-5 md:grid-cols-2"
     >
       <input
-        name="title"
+        name="title" aria-label="Risk title"
         required
         placeholder="Risk title"
         className={input}
       />
       <div className="grid grid-cols-3 gap-3">
-        <select name="probability" defaultValue="Possible" className={input}>
+        <select name="probability" aria-label="Probability" defaultValue="Possible" className={input}>
           {RISK_PROBABILITIES.map((option) => (
             <option key={option}>{option}</option>
           ))}
         </select>
-        <select name="impact" defaultValue="Moderate" className={input}>
+        <select name="impact" aria-label="Impact" defaultValue="Moderate" className={input}>
           {RISK_IMPACTS.map((option) => (
             <option key={option}>{option}</option>
           ))}
         </select>
-        <select name="status" defaultValue="Open" className={input}>
+        <select name="status" aria-label="Status" defaultValue="Open" className={input}>
           {RISK_STATUSES.map((option) => (
             <option key={option}>{option}</option>
           ))}
         </select>
       </div>
       <textarea
-        name="description"
+        name="description" aria-label="Risk description"
         placeholder="Risk description"
         className={area}
       />
       <textarea
-        name="mitigation"
+        name="mitigation" aria-label="Mitigation plan"
         placeholder="Mitigation plan"
         className={area}
       />
-      <select name="ownerId" defaultValue="" className={input}>
+      <select name="ownerId" aria-label="Owner" defaultValue="" className={input}>
         <option value="">Unassigned</option>
         {addOwnerOptions.map((option) => (
           <option key={option.id} value={option.id}>
@@ -158,7 +160,7 @@ function AddRiskForm({
           </option>
         ))}
       </select>
-      <input name="targetDate" type="date" className={input} />
+      <input name="targetDate" aria-label="Target date" type="date" className={input} />
       <div>
         <Feedback state={state} />
         <button
@@ -202,42 +204,42 @@ function EditRiskForm({
       className="grid gap-3 border-t border-border bg-muted/20 p-5 md:grid-cols-2"
     >
       <input
-        name="title"
+        name="title" aria-label="Risk title"
         required
         defaultValue={risk.title}
         placeholder="Risk title"
         className={input}
       />
       <div className="grid grid-cols-3 gap-3">
-        <select name="probability" defaultValue={risk.probability} className={input}>
+        <select name="probability" aria-label="Probability" defaultValue={risk.probability} className={input}>
           {RISK_PROBABILITIES.map((option) => (
             <option key={option}>{option}</option>
           ))}
         </select>
-        <select name="impact" defaultValue={risk.impact} className={input}>
+        <select name="impact" aria-label="Impact" defaultValue={risk.impact} className={input}>
           {RISK_IMPACTS.map((option) => (
             <option key={option}>{option}</option>
           ))}
         </select>
-        <select name="status" defaultValue={risk.status} className={input}>
+        <select name="status" aria-label="Status" defaultValue={risk.status} className={input}>
           {RISK_STATUSES.map((option) => (
             <option key={option}>{option}</option>
           ))}
         </select>
       </div>
       <textarea
-        name="description"
+        name="description" aria-label="Risk description"
         defaultValue={risk.description ?? ""}
         placeholder="Risk description"
         className={area}
       />
       <textarea
-        name="mitigation"
+        name="mitigation" aria-label="Mitigation plan"
         defaultValue={risk.mitigation ?? ""}
         placeholder="Mitigation plan"
         className={area}
       />
-      <select name="ownerId" defaultValue={risk.owner_id ?? ""} className={input}>
+      <select name="ownerId" aria-label="Owner" defaultValue={risk.owner_id ?? ""} className={input}>
         <option value="">Unassigned</option>
         {editOwnerOptions.map((option) => (
           <option key={option.id} value={option.id}>
@@ -246,7 +248,7 @@ function EditRiskForm({
         ))}
       </select>
       <input
-        name="targetDate"
+        name="targetDate" aria-label="Target date"
         type="date"
         defaultValue={risk.target_date ?? ""}
         className={input}

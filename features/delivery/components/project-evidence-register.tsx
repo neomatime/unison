@@ -38,7 +38,9 @@ export function ProjectEvidenceRegister({
                 <th className="px-4 py-3">Artefact</th>
                 <th className="px-4 py-3">Notes</th>
                 <th className="px-4 py-3">Added</th>
-                <th className="px-4 py-3" />
+                <th className="px-4 py-3">
+                  <span className="sr-only">Actions</span>
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -109,19 +111,19 @@ function AddArtefactForm({ projectId }: { projectId: string }) {
       className="grid gap-3 border-t border-border p-5 md:grid-cols-2"
     >
       <input
-        name="name"
+        name="name" aria-label="Artefact name"
         required
         placeholder="Artefact name"
         className={input}
       />
       <input
-        name="externalUrl"
+        name="externalUrl" aria-label="Evidence URL"
         required
         type="url"
         placeholder="https://…"
         className={input}
       />
-      <textarea name="notes" placeholder="Evidence notes" className={area} />
+      <textarea name="notes" aria-label="Evidence notes" placeholder="Evidence notes" className={area} />
       <div>
         <Feedback state={state} />
         <button
@@ -158,14 +160,14 @@ function EditArtefactForm({
       className="grid gap-3 border-t border-border bg-muted/20 p-5 md:grid-cols-2"
     >
       <input
-        name="name"
+        name="name" aria-label="Artefact name"
         required
         defaultValue={artefact.name}
         placeholder="Artefact name"
         className={input}
       />
       <input
-        name="externalUrl"
+        name="externalUrl" aria-label="Evidence URL"
         required
         type="url"
         defaultValue={artefact.external_url ?? ""}
@@ -173,7 +175,7 @@ function EditArtefactForm({
         className={input}
       />
       <textarea
-        name="notes"
+        name="notes" aria-label="Evidence notes"
         defaultValue={artefact.notes ?? ""}
         placeholder="Evidence notes"
         className={area}

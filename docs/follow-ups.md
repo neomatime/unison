@@ -920,32 +920,61 @@ Risks and Evidence now have full CRUD, Risks has an owner picker with removed-ow
 status that can move, and every Governance table has RLS coverage. What that slice deliberately left,
 and what its tests found:
 
-- **Decisions and Approvals have no edit or delete** in the project Governance tab and are their own slice.
-  (Approvals already have a decide flow in the Approvals module: approve, request changes, reject and
-  withdraw.) Open questions for it: whether a recorded decision may be edited or deleted at all (it is a
-  log), whether an approval may be edited only while Draft, whether only Drafts may be deleted (with
-  Withdraw for the rest), and how an approver is assigned.
-- **Approval history is not append-only.** `approval_decisions` is meant to be immutable (the migration that
-  created it says "History rows are append-only") but gets the same four policies as every other table, so any
-  active member can rewrite or delete it; an audit trigger records the change and nothing prevents it.
-  `tests/integration/rls/governance-registers.test.ts` states the intended behaviour as a `todo` test that
-  fails today. Fix it by dropping the update and delete policies (and the UPDATE and DELETE grants) on that
-  table, in the Approvals slice.
-- **The project panel's approval submit writes no history.** `createApprovalAction` sets status Pending but,
-  unlike `createStandaloneApprovalAction` in the Approvals module, never writes the "Submitted"
-  `approval_decisions` row, though the register describes itself as having "durable status history".
-- **`governance_gates` are create-only, and only on the Framework page.** `FrameworkGates` in
-  `features/delivery/components/framework-governance.tsx` has a create form
-  (`createGovernanceGateAction`); nothing edits or deletes a gate, and gates do not appear in the project
-  Governance tab. No migration seeds any, and the live table is empty. This slice added RLS tests for it
-  and no UI.
+- **Approvals cannot be reassigned or delegated, and the project panel has no approver assignment.** Decisions and
+  Approvals now have edit, delete and submit (completion slice); who approves is still set only elsewhere.
+- **Gates do not appear in the project Governance tab.** They are managed only on the Framework page
+  (`FrameworkGates` in `features/delivery/components/framework-governance.tsx`), where they can now be created, edited
+  and removed. No migration seeds any.
 - **`risk-severity.ts` keeps its own private copy of the probability and impact vocabularies.** They match the
   check constraints today; `governance-vocabulary.ts` is now the tested statement of them and the two could
   share it.
 - **A risk's owner is never shown as "Former member" in practice.** A member whose membership was soft-removed keeps their membership row, so their real name still shows (and the edit picker labels them "(removed)"); a membership row deleted outright has owner_id set to null by the foreign key (`on delete set null (owner_id)`), so the risk shows "Unassigned". The "Former member" branch in `get-project-governance.ts` is only a fallback for a name that cannot be resolved, and its code comment there overstates it. The same is true of Requirements.
 - **`isHttpsUrl` validates with `new URL()` but the raw string is stored.** `https://user:pw@host`, embedded newlines, `https:example.com` and `https://localhost` are all accepted. This is parity with the original `createArtefactAction`. Storing `new URL(x).href` and/or rejecting credentials would harden it.
-- **The Governance risk form's probability, impact, status and owner selects have no accessible label**, so a user sees "Possible / Moderate / Open" with no field names; the actions column header has no accessible name either. The Evidence form's inputs are placeholder-only and its actions header is likewise empty. This matches the existing panel pattern.
 - **The panel-to-register hop that carries the member list is guarded only by a required prop's type.** `ui-completeness.test.ts` pins the detail-screen-to-panel hop and the register's own `selectOwnerOptions` calls, but a `members={members.filter(...)}` between the panel and the register would compile and defeat retention.
-- **`anon-privileges.test.ts` does not list the Governance tables.** `project_risks`, `project_decisions`, `approvals`, `approval_decisions`, `governance_artefacts` and `governance_gates` correctly grant nothing to anon today (verified), but nothing guards it; adding them to that file's `TABLES` array is a one-line change.
 - **`approvals.requested_by`, `approval_decisions.actor_id` and `governance_artefacts.uploaded_by` reference `auth.users`, not `memberships`**, so unlike the other person columns on these tables (`owner_id`, `decided_by`, `approver_id`, `assignee_id`) they are not tenant-constrained. Worth deciding in the Decisions and Approvals slice.
 - **A failed save reverts the field the user just typed.** React resets an action-bound form's uncontrolled fields after any completed action, including one that returns an error, so a rejected `http://` URL shows the error beside the stored value, and a failed add clears every field. The Risks and Requirements forms behave the same way. Controlled inputs, or preserving submitted values in the action state, would fix it.
+
+## From the governance completion slice (2026-09-21)
+
+Decisions, Approvals and Gates now have edit and delete, approval history is append-only, and a panel submit writes
+its history row. What that slice left, and what its reviews found:
+
+**Behaviour**
+
+- **A failed save still resets the form.** React resets an action-bound form's uncontrolled fields after any completed
+  action, including one that returns an error, so the fields the user typed are cleared beside the error message. Same
+  in Requirements, Risks, Evidence, Decisions, Approvals and Gates. Controlled inputs or returning the submitted values
+  in the action state would fix it.
+- **Approver assignment and reassign/delegate are not built.**
+- **Gates are metadata only.** Nothing enforces a gate on a phase change.
+- **A submit whose history insert fails leaves the approval Pending with no history, and it cannot be retried**, because
+  `approvals_lock_content` refuses a return to Draft. The action reports the failure; the row stays.
+- **`createGovernanceGateAction` keeps the combined "A phase and gate name are required." message** for a malformed
+  phase uuid, which is slightly inaccurate.
+- **Deleting a gate keeps its approvals but drops their gate link** (`approvals.gate_id` is `on delete set null`); the
+  confirmation text does not say so. Evidence attached to the gate is removed with it (`on delete cascade`).
+
+**Database**
+
+- **`approvals_lock_content` locks only `title`, `description`, `priority` and `due_date`**, not `project_id`,
+  `approver_id` or `organization_id`. A submitted approval can never return to Draft (a separate check added in
+  `20260921110000`).
+- **Deleting a project or an organisation still cascades to non-Draft approvals and their history.** That is a
+  referential action (`on delete cascade`), not a policy, so the Draft-only `approvals_delete` policy does not stop it.
+- **`TRUNCATE` is still held by `authenticated` on every other public table.** The slice revoked it only on
+  `approval_decisions`; the schema-wide question in the 2026-09-20 section stands.
+- **`approvals.requested_by`, `approval_decisions.actor_id` and `governance_artefacts.uploaded_by` still reference
+  `auth.users`, not `memberships`**, so they are not tenant-constrained. Not decided in this slice.
+- **`isHttpsUrl` still stores the raw string**, not `new URL(x).href` (see the parity section above).
+
+**Deferred test gaps** (from the task reviews)
+
+- A gate checkbox value of `'true'` or `'1'` is not pinned in the reader tests, so a change of `form.has` versus
+  `!!` survives.
+- Blank-string optional fields (rationale, description) are untested; only absent ones are.
+- The approval `dueDate` invalid case uses `2026-13-01`, not a date like 30 February.
+- The Draft-only guard test does not cover the second Draft condition on the edit-form branch (defence in depth only).
+- The Draft edit-then-submit RLS test asserts only the returned row, not the stored one.
+- No test exercises the server action runtime; only a signed-in walk does. The browser behaviour of the new registers
+  and gate forms is unverified by a person.
+- `updateDecisionAction` has one very long line, and its create and missing-row errors share one message.
