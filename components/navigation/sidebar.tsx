@@ -100,7 +100,7 @@ export function Sidebar({ onNavigate }: SidebarProps = {}) {
                       onNavigate?.()
                     }}
                     className={cn(
-                      'relative flex items-center gap-3 px-3 py-2 text-sm font-normal transition-colors focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-brand',
+                      'unison-action-control relative flex items-center gap-3 px-3 py-2 text-sm font-normal focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-brand',
                       isActive
                         ? 'bg-tenant-sidebar-active text-tenant-sidebar-foreground'
                         : 'text-tenant-sidebar-muted hover:bg-tenant-sidebar-hover hover:text-tenant-sidebar-foreground',
@@ -129,7 +129,7 @@ export function Sidebar({ onNavigate }: SidebarProps = {}) {
           type="button"
           onClick={() => setProfileOpen((value) => !value)}
           aria-expanded={profileOpen}
-          className="flex w-full items-center gap-3 px-2 py-2 text-left transition-colors hover:bg-tenant-sidebar-hover focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-brand"
+          className="unison-action-control flex w-full items-center gap-3 px-2 py-2 text-left hover:bg-tenant-sidebar-hover focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-brand"
         >
           {avatarUrl ? (
             <Image
@@ -157,5 +157,5 @@ export function Sidebar({ onNavigate }: SidebarProps = {}) {
 }
 
 function UtilityButton({ label, collapsed, onClick, dot, children }: { label: string; collapsed: boolean; onClick: () => void; dot?: boolean; children: React.ReactNode }) {
-  return <button type="button" title={label} aria-label={label} onClick={onClick} className="relative flex flex-col items-center justify-center gap-1 px-1 py-2 text-tenant-sidebar-muted transition-colors hover:bg-tenant-sidebar-hover hover:text-tenant-sidebar-foreground focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-brand">{children}{dot ? <span className="absolute top-1 right-2 size-2 rounded-full bg-warning" /> : null}<span className={cn('text-[0.6rem]', collapsed && 'sr-only')}>{label}</span></button>
+  return <button type="button" title={label} aria-label={label} onClick={onClick} className="unison-action-control relative flex flex-col items-center justify-center gap-1 px-1 py-2 text-tenant-sidebar-muted hover:bg-tenant-sidebar-hover hover:text-tenant-sidebar-foreground focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-brand">{children}{dot ? <span className="absolute top-1 right-2 size-2 rounded-full bg-warning" /> : null}<span className={cn('text-[0.6rem]', collapsed && 'sr-only')}>{label}</span></button>
 }

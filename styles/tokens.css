@@ -20,11 +20,13 @@
   --font-weight-medium: 500;
   --font-weight-strong: 600;
 
+  --motion-instant: 110ms;
   --motion-micro: 150ms;
   --motion-panel: 220ms;
   --motion-view: 260ms;
   --ease-unison: cubic-bezier(0.22, 1, 0.36, 1);
   --focus-ring: 0 0 0 2px rgb(23 105 170 / 0.2);
+  --shadow-interactive: 0 5px 16px rgb(13 35 64 / 0.07);
   --shadow-overlay: 0 18px 48px rgb(13 35 64 / 0.12);
 
   --background: var(--unison-canvas);

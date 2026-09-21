@@ -22,7 +22,7 @@ export function FormSection({
   columns?: 1 | 2
 }) {
   return (
-    <section className="rounded-none border border-border bg-card p-6">
+    <section className="rounded-none border border-border bg-card p-6 transition-colors focus-within:border-brand/55">
       <div className="mb-5">
         <h2 className="unison-section-title text-sm text-foreground">{title}</h2>
         {description ? <p className="mt-1 text-sm text-muted-foreground">{description}</p> : null}
@@ -37,7 +37,7 @@ export function FormError({ message }: { message?: string }) {
   return (
     <p
       role="alert"
-      className="rounded-none border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive"
+      className="unison-live-region rounded-none border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive"
     >
       {message}
     </p>
@@ -70,13 +70,14 @@ export function FormFooter({
         {note}
       </p>
       <div className="flex gap-2">
-        <Link href={cancelHref} className="rounded-none border border-border px-4 py-2 text-sm font-medium transition-colors hover:bg-muted">
+        <Link href={cancelHref} className="unison-action-control rounded-none border border-border px-4 py-2 text-sm font-medium hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20">
           Cancel
         </Link>
         <button
           type="submit"
           disabled={pending}
-          className="rounded-none bg-brand px-4 py-2 text-sm font-medium text-brand-foreground transition-colors hover:bg-brand/90 disabled:opacity-60"
+          aria-busy={pending || undefined}
+          className="unison-action-control rounded-none bg-brand px-4 py-2 text-sm font-medium text-brand-foreground hover:bg-brand/90 disabled:opacity-60"
         >
           {pending ? 'Saving…' : submitLabel}
         </button>

@@ -45,22 +45,23 @@ export function ApprovalDecisionPage({
               required={action !== "approve"}
               name="comment"
               rows={5}
-              className="mt-2 w-full border border-border bg-background p-3"
+              className="unison-field mt-2 w-full border border-border bg-background p-3"
             />
           </label>
           {state?.error ? (
-            <p role="alert" className="mt-3 text-sm text-destructive">
+            <p role="alert" className="unison-live-region mt-3 text-sm text-destructive">
               {state.error}
             </p>
           ) : null}
         </div>
         <footer className="flex justify-end gap-2 border-t border-border p-5">
-          <Link href={href} className="border border-border px-4 py-2 text-sm">
+          <Link href={href} className="unison-action-control border border-border px-4 py-2 text-sm hover:bg-muted">
             Cancel
           </Link>
           <button
             disabled={pending}
-            className="bg-brand px-5 py-2 text-sm font-semibold text-white"
+            aria-busy={pending || undefined}
+            className="unison-action-control bg-brand px-5 py-2 text-sm font-semibold text-white hover:bg-brand/90"
           >
             Confirm decision
           </button>

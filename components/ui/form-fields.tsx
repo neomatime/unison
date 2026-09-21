@@ -10,11 +10,11 @@ import { cn } from '@/lib/utils'
  */
 
 export const fieldClasses =
-  'mt-1.5 min-h-10 w-full rounded-none border border-border bg-card px-3 text-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/15'
+  'unison-field mt-1.5 min-h-10 w-full rounded-none border border-border bg-card px-3 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/15 disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground aria-invalid:border-destructive aria-invalid:ring-2 aria-invalid:ring-destructive/15'
 
 export function FieldLabel({ label, required }: { label: string; required?: boolean }) {
   return (
-    <span className="text-sm font-medium text-foreground">
+  <span className="text-sm font-medium text-foreground transition-colors group-focus-within:text-brand">
       {label}
       {required ? <span className="text-destructive"> *</span> : null}
     </span>
@@ -39,7 +39,7 @@ export function TextField({
   className?: string
 }) {
   return (
-    <label className={cn('block', className)}>
+    <label className={cn('group block', className)}>
       <FieldLabel label={label} required={required} />
       <input
         name={name}
@@ -69,14 +69,14 @@ export function TextAreaField({
   className?: string
 }) {
   return (
-    <label className={cn('block', className)}>
+    <label className={cn('group block', className)}>
       <FieldLabel label={label} />
       <textarea
         name={name}
         rows={rows}
         defaultValue={defaultValue ?? ''}
         placeholder={placeholder}
-        className="mt-1.5 w-full rounded-none border border-border bg-card px-3 py-3 text-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/15"
+        className="unison-field mt-1.5 w-full rounded-none border border-border bg-card px-3 py-3 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/15 disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground aria-invalid:border-destructive aria-invalid:ring-2 aria-invalid:ring-destructive/15"
       />
     </label>
   )
@@ -108,9 +108,9 @@ export function EntitySelectField({
   className?: string
 }) {
   return (
-    <label className={cn('block', className)}>
+    <label className={cn('group block', className)}>
       <FieldLabel label={label} required={required} />
-      <select name={name} defaultValue={defaultValue ?? ''} required={required} className={fieldClasses}>
+      <select name={name} defaultValue={defaultValue ?? ''} required={required} className={`${fieldClasses} cursor-pointer`}>
         {emptyLabel ? <option value="">{emptyLabel}</option> : null}
         {options.map((option) => (
           <option key={option.id} value={option.id}>
@@ -138,9 +138,9 @@ export function SelectField<T extends readonly string[]>({
   className?: string
 }) {
   return (
-    <label className={cn('block', className)}>
+    <label className={cn('group block', className)}>
       <FieldLabel label={label} required={required} />
-      <select name={name} defaultValue={defaultValue} required={required} className={fieldClasses}>
+      <select name={name} defaultValue={defaultValue} required={required} className={`${fieldClasses} cursor-pointer`}>
         {options.map((option) => (
           <option key={option} value={option}>
             {option}

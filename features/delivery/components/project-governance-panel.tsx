@@ -36,7 +36,8 @@ export function ProjectGovernancePanel({
             type="button"
             key={item}
             onClick={() => setTab(item)}
-            className={`whitespace-nowrap border-b-2 px-3 py-3 text-sm font-medium ${tab === item ? "border-brand text-brand" : "border-transparent text-muted-foreground"}`}
+            aria-selected={tab === item}
+            className={`unison-action-control whitespace-nowrap border-b-2 px-3 py-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20 ${tab === item ? "border-brand text-brand" : "border-transparent text-muted-foreground hover:text-foreground"}`}
           >
             {item}
           </button>
@@ -113,7 +114,8 @@ function ApprovalRegister({
             name="intent"
             value="draft"
             disabled={pending}
-            className="border border-border px-4 py-2 text-sm font-semibold"
+            aria-busy={pending || undefined}
+            className="unison-action-control border border-border px-4 py-2 text-sm font-semibold hover:bg-muted"
           >
             Save draft
           </button>
@@ -121,7 +123,8 @@ function ApprovalRegister({
             name="intent"
             value="submit"
             disabled={pending}
-            className="bg-brand px-4 py-2 text-sm font-semibold text-white"
+            aria-busy={pending || undefined}
+            className="unison-action-control bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand/90"
           >
             Submit
           </button>
@@ -171,7 +174,8 @@ function DecisionRegister({
         <div className="flex justify-end">
           <button
             disabled={pending}
-            className="bg-brand px-4 py-2 text-sm font-semibold text-white"
+            aria-busy={pending || undefined}
+            className="unison-action-control bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand/90"
           >
             Record decision
           </button>

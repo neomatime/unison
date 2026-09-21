@@ -93,6 +93,21 @@
     box-shadow: var(--focus-ring);
   }
 
+  .unison-tenant :where(input:not([type='checkbox']):not([type='radio']), select, textarea):hover:not(:disabled):not(:focus) {
+    border-color: color-mix(in oklab, var(--tenant-border) 62%, var(--tenant-muted-foreground));
+  }
+
+  .unison-tenant :where(input:not([type='checkbox']):not([type='radio']), select, textarea):disabled {
+    cursor: not-allowed;
+    background-color: var(--tenant-surface-muted);
+    color: var(--tenant-muted-foreground);
+  }
+
+  .unison-tenant :where(input, select, textarea)[aria-invalid='true'] {
+    border-color: var(--danger);
+    box-shadow: 0 0 0 2px color-mix(in oklab, var(--danger) 14%, transparent);
+  }
+
   .unison-tenant :where(input, select, textarea)::placeholder {
     color: color-mix(in oklab, var(--tenant-muted-foreground) 72%, white);
   }
@@ -125,7 +140,46 @@
   }
 
   .unison-interface table tbody tr {
-    transition: background-color var(--motion-micro) var(--ease-unison);
+    transition: background-color var(--motion-micro) var(--ease-unison), color var(--motion-micro) var(--ease-unison);
+  }
+
+  .unison-interactive-card {
+    transition: border-color var(--motion-micro) var(--ease-unison), background-color var(--motion-micro) var(--ease-unison), box-shadow var(--motion-panel) var(--ease-unison), transform var(--motion-micro) var(--ease-unison);
+  }
+
+  .unison-interactive-card:focus-within {
+    border-color: var(--brand);
+    box-shadow: var(--focus-ring);
+  }
+
+  .unison-action-control {
+    cursor: pointer;
+    transition: border-color var(--motion-micro) var(--ease-unison), background-color var(--motion-micro) var(--ease-unison), color var(--motion-micro) var(--ease-unison), box-shadow var(--motion-micro) var(--ease-unison), transform var(--motion-instant) var(--ease-unison);
+  }
+
+  .unison-action-control:active:not(:disabled) {
+    transform: translateY(1px);
+  }
+
+  .unison-action-control:disabled,
+  .unison-action-control[aria-busy='true'] {
+    cursor: wait;
+  }
+
+  .unison-status-transition {
+    transition: background-color var(--motion-micro) var(--ease-unison), color var(--motion-micro) var(--ease-unison), border-color var(--motion-micro) var(--ease-unison);
+  }
+
+  .unison-live-region {
+    animation: unison-feedback-enter var(--motion-micro) var(--ease-unison) both;
+  }
+
+  @media (hover: hover) {
+    .unison-interactive-card:hover {
+      border-color: color-mix(in oklab, var(--border) 55%, var(--brand));
+      box-shadow: var(--shadow-interactive);
+      transform: translateY(-1px);
+    }
   }
 
   .unison-route-view {
@@ -172,6 +226,10 @@
     transform-origin: top right;
   }
 
+  .unison-overlay-enter {
+    animation: unison-overlay-enter var(--motion-micro) var(--ease-unison) both;
+  }
+
   @media (max-width: 640px) {
     .unison-page-title {
       letter-spacing: 0.09em;
@@ -213,6 +271,10 @@
   .unison-interface :where(button, a, input, select, textarea, [role='tab'], [role='menuitem']) {
     transition-duration: var(--motion-micro);
     transition-timing-function: var(--ease-unison);
+  }
+
+  .unison-interface :where(button:not(:disabled), [role='button']:not([aria-disabled='true'])) {
+    cursor: pointer;
   }
 
   .unison-interface :where([role='dialog'], [role='alertdialog'], [role='menu']) {

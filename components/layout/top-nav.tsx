@@ -24,9 +24,9 @@ export function TopNav({ greeting, subtitle }: TopNavProps) {
 
       <div className="flex items-center gap-3">
         {/* Search */}
-        <button type="button" onClick={() => setPanel('search')} className="relative hidden md:block">
+        <button type="button" onClick={() => setPanel('search')} className="unison-action-control relative hidden md:block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20">
           <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-          <span className="flex h-10 w-80 items-center border border-border bg-card pr-16 pl-9 text-sm text-muted-foreground transition-colors hover:border-muted-foreground/45">Search anything...</span>
+          <span className="flex h-10 w-80 items-center border border-border bg-card pr-16 pl-9 text-sm text-muted-foreground hover:border-muted-foreground/45">Search anything...</span>
           <kbd className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 border border-border bg-muted px-1.5 py-0.5 font-mono text-[0.6875rem] text-muted-foreground">
             ⌘ K
           </kbd>
@@ -40,7 +40,7 @@ export function TopNav({ greeting, subtitle }: TopNavProps) {
         <IconButton label="Help" onClick={() => setPanel('help')}>
           <CircleHelp className="size-5" strokeWidth={1.75} />
         </IconButton>
-        <Link href="/operations/projects/new" className="hidden h-10 items-center gap-2 bg-brand px-4 text-sm font-medium text-white transition-colors hover:bg-brand/90 2xl:inline-flex"><Plus className="size-4" />New project</Link>
+        <Link href="/operations/projects/new" className="unison-action-control hidden h-10 items-center gap-2 bg-brand px-4 text-sm font-medium text-white hover:bg-brand/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20 2xl:inline-flex"><Plus className="size-4" />New project</Link>
       </div>
     </header><UtilityPanel kind={panel ?? 'help'} open={panel !== null} onClose={() => setPanel(null)} /></>
   )
@@ -60,7 +60,7 @@ function IconButton({
       type="button"
       onClick={onClick}
       aria-label={label}
-      className="relative flex size-10 items-center justify-center border border-border bg-card text-muted-foreground transition-colors hover:border-muted-foreground/45 hover:text-foreground"
+      className="unison-action-control relative flex size-10 items-center justify-center border border-border bg-card text-muted-foreground hover:border-muted-foreground/45 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20"
     >
       {children}
     </button>

@@ -8,6 +8,8 @@ type ContentPanelProps = {
   action?: React.ReactNode
   className?: string
   bodyClassName?: string
+  /** Opt in only when the whole surface takes the user somewhere or exposes a primary action. */
+  interactive?: boolean
   children: React.ReactNode
 }
 
@@ -20,12 +22,14 @@ export function ContentPanel({
   action,
   className,
   bodyClassName,
+  interactive = false,
   children,
 }: ContentPanelProps) {
   return (
     <section
       className={cn(
         'flex flex-col rounded-none border border-border bg-card',
+        interactive && 'unison-interactive-card',
         className,
       )}
     >
@@ -45,7 +49,7 @@ export function ViewAllLink({ label = 'View all', href = '/overview' }: { label?
   return (
     <Link
       href={href}
-      className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+      className="unison-action-control text-sm font-medium text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20"
     >
       {label}
     </Link>
