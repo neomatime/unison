@@ -944,3 +944,26 @@ test('the evidence register warns that removing evidence also removes its requir
   // Tied to the window.confirm( call so a comment or dead string cannot satisfy it.
   assert.match(register, /window\.confirm\(\s*`[^`]*any requirement links to it are removed too/)
 })
+
+test('the approvals register offers edit and remove only for Draft approvals', () => {
+  // Submitted approvals are locked by the database; the UI must not offer
+  // controls that can only fail. Tie the controls to the Draft condition:
+  // the DeleteApprovalButton call site must sit inside the ternary that tests
+  // approval.status === "Draft", and the bare name in a definition does not count.
+  const register = readFileSync(join(workspace, 'features', 'delivery', 'components', 'project-approvals-register.tsx'), 'utf8')
+  assert.match(
+    register,
+    /approval\.status === "Draft" \? \(\s*<div[^>]*>\s*<button[^>]*onClick=\{\(\) => setEditingId\(approval\.id\)\}[\s\S]*?<DeleteApprovalButton approval=\{approval\} \/>\s*<\/div>\s*\) : null/,
+    'the Edit button and DeleteApprovalButton must render only under approval.status === "Draft"',
+  )
+})
+
+test('the approvals delete confirm says it deletes a draft', () => {
+  const register = readFileSync(join(workspace, 'features', 'delivery', 'components', 'project-approvals-register.tsx'), 'utf8')
+  assert.match(register, /window\.confirm\(\s*`[^`]*draft/i)
+})
+
+test('the decisions delete confirm names the decision', () => {
+  const register = readFileSync(join(workspace, 'features', 'delivery', 'components', 'project-decisions-register.tsx'), 'utf8')
+  assert.match(register, /window\.confirm\(\s*`[^`]*decision[^`]*\$\{decision\.title\}/)
+})

@@ -1,14 +1,10 @@
 "use client";
 
-import { useActionState, useState } from "react";
-import {
-  createApprovalAction,
-  createDecisionAction,
-} from "../actions/project-governance";
+import { useState } from "react";
 import type { SelectableMember } from "../form-options";
 import type { getProjectGovernance } from "../queries/get-project-governance";
-import { SectionCard } from "./delivery-primitives";
-import { area, Feedback, input } from "./governance-form-parts";
+import { ProjectApprovalsRegister } from "./project-approvals-register";
+import { ProjectDecisionsRegister } from "./project-decisions-register";
 import { ProjectEvidenceRegister } from "./project-evidence-register";
 import { ProjectRisksRegister } from "./project-risks-register";
 
@@ -44,7 +40,10 @@ export function ProjectGovernancePanel({
         ))}
       </nav>
       {tab === "Gates & approvals" ? (
-        <ApprovalRegister projectId={projectId} rows={governance.approvals} />
+        <ProjectApprovalsRegister
+          projectId={projectId}
+          approvals={governance.approvals}
+        />
       ) : tab === "Risks" ? (
         <ProjectRisksRegister
           projectId={projectId}
@@ -52,7 +51,10 @@ export function ProjectGovernancePanel({
           members={members}
         />
       ) : tab === "Decisions" ? (
-        <DecisionRegister projectId={projectId} rows={governance.decisions} />
+        <ProjectDecisionsRegister
+          projectId={projectId}
+          decisions={governance.decisions}
+        />
       ) : (
         <ProjectEvidenceRegister
           projectId={projectId}
@@ -60,175 +62,5 @@ export function ProjectGovernancePanel({
         />
       )}
     </div>
-  );
-}
-
-function ApprovalRegister({
-  projectId,
-  rows,
-}: {
-  projectId: string;
-  rows: Governance["approvals"];
-}) {
-  const [state, action, pending] = useActionState(
-    createApprovalAction.bind(null, projectId),
-    undefined,
-  );
-  return (
-    <Register
-      title="Governance approvals"
-      description="Controlled gate and project decisions with durable status history"
-      headings={["Approval", "Priority", "Due", "Status"]}
-      rows={rows.map((row) => [
-        row.title,
-        row.priority,
-        row.due_date ?? "—",
-        row.status,
-      ])}
-    >
-      <form
-        action={action}
-        className="grid gap-3 border-t border-border p-5 md:grid-cols-2"
-      >
-        <input
-          name="title"
-          required
-          placeholder="Approval title"
-          className={input}
-        />
-        <select name="priority" className={input}>
-          <option>Medium</option>
-          <option>Low</option>
-          <option>High</option>
-          <option>Critical</option>
-        </select>
-        <textarea
-          name="description"
-          placeholder="Decision context"
-          className={area}
-        />
-        <input name="dueDate" type="date" className={input} />
-        <Feedback state={state} />
-        <div className="flex justify-end gap-2">
-          <button
-            name="intent"
-            value="draft"
-            disabled={pending}
-            aria-busy={pending || undefined}
-            className="unison-action-control border border-border px-4 py-2 text-sm font-semibold hover:bg-muted"
-          >
-            Save draft
-          </button>
-          <button
-            name="intent"
-            value="submit"
-            disabled={pending}
-            aria-busy={pending || undefined}
-            className="unison-action-control bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand/90"
-          >
-            Submit
-          </button>
-        </div>
-      </form>
-    </Register>
-  );
-}
-
-function DecisionRegister({
-  projectId,
-  rows,
-}: {
-  projectId: string;
-  rows: Governance["decisions"];
-}) {
-  const [state, action, pending] = useActionState(
-    createDecisionAction.bind(null, projectId),
-    undefined,
-  );
-  return (
-    <Register
-      title="Decision register"
-      description="What was decided, when, and why"
-      headings={["Decision", "Outcome", "Date"]}
-      rows={rows.map((row) => [row.title, row.decision, row.decided_at])}
-    >
-      <form
-        action={action}
-        className="grid gap-3 border-t border-border p-5 md:grid-cols-2"
-      >
-        <input
-          name="title"
-          required
-          placeholder="Decision title"
-          className={input}
-        />
-        <input name="decidedAt" type="date" className={input} />
-        <textarea
-          name="decision"
-          required
-          placeholder="Decision made"
-          className={area}
-        />
-        <textarea name="rationale" placeholder="Rationale" className={area} />
-        <Feedback state={state} />
-        <div className="flex justify-end">
-          <button
-            disabled={pending}
-            aria-busy={pending || undefined}
-            className="unison-action-control bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand/90"
-          >
-            Record decision
-          </button>
-        </div>
-      </form>
-    </Register>
-  );
-}
-
-function Register({
-  title,
-  description,
-  headings,
-  rows,
-  children,
-}: {
-  title: string;
-  description: string;
-  headings: string[];
-  rows: React.ReactNode[][];
-  children: React.ReactNode;
-}) {
-  return (
-    <SectionCard title={title} description={description}>
-      {rows.length ? (
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead>
-              <tr className="bg-muted/35 text-xs uppercase text-muted-foreground">
-                {headings.map((h) => (
-                  <th key={h} className="px-4 py-3">
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row, i) => (
-                <tr key={i} className="border-t border-border">
-                  {row.map((cell, j) => (
-                    <td key={j} className="px-4 py-3 text-sm">
-                      {cell}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : (
-        <p className="p-6 text-sm text-muted-foreground">No records yet.</p>
-      )}
-      {children}
-    </SectionCard>
   );
 }
