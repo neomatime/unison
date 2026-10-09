@@ -4,7 +4,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Bell, CircleHelp, Menu, ChevronDown, Search } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { cn, getInitials } from '@/lib/utils'
 import { useShellContext } from '@/components/layout/shell-context'
 import { useNavigationSections } from '@/components/layout/navigation-context'
@@ -16,6 +16,10 @@ import { UtilityPanel, type UtilityPanelKind } from '@/components/shared/utility
 import { TenantSwitcher } from '@/components/shared/tenant-switcher'
 
 const CLOSED_SECTIONS_KEY = 'unison:sidebar:closed-sections'
+// Where the menu is a drawer (below `lg`) the list is taller than the room for it, so
+// until the viewer has made their own choice these two start closed. The current
+// page always stays visible inside a closed section.
+const DRAWER_DEFAULT_CLOSED = ['People', 'Operations']
 
 type SidebarProps = {
   onNavigate?: () => void
@@ -28,6 +32,7 @@ export function Sidebar({ onNavigate }: SidebarProps = {}) {
   const [panel, setPanel] = useState<UtilityPanelKind | null>(null)
   const [unread, setUnread] = useState(0)
   const [closedSections, setClosedSections] = useState<string[]>([])
+  const [prefsLoaded, setPrefsLoaded] = useState(false)
   const navRef = useRef<HTMLElement>(null)
   const [scrollShadow, setScrollShadow] = useState<string | undefined>(undefined)
   // An inset edge shadow marks whichever end of the menu has more beyond it, so a
@@ -58,7 +63,7 @@ export function Sidebar({ onNavigate }: SidebarProps = {}) {
   // doesn't jump the list around.
   useEffect(() => {
     navRef.current?.querySelector('[aria-current="page"]')?.scrollIntoView({ block: 'nearest' })
-  }, [pathname])
+  }, [pathname, prefsLoaded])
   // Opening or closing a section, or the rail, changes how tall the list is.
   useEffect(updateScrollEdges, [closedSections, collapsed])
   const { user, organization, role } = useShellContext()
@@ -66,12 +71,19 @@ export function Sidebar({ onNavigate }: SidebarProps = {}) {
   const displayName = user.displayName
   const avatarUrl = user.avatarUrl
   const roleLabel = roles.find((definition) => definition.id === role)?.label ?? role
-  // Read after mount so server and first client render agree; a blocked or empty store just means all open.
-  useEffect(() => {
+  // Read after mount so server and first client render agree, and before paint so a
+  // phone never flashes the full list. A blocked store, or a viewer who has never
+  // toggled a section, gets the drawer default below `lg` and everything open above it.
+  useLayoutEffect(() => {
+    let closed: string[] | null = null
     try {
-      const stored = JSON.parse(window.localStorage.getItem(CLOSED_SECTIONS_KEY) ?? '[]') as unknown
-      if (Array.isArray(stored)) setClosedSections(stored.filter((value): value is string => typeof value === 'string'))
+      const raw = window.localStorage.getItem(CLOSED_SECTIONS_KEY)
+      const stored = raw === null ? null : JSON.parse(raw) as unknown
+      if (Array.isArray(stored)) closed = stored.filter((value): value is string => typeof value === 'string')
     } catch { /* per-viewer convenience only */ }
+    if (closed === null && window.matchMedia('(max-width: 1023px)').matches) closed = DRAWER_DEFAULT_CLOSED
+    if (closed) setClosedSections(closed)
+    setPrefsLoaded(true)
   }, [])
   function toggleSection(heading: string) {
     setClosedSections((current) => {
