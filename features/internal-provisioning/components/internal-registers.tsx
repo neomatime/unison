@@ -20,16 +20,16 @@ export function OrganisationsScreen({ records }: { records: OrganisationRow[] })
     suspended: records.filter((record) => record.status === 'suspended').length,
     archived: records.filter((record) => record.status === 'archived').length,
   }), [records])
-  const open = (record: OrganisationRow) => setDrawer({ title: record.name, subtitle: 'Organisation internal metadata', fields: [['Tier', record.tier], ['Status', record.status], ['Modules', record.modules], ['Primary Admin', record.admin], ['Implementation Owner', record.owner], ['Created', record.created], ['Last Activity', record.activity]] })
+  const open = (record: OrganisationRow) => setDrawer({ title: record.name, subtitle: 'Organisation internal metadata', fields: [['Tier', record.tier], ['Status', record.status], ['Modules', record.modules], ['Primary Admin', record.admin], ['Partner Level', record.partnerLevel], ['Price', record.price], ['Created', record.created]] })
   const rows = records.map((record) => [
     <button type="button" onClick={() => open(record)} className="font-brand text-sm font-medium tracking-[0.035em] hover:text-brand" key="name">{record.name}</button>,
-    record.tier, <ProvisioningStatusBadge status={record.status} key="status" />, record.modules, record.admin, record.owner, record.created, record.activity,
+    record.tier, <ProvisioningStatusBadge status={record.status} key="status" />, record.modules, record.admin, record.partnerLevel, record.price, record.created,
     <RowActionMenu key="actions" label={record.name} actions={[{ id: 'details', label: 'View Details', onSelect: () => open(record) }, { id: 'tenant', label: 'View Tenant', onSelect: () => window.location.assign(`/internal/tenants/${record.id}`) }, { id: 'subscription', label: 'Manage Subscription', onSelect: () => window.location.assign('/internal/subscriptions') }]} />,
   ])
   return <>
     <InternalPageHeader title="Organisations" description="Internal view of organisations configured for the UNISON platform." actions={<Link href="/internal/provisioning/new" className="inline-flex h-10 items-center gap-2 bg-brand px-4 text-sm font-medium text-white hover:bg-foreground"><Plus className="size-4 stroke-[1.6]" />New Organisation</Link>} />
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"><InternalMetric label="Organisations" value={String(counts.total)} detail="Every organisation on the platform" icon={Building2} /><InternalMetric label="Active" value={String(counts.active)} detail="Serving tenants" icon={Check} tone="success" /><InternalMetric label="Suspended" value={String(counts.suspended)} detail="Internal review required" icon={ShieldAlert} tone="warning" /><InternalMetric label="Archived" value={String(counts.archived)} detail="Retained, not serving" icon={Archive} /></div>
-    <div className="mt-5"><InternalTable title="Organisation Register" searchPlaceholder="Search organisations..." columns={['Organisation', 'Tier', 'Status', 'Modules', 'Primary Admin', 'Implementation Owner', 'Created', 'Last Activity', 'Actions']} rows={rows} /></div>
+    <div className="mt-5"><InternalTable title="Organisation Register" searchPlaceholder="Search organisations..." columns={['Organisation', 'Tier', 'Status', 'Modules', 'Primary Admin', 'Partner Level', 'Price', 'Created', 'Actions']} rows={rows} /></div>
     <InternalDrawer value={drawer} onClose={() => setDrawer(null)} />
   </>
 }

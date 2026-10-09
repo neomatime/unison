@@ -4,6 +4,7 @@ export type PlatformOrganization = {
   slug: string
   status: string
   tier: string
+  partner_level: string | null
 }
 
 export type TenantConfiguration = {

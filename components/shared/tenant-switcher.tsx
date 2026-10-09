@@ -4,6 +4,7 @@ import { Building2, Check, ChevronsUpDown } from 'lucide-react'
 import { useState } from 'react'
 import { cn, getInitials } from '@/lib/utils'
 import { useShellContext } from '@/components/layout/shell-context'
+import { getPartnerLevel } from '@/config/partner-levels'
 import { switchOrganizationAction } from '@/features/organizations/actions/switch-organization'
 
 /**
@@ -37,7 +38,7 @@ export function TenantSwitcher({ collapsed = false }: { collapsed?: boolean }) {
         </span>
         {collapsed ? null : <>
           <span className="min-w-0 flex-1">
-            <span className="block font-brand text-[0.625rem] font-medium tracking-[0.1em] text-muted-foreground uppercase">Organization</span>
+            <span className="block font-brand text-[0.625rem] font-medium tracking-[0.1em] text-muted-foreground uppercase">{getPartnerLevel(active.partnerLevel)?.label ?? 'Organization'}</span>
             <span className="block truncate text-sm font-medium text-foreground">{active.name}</span>
           </span>
           {hasMultipleOrganizations ? <ChevronsUpDown className="size-4 shrink-0 text-muted-foreground" /> : null}

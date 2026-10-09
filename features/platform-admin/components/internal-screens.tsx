@@ -4,6 +4,8 @@ import { formatCurrency } from '@/lib/utils/format-money'
 
 import { InternalEmptyState, InternalMetric, InternalPageHeader, ProvisioningStatusBadge } from '@/features/internal-provisioning/components/internal-primitives'
 import { changeSubscriptionStatusAction } from '../actions'
+import { savePartnerLevelAction } from '@/features/internal-provisioning/actions/provision-organization'
+import { getPartnerLevel, partnerLevels, PARTNER_PRICE_CURRENCY } from '@/config/partner-levels'
 import type { PlatformOrganization, PlatformSubscription, SubscriptionEvent, SupportCase, SupportTicketOption, TenantConfiguration } from '../types'
 import { SubscriptionForm, SupportCaseForm, TenantConfigurationForm } from './forms'
 
@@ -18,7 +20,12 @@ export function TenantConfigurationRegister({ records }: { records: Array<{ orga
 }
 
 export function TenantConfigurationPage({ organization, configuration }: { organization: PlatformOrganization; configuration: TenantConfiguration | null }) {
-  return <><InternalPageHeader title={organization.name} description={`Persistent strategic enterprise configuration for ${organization.slug}.`} backHref="/internal/tenants" /><div className="mb-5 grid gap-3 sm:grid-cols-3"><Summary label="Tier" value={organization.tier} /><Summary label="Tenant status" value={organization.status} /><Summary label="Configuration" value={configuration ? `Updated ${formatDate(configuration.updated_at)}` : 'Not configured'} /></div><TenantConfigurationForm organization={organization} configuration={configuration} /></>
+  return <><InternalPageHeader title={organization.name} description={`Persistent strategic enterprise configuration for ${organization.slug}.`} backHref="/internal/tenants" /><div className="mb-5 grid gap-3 sm:grid-cols-3"><Summary label="Tier" value={organization.tier} /><Summary label="Tenant status" value={organization.status} /><Summary label="Configuration" value={configuration ? `Updated ${formatDate(configuration.updated_at)}` : 'Not configured'} /></div><PartnerLevelCard organization={organization} /><TenantConfigurationForm organization={organization} configuration={configuration} /></>
+}
+
+function PartnerLevelCard({ organization }: { organization: PlatformOrganization }) {
+  const current = getPartnerLevel(organization.partner_level)
+  return <form action={savePartnerLevelAction} className="mb-5 flex flex-wrap items-end gap-3 border border-border bg-card p-4"><input type="hidden" name="organizationId" value={organization.id} /><label className="block"><span className="text-xs text-muted-foreground">Partner level</span><select name="partnerLevel" defaultValue={current?.id ?? ''} required className="mt-1 block h-10 min-w-64 border border-border bg-background px-3 text-sm"><option value="" disabled>Not set</option>{partnerLevels.map((level) => <option key={level.id} value={level.id}>{level.label} · {formatCurrency(level.price, PARTNER_PRICE_CURRENCY, { maximumFractionDigits: 0 })}</option>)}</select></label><button type="submit" className="h-10 bg-brand px-4 text-sm font-medium text-primary-foreground hover:bg-brand/90">Save partner level</button></form>
 }
 
 export function SubscriptionRegister({ records }: { records: PlatformSubscription[] }) {

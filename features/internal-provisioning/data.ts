@@ -40,6 +40,7 @@ export const initialProvisioningState: ProvisioningWizardState = {
     name: '', tradingName: 'Growthpoint', code: 'GROWT-001', industry: 'Real Estate', size: '1,000–4,999', country: 'South Africa', timeZone: 'Africa/Johannesburg', businessUnit: 'Business Transformation', contactName: 'Sarah Johnson', contactEmail: 'sarah.johnson@growthpoint.co.za', contactRole: 'Business Transformation Lead', implementationOwner: 'Neo Morake', goLive: '2026-10-12', logoName: '', notes: '', tags: 'Enterprise, Property',
   },
   selectedTier: 'core',
+  partnerLevel: null,
   activeModules: getEntitledModuleIds('core'),
   delivery: {
     frameworks: ['Business / Technology Change', 'Automation Implementation'], primaryFramework: 'Business / Technology Change', projectVisibility: 'Organisation', healthCalculation: 'Weighted controls', evidenceAtGates: true, gateLocking: true, mandatoryBusinessCase: true, durationUnit: 'Working days', businessUnits: 'Business Transformation, Property Operations', departments: 'Delivery, Operations, Commercial, Finance', teams: 'Business Solutions, Transformation Office', vendorCadence: 'Quarterly', expiryWarning: '90 days', complianceReview: true, clientCodeFormat: 'CL-{0000}', accountOwner: 'Organisation Admin', onboardingTemplate: 'Standard Client Onboarding', onboardingOwner: 'Client Operations Lead', leadOwner: 'Commercial Lead', quoteValidity: '30 days', salesPipeline: 'Enterprise Sales', currency: 'ZAR', invoiceTerms: '30 days', forecastPeriod: 'Monthly',

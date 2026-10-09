@@ -10,7 +10,7 @@ import type { KnowledgeArticle, PlatformOrganization, PlatformSubscription, Subs
 async function platformOrganizations(): Promise<PlatformOrganization[]> {
   await requireInternalAdministrator()
   const db = (await createServerSupabase()) as any
-  const { data, error } = await db.from('organizations').select('id,name,slug,status,tier').order('created_at', { ascending: false })
+  const { data, error } = await db.from('organizations').select('id,name,slug,status,tier,partner_level').order('created_at', { ascending: false })
   if (error) throw error
   return (data ?? []).map((row: any) => ({
     id: row.id,
@@ -18,6 +18,7 @@ async function platformOrganizations(): Promise<PlatformOrganization[]> {
     slug: row.slug,
     status: row.status,
     tier: row.tier,
+    partner_level: row.partner_level ?? null,
   }))
 }
 

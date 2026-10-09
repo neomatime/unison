@@ -1,3 +1,4 @@
+import type { PartnerLevelId } from '@/config/partner-levels'
 import type { UnisonModuleId, UnisonTierId } from '@/config/unison-tiers'
 
 export type ProvisioningStepId = 'organisation' | 'tier' | 'modules' | 'delivery' | 'access' | 'review'
@@ -79,6 +80,7 @@ export type ProvisioningWizardState = {
   id: string
   organisation: OrganisationConfiguration
   selectedTier: UnisonTierId
+  partnerLevel: PartnerLevelId | null
   activeModules: UnisonModuleId[]
   delivery: DeliveryConfiguration
   access: AccessConfiguration

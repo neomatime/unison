@@ -1,5 +1,7 @@
 import { z } from 'zod'
 
+import { partnerLevelIds } from '../../../config/partner-levels.ts'
+
 /**
  * A slug reaches a URL and a unique index, so it is derived rather than
  * accepted: lowercase, non-alphanumerics collapsed to single hyphens, ends
@@ -18,6 +20,7 @@ export const provisioningInputSchema = z
     adminEmail: z.string().trim().email('Enter a valid administrator email address.'),
     slug: z.string().optional(),
     tier: z.enum(['core', 'framework', 'enterprise', 'strategic-enterprise']).default('core'),
+    partnerLevel: z.enum(partnerLevelIds, { message: 'Choose a partner level.' }),
   })
   .transform((value) => ({
     ...value,
