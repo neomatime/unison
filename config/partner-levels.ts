@@ -1,3 +1,5 @@
+import { formatCurrency } from '../lib/utils/format-money.ts'
+
 // Commercial partner levels. Separate from the module tiers in unison-tiers.ts:
 // the tier decides which modules a client gets, the partner level says which
 // commercial relationship (and price) they are on. Prices are fixed per level, in
@@ -12,7 +14,14 @@ export const partnerLevels = [
 
 export type PartnerLevelId = (typeof partnerLevels)[number]['id']
 export const PARTNER_PRICE_CURRENCY = 'ZAR'
+// Every price above is charged per month.
+export const PARTNER_PRICE_PERIOD = 'month'
 export const partnerLevelIds = partnerLevels.map((level) => level.id) as [PartnerLevelId, ...PartnerLevelId[]]
+
+/** "R100,000 / month" */
+export function formatPartnerPrice(price: number) {
+  return `${formatCurrency(price, PARTNER_PRICE_CURRENCY, { maximumFractionDigits: 0 })} / ${PARTNER_PRICE_PERIOD}`
+}
 
 export function getPartnerLevel(id: string | null | undefined) {
   return partnerLevels.find((level) => level.id === id) ?? null
