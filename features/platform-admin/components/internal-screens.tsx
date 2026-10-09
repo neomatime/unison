@@ -1,5 +1,6 @@
 import { AlertTriangle, Building2, CheckCircle2, CreditCard, Plus, Settings2, TicketCheck, Users } from 'lucide-react'
 import Link from 'next/link'
+import { formatCurrency } from '@/lib/utils/format-money'
 
 import { InternalEmptyState, InternalMetric, InternalPageHeader, ProvisioningStatusBadge } from '@/features/internal-provisioning/components/internal-primitives'
 import { changeSubscriptionStatusAction } from '../actions'
@@ -62,5 +63,5 @@ function Table({ columns, rows }: { columns: string[]; rows: React.ReactNode[][]
 function Summary({ label, value }: { label: string; value: string }) { return <div className="border border-border bg-card p-4"><p className="text-xs text-muted-foreground">{label}</p><p className="mt-1 text-sm font-semibold">{value}</p></div> }
 function formatDate(value?: string | null) { return value ? new Intl.DateTimeFormat('en-ZA', { dateStyle: 'medium' }).format(new Date(value)) : '—' }
 function formatDateTime(value?: string | null) { return value ? new Intl.DateTimeFormat('en-ZA', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value)) : '—' }
-function money(value: number, currency: string) { return new Intl.NumberFormat('en-ZA', { style: 'currency', currency }).format(Number(value)) }
+function money(value: number, currency: string) { return formatCurrency(Number(value), currency) }
 function caseReference(value: number) { return `CASE-${String(value).padStart(6, '0')}` }

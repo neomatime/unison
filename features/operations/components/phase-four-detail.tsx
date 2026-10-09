@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { WorkPage } from "@/components/shared/work-page";
+import { formatCurrency } from "@/lib/utils/format-money";
 import { getPhaseFourRecord, type PhaseFourKind } from "../queries/phase-four";
 
 const meta: Record<PhaseFourKind, { category: string; parent: string; base: string; description: string }> = {
@@ -44,7 +45,7 @@ function formatValue(key: string, value: unknown) {
   if (typeof value === "boolean") return value ? "Yes" : "No";
   if (key === "capacityPercent" || key === "allocationPercent" || key === "progressPercent" || key === "slaPercent") return `${value}%`;
   if (key === "renewalNoticeDays") return `${value} days`;
-  if (key === "contractValue") return new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(Number(value));
+  if (key === "contractValue") return formatCurrency(Number(value), "ZAR");
   if (key.endsWith("At")) return new Date(String(value)).toLocaleString("en-ZA");
   if (key.endsWith("Date") || key === "joinedOn" || key === "targetGoLive" || key === "contractStart" || key === "contractEnd") return new Date(`${value}T00:00:00`).toLocaleDateString("en-ZA");
   return String(value);

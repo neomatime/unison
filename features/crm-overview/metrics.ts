@@ -2,6 +2,7 @@
 // bucketing and activity wording. No React and no I/O, so every rule here is
 // covered by a unit test that needs no database. Relative imports only, because
 // Node's test runner cannot resolve the '@/' alias.
+import { formatCurrency } from '../../lib/utils/format-money.ts'
 import type { ActivityEvent, BucketRow, Money, RevenueChartData } from './types.ts'
 
 // ---------------------------------------------------------------- greeting
@@ -59,12 +60,7 @@ export function formatMoney(amount: number, currency: string, style: 'compact' |
     }
     // Whole amounts drop the cents; anything else shows both, so 1234.5 is never "R1234,5".
     const fraction = Number.isInteger(amount) ? 0 : 2
-    return new Intl.NumberFormat(LOCALE, {
-      style: 'currency',
-      currency,
-      minimumFractionDigits: fraction,
-      maximumFractionDigits: fraction,
-    }).format(amount)
+    return formatCurrency(amount, currency, { minimumFractionDigits: fraction, maximumFractionDigits: fraction })
   } catch {
     return `${currency} ${amount}`
   }
