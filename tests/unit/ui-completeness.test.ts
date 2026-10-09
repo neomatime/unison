@@ -541,20 +541,12 @@ test('every registry column resolves to a key its records actually carry', () =>
   // in every registry module definition the same way the real UI does, and
   // fails if the result is not a key the module's records actually carry.
   //
-  // Two different components read `module.columns` against a record, each
-  // with its own alias map and fallback (confirmed by grepping every page
-  // under app/(unison) for which one it imports):
-  //   - ModuleWorkspace (module-workspace.tsx) renders Clients, Projects,
-  //     Tasks, Calendar, Knowledge and Settings, via `aliases[column] ??
-  //     column.toLowerCase()`.
-  //   - DomainModuleWorkspace (domain-module-workspace.tsx) renders Leads,
-  //     Quotes, Sales, Invoices, Expenses and Forecast. It resolves each
-  //     column to a `{ id, label }` pair via `fieldAliases[column] ??
-  //     column.toLowerCase().replaceAll(' ', '')` and hands that off to
-  //     record-collection-workspace.tsx (not modified here, only read), which
-  //     renders `record[column.id]` with no further fallback -- confirmed by
-  //     reading that file, so DomainModuleWorkspace's resolution is the whole
-  //     story for these six modules.
+  // ModuleWorkspace (module-workspace.tsx) is the one component that reads
+  // `module.columns` against a record, resolving each label through
+  // `aliases[column] ?? column.toLowerCase()`. (A second one,
+  // DomainModuleWorkspace, rendered Leads, Quotes, Sales, Invoices, Expenses and
+  // Forecast until those moved onto their own register components; it and its
+  // half of this guard were deleted with it.)
   //
   // Record keys come from whichever side is authoritative for that module:
   // the query mapper for a connected module (Projects, Clients), the fixture
@@ -568,9 +560,7 @@ test('every registry column resolves to a key its records actually carry', () =>
   // shared workspaces above, its columns need checking by hand the way this
   // task had to -- this test will not have exercised that path.
   const moduleWorkspaceSource = readFileSync(join(workspace, 'features', 'product-ui', 'components', 'module-workspace.tsx'), 'utf8')
-  const domainWorkspaceSource = readFileSync(join(workspace, 'features', 'product-ui', 'components', 'domain-module-workspace.tsx'), 'utf8')
   const moduleAliases = extractAliasMap(moduleWorkspaceSource, 'aliases')
-  const domainAliases = extractAliasMap(domainWorkspaceSource, 'fieldAliases')
 
   // moduleFixtures still has 'projects' and 'clients' entries left over from
   // before they were connected to the database, but neither page reads them
@@ -585,38 +575,31 @@ test('every registry column resolves to a key its records actually carry', () =>
   recordKeysByModule.clients = extractMapperKeys(readFileSync(join(workspace, 'features', 'clients', 'queries', 'list-clients.ts'), 'utf8'))
 
   const moduleWorkspaceModules = new Set(['clients', 'projects', 'tasks', 'calendar', 'knowledge'])
-  const domainWorkspaceModules = new Set(['leads', 'quotes', 'sales', 'invoices', 'expenses', 'forecast'])
 
   let checked = 0
   for (const module of productModules) {
-    const usesModuleWorkspace = moduleWorkspaceModules.has(module.id)
-    const usesDomainWorkspace = domainWorkspaceModules.has(module.id)
-    if (!usesModuleWorkspace && !usesDomainWorkspace) continue // Onboarding, Team: see comment above
+    if (!moduleWorkspaceModules.has(module.id)) continue // Onboarding, Team, and the registers with their own screens: see comment above
 
     const keys = recordKeysByModule[module.id]
     assert.ok(keys, `no record source (query mapper or fixture) found for module '${module.id}'`)
 
     for (const [index, column] of module.columns.entries()) {
-      // The first (primary) column never goes through this resolution in
-      // either component: ModuleWorkspace's Cell() renders `record.name`
-      // outright for it regardless of the label (module-workspace.tsx:133,
-      // `if (primary) return <Link ...>{record.name}</Link>`), and
-      // record-collection-workspace.tsx falls back to `record.name` for it
-      // (`record[column.id] ?? record.name`). So a mismatched first-column
+      // The first (primary) column never goes through this resolution:
+      // ModuleWorkspace's Cell() renders `record.name` outright for it
+      // regardless of the label (module-workspace.tsx:133,
+      // `if (primary) return <Link ...>{record.name}</Link>`). So a mismatched first-column
       // alias -- Clients' own 'Client' column resolves to 'client', which its
       // connected records don't carry -- is real but inert, not the class of
       // bug this test exists to catch. Checking it here would fail on that
       // inert case instead of a load-bearing one.
       if (index === 0) continue
 
-      const resolved = usesModuleWorkspace
-        ? moduleAliases[column] ?? column.toLowerCase()
-        : domainAliases[column] ?? column.toLowerCase().replaceAll(' ', '')
+      const resolved = moduleAliases[column] ?? column.toLowerCase()
       assert.ok(keys.has(resolved), `${module.id}'s '${column}' column resolves to record key '${resolved}', which its records do not carry -- the cell will render '—' for every row`)
       checked += 1
     }
   }
-  assert.ok(checked >= 55, `expected to have checked columns across all 11 wired modules, only checked ${checked}`)
+  assert.ok(checked >= 31, `expected to have checked columns across all 5 wired modules, only checked ${checked}`)
 })
 
 test('the projects register renders a real Next Gate value instead of always dashing it out', () => {
@@ -675,24 +658,18 @@ test('no rendered module declares more columns than its table will show', () => 
   // Both caps are read out of the components rather than restated here, so
   // lowering a cap fails this test instead of silently truncating a register.
   const moduleWorkspaceSource = readFileSync(join(workspace, 'features', 'product-ui', 'components', 'module-workspace.tsx'), 'utf8')
-  const domainWorkspaceSource = readFileSync(join(workspace, 'features', 'product-ui', 'components', 'domain-module-workspace.tsx'), 'utf8')
 
   const moduleCap = Number(moduleWorkspaceSource.match(/const VISIBLE_COLUMN_CAP = (\d+)/)?.[1])
-  const domainCap = Number(domainWorkspaceSource.match(/module\.columns\.slice\(0,\s*(\d+)\)/)?.[1])
   assert.ok(Number.isInteger(moduleCap), 'could not read VISIBLE_COLUMN_CAP from module-workspace.tsx')
-  assert.ok(Number.isInteger(domainCap), 'could not read the column slice from domain-module-workspace.tsx')
 
   // Same split as the resolution guard above, and the same exclusions:
   // Onboarding and Team render bespoke screens that never read module.columns.
   const moduleWorkspaceModules = new Set(['clients', 'projects', 'tasks', 'calendar', 'knowledge'])
-  const domainWorkspaceModules = new Set(['leads', 'quotes', 'sales', 'invoices', 'expenses', 'forecast'])
 
   let checked = 0
   for (const module of productModules) {
-    const cap = moduleWorkspaceModules.has(module.id) ? moduleCap
-      : domainWorkspaceModules.has(module.id) ? domainCap
-      : null
-    if (cap === null) continue
+    if (!moduleWorkspaceModules.has(module.id)) continue
+    const cap = moduleCap
 
     assert.ok(
       module.columns.length <= cap,
@@ -700,7 +677,7 @@ test('no rendered module declares more columns than its table will show', () => 
     )
     checked += 1
   }
-  assert.equal(checked, 11, `expected to check all 11 wired modules, checked ${checked}`)
+  assert.equal(checked, 5, `expected to check all 5 wired modules, checked ${checked}`)
 })
 
 test('the projects register offers no view it cannot render from real records', () => {
