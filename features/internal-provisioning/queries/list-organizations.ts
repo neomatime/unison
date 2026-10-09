@@ -2,8 +2,7 @@ import 'server-only'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { getEntitledModuleIds, unisonTiers, type UnisonTierId } from '@/config/unison-tiers'
 import { listPlatformOrganizations } from '@/features/platform-admin/queries'
-import { getPartnerLevel, PARTNER_PRICE_CURRENCY } from '@/config/partner-levels'
-import { formatCurrency } from '@/lib/utils/format-money'
+import { formatPartnerPrice, getPartnerLevel } from '@/config/partner-levels'
 
 export type OrganisationRow = {
   id: string
@@ -43,7 +42,7 @@ export async function listOrganizations(): Promise<OrganisationRow[]> {
     created: new Date(row.created_at).toLocaleDateString('en-ZA', {
       day: '2-digit', month: 'short', year: 'numeric',
     }),
-    price: partner ? formatCurrency(partner.price, PARTNER_PRICE_CURRENCY, { maximumFractionDigits: 0 }) : '—',
+    price: partner ? formatPartnerPrice(partner.price) : '—',
     }
   })
 }

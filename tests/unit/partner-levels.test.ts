@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { getPartnerLevel, partnerLevels } from '../../config/partner-levels.ts'
+import { formatPartnerPrice, getPartnerLevel, partnerLevels } from '../../config/partner-levels.ts'
 
 test('the four partner levels carry their agreed rand prices', () => {
   assert.deepEqual(
@@ -14,4 +14,8 @@ test('an unknown or missing level resolves to nothing rather than a default', ()
   assert.equal(getPartnerLevel(null), null)
   assert.equal(getPartnerLevel('gold'), null)
   assert.equal(getPartnerLevel('growth')?.label, 'Growth Partner')
+})
+
+test('prices are shown with their period', () => {
+  assert.match(formatPartnerPrice(100_000).replace(/\s/g, ' '), /^R100 ?000 \/ month$|^R100,000 \/ month$/)
 })
