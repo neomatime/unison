@@ -118,7 +118,7 @@ export function AppShell({ user, organization, organizations, role, navigationSe
                   type="button"
                   onClick={() => setNavigationOpen(false)}
                   aria-label="Close navigation"
-                  className="absolute top-4 -right-12 flex size-9 items-center justify-center border border-border bg-card text-foreground transition-colors hover:bg-muted focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-brand"
+                  className="absolute top-4 -right-12 flex size-9 items-center justify-center border border-border bg-card text-foreground transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
                 >
                   <X className="size-5" />
                 </button>
@@ -135,7 +135,7 @@ export function AppShell({ user, organization, organizations, role, navigationSe
                 aria-label="Open navigation"
                 aria-expanded={navigationOpen}
                 aria-controls="tenant-navigation-dialog"
-                className="p-2 transition-colors hover:bg-tenant-sidebar-hover focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-brand"
+                className="p-2 transition-colors hover:bg-tenant-sidebar-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
               >
                 <Menu className="size-5" />
               </button>

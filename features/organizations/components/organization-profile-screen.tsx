@@ -37,7 +37,7 @@ export function OrganizationProfileScreen({ profile, saved = false }: Organizati
       {profile.canEdit ? (
         <Link
           href="/settings/edit"
-          className="inline-flex h-10 items-center gap-2 border border-border bg-card px-4 text-sm font-medium text-foreground transition-colors hover:border-muted-foreground/45 hover:bg-muted/40 focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-brand"
+          className="inline-flex h-10 items-center gap-2 border border-border bg-card px-4 text-sm font-medium text-foreground transition-colors hover:border-muted-foreground/45 hover:bg-muted/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
         >
           <Pencil className="size-4" />
           Edit organisation

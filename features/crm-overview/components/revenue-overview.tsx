@@ -6,7 +6,7 @@ import { buildRevenueChart, CHART_PERIODS, formatMoney, niceMax, type ChartPerio
 import type { RevenueChartData } from '../types'
 import { Panel } from './panel'
 
-const selectClass = 'h-9 rounded-none border border-border bg-card px-2.5 text-xs font-medium text-foreground focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-brand'
+const selectClass = 'h-9 rounded-none border border-border bg-card px-2.5 text-xs font-medium text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand'
 
 export function RevenueOverview({ data }: { data: RevenueChartData }) {
   const periodId = useId()

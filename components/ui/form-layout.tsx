@@ -70,7 +70,7 @@ export function FormFooter({
         {note}
       </p>
       <div className="flex gap-2">
-        <Link href={cancelHref} className="unison-action-control rounded-none border border-border px-4 py-2 text-sm font-medium hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20">
+        <Link href={cancelHref} className="unison-action-control rounded-none border border-border px-4 py-2 text-sm font-medium hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">
           Cancel
         </Link>
         <button

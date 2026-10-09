@@ -22,7 +22,7 @@ export function OrganizationMenu({ organizationId }: { organizationId: string })
     <details ref={menuRef} className="relative">
       <summary
         aria-label="More organisation actions"
-        className="flex size-10 cursor-pointer list-none items-center justify-center border border-border bg-card text-muted-foreground transition-colors marker:content-none hover:border-muted-foreground/45 hover:text-foreground focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-brand"
+        className="flex size-10 cursor-pointer list-none items-center justify-center border border-border bg-card text-muted-foreground transition-colors marker:content-none hover:border-muted-foreground/45 hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
       >
         <MoreHorizontal className="size-5" />
       </summary>
@@ -31,7 +31,7 @@ export function OrganizationMenu({ organizationId }: { organizationId: string })
           type="button"
           role="menuitem"
           onClick={copyOrganizationId}
-          className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium transition-colors hover:bg-muted focus:bg-muted focus:outline-none"
+          className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium transition-colors hover:bg-muted focus:bg-muted focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-brand"
         >
           <Clipboard className="size-3.5" />
           {copied ? 'Organisation ID copied' : 'Copy organisation ID'}
@@ -39,7 +39,7 @@ export function OrganizationMenu({ organizationId }: { organizationId: string })
         <Link
           href="/people/team"
           role="menuitem"
-          className="flex items-center gap-2 px-3 py-2 text-xs font-medium transition-colors hover:bg-muted focus:bg-muted focus:outline-none"
+          className="flex items-center gap-2 px-3 py-2 text-xs font-medium transition-colors hover:bg-muted focus:bg-muted focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-brand"
         >
           <Users className="size-3.5" />
           View Team

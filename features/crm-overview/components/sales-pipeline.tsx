@@ -20,7 +20,7 @@ function Opportunity({ preview }: { preview: PipelinePreview }) {
   return (
     <Link
       href={`/commercial/sales/${preview.id}`}
-      className="flex items-center gap-2.5 border border-border bg-card px-2.5 py-2 transition-colors hover:border-brand/40 focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-brand"
+      className="flex items-center gap-2.5 border border-border bg-card px-2.5 py-2 transition-colors hover:border-brand/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
     >
       <InitialAvatar initials={initialsOf(preview.clientName)} className="size-8 text-[0.625rem]" />
       <span className="min-w-0 flex-1">
@@ -55,7 +55,7 @@ function StageColumn({ column }: { column: Column }) {
         {column.count === 0 ? <li className="px-1 text-xs text-[var(--briefing-muted)]">None</li> : null}
         {hidden > 0 ? (
           <li>
-            <Link href="/commercial/sales" className="block px-1 text-xs font-medium text-brand hover:underline focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-brand">
+            <Link href="/commercial/sales" className="block px-1 text-xs font-medium text-brand hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">
               + {hidden} more
             </Link>
           </li>
@@ -66,7 +66,7 @@ function StageColumn({ column }: { column: Column }) {
 }
 
 export function SalesPipeline({ pipeline, showLeadsLink }: { pipeline: Section<PipelineData>; showLeadsLink: boolean }) {
-  const linkClass = 'text-xs font-semibold text-brand hover:underline focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-brand'
+  const linkClass = 'text-xs font-semibold text-brand hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand'
   const action = (
     <div className="flex items-center gap-4">
       {showLeadsLink ? <Link href="/commercial/leads" className={linkClass}>View all leads →</Link> : null}

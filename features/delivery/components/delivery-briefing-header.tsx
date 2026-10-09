@@ -44,7 +44,7 @@ export function DeliveryBriefingHeader({ dateTime, dateLabel }: DeliveryBriefing
             <button
               type="button"
               onClick={() => setPanel('search')}
-              className="relative hidden h-10 w-64 items-center rounded-none border border-border bg-card pr-3 pl-9 text-left text-xs text-[var(--briefing-muted)] transition-colors hover:border-brand/35 focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-brand min-[1360px]:flex 2xl:w-72"
+              className="relative hidden h-10 w-64 items-center rounded-none border border-border bg-card pr-3 pl-9 text-left text-xs text-[var(--briefing-muted)] transition-colors hover:border-brand/35 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand min-[1360px]:flex 2xl:w-72"
             >
               <Search aria-hidden="true" className="absolute left-3 size-4" />
               Search projects, clients, vendors...
@@ -53,7 +53,7 @@ export function DeliveryBriefingHeader({ dateTime, dateLabel }: DeliveryBriefing
               type="button"
               onClick={() => setPanel('search')}
               aria-label="Search UNISON"
-              className="flex size-10 items-center justify-center rounded-none border border-border bg-card text-[var(--briefing-muted)] transition-colors hover:text-foreground focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-brand min-[1360px]:hidden"
+              className="flex size-10 items-center justify-center rounded-none border border-border bg-card text-[var(--briefing-muted)] transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand min-[1360px]:hidden"
             >
               <Search aria-hidden="true" className="size-4.5" />
             </button>
@@ -62,7 +62,7 @@ export function DeliveryBriefingHeader({ dateTime, dateLabel }: DeliveryBriefing
               type="button"
               onClick={() => setPanel('notifications')}
               aria-label="Notifications"
-              className="relative flex size-10 items-center justify-center rounded-none border border-transparent text-[var(--briefing-muted)] transition-colors hover:border-border hover:bg-card hover:text-foreground focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-brand"
+              className="relative flex size-10 items-center justify-center rounded-none border border-transparent text-[var(--briefing-muted)] transition-colors hover:border-border hover:bg-card hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
             >
               <Bell aria-hidden="true" className="size-5" strokeWidth={1.75} />
             </button>
@@ -70,7 +70,7 @@ export function DeliveryBriefingHeader({ dateTime, dateLabel }: DeliveryBriefing
             <Link
               href="/people/team"
               aria-label={`Open the Team workspace for ${user.displayName}`}
-              className="flex min-w-0 items-center gap-2.5 rounded-none px-1.5 py-1 transition-colors hover:bg-muted/60 focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-brand"
+              className="flex min-w-0 items-center gap-2.5 rounded-none px-1.5 py-1 transition-colors hover:bg-muted/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
             >
               {user.avatarUrl ? (
                 <Image src={user.avatarUrl} alt="" width={36} height={36} className="size-9 shrink-0 rounded-full object-cover" />
