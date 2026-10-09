@@ -7,7 +7,7 @@ import { DetailTile, SummaryTile } from '@/components/ui/record-tiles'
 import { StatusBadge } from '@/components/ui/status-badge'
 import { formatDate } from '@/lib/utils'
 import { archiveClientAction } from '../actions/archive-client'
-import { ClientRelatedRecords } from './client-related-records'
+import { ClientDocuments } from './client-documents'
 import type { ClientRecord } from '../queries/get-client'
 
 function statusTone(status: string): 'brand' | 'warning' | 'info' | 'neutral' {
@@ -19,7 +19,7 @@ function statusTone(status: string): 'brand' | 'warning' | 'info' | 'neutral' {
 // A Server Component, deliberately: the archive confirmation is a two-step,
 // plain-HTML flow rather than a client-side dialog, so it works identically
 // with or without JS having loaded. See components/shared/archive-confirmation.
-export function ClientDetail({ client, confirmArchive, archiveError, tab }: { client: ClientRecord; confirmArchive?: boolean; archiveError?: boolean; tab?: string }) {
+export function ClientDetail({ client, confirmArchive, archiveError }: { client: ClientRecord; confirmArchive?: boolean; archiveError?: boolean }) {
   const archived = Boolean(client.archived_at)
   const detailHref = `/operations/clients/${client.id}`
 
@@ -98,6 +98,6 @@ export function ClientDetail({ client, confirmArchive, archiveError, tab }: { cl
         </div>
       </aside>
     </div>
-    {!archived ? <ClientRelatedRecords clientId={client.id} tab={tab} /> : null}
+    {!archived ? <ClientDocuments /> : null}
   </>
 }

@@ -8,5 +8,5 @@ export default async function Page({ params, searchParams }: { params: Promise<{
   const search = await searchParams
   const client = await getClient(clientId)
   if (!client) notFound()
-  return <ClientDetail client={client} confirmArchive={search.confirm === 'archive'} archiveError={search.archiveError === '1'} tab={typeof search.tab === 'string' ? search.tab : undefined} />
+  return <ClientDetail client={client} confirmArchive={search.confirm === 'archive'} archiveError={search.archiveError === '1'} />
 }
