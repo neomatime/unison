@@ -13,9 +13,11 @@ type WorkspaceHeaderProps = {
   action?: string
   actionHref?: string
   actions?: React.ReactNode
+  /** Registers whose empty state already offers the same action: on a phone, where both land on one screen, show it once. */
+  hideActionOnPhone?: boolean
 }
 
-export function WorkspaceHeader({ category, title, description, parent, breadcrumbLabel, action, actionHref, actions }: WorkspaceHeaderProps) {
+export function WorkspaceHeader({ category, title, description, parent, breadcrumbLabel, action, actionHref, actions, hideActionOnPhone }: WorkspaceHeaderProps) {
   return <>
     <header className="mb-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -32,7 +34,7 @@ export function WorkspaceHeader({ category, title, description, parent, breadcru
         <div className="flex flex-wrap items-center justify-end gap-2">
           {/* Search, notifications and help live once, in the sidebar (and on Ctrl/Cmd+K). */}
           {actions}
-          {action && actionHref ? <Link href={actionHref} className="unison-action-control inline-flex h-10 items-center gap-2 bg-brand px-4 text-sm font-medium text-white hover:bg-brand/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"><Plus className="size-4" />{action}</Link> : null}
+          {action && actionHref ? <Link href={actionHref} className={`unison-action-control ${hideActionOnPhone ? 'hidden sm:inline-flex' : 'inline-flex'} h-10 items-center gap-2 bg-brand px-4 text-sm font-medium text-white hover:bg-brand/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand`}><Plus className="size-4" />{action}</Link> : null}
         </div>
       </div>
     </header>

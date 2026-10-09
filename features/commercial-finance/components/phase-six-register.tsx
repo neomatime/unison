@@ -55,6 +55,7 @@ export async function PhaseSixRegister({ kind }: { kind: PhaseSixKind }) {
         description={config.description}
         action={config.action}
         actionHref={`${config.base}/new`}
+        hideActionOnPhone={active.length === 0}
       />
       {active.length ? <div className="grid gap-3 sm:grid-cols-3">
         {config.metrics.map((metric) => (
