@@ -357,6 +357,13 @@ activation exists. Note that `special-workspaces.tsx` is also the file carrying
 the uncommitted Atlas/HR cleanup — whoever commits that will be editing
 `ModuleSettings` anyway.
 
+**Resolved 2026-10-09 by removal.** `/settings` now renders
+`OrganizationProfileScreen`; nothing reached `ModuleSettings` any more, and
+`special-workspaces.tsx` (mock calendar, forecast, risk, settings, sales-pipeline,
+project-board and task-board views) was unreachable from every route, so the file
+was deleted. If a Modules view comes back, build it from the tenant's entitlement
+as described above, not from a list.
+
 **2. No surface anywhere shows a tenant's actual tier (Important).**
 `features/internal-provisioning/queries/list-organizations.ts` hard-codes
 `tier: '—'` and its doc comment still says tier "has no backing column", which
