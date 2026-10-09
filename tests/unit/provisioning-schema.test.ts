@@ -25,10 +25,18 @@ test('slug derivation strips characters that cannot appear in a URL', () => {
 test('a name with no usable characters is rejected rather than producing an empty slug', () => {
   // An empty slug would collide with any other empty slug on the unique index,
   // and produce a URL segment that resolves to nothing.
-  assert.equal(provisioningInputSchema.safeParse({ name: '???', adminEmail: 'a@b.com' }).success, false)
+  assert.equal(provisioningInputSchema.safeParse({ name: '???', adminEmail: 'a@b.com', partnerLevel: 'growth' }).success, false)
 })
 
 test('an explicit slug is normalised, not trusted', () => {
-  const parsed = provisioningInputSchema.parse({ name: 'Acme', adminEmail: 'a@b.com', slug: 'Acme Holdings!' })
+  const parsed = provisioningInputSchema.parse({ name: 'Acme', adminEmail: 'a@b.com', partnerLevel: 'growth', slug: 'Acme Holdings!' })
   assert.equal(parsed.slug, 'acme-holdings')
+})
+
+test('a partner level is required and must be one of the four', () => {
+  assert.equal(provisioningInputSchema.safeParse({ name: 'Acme', adminEmail: 'a@b.com' }).success, false)
+  assert.equal(provisioningInputSchema.safeParse({ name: 'Acme', adminEmail: 'a@b.com', partnerLevel: 'gold' }).success, false)
+  for (const level of ['signature', 'growth', 'private', 'reserve']) {
+    assert.equal(provisioningInputSchema.safeParse({ name: 'Acme', adminEmail: 'a@b.com', partnerLevel: level }).success, true)
+  }
 })

@@ -2044,6 +2044,7 @@ export type Database = {
           slug: string
           status: string
           tier: string
+          partner_level: string | null
           updated_at: string
         }
         Insert: {
@@ -2054,6 +2055,7 @@ export type Database = {
           slug: string
           status?: string
           tier?: string
+          partner_level?: string | null
           updated_at?: string
         }
         Update: {
@@ -2064,6 +2066,7 @@ export type Database = {
           slug?: string
           status?: string
           tier?: string
+          partner_level?: string | null
           updated_at?: string
         }
         Relationships: []

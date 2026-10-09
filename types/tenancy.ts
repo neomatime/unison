@@ -1,3 +1,4 @@
+import type { PartnerLevelId } from '@/config/partner-levels'
 import type { UnisonTierId } from '@/config/unison-tiers'
 
 export type OrganizationId = string
@@ -14,6 +15,7 @@ export type Organization = {
   status: OrganizationStatus
   createdAt: string
   tier: UnisonTierId
+  partnerLevel?: PartnerLevelId | null
 }
 
 export type OrganizationMembership = {

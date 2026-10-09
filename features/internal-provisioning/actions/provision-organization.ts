@@ -6,12 +6,14 @@ import { createAdminSupabase } from '@/lib/supabase/admin'
 import { sendEmail } from '@/lib/email/send-email'
 import { invitationTemplate } from '@/lib/email/templates/invitation'
 import { getSessionContext } from '@/lib/auth/get-session-context'
+import { requireInternalAdministrator } from '@/features/platform-admin/authorization'
+import { partnerLevelIds } from '@/config/partner-levels'
 import { provisioningInputSchema } from '../schemas/provisioning'
 
 const EXPIRY_DAYS = 7
 
 export async function provisionOrganizationAction(
-  _prev: { error?: string; organizationId?: string; emailFailed?: boolean } | undefined,
+  _prev: { error?: string; organizationId?: string; emailFailed?: boolean; partnerLevelFailed?: boolean } | undefined,
   formData: FormData,
 ) {
   const parsed = provisioningInputSchema.safeParse({
@@ -19,6 +21,7 @@ export async function provisionOrganizationAction(
     adminEmail: formData.get('adminEmail'),
     slug: formData.get('slug') ?? undefined,
     tier: formData.get('tier') ?? undefined,
+    partnerLevel: formData.get('partnerLevel') ?? undefined,
   })
   if (!parsed.success) return { error: parsed.error.issues[0].message }
 
@@ -56,6 +59,12 @@ export async function provisionOrganizationAction(
     if (error.code === '42501') return { error: 'You do not have permission to provision organisations.' }
     return { error: 'The organisation could not be created.' }
   }
+
+  // provision_organization predates partner levels, so the level is written in a
+  // second step. A failure here leaves a real organisation without a level: it is
+  // reported, not hidden, and is fixed from the tenant's configuration page.
+  const { error: levelError } = await supabase.from('organizations').update({ partner_level: parsed.data.partnerLevel }).eq('id', organizationId as string)
+  if (levelError) console.error('[provisioning] partner level not saved', { organizationId, message: levelError.message })
 
   const appUrl = readAppUrl(process.env)
 
@@ -99,9 +108,21 @@ export async function provisionOrganizationAction(
       message: sendError instanceof Error ? sendError.message : String(sendError),
     })
     revalidatePath('/internal/organisations')
-    return { organizationId: organizationId as string, emailFailed: true }
+    return { organizationId: organizationId as string, emailFailed: true, partnerLevelFailed: Boolean(levelError) }
   }
 
   revalidatePath('/internal/organisations')
-  return { organizationId: organizationId as string }
+  return { organizationId: organizationId as string, partnerLevelFailed: Boolean(levelError) }
+}
+
+/** Sets or changes an existing organisation's partner level. Internal administrators only. */
+export async function savePartnerLevelAction(formData: FormData) {
+  const organizationId = String(formData.get('organizationId') ?? '')
+  const level = String(formData.get('partnerLevel') ?? '')
+  if (!/^[0-9a-f-]{36}$/i.test(organizationId) || !(partnerLevelIds as readonly string[]).includes(level)) return
+  await requireInternalAdministrator()
+  const { error } = await createAdminSupabase().from('organizations').update({ partner_level: level }).eq('id', organizationId)
+  if (error) throw new Error('The partner level could not be saved.')
+  revalidatePath('/internal/organisations')
+  revalidatePath(`/internal/tenants/${organizationId}`)
 }

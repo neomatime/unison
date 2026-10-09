@@ -5,6 +5,7 @@ import { resolveSessionContext, ACTIVE_ORG_COOKIE } from './session-context'
 import type { Organization, OrganizationMembership } from '@/types/tenancy'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { NotAuthenticatedError } from './errors'
+import { getPartnerLevel } from '@/config/partner-levels'
 
 /**
  * Resolves who is signed in and which organization they are acting within.
@@ -27,7 +28,7 @@ export const getSessionContext = cache(async function getSessionContext() {
 
   const { data: rows, error } = await supabase
     .from('memberships')
-    .select('id, organization_id, user_id, role_id, status, created_at, organizations(id, name, slug, status, created_at, tier)')
+    .select('id, organization_id, user_id, role_id, status, created_at, organizations(id, name, slug, status, created_at, tier, partner_level)')
     .eq('user_id', user.id)
     .eq('status', 'active')
   if (error) throw error
@@ -47,6 +48,7 @@ export const getSessionContext = cache(async function getSessionContext() {
     status: row.organizations.status as Organization['status'],
     createdAt: row.organizations.created_at,
     tier: row.organizations.tier as Organization['tier'],
+    partnerLevel: (getPartnerLevel(row.organizations.partner_level)?.id ?? null) as Organization['partnerLevel'],
   }))
 
   const cookieStore = await cookies()
