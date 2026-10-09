@@ -136,6 +136,11 @@ export function RecordCollectionWorkspace({ config, compact = false, onPrimaryAc
   }
 
   function openRecord(mode: 'create' | 'view' | 'edit', record?: CollectionRecord) {
+    // Registers with a dedicated route (e.g. /commercial/sales) own their create page too.
+    if (mode === 'create' && config.recordHrefBase) {
+      router.push(`${config.recordHrefBase}/new`)
+      return
+    }
     persistRoutePayload()
     router.push(mode === 'create' ? collectionRoute(slug) : collectionRoute(slug, record?.id, mode === 'edit'))
   }
