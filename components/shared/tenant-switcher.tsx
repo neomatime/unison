@@ -32,7 +32,7 @@ export function TenantSwitcher() {
       </button>
 
       {open && hasMultipleOrganizations ? (
-        <div className="absolute top-full right-0 z-50 mt-2 w-64 border border-border bg-card p-1.5 shadow-xl" role="listbox" aria-label="Organizations">
+        <div className="absolute top-full left-0 z-50 mt-2 w-64 max-w-[calc(100vw-2rem)] sm:right-0 sm:left-auto border border-border bg-card p-1.5 shadow-xl" role="listbox" aria-label="Organizations">
           <div className="flex items-center gap-2 px-2 py-2 font-brand text-xs font-medium tracking-[0.1em] text-muted-foreground uppercase">
             <Building2 className="size-3.5" /> Switch organization
           </div>
