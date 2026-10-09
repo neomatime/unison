@@ -37,6 +37,7 @@ test('the briefing source carries the approved hierarchy without legacy dashboar
 test('the briefing header uses shell context and the intervention queue is a semantic table', () => {
   assert.match(briefingHeader, /useShellContext\(\)/)
   assert.doesNotMatch(briefingHeader, /TenantSwitcher/, 'the organisation switcher lives in the sidebar')
+  assert.doesNotMatch(briefingHeader, /UtilityPanel|Search|Bell/, 'search and notifications live in the sidebar, not on this page')
   assert.doesNotMatch(briefingHeader, /\bNeo\b|14 Apr 2025/i)
 
   const tableStart = overviewComponents.indexOf('<table')
