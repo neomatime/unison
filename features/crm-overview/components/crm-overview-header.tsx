@@ -30,10 +30,10 @@ export function CrmOverviewHeader() {
         <div className="min-w-0">
           <p className="min-h-5 text-sm font-medium text-[var(--briefing-muted)]">{greeting ? `${greeting}, ${firstName}.` : ''}</p>
           <h1 className="mt-2 text-[1.625rem] leading-tight font-bold tracking-[-0.035em] text-foreground sm:text-[1.875rem]">
-            Here&apos;s your CRM overview.
+            Here&apos;s what matters across your client relationships today.
           </h1>
           <p className="mt-1 text-sm leading-6 text-[var(--briefing-muted)] sm:text-[0.9375rem]">
-            A clear view of your pipeline, clients, and commercial performance.
+            Relationship priorities, pipeline performance, and commercial visibility in one place.
           </p>
         </div>
 

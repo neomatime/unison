@@ -6,6 +6,7 @@ import { createServerSupabase } from '@/lib/supabase/server'
 import { currentYearMonth } from '../metrics'
 import { normalizeActivity, normalizeKpis, normalizePipeline, normalizeRevenue } from '../normalize'
 import type { CrmOverview, Section, TasksData } from '../types'
+import { loadRelationshipOverview } from './get-relationship-overview'
 
 /**
  * The organisation has no timezone setting, so reports use the platform default
@@ -102,13 +103,14 @@ export async function getCrmOverview(): Promise<CrmOverview> {
   const scope = { p_organization_id: organization.id, p_modules: modules }
   const timed = { ...scope, p_timezone: REPORTING_TIME_ZONE }
 
-  const [kpis, pipeline, revenue, activity, tasks] = await Promise.all([
+  const [kpis, pipeline, revenue, activity, tasks, relationships] = await Promise.all([
     section('kpis', async () => normalizeKpis(await call(db, 'crm_overview_kpis', timed))),
     section('pipeline', async () => normalizePipeline(await call(db, 'crm_overview_pipeline', timed))),
     section('revenue', async () => normalizeRevenue(await call(db, 'crm_overview_revenue', timed), currentYearMonth(REPORTING_TIME_ZONE))),
     section('activity', async () => normalizeActivity(await call(db, 'crm_overview_activity', { ...scope, p_limit: 8 }))),
     section('tasks', () => loadTasks(db, organization.id, user.id)),
+    section('relationships', () => loadRelationshipOverview(db, organization.id, user.id)),
   ])
 
-  return { kpis, pipeline, revenue, activity, tasks }
+  return { kpis, pipeline, revenue, activity, tasks, relationships }
 }

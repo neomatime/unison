@@ -51,8 +51,8 @@ test('no figure is hard-coded into a component', () => {
 })
 
 test('the header carries the CRM copy and takes the greeting from the viewer clock', () => {
-  assert.match(header, /Here&apos;s your CRM overview\./)
-  assert.match(header, /A clear view of your pipeline, clients, and commercial performance\./)
+  assert.match(header, /Here&apos;s what matters across your client relationships today\./)
+  assert.match(header, /Relationship priorities, pipeline performance, and commercial visibility in one place\./)
   assert.match(header, /const SEARCH_PLACEHOLDER = 'Search clients, leads, quotes, vendors\.\.\.'/)
   assert.match(header, /useShellContext\(\)/)
   assert.match(header, /<TenantSwitcher \/>/)

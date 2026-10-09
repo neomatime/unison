@@ -9,7 +9,7 @@ export async function createClientAction(_prev: { error?: string } | undefined, 
   const parsed = clientInputSchema.safeParse(Object.fromEntries(formData))
   if (!parsed.success) return { error: parsed.error.issues[0].message }
 
-  const { organization } = await getSessionContext()
+  const { organization, user } = await getSessionContext()
   const supabase = await createServerSupabase()
 
   const { data, error } = await supabase.from('clients').insert({
@@ -23,6 +23,9 @@ export async function createClientAction(_prev: { error?: string } | undefined, 
     service: parsed.data.service,
     billing_email: parsed.data.billingEmail,
     notes: parsed.data.notes,
+    logo_url: parsed.data.logoUrl,
+    relationship_started_on: parsed.data.relationshipStartedOn,
+    owner_id: parsed.data.ownerId ?? user.id,
     status: parsed.data.status,
     health: parsed.data.health,
   }).select('id').single()

@@ -5,10 +5,12 @@ import { ArchiveConfirmation, ArchiveTrigger } from '@/components/shared/archive
 import { WorkspaceHeader } from '@/components/shared/workspace-header'
 import { DetailTile, SummaryTile } from '@/components/ui/record-tiles'
 import { StatusBadge } from '@/components/ui/status-badge'
+import { InitialAvatar } from '@/components/ui/initial-avatar'
 import { formatDate } from '@/lib/utils'
 import { archiveClientAction } from '../actions/archive-client'
 import { ClientRelationshipWorkspace } from './client-relationship-workspace'
 import type { ClientRecord } from '../queries/get-client'
+import type { Client360 } from '../queries/get-client-360'
 
 function statusTone(status: string): 'brand' | 'warning' | 'info' | 'neutral' {
   if (status === 'Active') return 'brand'
@@ -19,9 +21,12 @@ function statusTone(status: string): 'brand' | 'warning' | 'info' | 'neutral' {
 // A Server Component, deliberately: the archive confirmation is a two-step,
 // plain-HTML flow rather than a client-side dialog, so it works identically
 // with or without JS having loaded. See components/shared/archive-confirmation.
-export function ClientDetail({ client, confirmArchive, archiveError }: { client: ClientRecord; confirmArchive?: boolean; archiveError?: boolean }) {
+export function ClientDetail({ client, relationship, confirmArchive, archiveError }: { client: ClientRecord; relationship: Client360; confirmArchive?: boolean; archiveError?: boolean }) {
   const archived = Boolean(client.archived_at)
   const detailHref = `/operations/clients/${client.id}`
+  const relationshipStart = new Date(client.relationship_started_on ?? client.created_at)
+  const relationshipMonths = Math.max(0, Math.floor((Date.now() - relationshipStart.getTime()) / (30.4375 * 86_400_000)))
+  const relationshipDuration = relationshipMonths < 12 ? `${relationshipMonths} month${relationshipMonths === 1 ? '' : 's'}` : `${Math.floor(relationshipMonths / 12)} year${Math.floor(relationshipMonths / 12) === 1 ? '' : 's'}`
 
   return <>
     <WorkspaceHeader category="Operations" parent={{ label: 'Clients', href: '/operations/clients' }} title={client.name} />
@@ -36,14 +41,17 @@ export function ClientDetail({ client, confirmArchive, archiveError }: { client:
 
     <section className="rounded-xl border border-border bg-card p-6 shadow-[0_1px_2px_rgb(16_32_46_/_0.04)]">
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
+        <div className="flex items-start gap-4">
+          {client.logo_url ? <img src={client.logo_url} alt={`${client.name} logo`} className="size-12 border border-border object-contain" /> : <InitialAvatar initials={client.name.split(/\s+/).slice(0, 2).map((part) => part[0]).join('').toUpperCase()} className="size-12 rounded-none" />}
+          <div>
           <div className="flex items-center gap-3">
             <h2 className="text-2xl font-bold tracking-tight">{client.name}</h2>
             <StatusBadge tone={statusTone(client.status)}>{client.status}</StatusBadge>
           </div>
           <p className="mt-2 text-sm text-muted-foreground">
-            {client.contact_name ?? 'No primary contact on file'} · Last activity {formatDate(client.updated_at)}
+            {client.industry ?? 'Industry not recorded'} · {relationship.ownerName ? `Owned by ${relationship.ownerName}` : 'No account owner assigned'}
           </p>
+          </div>
         </div>
         {!archived && !confirmArchive ? (
           <div className="flex flex-wrap gap-2">
@@ -53,11 +61,10 @@ export function ClientDetail({ client, confirmArchive, archiveError }: { client:
         ) : null}
       </div>
       <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <SummaryTile label="Status" value={client.status} />
-        <SummaryTile label="Client health" value={client.health} />
-        {/* No projects table yet — an em dash, not a fabricated 0. */}
-        <SummaryTile label="Active projects" value={null} />
-        <SummaryTile label="Last activity" value={formatDate(client.updated_at)} />
+        <SummaryTile label="Relationship duration" value={relationshipDuration} />
+        <SummaryTile label="Relationship" value={relationship.relationship.indicator} />
+        <SummaryTile label="Primary contact" value={relationship.primaryContact?.fullName ?? null} />
+        <SummaryTile label="Last interaction" value={relationship.lastInteractionAt ? formatDate(relationship.lastInteractionAt) : null} />
       </div>
       {!archived && confirmArchive ? (
         <ArchiveConfirmation
@@ -98,6 +105,6 @@ export function ClientDetail({ client, confirmArchive, archiveError }: { client:
         </div>
       </aside>
     </div>
-    {!archived ? <ClientRelationshipWorkspace clientName={client.name} /> : null}
+    {!archived ? <ClientRelationshipWorkspace clientId={client.id} data={relationship} /> : null}
   </>
 }

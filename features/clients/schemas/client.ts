@@ -12,6 +12,9 @@ export const clientInputSchema = z.object({
   service: optionalText,
   billingEmail: z.string().email('Enter a valid billing email.').optional().or(z.literal('')).transform((v) => v || null),
   notes: optionalText,
+  logoUrl: z.string().url('Enter a valid logo URL.').optional().or(z.literal('')).transform((v) => v || null),
+  relationshipStartedOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Enter a valid relationship start date.').optional().or(z.literal('')).transform((v) => v || null),
+  ownerId: z.string().uuid('Select a valid account owner.').optional().or(z.literal('')).transform((v) => v || null),
   status: z.enum(['Onboarding', 'Active', 'Archived']).default('Onboarding'),
   health: z.enum(['New', 'Healthy', 'Watch', 'Stable', 'At Risk']).default('New'),
 })

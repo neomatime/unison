@@ -22,6 +22,9 @@ export async function updateClientAction(id: string, _prev: { error?: string } |
     service: parsed.data.service,
     billing_email: parsed.data.billingEmail,
     notes: parsed.data.notes,
+    logo_url: parsed.data.logoUrl,
+    relationship_started_on: parsed.data.relationshipStartedOn,
+    owner_id: parsed.data.ownerId,
     status: parsed.data.status,
     health: parsed.data.health,
   }).eq('organization_id', organization.id).eq('id', id)

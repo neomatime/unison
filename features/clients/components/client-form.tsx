@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useActionState } from 'react'
 
 import { WorkspaceHeader } from '@/components/shared/workspace-header'
-import { SelectField, TextAreaField, TextField } from '@/components/ui/form-fields'
+import { EntitySelectField, SelectField, TextAreaField, TextField } from '@/components/ui/form-fields'
 import { FormError, FormFooter, FormSection } from '@/components/ui/form-layout'
 import type { ClientRecord } from '../queries/get-client'
 
@@ -14,7 +14,7 @@ type ClientFormAction = (prevState: ActionState, formData: FormData) => Promise<
 const statusOptions = ['Onboarding', 'Active', 'Archived'] as const
 const healthOptions = ['New', 'Healthy', 'Watch', 'Stable', 'At Risk'] as const
 
-export function ClientForm({ mode, client, action }: { mode: 'create' | 'edit'; client?: ClientRecord; action: ClientFormAction }) {
+export function ClientForm({ mode, client, action, owners }: { mode: 'create' | 'edit'; client?: ClientRecord; action: ClientFormAction; owners: Array<{ id: string; name: string }> }) {
   const [state, formAction, pending] = useActionState(action, undefined)
   const backHref = client ? `/operations/clients/${client.id}` : '/operations/clients'
 
@@ -34,7 +34,10 @@ export function ClientForm({ mode, client, action }: { mode: 'create' | 'edit'; 
         <TextField name="name" label="Company name" required defaultValue={client?.name} />
         <TextField name="industry" label="Industry" defaultValue={client?.industry} />
         <TextField name="website" label="Website" defaultValue={client?.website} />
+        <TextField name="logoUrl" label="Logo URL" type="url" defaultValue={client?.logo_url} />
         <TextField name="service" label="Primary engagement" defaultValue={client?.service} />
+        <TextField name="relationshipStartedOn" label="Relationship start date" type="date" defaultValue={client?.relationship_started_on} />
+        <EntitySelectField name="ownerId" label="Account owner" options={owners} defaultValue={client?.owner_id} emptyLabel="Unassigned" />
       </FormSection>
 
       <FormSection title="Primary contact" description="The main relationship contact for this client.">

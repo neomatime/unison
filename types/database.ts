@@ -673,10 +673,12 @@ export type Database = {
           health: string
           id: string
           industry: string | null
+          logo_url: string | null
           name: string
           notes: string | null
           organization_id: string
           owner_id: string | null
+          relationship_started_on: string | null
           service: string | null
           status: string
           updated_at: string
@@ -692,10 +694,12 @@ export type Database = {
           health?: string
           id?: string
           industry?: string | null
+          logo_url?: string | null
           name: string
           notes?: string | null
           organization_id: string
           owner_id?: string | null
+          relationship_started_on?: string | null
           service?: string | null
           status?: string
           updated_at?: string
@@ -711,10 +715,12 @@ export type Database = {
           health?: string
           id?: string
           industry?: string | null
+          logo_url?: string | null
           name?: string
           notes?: string | null
           organization_id?: string
           owner_id?: string | null
+          relationship_started_on?: string | null
           service?: string | null
           status?: string
           updated_at?: string

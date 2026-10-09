@@ -77,10 +77,51 @@ export type TasksData = {
   tasks: TaskRow[]
 }
 
+export type RelationshipPriority = {
+  key: string
+  clientId: string
+  clientName: string
+  title: string
+  reason: string
+  href: string
+  actionLabel: string
+  category: 'Follow-up' | 'Onboarding' | 'Invoice' | 'Quote' | 'Relationship'
+  dueAt: string | null
+}
+
+export type MyClientRow = {
+  id: string
+  name: string
+  status: string
+  indicator: 'Strong' | 'Stable' | 'Needs Attention' | 'Insufficient Data'
+  reason: string
+  nextFollowUpAt: string | null
+}
+
+export type UpcomingClientMilestone = {
+  id: string
+  clientId: string
+  clientName: string
+  name: string
+  type: string
+  date: string
+}
+
+export type RelationshipOverviewData = {
+  assigned: number
+  active: number
+  upcomingFollowUps: number
+  requiringAttention: number
+  clients: MyClientRow[]
+  priorities: RelationshipPriority[]
+  milestones: UpcomingClientMilestone[]
+}
+
 export type CrmOverview = {
   kpis: Section<KpiData>
   pipeline: Section<PipelineData>
   revenue: Section<RevenueChartData>
   activity: Section<ActivityEvent[]>
   tasks: Section<TasksData>
+  relationships: Section<RelationshipOverviewData>
 }
