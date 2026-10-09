@@ -18,7 +18,7 @@ Each applicable module has thin Next.js routes for its workspace, create form, r
 
 ## Mock fixtures
 
-Professional fixture records for the sixteen unconnected modules are isolated in `features/product-ui/mocks/modules.ts`. Local interactions on those modules intentionally reset on refresh. The tenant switcher renders the signed-in user's real organizations and memberships (via `ShellProvider`/`useShellContext`, see below) rather than a fixed visual list.
+There are none left: the former `features/product-ui/mocks/modules.ts` fixtures, and the shared record, form and action pages that read them, were removed once every module rendered from the database through its own register. The tenant switcher renders the signed-in user's real organizations and memberships (via `ShellProvider`/`useShellContext`, see below) rather than a fixed visual list.
 
 ## Shared interaction model
 
