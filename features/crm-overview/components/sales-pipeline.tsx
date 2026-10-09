@@ -39,7 +39,7 @@ function StageColumn({ column }: { column: Column }) {
   const total = formatMoneyList(column.totals, 'compact')
   const hidden = column.count - column.previews.length
   return (
-    <li className={cn('flex min-w-[12.5rem] flex-1 flex-col border-t-2 px-1 pt-3', column.closed ? 'border-success bg-[var(--success-soft)]/60' : 'border-brand/50')}>
+    <li className={cn('flex min-w-0 flex-col border-t-2 px-1 pt-3', column.closed ? 'border-success bg-[var(--success-soft)]/60' : 'border-brand/50')}>
       <div className="px-2">
         <h3 className={cn('text-xs font-semibold', column.closed ? 'text-success' : 'text-foreground')}>{column.title}</h3>
         {column.note ? <p className="text-[0.6875rem] text-[var(--briefing-muted)]">{column.note}</p> : null}
@@ -91,8 +91,8 @@ export function SalesPipeline({ pipeline, showLeadsLink }: { pipeline: Section<P
             No opportunities yet. <Link href="/commercial/sales/new" className="font-semibold text-brand hover:underline">Create the first one</Link>.
           </EmptyState>
         ) : null}
-        <div className="overflow-x-auto px-4 py-4">
-          <ul aria-label="Pipeline stages" className="flex gap-3">
+        <div className="px-4 py-4">
+          <ul aria-label="Pipeline stages" className="grid grid-cols-[repeat(auto-fit,minmax(10.5rem,1fr))] gap-x-3 gap-y-5">
             {columns.map((column) => <StageColumn key={column.title} column={column} />)}
           </ul>
         </div>
