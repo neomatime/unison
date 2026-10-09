@@ -1,27 +1,54 @@
-'use client'
-
-import { AlertTriangle, Building2, CheckCircle2, CreditCard, Database, Plus, Rocket, TicketCheck, Users } from 'lucide-react'
+import { Building2, CreditCard, Database, Plus, TicketCheck } from 'lucide-react'
 import Link from 'next/link'
 
-import { ProgressBar } from '@/components/ui/progress-bar'
+import { listPlatformOrganizations, listPlatformSubscriptions, listSupportCases, listTenantConfigurations } from '@/features/platform-admin/queries'
 
-import { provisioningRecords, tenants } from '../data'
-import { InternalMetric, InternalPageHeader, ProvisioningStatusBadge } from './internal-primitives'
+import { InternalEmptyState, InternalMetric, InternalPageHeader, ProvisioningStatusBadge } from './internal-primitives'
 
-export function InternalOverview() {
+const OPEN_CASE_STATUSES = ['Open', 'Investigating', 'Waiting on Customer']
+
+// Every figure is counted from the database; nothing here is a literal.
+export async function InternalOverview() {
+  const [organisations, tenants, subscriptions, cases] = await Promise.all([
+    listPlatformOrganizations(),
+    listTenantConfigurations(),
+    listPlatformSubscriptions(),
+    listSupportCases(),
+  ])
+  const activeOrganisations = organisations.filter((item) => item.status === 'active').length
+  const configuredTenants = tenants.filter((item) => item.configuration).length
+  const activeSubscriptions = subscriptions.filter((item: { status: string }) => item.status === 'active').length
+  const openCases = cases.filter((item: { status: string }) => OPEN_CASE_STATUSES.includes(item.status)).length
+
   return <>
-    <InternalPageHeader title="HIMARK Internal Overview" description="Provisioning, tenant and subscription operations across the UNISON platform." actions={<Link href="/internal/provisioning/new" className="inline-flex h-10 items-center gap-2 bg-brand px-4 text-sm font-medium text-white hover:bg-foreground"><Plus className="size-4 stroke-[1.6]" />New Client Provisioning</Link>} />
-    <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-8"><InternalMetric label="Organisations" value="12" detail="Eight live" icon={Building2} /><InternalMetric label="Tenants" value="9" detail="Production" icon={Database} /><InternalMetric label="Provisioning" value="6" detail="One ready" icon={Rocket} /><InternalMetric label="Active Users" value="286" detail="Across tenants" icon={Users} /><InternalMetric label="Subscriptions" value="8" detail="Two pending" icon={CreditCard} /><InternalMetric label="Renewals" value="3" detail="Next 90 days" icon={AlertTriangle} tone="warning" /><InternalMetric label="Open Tickets" value="14" detail="Three priority" icon={TicketCheck} /><InternalMetric label="Platform Health" value="99.9%" detail="All systems normal" icon={CheckCircle2} tone="success" /></section>
-    <div className="mt-5 grid gap-5 xl:grid-cols-[1.25fr_0.75fr]">
-      <section className="overflow-hidden border border-border bg-card">
-        <header className="flex items-center justify-between border-b border-border p-5"><div><h2 className="font-brand text-sm font-medium tracking-[0.08em] uppercase">Active Client Provisioning</h2><p className="mt-1 text-xs text-muted-foreground">Current organisation setup journeys.</p></div><Link href="/internal/provisioning" className="text-xs font-medium text-brand hover:text-foreground">View all</Link></header>
-        <div className="divide-y divide-border">{provisioningRecords.slice(0, 5).map((record) => <Link href={`/internal/provisioning/${record.id}`} key={record.id} className="grid items-center gap-4 px-5 py-4 hover:bg-muted/35 sm:grid-cols-[1fr_160px_140px_130px]"><div><p className="font-brand text-sm font-medium tracking-[0.035em]">{record.organisation}</p><p className="mt-1 text-xs text-muted-foreground">{record.tier} · {record.owner}</p></div><div className="flex items-center gap-2"><ProgressBar value={record.progress} /><span className="text-xs font-medium">{record.progress}%</span></div><ProvisioningStatusBadge status={record.status} /><span className="text-right text-xs text-muted-foreground">{record.updated}</span></Link>)}</div>
-      </section>
-      <section className="border border-border bg-card p-5">
-        <div className="flex items-center justify-between"><div><h2 className="font-brand text-sm font-medium tracking-[0.08em] uppercase">Tenant Operations</h2><p className="mt-1 text-xs text-muted-foreground">Recent platform activity.</p></div><Link href="/internal/tenants" className="text-xs font-medium text-brand hover:text-foreground">View tenants</Link></div>
-        <div className="mt-4 divide-y divide-border">{tenants.map((tenant) => <div key={tenant.id} className="flex items-center gap-3 py-4"><span className="flex size-8 items-center justify-center border border-brand/15 bg-brand-soft text-brand"><Database className="size-3.5 stroke-[1.6]" /></span><span className="min-w-0 flex-1"><span className="font-brand block truncate text-sm font-medium tracking-[0.03em]">{tenant.organisation}</span><span className="text-xs text-muted-foreground">{tenant.users} users · {tenant.activity}</span></span><ProvisioningStatusBadge status={tenant.status} /></div>)}</div>
-      </section>
-      <section className="border border-border bg-card p-5 xl:col-span-2"><h2 className="font-brand text-sm font-medium tracking-[0.08em] uppercase">Needs Attention</h2><div className="mt-4 grid gap-3 md:grid-cols-3">{[{ title: 'Provisioning retry required', detail: 'Veridian Health · Delivery settings', tone: 'danger', route: '/internal/provisioning' }, { title: 'Three renewals due', detail: 'Next 90 days · subscription review', tone: 'warning', route: '/internal/subscriptions' }, { title: 'Primary admin pending', detail: 'Aurelia Financial · Core setup', tone: 'warning', route: '/internal/provisioning' }].map((item) => <Link href={item.route} key={item.title} className={`border p-4 text-left hover:border-brand/30 ${item.tone === 'danger' ? 'border-danger/20 bg-danger-soft/20' : 'border-warning/20 bg-warning-soft/20'}`}><p className="font-brand text-sm font-medium tracking-[0.025em]">{item.title}</p><p className="mt-1 text-xs text-muted-foreground">{item.detail}</p></Link>)}</div></section>
-    </div>
+    <InternalPageHeader
+      title="HIMARK Internal Overview"
+      description="Organisations, tenants, subscriptions and support across the UNISON platform."
+      actions={<Link href="/internal/provisioning/new" className="inline-flex h-10 items-center gap-2 bg-brand px-4 text-sm font-medium text-primary-foreground hover:bg-brand/90"><Plus className="size-4" />New provisioning</Link>}
+    />
+    <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <InternalMetric label="Organisations" value={String(organisations.length)} detail={`${activeOrganisations} active`} icon={Building2} />
+      <InternalMetric label="Tenants" value={String(configuredTenants)} detail={`of ${organisations.length} configured`} icon={Database} />
+      <InternalMetric label="Subscriptions" value={String(subscriptions.length)} detail={`${activeSubscriptions} active`} icon={CreditCard} />
+      <InternalMetric label="Open support cases" value={String(openCases)} detail={`${cases.length} in total`} icon={TicketCheck} tone={openCases > 0 ? 'warning' : 'success'} />
+    </section>
+    <section className="mt-5 border border-border bg-card">
+      <header className="flex items-center justify-between border-b border-border p-5">
+        <h2 className="font-brand text-sm font-medium tracking-[0.08em] uppercase">Recent organisations</h2>
+        <Link href="/internal/organisations" className="text-xs font-semibold text-brand">View all</Link>
+      </header>
+      {organisations.length === 0 ? (
+        <InternalEmptyState title="No organisations yet" description="Provisioned organisations appear here." />
+      ) : (
+        <div className="divide-y divide-border">
+          {organisations.slice(0, 6).map((organisation) => (
+            <Link key={organisation.id} href={`/internal/tenants/${organisation.id}`} className="flex items-center justify-between gap-4 px-5 py-4 hover:bg-muted/50">
+              <span className="min-w-0"><span className="block truncate text-sm font-medium">{organisation.name}</span><span className="block truncate text-xs text-muted-foreground">{organisation.slug}</span></span>
+              <ProvisioningStatusBadge status={organisation.status} />
+            </Link>
+          ))}
+        </div>
+      )}
+    </section>
   </>
 }

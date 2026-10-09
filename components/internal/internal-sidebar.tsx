@@ -13,7 +13,7 @@ import { cn, getInitials } from '@/lib/utils'
 
 const sections = [
   { heading: 'Platform', items: [{ label: 'Overview', route: '/internal/overview', icon: LayoutDashboard }, { label: 'Organisations', route: '/internal/organisations', icon: Building2 }] },
-  { heading: 'Provisioning', items: [{ label: 'Client Provisioning', route: '/internal/provisioning', icon: SlidersHorizontal }, { label: 'Tenants', route: '/internal/tenants', icon: Database }, { label: 'Subscriptions', route: '/internal/subscriptions', icon: CreditCard }] },
+  { heading: 'Provisioning', items: [{ label: 'Client Provisioning', route: '/internal/provisioning/new', icon: SlidersHorizontal }, { label: 'Tenants', route: '/internal/tenants', icon: Database }, { label: 'Subscriptions', route: '/internal/subscriptions', icon: CreditCard }] },
   { heading: 'Support', items: [{ label: 'Support Tickets', route: '/internal/support', icon: TicketCheck }, { label: 'Knowledge Base', route: '/internal/knowledge', icon: BookOpen }] },
 ]
 

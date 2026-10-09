@@ -1,5 +1,7 @@
-import { ProvisioningRegister } from '@/features/internal-provisioning/components/provisioning-register'
+import { redirect } from 'next/navigation'
 
+// Provisioning is a single guided flow that creates the organisation; there is no
+// separate register of setups, and organisations it creates are listed under Organisations.
 export default function Page() {
-  return <ProvisioningRegister />
+  redirect('/internal/provisioning/new')
 }
