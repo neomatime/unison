@@ -47,6 +47,7 @@ test('registers expose row and state feedback affordances', () => {
   assert.match(workspaceSource, /role="status" aria-live="polite"/)
   assert.match(workspaceSource, /unison-action-control/)
   const primitives = source('features', 'delivery', 'components', 'delivery-primitives.tsx')
-  assert.match(primitives, /before:bg-brand/)
+  // Metric cards carry no accent rule: brand blue is reserved for primary actions and the active state.
+  assert.doesNotMatch(primitives, /before:bg-brand/)
   assert.match(primitives, /size-1\.5 rounded-full bg-current\/70/)
 })

@@ -200,7 +200,7 @@ export function RecordCollectionWorkspace({ config, compact = false, onPrimaryAc
 
   return <>
     <section className="overflow-hidden rounded-xl border border-border bg-card">
-      <header className="flex flex-wrap items-start justify-between gap-3 border-b border-border px-5 py-4">
+      <header className="flex flex-wrap items-start justify-between gap-3 px-5 py-4">
         <div><h2 className="unison-section-title text-xs">{config.title}</h2><p className="mt-1 text-xs text-muted-foreground">{config.description}</p></div>
         <div className="flex flex-wrap gap-2">
           {config.allowImport && config.portableCollection ? <button type="button" onClick={openImport} className="unison-action-control inline-flex h-9 items-center gap-2 rounded-lg border border-border px-3 text-xs font-semibold hover:bg-muted"><Import className="size-3.5" />Import</button> : null}
@@ -210,7 +210,7 @@ export function RecordCollectionWorkspace({ config, compact = false, onPrimaryAc
       </header>
 
       {/* Search, filters and exports have nothing to act on until a record exists. */}
-      {records.length ? <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-4">
+      {records.length ? <div className="flex flex-wrap items-center justify-between gap-3 px-5 pb-4">
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
           <label className="relative min-w-56 flex-1 sm:max-w-sm"><Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" /><input value={query} onChange={(event) => { setQuery(event.target.value); setPage(1) }} aria-label={`Search ${config.title}`} placeholder={`Search ${config.title.toLowerCase()}...`} className="unison-field h-10 w-full rounded-lg border border-border bg-background pr-3 pl-9 text-sm outline-none focus:border-brand" /></label>
           <select value={status} onChange={(event) => { setStatus(event.target.value); setPage(1) }} aria-label="Filter by status" className="unison-field h-10 cursor-pointer rounded-lg border border-border bg-card px-3 text-xs font-medium"><option>All status</option>{statuses.map((value) => <option key={value}>{value}</option>)}</select>
@@ -218,10 +218,10 @@ export function RecordCollectionWorkspace({ config, compact = false, onPrimaryAc
           <button type="button" onClick={() => setSortAscending((value) => !value)} className="unison-action-control inline-flex h-10 items-center gap-2 rounded-lg border border-border px-3 text-xs font-semibold hover:bg-muted"><ArrowDownUp className="size-3.5" />{sortAscending ? 'A–Z' : 'Z–A'}</button>
         </div>
         <div className="relative flex items-center gap-2">
-          <button type="button" aria-expanded={columnsOpen} onClick={() => setColumnsOpen((value) => !value)} className="unison-action-control inline-flex h-10 items-center gap-2 rounded-lg border border-border px-3 text-xs font-semibold hover:bg-muted"><Columns3 className="size-3.5" />Columns</button>
+          <button type="button" aria-expanded={columnsOpen} onClick={() => setColumnsOpen((value) => !value)} className="unison-action-control inline-flex h-10 items-center gap-2 rounded-lg px-3 text-xs font-semibold hover:bg-muted"><Columns3 className="size-3.5" />Columns</button>
           {columnsOpen ? <div className="absolute top-full right-0 z-30 mt-2 w-56 rounded-xl border border-border bg-card p-3 shadow-xl"><p className="text-xs font-semibold">Visible columns</p>{columns.map((column) => <label key={column.id} className="mt-2 flex items-center gap-2 text-xs"><input type="checkbox" defaultChecked />{column.label}</label>)}</div> : null}
-          {config.portableCollection ? <button type="button" onClick={() => setExportOpen(true)} className="unison-action-control inline-flex h-10 items-center gap-2 rounded-lg border border-border px-3 text-xs font-semibold hover:bg-muted"><FileText className="size-3.5" />Export</button> : null}
-          <button type="button" onClick={() => { setArchived((value) => !value); setSelected([]); setPage(1) }} className={`inline-flex h-10 items-center gap-2 rounded-lg border px-3 text-xs font-semibold ${archived ? 'border-brand bg-brand-soft text-brand' : 'border-border'}`}>{archived ? <RotateCcw className="size-3.5" /> : <Archive className="size-3.5" />}{archived ? 'Active' : 'Archived'}</button>
+          {config.portableCollection ? <button type="button" onClick={() => setExportOpen(true)} className="unison-action-control inline-flex h-10 items-center gap-2 rounded-lg px-3 text-xs font-semibold hover:bg-muted"><FileText className="size-3.5" />Export</button> : null}
+          <button type="button" onClick={() => { setArchived((value) => !value); setSelected([]); setPage(1) }} className={`inline-flex h-10 items-center gap-2 rounded-lg border px-3 text-xs font-semibold ${archived ? 'border-brand bg-brand-soft text-brand' : 'border-transparent hover:bg-muted'}`}>{archived ? <RotateCcw className="size-3.5" /> : <Archive className="size-3.5" />}{archived ? 'Active' : 'Archived'}</button>
         </div>
       </div> : null}
 
