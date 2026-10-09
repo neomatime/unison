@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils'
 import type { DeliveryHealth } from '../data'
 
 export function MetricCard({ label, value, detail, icon: Icon }: { label: string; value: string; detail: string; icon?: LucideIcon }) {
-  return <article className="relative overflow-hidden rounded-none border border-border bg-card px-4 py-4 before:absolute before:inset-x-0 before:top-0 before:h-0.5 before:bg-brand">
+  return <article className="overflow-hidden rounded-none border border-border bg-card px-4 py-4">
     {/* The label block reserves two lines whether or not it needs them. Without
         it, a label that wraps ("Outstanding approvals") pushes its own value down
         a line while its neighbours' values stay put, and the row of numbers sits
