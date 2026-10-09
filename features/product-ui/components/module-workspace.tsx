@@ -217,7 +217,7 @@ function recordValue(record: MockRecord, column: string) {
   // use as a plain identifier. Projects is the only module with a 'Next Gate'
   // column (verified against every definition in registry.ts), so this cannot
   // change any other module's cell.
-  const aliases: Record<string, string> = { Client: 'client', 'Primary Contact': 'contact', 'Service / Engagement': 'service', 'Account Owner': 'owner', 'Active Projects': 'projects', 'Client Health': 'health', 'Last Activity': 'updated',
+  const aliases: Record<string, string> = { Client: 'client', 'Primary Contact': 'contact', 'Service / Engagement': 'service', 'Engagement Type': 'engagementType', 'Account Owner': 'owner', 'Active Projects': 'projects', 'Client Health': 'health', 'Last Activity': 'updated',
     // 'Project' resolves to the record's own `project`, not to `name`. As
     // `name` it rendered a task's own title under Tasks' "Project" heading —
     // plausible enough to go unnoticed, and wrong on every row. Safe for the
