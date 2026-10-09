@@ -5,7 +5,6 @@ import test from 'node:test'
 
 import { modules as moduleDefinitions } from '../../config/modules.ts'
 import { lockedModuleIds, unisonTiers } from '../../config/unison-tiers.ts'
-import { moduleFixtures } from '../../features/product-ui/mocks/modules.ts'
 import { productModules } from '../../features/product-ui/registry.ts'
 
 const workspace = process.cwd()
@@ -548,33 +547,22 @@ test('every registry column resolves to a key its records actually carry', () =>
   // Forecast until those moved onto their own register components; it and its
   // half of this guard were deleted with it.)
   //
-  // Record keys come from whichever side is authoritative for that module:
-  // the query mapper for a connected module (Projects, Clients), the fixture
-  // record for everything else.
-  //
-  // What this does NOT cover: Onboarding and Team have their own bespoke
-  // screens (OnboardingScreen, TeamScreen) that never read `module.columns`
-  // at all, so there is no key-resolution mechanism to check their column
-  // lists against, and they are excluded below rather than checked against a
-  // mechanism they don't use. If either is ever pointed at one of the two
-  // shared workspaces above, its columns need checking by hand the way this
-  // task had to -- this test will not have exercised that path.
+  // What this does NOT cover: every other registry module renders through its
+  // own register or bespoke screen (PhaseSixRegister, PhaseFourRegister,
+  // OnboardingScreen, TeamScreen, ...) and never reads `module.columns`, so
+  // there is no key-resolution mechanism to check their column lists against.
+  // If one is ever pointed at ModuleWorkspace, its columns need checking by
+  // hand the way this task had to -- this test will not have exercised that path.
   const moduleWorkspaceSource = readFileSync(join(workspace, 'features', 'product-ui', 'components', 'module-workspace.tsx'), 'utf8')
   const moduleAliases = extractAliasMap(moduleWorkspaceSource, 'aliases')
 
-  // moduleFixtures still has 'projects' and 'clients' entries left over from
-  // before they were connected to the database, but neither page reads them
-  // any more (both pass live query results to ModuleWorkspace instead) -- so
-  // those two fixture entries must not be allowed to override the query
-  // mappers below, which are what the live pages actually render.
+  // Record keys come from the query mappers: those are what the live Projects
+  // and Clients pages hand to ModuleWorkspace.
   const recordKeysByModule: Record<string, Set<string>> = {}
-  for (const [id, records] of Object.entries(moduleFixtures)) {
-    recordKeysByModule[id] = new Set(records.flatMap((record) => Object.keys(record)))
-  }
   recordKeysByModule.projects = extractMapperKeys(readFileSync(join(workspace, 'features', 'delivery', 'queries', 'list-projects.ts'), 'utf8'))
   recordKeysByModule.clients = extractMapperKeys(readFileSync(join(workspace, 'features', 'clients', 'queries', 'list-clients.ts'), 'utf8'))
 
-  const moduleWorkspaceModules = new Set(['clients', 'projects', 'tasks', 'calendar', 'knowledge'])
+  const moduleWorkspaceModules = new Set(['clients', 'projects'])
 
   let checked = 0
   for (const module of productModules) {
@@ -599,7 +587,7 @@ test('every registry column resolves to a key its records actually carry', () =>
       checked += 1
     }
   }
-  assert.ok(checked >= 31, `expected to have checked columns across all 5 wired modules, only checked ${checked}`)
+  assert.ok(checked >= 14, `expected to have checked columns across both wired modules, only checked ${checked}`)
 })
 
 test('the projects register renders a real Next Gate value instead of always dashing it out', () => {
@@ -655,16 +643,16 @@ test('no rendered module declares more columns than its table will show', () => 
   // rendered, by holding each module's column count against the cap of the
   // component that renders it.
   //
-  // Both caps are read out of the components rather than restated here, so
-  // lowering a cap fails this test instead of silently truncating a register.
+  // The cap is read out of the component rather than restated here, so
+  // lowering it fails this test instead of silently truncating a register.
   const moduleWorkspaceSource = readFileSync(join(workspace, 'features', 'product-ui', 'components', 'module-workspace.tsx'), 'utf8')
 
   const moduleCap = Number(moduleWorkspaceSource.match(/const VISIBLE_COLUMN_CAP = (\d+)/)?.[1])
   assert.ok(Number.isInteger(moduleCap), 'could not read VISIBLE_COLUMN_CAP from module-workspace.tsx')
 
-  // Same split as the resolution guard above, and the same exclusions:
-  // Onboarding and Team render bespoke screens that never read module.columns.
-  const moduleWorkspaceModules = new Set(['clients', 'projects', 'tasks', 'calendar', 'knowledge'])
+  // Same module list as the resolution guard above: only these two render
+  // through ModuleWorkspace.
+  const moduleWorkspaceModules = new Set(['clients', 'projects'])
 
   let checked = 0
   for (const module of productModules) {
@@ -677,7 +665,7 @@ test('no rendered module declares more columns than its table will show', () => 
     )
     checked += 1
   }
-  assert.equal(checked, 5, `expected to check all 5 wired modules, checked ${checked}`)
+  assert.equal(checked, 2, `expected to check both wired modules, checked ${checked}`)
 })
 
 test('the projects register offers no view it cannot render from real records', () => {
