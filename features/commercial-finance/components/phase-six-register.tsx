@@ -59,7 +59,7 @@ export async function PhaseSixRegister({ kind }: { kind: PhaseSixKind }) {
         action={config.action}
         actionHref={`${config.base}/new`}
       />
-      <div className="grid gap-3 sm:grid-cols-3">
+      {active.length ? <div className="grid gap-3 sm:grid-cols-3">
         {config.metrics.map((metric) => (
           <MetricCard
             key={metric.label}
@@ -68,13 +68,14 @@ export async function PhaseSixRegister({ kind }: { kind: PhaseSixKind }) {
             detail={metric.detail}
           />
         ))}
-      </div>
+      </div> : null}
       <div className="mt-5">
         <RecordCollectionWorkspace config={{
           title: `${config.singular} Register`,
           singular: config.singular,
           description: config.registerDescription,
           primaryAction: config.action,
+          hideHeaderAction: true,
           records: config.records,
           recordHrefBase: config.base,
           columns: config.columns,
