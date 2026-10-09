@@ -64,6 +64,8 @@ export type CollectionConfig = {
   emptyDescription?: string
   recordHref?: (record: CollectionRecord) => string
   recordHrefBase?: string
+  /** The page already shows this action in its header, so don't repeat it in the register header. */
+  hideHeaderAction?: boolean
   state?: 'loaded' | 'loading' | 'error' | 'restricted'
 }
 
@@ -203,11 +205,12 @@ export function RecordCollectionWorkspace({ config, compact = false, onPrimaryAc
         <div className="flex flex-wrap gap-2">
           {config.allowImport && config.portableCollection ? <button type="button" onClick={openImport} className="unison-action-control inline-flex h-9 items-center gap-2 rounded-lg border border-border px-3 text-xs font-semibold hover:bg-muted"><Import className="size-3.5" />Import</button> : null}
           {config.allowLink ? <button type="button" onClick={() => setMessage(`Select a record to link to ${config.title.toLowerCase()}.`)} className="unison-action-control inline-flex h-9 items-center gap-2 rounded-lg border border-border px-3 text-xs font-semibold hover:bg-muted"><Link2 className="size-3.5" />Link existing</button> : null}
-          <button type="button" onClick={onPrimaryAction ?? (() => openRecord('create'))} className="unison-action-control inline-flex h-9 items-center gap-2 rounded-lg bg-brand px-3 text-xs font-semibold text-white hover:bg-brand/90"><Plus className="size-3.5" />{config.primaryAction ?? `Add ${config.singular}`}</button>
+          {config.hideHeaderAction ? null : <button type="button" onClick={onPrimaryAction ?? (() => openRecord('create'))} className="unison-action-control inline-flex h-9 items-center gap-2 rounded-lg bg-brand px-3 text-xs font-semibold text-white hover:bg-brand/90"><Plus className="size-3.5" />{config.primaryAction ?? `Add ${config.singular}`}</button>}
         </div>
       </header>
 
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-4">
+      {/* Search, filters and exports have nothing to act on until a record exists. */}
+      {records.length ? <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-4">
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
           <label className="relative min-w-56 flex-1 sm:max-w-sm"><Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" /><input value={query} onChange={(event) => { setQuery(event.target.value); setPage(1) }} aria-label={`Search ${config.title}`} placeholder={`Search ${config.title.toLowerCase()}...`} className="unison-field h-10 w-full rounded-lg border border-border bg-background pr-3 pl-9 text-sm outline-none focus:border-brand" /></label>
           <select value={status} onChange={(event) => { setStatus(event.target.value); setPage(1) }} aria-label="Filter by status" className="unison-field h-10 cursor-pointer rounded-lg border border-border bg-card px-3 text-xs font-medium"><option>All status</option>{statuses.map((value) => <option key={value}>{value}</option>)}</select>
@@ -220,7 +223,7 @@ export function RecordCollectionWorkspace({ config, compact = false, onPrimaryAc
           {config.portableCollection ? <button type="button" onClick={() => setExportOpen(true)} className="unison-action-control inline-flex h-10 items-center gap-2 rounded-lg border border-border px-3 text-xs font-semibold hover:bg-muted"><FileText className="size-3.5" />Export</button> : null}
           <button type="button" onClick={() => { setArchived((value) => !value); setSelected([]); setPage(1) }} className={`inline-flex h-10 items-center gap-2 rounded-lg border px-3 text-xs font-semibold ${archived ? 'border-brand bg-brand-soft text-brand' : 'border-border'}`}>{archived ? <RotateCcw className="size-3.5" /> : <Archive className="size-3.5" />}{archived ? 'Active' : 'Archived'}</button>
         </div>
-      </div>
+      </div> : null}
 
       {selected.length ? <div className="unison-live-region flex flex-wrap items-center justify-between gap-3 bg-brand-soft px-5 py-3 text-sm"><span><strong>{selected.length}</strong> selected</span><div className="flex gap-2">{config.contextualActions?.slice(0, 2).map((action) => <button key={action} type="button" onClick={() => openAction(action, `${selected.length} selected records`)} className="unison-action-control rounded-lg border border-brand/20 bg-card px-3 py-1.5 text-xs font-semibold hover:bg-muted">{action}</button>)}<button type="button" onClick={archiveSelected} className="unison-action-control inline-flex items-center gap-1 rounded-lg border border-destructive/20 bg-card px-3 py-1.5 text-xs font-semibold text-destructive hover:bg-destructive/5"><Archive className="size-3.5" />Archive</button></div></div> : null}
 
