@@ -52,6 +52,13 @@ export function Sidebar({ onNavigate }: SidebarProps = {}) {
     if (nav.firstElementChild) observer.observe(nav.firstElementChild)
     return () => observer.disconnect()
   }, [])
+  // Bring the current page into view. On a phone the list is taller than the room
+  // for it, and the page you are on was opening half hidden behind the footer.
+  // `nearest` leaves it alone when it is already visible, so desktop navigation
+  // doesn't jump the list around.
+  useEffect(() => {
+    navRef.current?.querySelector('[aria-current="page"]')?.scrollIntoView({ block: 'nearest' })
+  }, [pathname])
   // Opening or closing a section, or the rail, changes how tall the list is.
   useEffect(updateScrollEdges, [closedSections, collapsed])
   const { user, organization, role } = useShellContext()
@@ -177,19 +184,19 @@ export function Sidebar({ onNavigate }: SidebarProps = {}) {
         })}
       </nav>
 
-      <div className="grid grid-cols-3 gap-1 border-t border-tenant-sidebar-border px-3 py-2">
+      <div className="grid grid-cols-3 gap-1 border-t border-tenant-sidebar-border px-3 py-1 lg:py-2">
         <UtilityButton label="Search" collapsed={collapsed} onClick={() => setPanel('search')}><Search className="size-4" /></UtilityButton>
         <UtilityButton label="Notifications" collapsed={collapsed} onClick={() => setPanel('notifications')} dot={unread > 0}><Bell className="size-4" /></UtilityButton>
         <UtilityButton label="Help" collapsed={collapsed} onClick={() => setPanel('help')}><CircleHelp className="size-4" /></UtilityButton>
       </div>
 
       {/* User */}
-      <div className="relative border-t border-tenant-sidebar-border px-3 py-3">
+      <div className="relative border-t border-tenant-sidebar-border px-3 py-1.5 lg:py-3">
         <button
           type="button"
           onClick={() => setProfileOpen((value) => !value)}
           aria-expanded={profileOpen}
-          className="unison-action-control flex w-full items-center gap-3 px-2 py-2 text-left hover:bg-tenant-sidebar-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+          className="unison-action-control flex w-full items-center gap-3 px-2 py-1.5 text-left hover:bg-tenant-sidebar-hover lg:py-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
         >
           {avatarUrl ? (
             <Image
@@ -217,5 +224,5 @@ export function Sidebar({ onNavigate }: SidebarProps = {}) {
 }
 
 function UtilityButton({ label, collapsed, onClick, dot, children }: { label: string; collapsed: boolean; onClick: () => void; dot?: boolean; children: React.ReactNode }) {
-  return <button type="button" title={label} aria-label={label} onClick={onClick} className="unison-action-control relative flex flex-col items-center justify-center gap-1 px-1 py-2 text-tenant-sidebar-muted hover:bg-tenant-sidebar-hover hover:text-tenant-sidebar-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">{children}{dot ? <span className="absolute top-1 right-2 size-2 rounded-full bg-warning" /> : null}<span className={cn('text-[0.6rem]', collapsed && 'sr-only')}>{label}</span></button>
+  return <button type="button" title={label} aria-label={label} onClick={onClick} className="unison-action-control relative flex flex-col items-center justify-center gap-1 px-1 py-1.5 text-tenant-sidebar-muted lg:py-2 hover:bg-tenant-sidebar-hover hover:text-tenant-sidebar-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">{children}{dot ? <span className="absolute top-1 right-2 size-2 rounded-full bg-warning" /> : null}<span className={cn('text-[0.6rem]', collapsed && 'sr-only')}>{label}</span></button>
 }
