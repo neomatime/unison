@@ -53,7 +53,7 @@ test('no figure is hard-coded into a component', () => {
 test('the header carries the CRM copy and takes the greeting from the viewer clock', () => {
   assert.match(header, /Here&apos;s your CRM overview\./)
   assert.match(header, /A clear view of your pipeline, clients, and commercial performance\./)
-  assert.match(header, /const SEARCH_PLACEHOLDER = 'Search clients, leads, quotes, vendors\.\.\.'/)
+  assert.doesNotMatch(header, /UtilityPanel|Search|Bell/, 'search and notifications live in the sidebar, not on this page')
   assert.match(header, /useShellContext\(\)/)
   assert.doesNotMatch(header, /TenantSwitcher/, 'the organisation switcher lives in the sidebar')
   assert.match(header, /greetingFor\(new Date\(\)\.getHours\(\)\)/)
