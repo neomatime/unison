@@ -10,7 +10,7 @@ import {
 
 const kpis = () => ({
   timezone: 'Africa/Johannesburg',
-  clients: { total: 24, at_previous_month_end: 22 },
+  clients: { total: 24, retainer: 15, project: 7, at_previous_month_end: 22 },
   leads: { open: 18, created_this_month: 4 },
   quotes: { active: 12, sent: 5 },
   revenue: {
@@ -21,7 +21,7 @@ const kpis = () => ({
 
 test('KPIs are read into the typed shape', () => {
   const read = normalizeKpis(kpis())
-  assert.deepEqual(read.clients, { total: 24, atPreviousMonthEnd: 22 })
+  assert.deepEqual(read.clients, { total: 24, retainer: 15, project: 7, atPreviousMonthEnd: 22 })
   assert.deepEqual(read.leads, { open: 18, createdThisMonth: 4 })
   assert.deepEqual(read.quotes, { active: 12, sent: 5 })
   assert.deepEqual(read.revenue, {
@@ -38,19 +38,19 @@ test('a module the plan excludes arrives as null and stays null, not zero', () =
 })
 
 test('a genuine zero is kept as zero', () => {
-  const read = normalizeKpis({ ...kpis(), clients: { total: 0, at_previous_month_end: 0 } })
-  assert.deepEqual(read.clients, { total: 0, atPreviousMonthEnd: 0 })
+  const read = normalizeKpis({ ...kpis(), clients: { total: 0, retainer: 0, project: 0, at_previous_month_end: 0 } })
+  assert.deepEqual(read.clients, { total: 0, retainer: 0, project: 0, atPreviousMonthEnd: 0 })
 })
 
 test('numeric strings from Postgres numerics are accepted', () => {
-  const read = normalizeKpis({ ...kpis(), clients: { total: '24', at_previous_month_end: '22' } })
+  const read = normalizeKpis({ ...kpis(), clients: { total: '24', retainer: 0, project: 0, at_previous_month_end: '22' } })
   assert.equal(read.clients!.total, 24)
 })
 
 test('a malformed or missing figure throws, so the card shows an error and never a fake zero', () => {
   assert.throws(() => normalizeKpis({ ...kpis(), clients: { total: null, at_previous_month_end: 1 } }), /clients\.total/)
   assert.throws(() => normalizeKpis({ ...kpis(), clients: { total: 'many', at_previous_month_end: 1 } }), /clients\.total/)
-  assert.throws(() => normalizeKpis({ ...kpis(), clients: { total: '', at_previous_month_end: 1 } }), /clients\.total/)
+  assert.throws(() => normalizeKpis({ ...kpis(), clients: { total: '', retainer: 0, project: 0, at_previous_month_end: 1 } }), /clients\.total/)
   assert.throws(() => normalizeKpis({ ...kpis(), clients: { at_previous_month_end: 1 } }), /clients\.total/)
   const { quotes: _omitted, ...withoutQuotes } = kpis()
   assert.throws(() => normalizeKpis(withoutQuotes), /quotes is missing/)

@@ -25,6 +25,7 @@ export async function createClientAction(_prev: { error?: string } | undefined, 
     notes: parsed.data.notes,
     status: parsed.data.status,
     health: parsed.data.health,
+    engagement_type: parsed.data.engagementType,
   }).select('id').single()
 
   if (error) return { error: 'The client could not be created.' }

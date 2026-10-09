@@ -28,13 +28,19 @@ export type KpiCardModel = { id: KpiCardId; label: string; href: string; body: K
 const count = new Intl.NumberFormat('en-ZA')
 const asDelta = (percent: number | null) => (percent === null ? null : describeDelta(percent))
 
+/** Retainer and project clients, plus any not yet typed so the parts always add up to the total. */
+function clientSplit({ total, retainer, project }: { total: number; retainer: number; project: number }) {
+  const untyped = total - retainer - project
+  return `${count.format(retainer)} Retainer · ${count.format(project)} Project${untyped > 0 ? ` · ${count.format(untyped)} not set` : ''}`
+}
+
 function clients(data: KpiData): KpiBody {
   if (!data.clients) return { state: 'unavailable' }
   const { total, atPreviousMonthEnd } = data.clients
   return {
     state: 'ready',
     value: count.format(total),
-    caption: total === 0 ? 'No clients recorded yet' : 'Active client records',
+    caption: total === 0 ? 'No clients recorded yet' : clientSplit(data.clients),
     delta: asDelta(percentChange(total, atPreviousMonthEnd)),
     deltaLabel: 'vs last month',
   }

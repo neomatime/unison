@@ -9,7 +9,7 @@ const squash = (value: string) => value.replace(/[\s  ]/g, '')
 const data = (over: Partial<KpiData> = {}): Section<KpiData> => ({
   status: 'ready',
   data: {
-    clients: { total: 24, atPreviousMonthEnd: 22 },
+    clients: { total: 24, retainer: 15, project: 7, atPreviousMonthEnd: 22 },
     leads: { open: 18, createdThisMonth: 4 },
     quotes: { active: 12, sent: 5 },
     revenue: { byCurrency: [{ currency: 'ZAR', yearToDate: 3_800_000, previousYearToDate: 3_300_000, deals: 5 }], wonWithoutDate: 0 },
@@ -48,15 +48,15 @@ test('clients compare against the end of last month, and only when that base is 
   assert.deepEqual(up.delta, { direction: 'up', text: '9%' })
   assert.equal(up.deltaLabel, 'vs last month')
 
-  const down = ready(card(data({ clients: { total: 20, atPreviousMonthEnd: 25 } }), 'clients').body)
+  const down = ready(card(data({ clients: { total: 20, retainer: 0, project: 0, atPreviousMonthEnd: 25 } }), 'clients').body)
   assert.deepEqual(down.delta, { direction: 'down', text: '20%' })
 
-  const noBase = ready(card(data({ clients: { total: 5, atPreviousMonthEnd: 0 } }), 'clients').body)
+  const noBase = ready(card(data({ clients: { total: 5, retainer: 0, project: 0, atPreviousMonthEnd: 0 } }), 'clients').body)
   assert.equal(noBase.delta, null, 'growth from nothing has no percentage')
 })
 
 test('a genuine zero is shown as zero with an honest caption', () => {
-  const body = ready(card(data({ clients: { total: 0, atPreviousMonthEnd: 0 } }), 'clients').body)
+  const body = ready(card(data({ clients: { total: 0, retainer: 0, project: 0, atPreviousMonthEnd: 0 } }), 'clients').body)
   assert.equal(body.value, '0')
   assert.equal(body.caption, 'No clients recorded yet')
   assert.equal(body.delta, null)
@@ -131,4 +131,10 @@ test('a failed load is an error on every card, never zeros', () => {
   for (const failed of [{ status: 'error' }, { status: 'unavailable' }] as Array<Section<KpiData>>) {
     for (const entry of buildKpiCards(failed)) assert.equal(entry.body.state, 'error', `${entry.id} must not render a value`)
   }
+})
+
+test('the clients card splits retainer from project clients and counts the untyped ones', () => {
+  assert.equal(ready(card(data(), 'clients').body).caption, '15 Retainer · 7 Project · 2 not set')
+  const typed = ready(card(data({ clients: { total: 10, retainer: 6, project: 4, atPreviousMonthEnd: 9 } }), 'clients').body)
+  assert.equal(typed.caption, '6 Retainer · 4 Project')
 })

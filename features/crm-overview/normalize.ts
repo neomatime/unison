@@ -55,6 +55,8 @@ export function normalizeKpis(raw: unknown): KpiData {
   return {
     clients: optionalSection(root, 'clients', (c) => ({
       total: reqNumber(c.total, 'clients.total'),
+      retainer: reqNumber(c.retainer, 'clients.retainer'),
+      project: reqNumber(c.project, 'clients.project'),
       atPreviousMonthEnd: reqNumber(c.at_previous_month_end, 'clients.at_previous_month_end'),
     })),
     leads: optionalSection(root, 'leads', (l) => ({
