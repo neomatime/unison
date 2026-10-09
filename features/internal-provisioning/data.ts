@@ -60,22 +60,6 @@ export const initialProvisioningState: ProvisioningWizardState = {
   draftStatus: 'Unsaved',
 }
 
-export const provisioningRecords = [
-  { id: 'growthpoint-setup', organisation: 'Growthpoint Properties', tier: 'UNISON Enterprise', owner: 'Neo Morake', modules: '15', progress: 92, goLive: '12 Oct 2026', status: 'Ready for Provisioning', updated: 'Today, 10:42' },
-  { id: 'northstar-setup', organisation: 'Northstar Advisory', tier: 'UNISON Framework', owner: 'Amara Dlamini', modules: '9', progress: 68, goLive: '02 Nov 2026', status: 'Configuration', updated: 'Yesterday' },
-  { id: 'meridian-setup', organisation: 'Meridian Group', tier: 'Strategic Enterprise', owner: 'Neo Morake', modules: '15', progress: 100, goLive: '15 Sep 2026', status: 'Live', updated: '22 Aug 2026' },
-  { id: 'aurelia-setup', organisation: 'Aurelia Financial', tier: 'UNISON Core', owner: 'Lethabo Nkosi', modules: '7', progress: 36, goLive: '18 Nov 2026', status: 'Draft', updated: '20 Aug 2026' },
-  { id: 'kopano-setup', organisation: 'Kopano Logistics', tier: 'UNISON Enterprise', owner: 'Amara Dlamini', modules: '15', progress: 74, goLive: '28 Oct 2026', status: 'Paused', updated: '18 Aug 2026' },
-  { id: 'veridian-setup', organisation: 'Veridian Health', tier: 'UNISON Framework', owner: 'Neo Morake', modules: '9', progress: 81, goLive: '20 Oct 2026', status: 'Failed', updated: '17 Aug 2026' },
-]
-
-export const organisations = [
-  { id: 'growthpoint', name: 'Growthpoint Properties', tier: 'UNISON Enterprise', status: 'Provisioning', modules: '15', admin: 'Sarah Johnson', owner: 'Neo Morake', created: '24 Aug 2026', activity: '10m ago' },
-  { id: 'meridian', name: 'Meridian Group', tier: 'Strategic Enterprise', status: 'Active', modules: '15', admin: 'Olivia Grant', owner: 'Amara Dlamini', created: '03 Mar 2026', activity: '1h ago' },
-  { id: 'northstar', name: 'Northstar Advisory', tier: 'UNISON Framework', status: 'Configuration', modules: '9', admin: 'Mia Daniels', owner: 'Amara Dlamini', created: '18 Aug 2026', activity: 'Yesterday' },
-  { id: 'aurelia', name: 'Aurelia Financial', tier: 'UNISON Core', status: 'Draft', modules: '7', admin: 'Pending', owner: 'Lethabo Nkosi', created: '20 Aug 2026', activity: '4 days ago' },
-]
-
 export const tenants = [
   { id: 'tenant-growthpoint', tenant: 'growthpoint.unison', organisation: 'Growthpoint Properties', tier: 'UNISON Enterprise', modules: '15', users: '3', status: 'Provisioning', environment: 'Production', created: '24 Aug 2026', activity: '10m ago' },
   { id: 'tenant-meridian', tenant: 'meridian.unison', organisation: 'Meridian Group', tier: 'Strategic Enterprise', modules: '15', users: '48', status: 'Active', environment: 'Production', created: '03 Mar 2026', activity: '1h ago' },

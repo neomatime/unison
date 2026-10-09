@@ -233,7 +233,6 @@ test('HIMARK internal administration is isolated from tenant onboarding', () => 
     'organisations/page.tsx',
     'provisioning/page.tsx',
     'provisioning/new/page.tsx',
-    'provisioning/[provisioningId]/page.tsx',
     'tenants/page.tsx',
     'subscriptions/page.tsx',
     'support/page.tsx',
@@ -388,7 +387,6 @@ test('the provisioning success dialog claims only the invitation that was actual
 })
 
 test('internal registers provide non-destructive operational actions and tier impact review', () => {
-  const provisioning = readFileSync(join(workspace, 'features', 'internal-provisioning', 'components', 'provisioning-register.tsx'), 'utf8')
   const registers = readFileSync(join(workspace, 'features', 'internal-provisioning', 'components', 'internal-registers.tsx'), 'utf8')
   const tierPage = readFileSync(join(workspace, 'features', 'internal-provisioning', 'components', 'internal-action-pages.tsx'), 'utf8')
 
@@ -398,10 +396,7 @@ test('internal registers provide non-destructive operational actions and tier im
   // "local-state Suspend/Archive" survives in a comment thirty lines above.
   const rowAction = (label: string) => new RegExp(`label: '${label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}'`)
 
-  for (const action of ['Continue Setup', 'Duplicate Setup', 'Pause', 'Resume', 'Archive']) {
-    assert.match(provisioning, rowAction(action), `${action} must be offered as a row action`)
-  }
-  for (const action of ['View Tenant', 'View Provisioning', 'Manage Subscription', 'Change Tier', 'Update Subscription', 'Suspend']) {
+  for (const action of ['View Tenant', 'Manage Subscription', 'Change Tier', 'Update Subscription', 'Suspend']) {
     assert.match(registers, rowAction(action), `${action} must be offered as a row action`)
   }
 

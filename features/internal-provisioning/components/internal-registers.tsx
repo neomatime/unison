@@ -24,7 +24,7 @@ export function OrganisationsScreen({ records }: { records: OrganisationRow[] })
   const rows = records.map((record) => [
     <button type="button" onClick={() => open(record)} className="font-brand text-sm font-medium tracking-[0.035em] hover:text-brand" key="name">{record.name}</button>,
     record.tier, <ProvisioningStatusBadge status={record.status} key="status" />, record.modules, record.admin, record.owner, record.created, record.activity,
-    <RowActionMenu key="actions" label={record.name} actions={[{ id: 'tenant', label: 'View Tenant', onSelect: () => open(record) }, { id: 'provisioning', label: 'View Provisioning', onSelect: () => window.location.assign(`/internal/provisioning/${record.id}-setup`) }, { id: 'subscription', label: 'Manage Subscription', onSelect: () => window.location.assign('/internal/subscriptions') }]} />,
+    <RowActionMenu key="actions" label={record.name} actions={[{ id: 'details', label: 'View Details', onSelect: () => open(record) }, { id: 'tenant', label: 'View Tenant', onSelect: () => window.location.assign(`/internal/tenants/${record.id}`) }, { id: 'subscription', label: 'Manage Subscription', onSelect: () => window.location.assign('/internal/subscriptions') }]} />,
   ])
   return <>
     <InternalPageHeader title="Organisations" description="Internal view of organisations configured for the UNISON platform." actions={<Link href="/internal/provisioning/new" className="inline-flex h-10 items-center gap-2 bg-brand px-4 text-sm font-medium text-white hover:bg-foreground"><Plus className="size-4 stroke-[1.6]" />New Organisation</Link>} />
