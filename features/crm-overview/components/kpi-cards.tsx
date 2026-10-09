@@ -16,7 +16,7 @@ function Card({ label, icon: Icon, href, body }: { label: string; icon: LucideIc
         <span aria-hidden="true" className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[var(--brand-soft)] text-brand sm:size-10">
           <Icon className="size-4 sm:size-5" strokeWidth={1.75} />
         </span>
-        <p className="unison-metric-label text-[0.675rem] text-muted-foreground">{label}</p>
+        <p className="unison-metric-label min-h-[2lh] text-[0.675rem] text-muted-foreground sm:min-h-0">{label}</p>
       </div>
       {body.state === 'ready' ? (
         <div className="mt-3">
@@ -49,7 +49,12 @@ function DeltaLine({ delta, label, reason }: { delta: Delta | null; label: strin
     return (
       <p className="mt-2 flex items-center gap-1 text-xs text-[var(--briefing-muted)]">
         <Minus aria-hidden="true" className="size-3.5" />
-        {reason ?? 'No comparison available'}
+        {reason ?? (
+          <>
+            <span aria-hidden="true" className="sm:hidden">No prior data</span>
+            <span className="max-sm:sr-only">No comparison available</span>
+          </>
+        )}
       </p>
     )
   }
