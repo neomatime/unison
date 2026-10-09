@@ -24,6 +24,7 @@ export async function updateClientAction(id: string, _prev: { error?: string } |
     notes: parsed.data.notes,
     status: parsed.data.status,
     health: parsed.data.health,
+    engagement_type: parsed.data.engagementType,
   }).eq('organization_id', organization.id).eq('id', id)
 
   if (error) return { error: 'The client could not be updated.' }

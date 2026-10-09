@@ -14,7 +14,7 @@ export type Section<T> =
   | { status: 'unavailable' }
   | { status: 'error' }
 
-export type ClientsKpi = { total: number; atPreviousMonthEnd: number }
+export type ClientsKpi = { total: number; retainer: number; project: number; atPreviousMonthEnd: number }
 export type LeadsKpi = { open: number; createdThisMonth: number }
 export type QuotesKpi = { active: number; sent: number }
 export type RevenueCurrencyKpi = { currency: string; yearToDate: number; previousYearToDate: number; deals: number }

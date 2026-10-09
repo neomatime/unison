@@ -14,6 +14,7 @@ export const clientInputSchema = z.object({
   notes: optionalText,
   status: z.enum(['Onboarding', 'Active', 'Archived']).default('Onboarding'),
   health: z.enum(['New', 'Healthy', 'Watch', 'Stable', 'At Risk']).default('New'),
+  engagementType: z.enum(['Retainer', 'Project']).optional().or(z.literal('')).transform((v) => v || null),
 })
 
 export type ClientInput = z.infer<typeof clientInputSchema>
