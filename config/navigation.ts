@@ -27,7 +27,7 @@ export type NavigationItem = {
 }
 
 export type NavigationSection = {
-  heading?: 'Delivery' | 'Operations' | 'Commercial' | 'Finance' | 'People'
+  heading?: 'Operations' | 'Commercial' | 'Finance' | 'People'
   items: NavigationItem[]
 }
 
@@ -70,13 +70,16 @@ const itemFor = (id: (typeof modules)[number]['id'], moduleIds: readonly UnisonM
  * heading tells a Core tenant they are missing something without saying what.
  */
 export function navigationSectionsFor(moduleIds: readonly UnisonModuleId[]): NavigationSection[] {
+  // UNISON is HIMARK's CRM, so there is no Delivery section: the 'delivery'
+  // category contributes only Overview, which sits above the headed sections.
+  // Portfolio, Projects, Frameworks and Approvals are deliberately not listed.
+  // Their routes still work; they are just not in the menu.
   const sections: NavigationSection[] = [
     { items: itemFor('overview', moduleIds) },
-    { heading: 'Delivery', items: itemsFor('delivery', moduleIds).filter((item) => item.id !== 'overview') },
+    { heading: 'People', items: itemsFor('people', moduleIds) },
     { heading: 'Operations', items: itemsFor('operations', moduleIds) },
     { heading: 'Commercial', items: itemsFor('commercial', moduleIds) },
     { heading: 'Finance', items: itemsFor('finance', moduleIds) },
-    { heading: 'People', items: itemsFor('people', moduleIds) },
   ]
   return sections.filter((section) => section.items.length > 0)
 }

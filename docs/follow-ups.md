@@ -991,3 +991,40 @@ its history row. What that slice left, and what its reviews found:
 - No test exercises the server action runtime; only a signed-in walk does. The browser behaviour of the new registers
   and gate forms is unverified by a person.
 - `updateDecisionAction` has one very long line, and its create and missing-row errors share one message.
+
+## From the CRM dashboard slice (2026-10-09)
+
+The Overview is now a CRM dashboard and the sidebar has no Delivery section. Design and metric definitions:
+`docs/superpowers/specs/2026-10-09-crm-dashboard-design.md`. What it left, and what its inspection found:
+
+- **Core and Framework tenants lost menu access to their main modules.** Their tiers are still defined as the "governed
+  delivery foundation" (`config/unison-tiers.ts`), and Portfolio, Projects, Frameworks and Approvals are no longer in the
+  sidebar for anyone. The routes, tables and entitlements are untouched, so those pages work by URL, but a Core tenant's
+  menu is now Overview, Team and Vendors. Either the tiers need redefining or those tiers need menu entries. The
+  provisioning wizard and tier descriptions also still use the word Delivery.
+- **The old overview code is still in the repo, unused.** `features/overview/` (fixture-backed, hard-coded figures),
+  `features/delivery/components/delivery-overview-*.tsx`, `delivery-briefing-header.tsx` (which still carries the old
+  "Search projects, clients, vendors..." placeholder) and `features/delivery/queries/delivery-overview.ts`, with their tests.
+  Delete once Delivery is confirmed gone for good.
+- **There is no organisation currency, timezone or financial-year setting.** Reports use `Africa/Johannesburg`
+  (`REPORTING_TIME_ZONE` in `get-crm-overview.ts`) and the calendar year, and money is never summed across currencies. A
+  tenant with several currencies sees them side by side, with no total and no comparison.
+- **Open Leads and Active Quotes cannot show a month-on-month change.** Neither table keeps status history (and
+  `audit_events` is readable by owners and admins only), so what they were a month ago cannot be rebuilt. Total Clients can,
+  from `created_at` / `archived_at`.
+- **"Lead converted" and "onboarding completed" are not in Recent Activity.** They have no timestamp column of their own.
+  `converted_at` / `completed_at` columns would let them be shown without guessing.
+- **The same re-stamping defect exists elsewhere.** `savePhaseSixRecordAction` rebuilds the whole row on every save. That
+  re-dated `sales_opportunities.won_at` and `quotes.sent_at` / `accepted_at` (now fixed by triggers in
+  `20261009100000_crm_overview.sql`), and still does it to `invoices.paid_at` and `expenses.submitted_at` / `approved_at`.
+- **A stored opportunity value of 0 cannot be told from "no value entered"**, so the pipeline shows "No value" for it.
+- **Revenue is sales booked.** Invoiced and collected amounts are not shown, and the chart does not plot the forecasts in
+  Finance. A "Won" opportunity with no `won_at` (possible only for rows that predate the trigger; there are none) is
+  disclosed on the card and left out of the figure.
+- **Open pipeline is only shown from the current month onward**, because pipeline for past months cannot be reconstructed.
+  Pipeline with no close date, a past close date, or a close date next year is counted and disclosed under the chart.
+- **Not exercised signed in.** The dashboard was checked with fixture data in a throwaway preview, with SQL tests against
+  fixture organisations, and with unit tests, but not in a signed-in session against real records (production holds none).
+  The refresh-on-change path (`record_change_events` to `RealtimeRefresh` to `router.refresh()`) exists and every source
+  table writes to it, but it was not watched end to end.
+- **`pnpm lint` cannot run in this checkout:** `eslint` is not installed, so lint was not run.

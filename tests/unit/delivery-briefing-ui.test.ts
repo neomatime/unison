@@ -3,30 +3,15 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import test from 'node:test'
 
+// The tenant Overview is now the CRM dashboard (see crm-overview-ui.test.ts). These
+// tests cover the delivery briefing components that remain in the repository and are
+// still reachable through their own code, but are no longer mounted on /overview.
 const workspace = process.cwd()
-const overviewPage = readFileSync(join(workspace, 'app', '(unison)', 'overview', 'page.tsx'), 'utf8')
 const overviewScreen = readFileSync(join(workspace, 'features', 'delivery', 'components', 'delivery-overview-screen.tsx'), 'utf8')
 const overviewComponents = readFileSync(join(workspace, 'features', 'delivery', 'components', 'delivery-overview-components.tsx'), 'utf8')
 const briefingHeader = readFileSync(join(workspace, 'features', 'delivery', 'components', 'delivery-briefing-header.tsx'), 'utf8')
 const deliveryPrimitives = readFileSync(join(workspace, 'features', 'delivery', 'components', 'delivery-primitives.tsx'), 'utf8')
 const designTokens = readFileSync(join(workspace, 'styles', 'tokens.css'), 'utf8')
-
-test('the live tenant overview stays connected to the real delivery query', () => {
-  assert.match(
-    overviewPage,
-    /import \{ DeliveryOverviewScreen \} from ['"]@\/features\/delivery\/components\/delivery-overview-screen['"]/,
-  )
-  assert.match(
-    overviewPage,
-    /import \{ getDeliveryOverview \} from ['"]@\/features\/delivery\/queries\/delivery-overview['"]/,
-  )
-  assert.match(overviewPage, /const overview = await getDeliveryOverview\(\)/)
-  assert.match(overviewPage, /<DeliveryOverviewScreen overview=\{overview\} \/>/)
-
-  const importSources = [...overviewPage.matchAll(/from\s+['"]([^'"]+)['"]/g)].map((match) => match[1])
-  assert.equal(importSources.some((source) => source.includes('features/overview')), false, 'the retired fixture-backed Overview must not be reconnected')
-  assert.equal(importSources.some((source) => /(?:^|\/)(?:mocks|fixtures?)(?:\/|$)|(?:^|\/)data$/.test(source)), false, 'the live Overview must not import fixture data')
-})
 
 test('the overview screen composes exactly the briefing header and three primary zones', () => {
   const renderedComponents = [...overviewScreen.matchAll(/<([A-Z][A-Za-z0-9]*)\b/g)].map((match) => match[1])
