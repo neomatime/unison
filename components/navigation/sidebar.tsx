@@ -14,6 +14,8 @@ import { roles } from '@/config/roles'
 import { signOutAction } from '@/features/auth-ui/actions/sign-out'
 import { UtilityPanel, type UtilityPanelKind } from '@/components/shared/utility-panel'
 
+const CLOSED_SECTIONS_KEY = 'unison:sidebar:closed-sections'
+
 type SidebarProps = {
   onNavigate?: () => void
 }
@@ -24,11 +26,26 @@ export function Sidebar({ onNavigate }: SidebarProps = {}) {
   const [profileOpen, setProfileOpen] = useState(false)
   const [panel, setPanel] = useState<UtilityPanelKind | null>(null)
   const [unread, setUnread] = useState(0)
+  const [closedSections, setClosedSections] = useState<string[]>([])
   const { user, organization, role } = useShellContext()
   const navigationSections = useNavigationSections()
   const displayName = user.displayName
   const avatarUrl = user.avatarUrl
   const roleLabel = roles.find((definition) => definition.id === role)?.label ?? role
+  // Read after mount so server and first client render agree; a blocked or empty store just means all open.
+  useEffect(() => {
+    try {
+      const stored = JSON.parse(window.localStorage.getItem(CLOSED_SECTIONS_KEY) ?? '[]') as unknown
+      if (Array.isArray(stored)) setClosedSections(stored.filter((value): value is string => typeof value === 'string'))
+    } catch { /* per-viewer convenience only */ }
+  }, [])
+  function toggleSection(heading: string) {
+    setClosedSections((current) => {
+      const next = current.includes(heading) ? current.filter((value) => value !== heading) : [...current, heading]
+      try { window.localStorage.setItem(CLOSED_SECTIONS_KEY, JSON.stringify(next)) } catch { /* ignore */ }
+      return next
+    })
+  }
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
@@ -68,24 +85,35 @@ export function Sidebar({ onNavigate }: SidebarProps = {}) {
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto px-3 pb-4" aria-label="Primary">
-        {navigationSections.map((section, sectionIndex) => (
-          <div key={section.heading ?? `section-${sectionIndex}`} className="mb-2">
+        {navigationSections.map((section, sectionIndex) => {
+          const isItemActive = (item: (typeof section.items)[number]) => item.route === '/overview'
+            ? pathname === '/' || pathname === '/overview'
+            : pathname.startsWith(item.route)
+          const sectionClosed = Boolean(section.heading && !collapsed && closedSections.includes(section.heading))
+          // A closed section keeps showing the page the user is on, so they never lose their place.
+          const visibleItems = sectionClosed ? section.items.filter(isItemActive) : section.items
+          return <div key={section.heading ?? `section-${sectionIndex}`} className="mb-2">
             {section.heading ? (
-              <p className={cn('px-3 pt-4 pb-2 font-brand text-[0.6875rem] font-medium tracking-[0.14em] text-tenant-sidebar-muted uppercase', collapsed && 'sr-only')}>
+              <button
+                type="button"
+                onClick={() => toggleSection(section.heading!)}
+                aria-expanded={!sectionClosed}
+                tabIndex={collapsed ? -1 : undefined}
+                className={cn('unison-action-control flex w-full items-center justify-between px-3 pt-4 pb-2 text-left font-brand text-[0.6875rem] font-medium tracking-[0.14em] text-tenant-sidebar-muted uppercase hover:text-tenant-sidebar-foreground focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-brand', collapsed && 'sr-only')}
+              >
                 {section.heading}
-              </p>
+                <ChevronDown aria-hidden="true" className={cn('size-3.5 transition-transform', sectionClosed && '-rotate-90')} />
+              </button>
             ) : (
               <div className="pt-1" />
             )}
             <ul className="flex flex-col gap-0.5">
-              {section.items.map((item) => {
+              {visibleItems.map((item) => {
                 // Resolved here rather than carried on the item: the sections
                 // come from a Server Component and an icon is a function, which
                 // cannot cross the RSC boundary.
                 const Icon = moduleIcons[item.id]
-                const isActive = item.route === '/overview'
-                  ? pathname === '/' || pathname === '/overview'
-                  : pathname.startsWith(item.route)
+                const isActive = isItemActive(item)
                 return <li key={item.label}>
                   <Link
                     href={item.enabled ? item.route : '#'}
@@ -114,7 +142,7 @@ export function Sidebar({ onNavigate }: SidebarProps = {}) {
               })}
             </ul>
           </div>
-        ))}
+        })}
       </nav>
 
       <div className="grid grid-cols-3 gap-1 border-t border-tenant-sidebar-border px-3 py-2">
