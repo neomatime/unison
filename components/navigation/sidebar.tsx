@@ -13,6 +13,7 @@ import { InitialAvatar } from '@/components/ui/initial-avatar'
 import { roles } from '@/config/roles'
 import { signOutAction } from '@/features/auth-ui/actions/sign-out'
 import { UtilityPanel, type UtilityPanelKind } from '@/components/shared/utility-panel'
+import { TenantSwitcher } from '@/components/shared/tenant-switcher'
 
 const CLOSED_SECTIONS_KEY = 'unison:sidebar:closed-sections'
 
@@ -81,6 +82,11 @@ export function Sidebar({ onNavigate }: SidebarProps = {}) {
         >
           <Menu className="size-5" />
         </button>
+      </div>
+
+      {/* Organisation: context for every page, so it lives here rather than in each page header. */}
+      <div className="px-3 pb-2">
+        <TenantSwitcher collapsed={collapsed} />
       </div>
 
       {/* Navigation */}

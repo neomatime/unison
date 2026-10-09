@@ -3,7 +3,6 @@
 import { ChevronRight, Plus } from 'lucide-react'
 import Link from 'next/link'
 
-import { TenantSwitcher } from './tenant-switcher'
 
 type WorkspaceHeaderProps = {
   category: string
@@ -32,7 +31,6 @@ export function WorkspaceHeader({ category, title, description, parent, breadcru
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2">
           {/* Search, notifications and help live once, in the sidebar (and on Ctrl/Cmd+K). */}
-          <TenantSwitcher />
           {actions}
           {action && actionHref ? <Link href={actionHref} className="unison-action-control inline-flex h-10 items-center gap-2 bg-brand px-4 text-sm font-medium text-white hover:bg-brand/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"><Plus className="size-4" />{action}</Link> : null}
         </div>
