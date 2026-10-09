@@ -1,5 +1,6 @@
 import { WorkspaceHeader } from "@/components/shared/workspace-header";
 import { MetricCard } from "@/features/delivery/components/delivery-primitives";
+import { formatCurrency } from "@/lib/utils/format-money";
 import {
   RecordCollectionWorkspace,
   type CollectionRecord,
@@ -38,11 +39,7 @@ const text = (value: unknown, fallback = "—") =>
 const date = (value: unknown) =>
   value ? new Date(`${String(value)}T00:00:00`).toLocaleDateString("en-ZA") : "—";
 const money = (value: unknown, currency = "ZAR") =>
-  new Intl.NumberFormat("en-ZA", {
-    style: "currency",
-    currency,
-    maximumFractionDigits: 0,
-  }).format(Number(value ?? 0));
+  formatCurrency(Number(value ?? 0), currency, { maximumFractionDigits: 0 });
 const sum = (rows: PhaseSixRecord[], key: string) =>
   rows.reduce((total, row) => total + Number(row[key] ?? 0), 0);
 

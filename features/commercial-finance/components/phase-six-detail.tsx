@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { WorkPage } from "@/components/shared/work-page";
+import { formatCurrency } from "@/lib/utils/format-money";
 import {
   getPhaseSixRecord,
   type PhaseSixKind,
@@ -129,10 +130,7 @@ function formatValue(key: string, value: unknown, record: PhaseSixRecord) {
   }
   if (key === "manualReviewRequired") return value ? "Required" : "No";
   if (moneyKeys.has(key)) {
-    return new Intl.NumberFormat("en-ZA", {
-      style: "currency",
-      currency: String(record.currency ?? "ZAR"),
-    }).format(Number(value));
+    return formatCurrency(Number(value), String(record.currency ?? "ZAR"));
   }
   if (key === "probabilityPercent" || key === "confidencePercent") return `${value}%`;
   if (key.endsWith("At")) return new Date(String(value)).toLocaleString("en-ZA");
