@@ -11,7 +11,6 @@ import { EmptyState, ErrorState, LoadingSkeleton, PermissionState } from '@/comp
 import { WorkspaceHeader } from '@/components/shared/workspace-header'
 import { StatusBadge } from '@/components/ui/status-badge'
 import type { MockRecord, ModuleDefinition } from '../types'
-import { hasSpecialWorkspace, SpecialWorkspace } from './special-workspaces'
 
 type DemoState = 'populated' | 'loading' | 'empty' | 'error' | 'restricted'
 
@@ -48,7 +47,6 @@ export function ModuleWorkspace({ module, records, connected, initialQuery, tota
     const base = records.filter((record) => Object.values(record).some((value) => value.toLowerCase().includes(query.toLowerCase())))
     return base.toSorted((a, b) => sortMode === 'name' ? a.name.localeCompare(b.name) : sortMode === 'status' ? a.status.localeCompare(b.status) : a.updated.localeCompare(b.updated))
   }, [connected, query, records, sortMode])
-  const special = hasSpecialWorkspace(module.id, activeView)
 
   // Server-driven pagination. The page already read and honoured `?page=`, and
   // the footer already reported the true total — but nothing linked to page two,
@@ -80,7 +78,7 @@ export function ModuleWorkspace({ module, records, connected, initialQuery, tota
         {module.views.map((view) => <button type="button" key={view} onClick={() => { setActiveView(view); if (view === 'Grid') setDisplayMode('grid'); if (view === 'List') setDisplayMode('list') }} className={`whitespace-nowrap border-b-2 px-3 py-2.5 text-sm font-medium ${activeView === view ? 'border-foreground text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>{view}</button>)}
       </nav>
 
-      {special ? <SpecialWorkspace moduleId={module.id} view={activeView} /> : <section className="overflow-hidden rounded-xl border border-border bg-card shadow-[0_1px_2px_rgb(16_32_46_/_0.04)]">
+      <section className="overflow-hidden rounded-xl border border-border bg-card shadow-[0_1px_2px_rgb(16_32_46_/_0.04)]">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-4">
           <div className="flex flex-1 flex-wrap items-center gap-2">
             {connected ? (
@@ -149,7 +147,7 @@ export function ModuleWorkspace({ module, records, connected, initialQuery, tota
             <div className="flex items-center justify-between border-t border-border px-5 py-3 text-sm text-muted-foreground"><span>Showing {demoPage === 1 ? '1' : '9'}–{demoPage === 1 ? filtered.length : Math.min(16, Math.max(filtered.length, 16))} of {Math.max(filtered.length, 24)} records</span><div className="flex items-center gap-1"><button type="button" onClick={() => setDemoPage((current) => Math.max(1, current - 1))} disabled={demoPage === 1} aria-label="Previous page" className="rounded-md border border-border p-1.5 disabled:opacity-40"><ChevronLeft className="size-4" /></button><span className="px-2 text-foreground">{demoPage}</span><button type="button" onClick={() => setDemoPage((current) => Math.min(3, current + 1))} disabled={demoPage === 3} aria-label="Next page" className="rounded-md border border-border p-1.5 disabled:opacity-40"><ChevronRight className="size-4" /></button></div></div>
           )
         ) : null}
-      </section>}
+      </section>
 
       {toast ? <div role="status" className="fixed right-6 bottom-6 z-50 rounded-xl bg-foreground px-4 py-3 text-sm font-medium text-primary-foreground shadow-xl">{toast}</div> : null}
       {!connected ? <ConfirmationDialog open={Boolean(archiveRecord)} title={`${module.archiveLabel ?? `Archive ${module.singular}`}?`} description={`This will remove ${archiveRecord?.name ?? 'this record'} from active views. It can be restored from the archived register.`} confirmLabel={module.archiveLabel ?? 'Archive'} onCancel={() => setArchiveRecord(null)} onConfirm={confirmArchive} /> : null}

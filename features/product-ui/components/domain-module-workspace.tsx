@@ -7,7 +7,6 @@ import { WorkspaceHeader } from '@/components/shared/workspace-header'
 import { domainFields } from '../domain-fields'
 import type { MockRecord, ModuleDefinition } from '../types'
 import { RecordCollectionWorkspace, type CollectionConfig, type CollectionField, type CollectionRecord } from './record-collection-workspace'
-import { hasSpecialWorkspace, SpecialWorkspace } from './special-workspaces'
 
 const fieldAliases: Record<string, string> = {
   Company: 'name', Contact: 'contact', Source: 'source', Owner: 'owner', 'Estimated Value': 'value', Status: 'status', 'Last Activity': 'updated',
@@ -50,13 +49,12 @@ export function DomainModuleWorkspace({ module, records }: { module: ModuleDefin
     detailTabs: [...module.tabs],
   }), [module, records])
   const views = ['Register', ...module.views]
-  const special = activeView !== 'Register' && hasSpecialWorkspace(module.id, activeView)
 
   return <>
     <WorkspaceHeader category={module.category} title={module.label} />
     <p className="-mt-4 mb-5 max-w-3xl text-sm text-muted-foreground">{module.description}</p>
     <nav className="mb-5 flex gap-1 overflow-x-auto border-b border-border" aria-label={`${module.label} views`}>{views.map((view) => <button type="button" key={view} onClick={() => setActiveView(view)} className={`whitespace-nowrap border-b-2 px-3 py-2.5 text-sm font-medium ${activeView === view ? 'border-foreground text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>{view}</button>)}</nav>
-    {special ? <SpecialWorkspace moduleId={module.id} view={activeView} /> : <RecordCollectionWorkspace config={{ ...config, title: activeView === 'Register' ? config.title : `${activeView} ${module.label}` }} onPrimaryAction={() => router.push(`${module.route}/new`)} />}
+    <RecordCollectionWorkspace config={{ ...config, title: activeView === 'Register' ? config.title : `${activeView} ${module.label}` }} onPrimaryAction={() => router.push(`${module.route}/new`)} />
   </>
 }
 

@@ -704,25 +704,16 @@ test('no rendered module declares more columns than its table will show', () => 
 })
 
 test('the projects register offers no view it cannot render from real records', () => {
-  // Moving projects onto ModuleWorkspace inherited its view tabs, and
-  // special-workspaces.tsx registers a hard-coded board and Gantt for two of
-  // them: five invented project names in columns labelled Planning / On Track /
-  // At Risk / Review / Complete, four of which projects_status_check rejects
-  // and two of which this slice removed from the registry for that reason. A
-  // user on a register of real rows clicked 'Board' and saw five projects that
-  // do not exist. Reinstate a view here only when it reads `records`.
+  // Moving projects onto ModuleWorkspace inherited its view tabs, and a
+  // since-deleted special-workspaces.tsx rendered a hard-coded board and Gantt
+  // for two of them: five invented project names in columns labelled Planning /
+  // On Track / At Risk / Review / Complete, four of which projects_status_check
+  // rejects. A user on a register of real rows clicked 'Board' and saw five
+  // projects that do not exist. Reinstate a view here only when it reads
+  // `records`.
   const projects = productModules.find((module) => module.id === 'projects')
   assert.ok(projects, 'projects module definition not found')
   assert.deepEqual(projects.views, ['List'])
-
-  const specialWorkspaces = readFileSync(join(workspace, 'features', 'product-ui', 'components', 'special-workspaces.tsx'), 'utf8')
-  for (const invented of ['Aurelia research sprint', 'Meridian Growth Programme', 'Northstar Brand Transformation']) {
-    if (!specialWorkspaces.includes(invented)) continue
-    assert.ok(
-      !projects.views.includes('Board') && !projects.views.includes('Timeline'),
-      `special-workspaces.tsx still hard-codes '${invented}', so projects must not offer the views that render it`,
-    )
-  }
 })
 
 test('the frameworks module reads the database rather than a fixture', () => {
