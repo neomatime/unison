@@ -81,7 +81,7 @@ export async function PhaseFourRegister({ kind }: { kind: Exclude<PhaseFourKind,
   const active = rows.filter((row) => !row.archivedAt);
   const config = registerConfig(kind, active);
   return <>
-    <WorkspaceHeader category={config.category} title={config.heading} description={config.description} action={config.action} actionHref={`${config.base}/new`} />
+    <WorkspaceHeader category={config.category} title={config.heading} description={config.description} action={config.action} actionHref={`${config.base}/new`} hideActionOnPhone={active.length === 0} />
     <div className="grid gap-3 sm:grid-cols-3">
       <MetricCard label={`Active ${config.plural.toLowerCase()}`} value={String(active.length)} detail="Persisted tenant records" />
       <MetricCard label="Needs attention" value={String(active.filter((row) => ["At Risk", "Blocked", "Critical", "Paused"].includes(String(row.status)) || row.health === "At Risk" || row.riskLevel === "Critical").length)} detail="Priority operational focus" />
