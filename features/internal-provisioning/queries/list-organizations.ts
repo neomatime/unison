@@ -1,5 +1,7 @@
 import 'server-only'
 import { createServerSupabase } from '@/lib/supabase/server'
+import { unisonTiers } from '@/config/unison-tiers'
+import { listPlatformOrganizations } from '@/features/platform-admin/queries'
 
 export type OrganisationRow = {
   id: string
@@ -14,19 +16,21 @@ export type OrganisationRow = {
 }
 
 /**
- * Shaped to what OrganisationsScreen already renders. Tier, modules,
+ * Shaped to what OrganisationsScreen already renders. Modules,
  * implementation owner and last activity have no backing column, so they render
  * '—' rather than a fabricated value — the same rule the delivery queries follow.
  */
 export async function listOrganizations(): Promise<OrganisationRow[]> {
   const supabase = await createServerSupabase()
-  const { data, error } = await supabase.rpc('list_provisioned_organizations')
+  const [{ data, error }, platform] = await Promise.all([supabase.rpc('list_provisioned_organizations'), listPlatformOrganizations()])
   if (error) throw error
+  const tierLabels = new Map<string, string>(unisonTiers.map((tier) => [tier.id, tier.label]))
+  const tiers = new Map(platform.map((organisation) => [organisation.id, organisation.tier]))
 
   return (data ?? []).map((row) => ({
     id: row.id,
     name: row.name,
-    tier: '—',
+    tier: tierLabels.get(tiers.get(row.id) ?? '') ?? '—',
     status: row.status,
     modules: '—',
     admin: row.admin_email ?? '—',
