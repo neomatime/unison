@@ -22,7 +22,7 @@ export async function listClients(params: { q?: string; status?: string; sort?: 
 
   let query = supabase
     .from('clients')
-    .select('id, name, status, health, contact_name, service, updated_at, archived_at', { count: 'exact' })
+    .select('id, name, status, health, contact_name, service, engagement_type, updated_at, archived_at', { count: 'exact' })
     .eq('organization_id', organization.id)
     .is('archived_at', null)
 
@@ -44,6 +44,7 @@ export async function listClients(params: { q?: string; status?: string; sort?: 
     updated: new Date(row.updated_at).toLocaleDateString('en-ZA', { day: '2-digit', month: 'short', year: 'numeric' }),
     contact: row.contact_name ?? '—',
     service: row.service ?? '—',
+    engagementType: row.engagement_type ?? '—',
     health: row.health,
     // public.projects exists now, but this query does not count it: a per-row
     // count needs an aggregate embed, and a wrong or missing count is worse
