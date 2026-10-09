@@ -12,15 +12,15 @@ const icons: Record<KpiCardId, LucideIcon> = { clients: Users, leads: Target, qu
 function Card({ label, icon: Icon, href, body }: { label: string; icon: LucideIcon; href: string; body: KpiBody }) {
   const content = (
     <>
-      <div className="flex items-center gap-3">
-        <span aria-hidden="true" className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[var(--brand-soft)] text-brand">
-          <Icon className="size-5" strokeWidth={1.75} />
+      <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:gap-3">
+        <span aria-hidden="true" className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[var(--brand-soft)] text-brand sm:size-10">
+          <Icon className="size-4 sm:size-5" strokeWidth={1.75} />
         </span>
         <p className="unison-metric-label text-[0.675rem] text-muted-foreground">{label}</p>
       </div>
       {body.state === 'ready' ? (
         <div className="mt-3">
-          <p className="font-brand text-[1.75rem] leading-none font-medium tracking-tight text-foreground" title={body.valueTitle}>{body.value}</p>
+          <p className="font-brand text-[1.75rem] leading-none font-medium tracking-tight break-words text-foreground" title={body.valueTitle}>{body.value}</p>
           <DeltaLine delta={body.delta} label={body.deltaLabel} reason={body.noComparisonReason} />
           <p className="mt-1 text-xs text-[var(--briefing-muted)]">{body.caption}</p>
         </div>
@@ -34,7 +34,7 @@ function Card({ label, icon: Icon, href, body }: { label: string; icon: LucideIc
       )}
     </>
   )
-  const frame = 'relative block overflow-hidden rounded-none border border-border bg-card px-5 py-4'
+  const frame = 'relative block overflow-hidden rounded-none border border-border bg-card px-3.5 py-3 sm:px-5 sm:py-4'
   // Only a loaded card is a link: a failed one holds a Retry button, and a link
   // cannot contain another interactive control.
   return body.state === 'ready' ? (
@@ -68,7 +68,7 @@ function DeltaLine({ delta, label, reason }: { delta: Delta | null; label: strin
 
 export function KpiCards({ kpis }: { kpis: Section<KpiData> }) {
   return (
-    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
       {buildKpiCards(kpis).map((card) => (
         <Card key={card.id} label={card.label} icon={icons[card.id]} href={card.href} body={card.body} />
       ))}
