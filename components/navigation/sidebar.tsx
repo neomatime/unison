@@ -4,7 +4,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Bell, CircleHelp, Menu, ChevronDown, Search } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { cn, getInitials } from '@/lib/utils'
 import { useShellContext } from '@/components/layout/shell-context'
 import { useNavigationSections } from '@/components/layout/navigation-context'
@@ -28,6 +28,32 @@ export function Sidebar({ onNavigate }: SidebarProps = {}) {
   const [panel, setPanel] = useState<UtilityPanelKind | null>(null)
   const [unread, setUnread] = useState(0)
   const [closedSections, setClosedSections] = useState<string[]>([])
+  const navRef = useRef<HTMLElement>(null)
+  const [scrollShadow, setScrollShadow] = useState<string | undefined>(undefined)
+  // An inset edge shadow marks whichever end of the menu has more beyond it, so a
+  // short window never makes the list look as if it simply stops. Box-shadow, not a
+  // gradient: the theme is deliberately gradient-free.
+  function updateScrollEdges() {
+    const nav = navRef.current
+    if (!nav) return
+    const shadow = 'rgb(13 35 64 / 0.16)'
+    const edges = [
+      nav.scrollTop > 1 ? `inset 0 8px 6px -6px ${shadow}` : '',
+      nav.scrollTop + nav.clientHeight < nav.scrollHeight - 1 ? `inset 0 -8px 6px -6px ${shadow}` : '',
+    ].filter(Boolean)
+    setScrollShadow(edges.length ? edges.join(', ') : undefined)
+  }
+  useEffect(() => {
+    updateScrollEdges()
+    const nav = navRef.current
+    if (!nav || typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(updateScrollEdges)
+    observer.observe(nav)
+    if (nav.firstElementChild) observer.observe(nav.firstElementChild)
+    return () => observer.disconnect()
+  }, [])
+  // Opening or closing a section, or the rail, changes how tall the list is.
+  useEffect(updateScrollEdges, [closedSections, collapsed])
   const { user, organization, role } = useShellContext()
   const navigationSections = useNavigationSections()
   const displayName = user.displayName
@@ -70,7 +96,7 @@ export function Sidebar({ onNavigate }: SidebarProps = {}) {
   return (
     <><aside className={cn('flex h-full shrink-0 flex-col border-r border-tenant-sidebar-border bg-tenant-sidebar text-tenant-sidebar-foreground transition-[width] duration-200 ease-out', collapsed ? 'w-20' : 'w-64')}>
       {/* Brand */}
-      <div className={cn('flex items-center justify-between py-5', collapsed ? 'px-6' : 'px-6')}>
+      <div className={cn('flex items-center justify-between py-4', collapsed ? 'px-6' : 'px-6')}>
         <span className={cn('font-brand text-xl font-medium tracking-[0.2em] text-tenant-sidebar-foreground', collapsed && 'hidden')}>
           UNISON
         </span>
@@ -90,7 +116,7 @@ export function Sidebar({ onNavigate }: SidebarProps = {}) {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto px-3 pb-4" aria-label="Primary">
+      <nav ref={navRef} onScroll={updateScrollEdges} style={{ boxShadow: scrollShadow }} className="flex-1 overflow-y-auto px-3 pb-4" aria-label="Primary">
         {navigationSections.map((section, sectionIndex) => {
           const isItemActive = (item: (typeof section.items)[number]) => item.route === '/overview'
             ? pathname === '/' || pathname === '/overview'
@@ -98,14 +124,14 @@ export function Sidebar({ onNavigate }: SidebarProps = {}) {
           const sectionClosed = Boolean(section.heading && !collapsed && closedSections.includes(section.heading))
           // A closed section keeps showing the page the user is on, so they never lose their place.
           const visibleItems = sectionClosed ? section.items.filter(isItemActive) : section.items
-          return <div key={section.heading ?? `section-${sectionIndex}`} className="mb-2">
+          return <div key={section.heading ?? `section-${sectionIndex}`} className="mb-1">
             {section.heading ? (
               <button
                 type="button"
                 onClick={() => toggleSection(section.heading!)}
                 aria-expanded={!sectionClosed}
                 tabIndex={collapsed ? -1 : undefined}
-                className={cn('unison-action-control flex w-full items-center justify-between px-3 pt-4 pb-2 text-left font-brand text-[0.6875rem] font-medium tracking-[0.14em] text-tenant-sidebar-muted uppercase hover:text-tenant-sidebar-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand', collapsed && 'sr-only')}
+                className={cn('unison-action-control flex w-full items-center justify-between px-3 pt-3 pb-1.5 text-left font-brand text-[0.6875rem] font-medium tracking-[0.14em] text-tenant-sidebar-muted uppercase hover:text-tenant-sidebar-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand', collapsed && 'sr-only')}
               >
                 {section.heading}
                 <ChevronDown aria-hidden="true" className={cn('size-3.5 transition-transform', sectionClosed && '-rotate-90')} />
@@ -134,7 +160,7 @@ export function Sidebar({ onNavigate }: SidebarProps = {}) {
                       onNavigate?.()
                     }}
                     className={cn(
-                      'unison-action-control relative flex items-center gap-3 px-3 py-2 text-sm font-normal focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand',
+                      'unison-action-control relative flex items-center gap-3 px-3 py-2 text-sm font-normal lg:py-1.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand',
                       isActive
                         ? 'bg-tenant-sidebar-active text-tenant-sidebar-foreground'
                         : 'text-tenant-sidebar-muted hover:bg-tenant-sidebar-hover hover:text-tenant-sidebar-foreground',
