@@ -6,7 +6,6 @@ import { Bell, Search } from 'lucide-react'
 import { useState } from 'react'
 
 import { useShellContext } from '@/components/layout/shell-context'
-import { TenantSwitcher } from '@/components/shared/tenant-switcher'
 import { UtilityPanel, type UtilityPanelKind } from '@/components/shared/utility-panel'
 import { InitialAvatar } from '@/components/ui/initial-avatar'
 import { getInitials } from '@/lib/utils'
@@ -55,7 +54,6 @@ export function CrmOverviewHeader() {
             >
               <Search aria-hidden="true" className="size-4.5" />
             </button>
-            <TenantSwitcher />
             <button
               type="button"
               onClick={() => setPanel('notifications')}

@@ -55,7 +55,7 @@ test('the header carries the CRM copy and takes the greeting from the viewer clo
   assert.match(header, /A clear view of your pipeline, clients, and commercial performance\./)
   assert.match(header, /const SEARCH_PLACEHOLDER = 'Search clients, leads, quotes, vendors\.\.\.'/)
   assert.match(header, /useShellContext\(\)/)
-  assert.match(header, /<TenantSwitcher \/>/)
+  assert.doesNotMatch(header, /TenantSwitcher/, 'the organisation switcher lives in the sidebar')
   assert.match(header, /greetingFor\(new Date\(\)\.getHours\(\)\)/)
   assert.doesNotMatch(header, /Good (morning|afternoon|evening)/, 'the greeting must be computed, never typed')
   assert.doesNotMatch(header, /\bNeo\b/)

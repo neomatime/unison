@@ -3,7 +3,6 @@
 import { Search, Bell, CircleHelp, Plus } from 'lucide-react'
 import Link from 'next/link'
 import { useState } from 'react'
-import { TenantSwitcher } from '@/components/shared/tenant-switcher'
 import { UtilityPanel, type UtilityPanelKind } from '@/components/shared/utility-panel'
 
 type TopNavProps = {
@@ -32,7 +31,6 @@ export function TopNav({ greeting, subtitle }: TopNavProps) {
           </kbd>
         </button>
 
-        <TenantSwitcher />
 
         <IconButton label="Notifications" onClick={() => setPanel('notifications')}>
           <Bell className="size-5" strokeWidth={1.75} />
