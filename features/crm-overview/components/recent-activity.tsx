@@ -36,7 +36,7 @@ export function RecentActivity({ activity }: { activity: Section<ActivityEvent[]
           const Icon = icons[described.icon]
           return (
             <li key={`${event.kind}:${event.recordId}`}>
-              <Link href={described.href} className="flex items-start gap-3 px-5 py-3 transition-colors hover:bg-muted/40 focus-visible:outline-1 focus-visible:outline-offset-[-2px] focus-visible:outline-brand">
+              <Link href={described.href} className="flex items-start gap-3 px-5 py-3 transition-colors hover:bg-muted/40 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-brand">
                 <span aria-hidden="true" className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-[var(--brand-soft)] text-brand">
                   <Icon className="size-4" strokeWidth={1.75} />
                 </span>

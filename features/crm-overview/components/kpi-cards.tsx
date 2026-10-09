@@ -38,7 +38,7 @@ function Card({ label, icon: Icon, href, body }: { label: string; icon: LucideIc
   // Only a loaded card is a link: a failed one holds a Retry button, and a link
   // cannot contain another interactive control.
   return body.state === 'ready' ? (
-    <Link href={href} className={cn(frame, 'transition-colors hover:border-brand/40 focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-brand')}>{content}</Link>
+    <Link href={href} className={cn(frame, 'transition-colors hover:border-brand/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand')}>{content}</Link>
   ) : (
     <div className={frame}>{content}</div>
   )

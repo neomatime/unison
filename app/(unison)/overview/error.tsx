@@ -15,7 +15,7 @@ export default function OverviewError({ reset }: { error: Error & { digest?: str
       <AlertTriangle aria-hidden="true" className="size-8 text-warning" />
       <h3 className="mt-4 font-semibold">The CRM overview could not load</h3>
       <p className="mt-1 text-sm text-muted-foreground">Your clients, leads, quotes and sales could not be retrieved. Try the request again.</p>
-      <button type="button" onClick={reset} className="mt-4 rounded-none border border-border px-3 py-2 text-sm font-medium focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-brand">Try again</button>
+      <button type="button" onClick={reset} className="mt-4 rounded-none border border-border px-3 py-2 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">Try again</button>
     </section>
   )
 }

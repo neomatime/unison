@@ -50,7 +50,7 @@ export function ViewAllLink({ label = 'View all', href = '/overview' }: { label?
   return (
     <Link
       href={href}
-      className="unison-action-control group inline-flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20"
+      className="unison-action-control group inline-flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-brand focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
     >
       {label}<ArrowRight className="size-3.5 transition-transform duration-[var(--motion-micro)] group-hover:translate-x-0.5" />
     </Link>

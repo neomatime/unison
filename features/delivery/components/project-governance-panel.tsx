@@ -33,7 +33,7 @@ export function ProjectGovernancePanel({
             key={item}
             onClick={() => setTab(item)}
             aria-selected={tab === item}
-            className={`unison-action-control whitespace-nowrap border-b-2 px-3 py-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20 ${tab === item ? "border-brand text-brand" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+            className={`unison-action-control whitespace-nowrap border-b-2 px-3 py-3 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${tab === item ? "border-brand text-brand" : "border-transparent text-muted-foreground hover:text-foreground"}`}
           >
             {item}
           </button>

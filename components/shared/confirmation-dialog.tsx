@@ -44,8 +44,8 @@ export function ConfirmationDialog({ open, title, description, confirmLabel, onC
       <h2 id={titleId} className="unison-section-title text-sm text-foreground">{title}</h2>
       <p id={descriptionId} className="mt-2 text-sm leading-6 text-muted-foreground">{description}</p>
       <div className="mt-6 flex justify-end gap-2">
-        <button ref={cancel} type="button" disabled={submitting} onClick={onCancel} className="unison-action-control rounded-none border border-border px-4 py-2 text-sm font-medium hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20">Cancel</button>
-        <button type="button" disabled={submitting} aria-busy={submitting} onClick={() => void confirm()} className="unison-action-control rounded-none bg-destructive px-4 py-2 text-sm font-medium text-white hover:bg-destructive/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/30">{submitting ? 'Working…' : confirmLabel}</button>
+        <button ref={cancel} type="button" disabled={submitting} onClick={onCancel} className="unison-action-control rounded-none border border-border px-4 py-2 text-sm font-medium hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">Cancel</button>
+        <button type="button" disabled={submitting} aria-busy={submitting} onClick={() => void confirm()} className="unison-action-control rounded-none bg-destructive px-4 py-2 text-sm font-medium text-white hover:bg-destructive/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-destructive">{submitting ? 'Working…' : confirmLabel}</button>
       </div>
     </section>
   </div>

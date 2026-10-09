@@ -19,7 +19,7 @@ export function TenantSwitcher() {
         aria-expanded={open}
         aria-haspopup="listbox"
         aria-disabled={!hasMultipleOrganizations || undefined}
-        className="flex h-10 min-w-48 items-center gap-2.5 border border-border bg-card px-3 text-left transition-colors hover:border-muted-foreground/45 hover:bg-muted/30 focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-brand"
+        className="flex h-10 min-w-48 items-center gap-2.5 border border-border bg-card px-3 text-left transition-colors hover:border-muted-foreground/45 hover:bg-muted/30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
       >
         <span className="flex size-7 items-center justify-center bg-foreground text-[0.65rem] font-medium text-primary-foreground">
           {getInitials(active.name)}
@@ -44,7 +44,7 @@ export function TenantSwitcher() {
                 role="option"
                 aria-selected={active.id === organization.id}
                 onClick={() => setOpen(false)}
-                className="flex w-full items-center gap-3 px-2 py-2.5 text-left text-sm transition-colors hover:bg-muted focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-brand"
+                className="flex w-full items-center gap-3 px-2 py-2.5 text-left text-sm transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
               >
                 <span className="flex size-8 items-center justify-center bg-muted text-xs font-medium text-foreground">{getInitials(organization.name)}</span>
                 <span className="flex-1 font-medium">{organization.name}</span>

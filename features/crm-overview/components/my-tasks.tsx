@@ -32,7 +32,7 @@ export function MyTasks({ tasks }: { tasks: Section<TasksData> }) {
       <ul className="divide-y divide-border">
         {rows.map((task) => (
           <li key={task.id}>
-            <Link href={`/operations/tasks/${task.id}`} className="grid grid-cols-[1fr_auto] items-start gap-x-4 gap-y-1 px-5 py-3 transition-colors hover:bg-muted/40 focus-visible:outline-1 focus-visible:outline-offset-[-2px] focus-visible:outline-brand">
+            <Link href={`/operations/tasks/${task.id}`} className="grid grid-cols-[1fr_auto] items-start gap-x-4 gap-y-1 px-5 py-3 transition-colors hover:bg-muted/40 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-brand">
               <span className="min-w-0">
                 <span className="block truncate text-sm font-medium text-foreground">{task.title}</span>
                 <span className="block truncate text-xs text-[var(--briefing-muted)]">{task.related ?? 'No related record'} · {task.status}</span>
@@ -55,7 +55,7 @@ export function MyTasks({ tasks }: { tasks: Section<TasksData> }) {
     <Panel
       title="My tasks"
       description="Open tasks assigned to you."
-      action={<Link href="/operations/tasks" className="text-xs font-semibold text-brand hover:underline focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-brand">View all tasks →</Link>}
+      action={<Link href="/operations/tasks" className="text-xs font-semibold text-brand hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">View all tasks →</Link>}
     >
       {body}
       {footer}

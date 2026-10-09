@@ -34,7 +34,7 @@ export function WorkspaceHeader({ category, title, description, parent, breadcru
           {/* Search, notifications and help live once, in the sidebar (and on Ctrl/Cmd+K). */}
           <TenantSwitcher />
           {actions}
-          {action && actionHref ? <Link href={actionHref} className="unison-action-control inline-flex h-10 items-center gap-2 bg-brand px-4 text-sm font-medium text-white hover:bg-brand/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20"><Plus className="size-4" />{action}</Link> : null}
+          {action && actionHref ? <Link href={actionHref} className="unison-action-control inline-flex h-10 items-center gap-2 bg-brand px-4 text-sm font-medium text-white hover:bg-brand/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"><Plus className="size-4" />{action}</Link> : null}
         </div>
       </div>
     </header>
