@@ -34,7 +34,7 @@ function Card({ label, icon: Icon, href, body }: { label: string; icon: LucideIc
       )}
     </>
   )
-  const frame = 'relative block overflow-hidden rounded-none border border-border bg-card px-5 py-4 before:absolute before:inset-x-0 before:top-0 before:h-0.5 before:bg-brand'
+  const frame = 'relative block overflow-hidden rounded-none border border-border bg-card px-5 py-4'
   // Only a loaded card is a link: a failed one holds a Retry button, and a link
   // cannot contain another interactive control.
   return body.state === 'ready' ? (
