@@ -1,6 +1,6 @@
 import 'server-only'
 import { createServerSupabase } from '@/lib/supabase/server'
-import { unisonTiers } from '@/config/unison-tiers'
+import { getEntitledModuleIds, unisonTiers, type UnisonTierId } from '@/config/unison-tiers'
 import { listPlatformOrganizations } from '@/features/platform-admin/queries'
 
 export type OrganisationRow = {
@@ -16,8 +16,8 @@ export type OrganisationRow = {
 }
 
 /**
- * Shaped to what OrganisationsScreen already renders. Modules,
- * implementation owner and last activity have no backing column, so they render
+ * Shaped to what OrganisationsScreen already renders. Modules is the count the tier entitles.
+ * Implementation owner and last activity have no backing column, so they render
  * '—' rather than a fabricated value — the same rule the delivery queries follow.
  */
 export async function listOrganizations(): Promise<OrganisationRow[]> {
@@ -32,7 +32,7 @@ export async function listOrganizations(): Promise<OrganisationRow[]> {
     name: row.name,
     tier: tierLabels.get(tiers.get(row.id) ?? '') ?? '—',
     status: row.status,
-    modules: '—',
+    modules: tiers.has(row.id) ? String(getEntitledModuleIds(tiers.get(row.id) as UnisonTierId).length) : '—',
     admin: row.admin_email ?? '—',
     owner: '—',
     created: new Date(row.created_at).toLocaleDateString('en-ZA', {
