@@ -1,6 +1,7 @@
 import { WorkspaceHeader } from "@/components/shared/workspace-header";
 import { MetricCard } from "@/features/delivery/components/delivery-primitives";
 import { formatCurrency } from "@/lib/utils/format-money";
+import { portableDefinitions } from "@/features/data-portability/portable-collections";
 import {
   RecordCollectionWorkspace,
   type CollectionRecord,
@@ -79,7 +80,8 @@ export async function PhaseSixRegister({ kind }: { kind: PhaseSixKind }) {
           columns: config.columns,
           fields: [],
           contextualActions: [],
-          allowImport: true,
+          // A collection with no import columns (quotes, invoices) cannot be imported, so no Import button.
+          allowImport: Boolean(portableDefinitions[portableCollectionByKind[kind]].importColumns),
           portableCollection: portableCollectionByKind[kind],
           emptyDescription: config.empty,
         }} />

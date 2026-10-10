@@ -60,7 +60,7 @@ export async function getPhaseSixOptions(): Promise<PhaseSixOptions> {
     db.from("vendors").select("id,name").eq("organization_id", organizationId).is("archived_at", null).order("name"),
     db.from("leads").select("id,company_name").eq("organization_id", organizationId).is("archived_at", null).order("company_name"),
     db.from("sales_opportunities").select("id,name").eq("organization_id", organizationId).is("archived_at", null).order("name"),
-    db.from("quotes").select("id,quote_number").eq("organization_id", organizationId).is("archived_at", null).order("quote_number"),
+    db.from("quotes").select("id,quote_number,client_name").eq("organization_id", organizationId).is("archived_at", null).order("quote_number"),
     db.from("organization_settings").select("default_quote_terms,default_payment_terms").eq("organization_id", organizationId).maybeSingle(),
   ]);
   for (const result of [members, clients, projects, vendors, leads, opportunities, quotes, settings]) {
@@ -73,7 +73,7 @@ export async function getPhaseSixOptions(): Promise<PhaseSixOptions> {
     vendors: (vendors.data ?? []).map((row: any) => ({ id: row.id, label: row.name })),
     leads: (leads.data ?? []).map((row: any) => ({ id: row.id, label: row.company_name })),
     opportunities: (opportunities.data ?? []).map((row: any) => ({ id: row.id, label: row.name })),
-    quotes: (quotes.data ?? []).map((row: any) => ({ id: row.id, label: row.quote_number })),
+    quotes: (quotes.data ?? []).map((row: any) => ({ id: row.id, label: documentName(row.quote_number, row.client_name, "quote") })),
     defaults: {
       quoteTerms: settings.data?.default_quote_terms ?? null,
       paymentTerms: settings.data?.default_payment_terms ?? null,

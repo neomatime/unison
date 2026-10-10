@@ -10,6 +10,7 @@ import type { PhaseSixKind } from "../queries/phase-six";
 import { documentErrorMessage } from "@/features/documents/errors";
 import { readDocumentExtras } from "@/features/documents/fields";
 import {
+  INVOICE_DRAFT_STATUSES,
   INVOICE_ISSUED_STATUSES,
   QUOTE_DRAFT_STATUSES,
   QUOTE_SENT_STATUSES,
@@ -148,6 +149,10 @@ export async function savePhaseSixRecordAction(
     table = "quotes";
     if (state && !isDraftStatus("quote", state.status)) {
       // Sent: only the status and the notes can change; the database refuses everything else.
+      // An old edit form posted after the quote went out carries no status or a draft one: say it is frozen.
+      if (!status || isOneOf(QUOTE_DRAFT_STATUSES, status)) {
+        return { error: documentErrorMessage("QUOTE_FROZEN") ?? "This quote has already been sent and can no longer be edited." };
+      }
       if (!isOneOf(QUOTE_SENT_STATUSES, status)) return { error: "Choose Sent, Accepted, Declined or Expired." };
       values = { status, notes: optional(form, "notes") };
     } else {
@@ -182,6 +187,10 @@ export async function savePhaseSixRecordAction(
     table = "invoices";
     if (state && !isDraftStatus("invoice", state.status)) {
       // Issued: only the status, the balance and the notes can change (payments arrive in a later release).
+      // An old edit form posted after the invoice was issued carries no status or a draft one: say it is frozen.
+      if (!status || isOneOf(INVOICE_DRAFT_STATUSES, status)) {
+        return { error: documentErrorMessage("INVOICE_FROZEN") ?? "This invoice has already been issued and can no longer be edited." };
+      }
       if (!isOneOf(INVOICE_ISSUED_STATUSES, status)) {
         return { error: "Choose Issued, Partially Paid, Paid, Overdue or Cancelled." };
       }
