@@ -297,7 +297,7 @@ const years = (count: number) => new Date(Date.now() + count * 365 * 86_400_000)
 test('a member cannot forge a quote.sent entry: a Draft quote with a sent_at writes none', async () => {
   const made = await memberClient
     .from('quotes')
-    .insert({ organization_id: orgA, quote_number: 'CQ-FORGE-DRAFT', client_name: 'Acme', status: 'Draft', sent_at: years(5) })
+    .insert({ organization_id: orgA, client_name: 'Acme', status: 'Draft', sent_at: years(5) })
     .select('id')
     .single()
   assert.equal(made.error, null)
@@ -305,8 +305,8 @@ test('a member cannot forge a quote.sent entry: a Draft quote with a sent_at wri
   assert.deepEqual(await entries('quote_id', made.data!.id, 'quote.accepted'), [])
 })
 
-test('a quote.sent entry is never dated in the future, even when sent_at is', async () => {
-  const made = await memberClient
+test('a quote.sent entry is never dated in the future, even when sent_at is (written by the service role)', async () => {
+  const made = await admin
     .from('quotes')
     .insert({ organization_id: orgA, quote_number: 'CQ-FORGE-SENT', client_name: 'Acme', status: 'Sent', sent_at: years(1) })
     .select('id')
@@ -315,11 +315,11 @@ test('a quote.sent entry is never dated in the future, even when sent_at is', as
   const sent = await entries('quote_id', made.data!.id, 'quote.sent')
   assert.equal(sent.length, 1)
   assert.ok(new Date(sent[0].occurred_at).getTime() <= Date.now() + SLACK_MS, 'capped at now')
-  assert.equal(sent[0].created_by, member.id, 'stamped with the member who made it')
+  assert.equal(sent[0].created_by, null, 'a service-role write has no author')
 })
 
 test('a quote.accepted entry is never dated in the future, and Declined with an accepted_at writes none', async () => {
-  const made = await memberClient
+  const made = await admin
     .from('quotes')
     .insert({ organization_id: orgA, quote_number: 'CQ-FORGE-ACCEPT', client_name: 'Acme', status: 'Sent' })
     .select('id')
@@ -331,7 +331,7 @@ test('a quote.accepted entry is never dated in the future, and Declined with an 
   assert.equal(accepted.length, 1)
   assert.ok(new Date(accepted[0].occurred_at).getTime() <= Date.now() + SLACK_MS, 'capped at now')
 
-  const declined = await memberClient
+  const declined = await admin
     .from('quotes')
     .insert({ organization_id: orgA, quote_number: 'CQ-FORGE-DECLINE', client_name: 'Acme', status: 'Sent' })
     .select('id')

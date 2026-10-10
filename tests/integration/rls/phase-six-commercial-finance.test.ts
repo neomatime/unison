@@ -119,13 +119,9 @@ test('a tenant member can persist all six commercial and finance record types', 
     .from('quotes')
     .insert({
       organization_id: orgA,
-      quote_number: 'PHASE6-Q-001',
       client_name: 'Persistent Prospect',
       lead_id: lead!.id,
       opportunity_id: opportunity!.id,
-      subtotal: 400000,
-      tax_amount: 60000,
-      total_amount: 460000,
     })
     .select('id')
     .single()
@@ -135,14 +131,9 @@ test('a tenant member can persist all six commercial and finance record types', 
   const writes = [
     client.from('invoices').insert({
       organization_id: orgA,
-      invoice_number: 'PHASE6-I-001',
       client_name: 'Persistent Prospect',
       quote_id: quote!.id,
       opportunity_id: opportunity!.id,
-      subtotal: 400000,
-      tax_amount: 60000,
-      total_amount: 460000,
-      balance_amount: 460000,
     }),
     client.from('expenses').insert({
       organization_id: orgA,
@@ -186,7 +177,6 @@ test('commercial and finance writes cannot target another organization', async (
   const client = await signedInClient(ownerA.email, ownerA.password)
   const { error } = await client.from('invoices').insert({
     organization_id: orgB,
-    invoice_number: 'CROSS-TENANT',
     client_name: 'Other Prospect',
   })
   assert.ok(error, 'cross-tenant invoice creation must be refused')
