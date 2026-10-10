@@ -23,11 +23,12 @@ them through Stage 2 before starting anything else.
 - [x] Tests for each of the above, including the database rules (RLS suite) and a fixture preview at three widths
 - [ ] **Walked in a signed-in session against real records** (not done yet: the user does this; Stage 1 is not finished until it is)
 
-## Stage 2: make quotes and invoices real documents
+## Stage 2: make quotes and invoices real documents (slice A built 2026-10-11; waiting for the signed-in walk-through)
 
-- [ ] Quote line items and a products/services price list
-- [ ] Generated quote and invoice numbers (no more typing them)
-- [ ] Tax and totals worked out from the lines, not typed
+- [x] Quote line items and a products/services price list (invoices too)
+- [x] Generated quote and invoice numbers (no more typing them)
+- [x] Tax and totals worked out from the lines, not typed
+- [ ] **Walked in a signed-in session against real records** (not done yet: the user does this; slice A is not finished until it is)
 - [ ] PDF for a quote and an invoice
 - [ ] Send a quote or invoice by email, and record that it was sent
 - [ ] Quote → invoice in one step

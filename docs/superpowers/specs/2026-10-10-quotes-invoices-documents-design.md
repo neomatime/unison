@@ -78,11 +78,11 @@ line keeps its own copy of the values). The parent is a composite foreign key, `
 - **`clients`:** `address_line1`, `address_line2`, `city`, `postal_code`, `country`, `vat_number`.
 - **`quotes`:** add `issue_date`, `project_name`, `project_description`, `project_ref`, `client_ref`, `vat_rate`,
   `bill_to` (jsonb snapshot: name, address lines, VAT number) and `issuer` (jsonb snapshot of the company details at
-  send time). `quote_number` becomes nullable, with a check that it is set once the status is not `Draft` or
-  `Internal Review`. `subtotal`, `tax_amount`, `total_amount` become **calculated**.
+  send time). `quote_number` stays `NOT NULL`: a draft carries a generated reference (`DRAFT-` and eight hex characters)
+  until it is sent, and a check refuses that reference once the status is not `Draft` or `Internal Review`. `subtotal`, `tax_amount`, `total_amount` become **calculated**.
 - **`invoices`:** the same additions (`project_name`, `project_description`, `project_ref`, `client_ref`, `vat_rate`,
-  `bill_to`, `issuer`), `invoice_number` nullable with a check that it is set once the status is not `Draft`, and the
-  amounts calculated. `balance_amount` is set to the total when the invoice is issued (payments are slice C).
+  `bill_to`, `issuer`), `invoice_number` carrying a generated draft reference until it is issued (refused once the status is not
+  `Draft`), and the amounts calculated. `balance_amount` is set to the total when the invoice is issued (payments are slice C).
 - **Existing statuses and the `unique (organization_id, number)` rules are unchanged.**
 
 ## Behaviour
@@ -183,3 +183,32 @@ not found. Nothing falls back to a default when a read fails.
 - No real bank, VAT, phone or address value in code or tests; they live in settings.
 - Secrets live in `.env.local` only.
 - Never `git add -A`; stage explicit paths. Commit and push only when the user asks.
+
+## Amendments made while planning and building
+
+Small, deliberate departures from the text above, each decided with a reason and recorded in the plan's ledger.
+
+1. **Draft reference instead of a nullable number** (see the Data section). Every existing reader of the number (the
+   dashboard activity feed, the global search, the registers, option lists, the timeline) assumes it is never null.
+2. **No `unique (parent, position)` on lines.** Lines are ordered by position and then creation time; "move up/down"
+   swaps two positions.
+3. **No TypeScript totals mirror.** Totals are never calculated in TypeScript; the editor and the document show the
+   stored values. The database test covers the arithmetic.
+4. **The guard and freeze apply to `authenticated` and `anon`.** The service role (fixtures) and the definer functions
+   are not held to them, like `leads_guard_conversion`. Totals are calculated for everyone.
+5. **Extra settings:** `tagline`, and `quote_closing_text` / `invoice_closing_text` (the design's "Next steps" and "Thank
+   you" copy), so no wording is in code.
+6. **A quote or invoice needs a client record** (`client_id`), so the snapshot has an address and VAT number.
+7. **A permission `company.manage`** (owner and admin) gates the company details screen; the database rule is
+   `has_role(owner, admin)`.
+8. **The logo is the wordmark file.** The dark H mark is not in `public/brand` as a standalone file, so the design's
+   mark-plus-wordmark lockup is a follow-up that needs that file.
+9. **The VAT rate is set when the document goes out**, from the company details at that moment (a draft is created at
+   the settings rate, or 15.00 when there are no settings, and a signed-in role can never change it). Drafts are made
+   before the company details exist, so a rate copied only at creation could never be corrected.
+10. **An invoice is dated the day it is issued** (Africa/Johannesburg), never a date typed on the draft, so the number
+    and the date always agree. The draft form has no issue-date field and a draft prints no issue date.
+11. **A cancelled invoice cannot be revived by a signed-in role.**
+12. **The issuer snapshot is an explicit list of what is printed**, not a copy of every settings column.
+13. **A line write and a send or issue cannot interleave:** the line freeze locks the parent document, and the document
+    triggers refuse any change to what a sent or issued document adds up to.

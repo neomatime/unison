@@ -1085,3 +1085,45 @@ What the contacts, timeline, follow-ups, lead conversion and stage-control slice
 - **The RLS suite (`pnpm test:rls`) runs against production.** On 2026-10-10 the only failures were the two known
   `provision-organization` tests; the CRM overview tests had gone stale (they needed a Lost reason, a conversion date, and the
   new project/retainer client counts) and were updated.
+
+## From the quotes and invoices slice (2026-10-11)
+
+What slice A (line items, price list, generated numbers, calculated totals, company details, on-screen document) left out
+or could not prove.
+
+- **No PDF file and no email yet.** The document page prints to PDF from the browser (Print or save as PDF); a real PDF
+  download and sending by email are slice B.
+- **No quote-to-invoice, payments, automatic Overdue or forecast** (slices B and C). An invoice's payment status and
+  outstanding balance are still set by hand after it is issued.
+- **The CSV import of quotes and invoices is withdrawn** (a document needs lines and a generated number); the export
+  still works, and the clients export and import do not carry the new address and VAT number columns.
+- **A draft shows as `DRAFT-xxxxxxxx`** in the global search and the dashboard's recent activity.
+- **The logo is the wordmark only.** The dark H mark (the design's mark-plus-wordmark lockup) is not in `public/brand`
+  as its own file. Image paths are typed in the company details, not uploaded; the paths must be files in `/brand`.
+- **Archived price list items cannot be restored.** There is no archived view.
+- **The client page does not show the new address and VAT number** (only the client form does).
+- **`types/database.ts` is stale:** the new tables and columns are read through untyped clients, and the client create
+  and update actions and form use two small casts until the types are regenerated.
+- **The guard and freeze apply to signed-in roles, not to the service role.** The service role (the website intake,
+  fixtures) can still write any column; only the database owner and the definer functions are meant to.
+- **Quote status loops are allowed among Sent, Accepted, Declined and Expired** (for example Accepted to Sent to Accepted
+  re-stamps the acceptance and writes another timeline entry). A member can also archive a sent or issued document.
+- **Send and issue do not check that the client is still active,** do not require a VAT number on the company when the
+  rate is above zero, and read the document prefix twice (a settings edit in that instant could make the snapshot and
+  the number disagree).
+- **A draft's preview can show a different VAT rate and total than the sent document**, because the rate is set from
+  the company details at the moment it goes out; the document page says the date, number and rate are fixed then.
+- **Two documents' lines moved in opposite directions at the same instant can deadlock;** one side is aborted with a
+  clear error and nothing is corrupted. A draft-to-paid jump by a non-member writer would have its balance forced to the
+  total (no such writer exists today).
+- **Press Send quote or Issue invoice and the confirmation message is not shown:** the buttons disappear as the page
+  refreshes; the new status and the frozen editor are the confirmation.
+- **A paid invoice's paid date moves forward on every save** (existing behaviour of the generic save action).
+- **The company details and price list forms keep what was typed after a failed save, but the quote and invoice edit
+  forms still reset on a failed save.**
+- **The A4 sheet reflows (does not scroll) on a phone** and is meant for desktop viewing and printing; it needs a
+  current Chromium, Safari or Firefox to print cleanly (the print layout uses `:has()`).
+- **Not exercised signed in.** The server actions, the line editor, the company and price list pages and the document
+  page were checked with unit and source tests, SQL tests against fixture organisations for every database rule, a
+  fixture preview in the browser pane (layout at desktop and phone width, print layout emulated, hostile text), and
+  reviews; they were not run in a signed-in session against real records.
