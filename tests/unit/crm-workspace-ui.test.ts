@@ -123,6 +123,9 @@ test('the save action refuses Lost without a reason and explains the Converted r
   assert.match(action, /leads_converted_status_check/)
   assert.match(action, /leads_conversion_guarded/, 'a member hits the guard trigger first, not the check')
   assert.match(action, /sales_opportunities_lost_reason_check/)
+  assert.match(action, /conversionRefused && leavingConverted\s*\? "A converted lead cannot be changed back to another status\."/, 'leaving Converted has its own message')
+  assert.match(action, /leavingConverted = kind === "lead" && Boolean\(id && isUuid\(id\)\) && values\.status !== "Converted"/)
+  assert.ok(action.indexOf('conversionRefused && leavingConverted') < action.indexOf('A lead becomes Converted by using Convert lead on its page.'), 'the leaving case is decided before the forging message')
 })
 
 test('the website lead intake leaves an already converted lead alone instead of failing on replay', () => {
@@ -136,6 +139,16 @@ test('the lead import skips Converted rows with a message instead of letting the
   assert.match(source, /definition\.table === "leads" && record\.status === "Converted"/)
   assert.match(source, /Convert lead on its page/)
   assert.ok(source.indexOf('record.status === "Converted"') < source.indexOf('if (valid) records.push(record)'), 'the check must come before the row is accepted')
+})
+
+test('the opportunity import has a Lost Reason column and skips Lost rows without one instead of letting the database check fail the batch', () => {
+  const source = readFileSync(join(workspace, 'features', 'data-portability', 'import-records.ts'), 'utf8')
+  assert.match(source, /definition\.table === "sales_opportunities" && record\.stage === "Lost"/)
+  assert.match(source, /Stage Lost needs a Lost reason\./)
+  assert.ok(source.indexOf('record.stage === "Lost"') < source.indexOf('if (valid) records.push(record)'), 'the check must come before the row is accepted')
+  const collections = readFileSync(join(workspace, 'features', 'data-portability', 'portable-collections.ts'), 'utf8')
+  const opportunities = collections.slice(collections.indexOf('"sales-opportunities": {'), collections.indexOf('quotes: {'))
+  assert.equal(opportunities.match(/column\("lost_reason", "Lost Reason"\)/g)?.length, 2, 'the reason is both exported and importable')
 })
 
 test('the lead page rejects a malformed id before it loads the workspace, so it is a 404 and not a database error', () => {
@@ -167,6 +180,16 @@ test('the stage control is a client module, offers every stage, and asks for a r
   const page = readFileSync(join(workspace, 'app', '(unison)', 'commercial', 'sales', '[opportunityId]', 'page.tsx'), 'utf8')
   assert.match(page, /<StageControl opportunityId=\{opportunityId\}/)
   assert.match(page, /workspace\.record\.stage && !workspace\.record\.archived/, 'no control for a missing or archived opportunity')
+  assert.match(page, /<StageControl [^>]*key=\{`\$\{workspace\.record\.stage\}\|\$\{workspace\.record\.lostReason \?\? ''\}`\}/, 'the control remounts when the stored stage or reason changes, so its state follows the record')
+})
+
+test('the client page rejects a malformed id before it loads anything, so it is a 404 and not a database error', () => {
+  const source = readFileSync(join(workspace, 'app', '(unison)', 'operations', 'clients', '[clientId]', 'page.tsx'), 'utf8')
+  const pageStart = source.indexOf('export default async function Page')
+  const check = source.indexOf('if (!isUuid(clientId)) notFound()', pageStart)
+  assert.ok(check > -1, 'the page itself must call notFound() for an id that is not a uuid')
+  assert.ok(check < source.indexOf('await getClient(clientId)', pageStart), 'the check must come before the client is loaded')
+  assert.ok(check < source.indexOf('await getRecordWorkspace(', pageStart), 'the check must come before the workspace is loaded')
 })
 
 test('the opportunity page rejects a malformed id before it loads the workspace, so it is a 404 and not a database error', () => {

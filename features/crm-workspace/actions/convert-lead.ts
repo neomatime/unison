@@ -37,6 +37,11 @@ export async function convertLeadAction(leadId: string, _previous: ActionState, 
   revalidatePath('/commercial/leads')
   revalidatePath('/commercial/sales')
   revalidatePath('/operations/clients')
+  // The conversion has committed by now; if the result cannot be read, say so plainly rather than throw.
+  const opportunityId = (data as { opportunity_id?: unknown } | null)?.opportunity_id
+  if (typeof opportunityId !== 'string' || !isUuid(opportunityId)) {
+    return { error: 'The lead was converted, but its opportunity could not be opened. Find it in the sales pipeline.' }
+  }
   // redirect() throws, so it stays outside any try/catch.
-  redirect(`/commercial/sales/${data.opportunity_id}`)
+  redirect(`/commercial/sales/${opportunityId}`)
 }

@@ -48,3 +48,53 @@ test('convert lead keeps redirect() outside any try/catch and maps every databas
     assert.ok(source.includes(token), `${token} must be mapped to a message`)
   }
 })
+
+test('page revalidation patterns name the (unison) route group, because a page cache tag is its route file path', () => {
+  const source = read(`${ROOT}/revalidate.ts`)
+  const patterns = [...source.matchAll(/revalidatePath\('([^']+\[[^']+)', 'page'\)/g)].map((match) => match[1])
+  assert.equal(patterns.length, 4, 'leads, opportunities, quotes and clients')
+  for (const pattern of patterns) assert.ok(pattern.startsWith('/(unison)/'), `${pattern} must include the route group`)
+})
+
+test('a follow-up on a lead takes the converted client, read org-scoped with the error checked', () => {
+  const source = read(`${ROOT}/actions/follow-ups.ts`)
+  const lead = source.slice(source.indexOf("if (parentKind === 'lead')"), source.indexOf('const { error } = await db.from'))
+  assert.match(lead, /\.from\('leads'\)\s*\.select\('converted_client_id'\)/)
+  assert.match(lead, /\.eq\('organization_id', organization\.id\)/)
+  assert.match(lead, /if \(lead\.error\) return/)
+  assert.match(lead, /clientId = lead\.data\.converted_client_id/)
+})
+
+test('parent kinds are checked with Object.hasOwn, not in, so inherited names never pass', () => {
+  for (const name of ['activities.ts', 'contacts.ts', 'follow-ups.ts']) {
+    const source = read(`${ROOT}/actions/${name}`)
+    assert.doesNotMatch(source, /\bin PARENT_COLUMN\b/, `${name} must not use the in operator`)
+    assert.match(source, /Object\.hasOwn\(PARENT_COLUMN, /, `${name} must use Object.hasOwn`)
+  }
+})
+
+test('a contact added but not made primary still revalidates the pages', () => {
+  const source = read(`${ROOT}/actions/contacts.ts`)
+  const failure = source.indexOf("The contact was added, but could not be made primary.")
+  assert.ok(failure > -1)
+  const before = source.slice(source.lastIndexOf('if (primary.error)', failure), failure)
+  assert.match(before, /revalidateWorkspacePages\(\)/, 'revalidate before returning the partial-failure error')
+})
+
+test('convert lead never throws on a result it cannot read', () => {
+  const source = read(`${ROOT}/actions/convert-lead.ts`)
+  assert.doesNotMatch(source, /data\.opportunity_id/, 'data is not dereferenced unguarded')
+  const guard = source.indexOf("typeof opportunityId !== 'string'")
+  assert.ok(guard > -1 && guard < source.indexOf('redirect(`/commercial/sales/'), 'the result is checked before the redirect')
+})
+
+test('the CRM RLS suites clean up only the fixtures that exist, so a failed setup never leaves rows in production', () => {
+  for (const name of ['crm-contacts-activities', 'crm-convert-lead', 'crm-overview']) {
+    const source = read(`tests/integration/rls/${name}.test.ts`)
+    const teardown = source.slice(source.indexOf('after(async () => {'))
+    const call = teardown.slice(teardown.indexOf('await cleanup('), teardown.indexOf('\n})'))
+    assert.match(call, /\[orgA, orgB\]\.filter\(Boolean\)/, `${name}: organisations must be filtered`)
+    assert.match(call, /\]\.filter\(Boolean\)\)/, `${name}: user ids must be filtered`)
+    assert.doesNotMatch(call, /[^?]\.id\b/, `${name}: a user id must be read with ?.`)
+  }
+})

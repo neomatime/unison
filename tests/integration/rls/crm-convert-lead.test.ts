@@ -46,7 +46,8 @@ before(async () => {
 })
 
 after(async () => {
-  await cleanup([orgA, orgB], [member.id, outsider.id])
+  // A failed setup leaves some of these undefined; delete only what exists.
+  await cleanup([orgA, orgB].filter(Boolean), [member?.id, outsider?.id].filter(Boolean))
 })
 
 test('converting makes a client, a primary contact and an opportunity from the lead, and links the lead', async () => {

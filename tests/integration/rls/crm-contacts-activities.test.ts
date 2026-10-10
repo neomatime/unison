@@ -60,7 +60,8 @@ before(async () => {
 })
 
 after(async () => {
-  await cleanup([orgA, orgB], [member.id, other.id, adminUser.id, outsider.id, ...extraUsers])
+  // A failed setup leaves some of these undefined; delete only what exists.
+  await cleanup([orgA, orgB].filter(Boolean), [member?.id, other?.id, adminUser?.id, outsider?.id, ...extraUsers].filter(Boolean))
 })
 
 // ------------------------------------------------------------------ contacts

@@ -29,7 +29,7 @@ export default async function Page({ params }: { params: Promise<{ opportunityId
       id={opportunityId}
       actions={
         workspace.record.stage && !workspace.record.archived ? (
-          <StageControl opportunityId={opportunityId} stage={workspace.record.stage} lostReason={workspace.record.lostReason} />
+          <StageControl opportunityId={opportunityId} key={`${workspace.record.stage}|${workspace.record.lostReason ?? ''}`} stage={workspace.record.stage} lostReason={workspace.record.lostReason} />
         ) : null
       }
       after={<OpportunityWorkspace opportunityId={opportunityId} />}

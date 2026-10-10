@@ -58,7 +58,16 @@ test('a follow-up needs a title and a known priority, and a real due date', () =
   assert.deepEqual(read({ priority: ' High ', dueDate: '2026-10-20', assigneeId: UUID }), {
     title: 'Call back', priority: 'High', due_at: '2026-10-20T12:00:00.000Z', assignee_id: UUID,
   })
-  assert.deepEqual(read({}), { title: 'Call back', priority: 'Medium', due_at: null, assignee_id: null })
+  assert.deepEqual(read({ assigneeId: '' }), { title: 'Call back', priority: 'Medium', due_at: null, assignee_id: null }, 'Unassigned is an explicit null')
+  assert.deepEqual(read({ assigneeId: '  ' }), { title: 'Call back', priority: 'Medium', due_at: null, assignee_id: null })
+  assert.deepEqual(read({}), { title: 'Call back', priority: 'Medium', due_at: null, assignee_id: undefined }, 'no assignee field at all is left undefined')
+})
+
+test('a follow-up assignee is absent, empty or a value, and the three are told apart', () => {
+  const assignee = (entries: Record<string, string>) => (readFollowUpFields(form({ title: 'Call back', priority: 'Medium', ...entries })) as { assignee_id: unknown }).assignee_id
+  assert.equal(assignee({}), undefined, 'absent')
+  assert.equal(assignee({ assigneeId: '' }), null, 'empty')
+  assert.equal(assignee({ assigneeId: UUID }), UUID, 'a value')
 })
 
 test('a stage change needs a known stage, and Lost needs a reason', () => {
@@ -87,6 +96,8 @@ test('company names that differ only by capitals and spacing are the same compan
 
 test('a follow-up goes to the person asked for, else the signed-in user, else nobody', () => {
   assert.equal(resolveFollowUpAssignee(UUID, ['a']), UUID)
-  assert.equal(resolveFollowUpAssignee(null, ['a', 'b']), 'a')
+  assert.equal(resolveFollowUpAssignee(undefined, ['a', 'b']), 'a', 'no choice submitted: default to the signed-in user')
+  assert.equal(resolveFollowUpAssignee(undefined, []), null)
+  assert.equal(resolveFollowUpAssignee(null, ['a', 'b']), null, 'Unassigned chosen: stays unassigned')
   assert.equal(resolveFollowUpAssignee(null, []), null)
 })

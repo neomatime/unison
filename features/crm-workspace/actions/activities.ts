@@ -15,7 +15,7 @@ export async function logActivityAction(
   _previous: ActionState,
   form: FormData,
 ): Promise<ActionState> {
-  if (!(parentKind in PARENT_COLUMN) || !isUuid(parentId)) return { error: 'That record is invalid.' }
+  if (!Object.hasOwn(PARENT_COLUMN, parentKind) || !isUuid(parentId)) return { error: 'That record is invalid.' }
   const fields = readActivityFields(form)
   if ('error' in fields) return { error: fields.error }
   const { organization, user, db } = await writeContext()
@@ -74,7 +74,7 @@ export async function loadMoreTimelineAction(
   beforeAt: string,
   beforeId: string,
 ): Promise<TimelinePage | { error: string }> {
-  if (!(kind in PARENT_COLUMN) || !isUuid(id) || !isUuid(beforeId) || Number.isNaN(new Date(beforeAt).getTime())) {
+  if (!Object.hasOwn(PARENT_COLUMN, kind) || !isUuid(id) || !isUuid(beforeId) || Number.isNaN(new Date(beforeAt).getTime())) {
     return { error: 'That page of the timeline is invalid.' }
   }
   try {

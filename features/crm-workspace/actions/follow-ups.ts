@@ -14,7 +14,7 @@ export async function addFollowUpAction(
   _previous: ActionState,
   form: FormData,
 ): Promise<ActionState> {
-  if (!(parentKind in PARENT_COLUMN) || !isUuid(parentId)) return { error: 'That record is invalid.' }
+  if (!Object.hasOwn(PARENT_COLUMN, parentKind) || !isUuid(parentId)) return { error: 'That record is invalid.' }
   const fields = readFollowUpFields(form)
   if ('error' in fields) return { error: fields.error }
   const { organization, user, db } = await writeContext()
@@ -41,6 +41,18 @@ export async function addFollowUpAction(
     if (opportunity.error) return { error: 'The follow-up could not be added.' }
     if (!opportunity.data) return { error: 'That record no longer exists.' }
     clientId = opportunity.data.client_id
+  }
+  // Likewise a follow-up on a lead that has been converted belongs to the client it became.
+  if (parentKind === 'lead') {
+    const lead = await db
+      .from('leads')
+      .select('converted_client_id')
+      .eq('id', parentId)
+      .eq('organization_id', organization.id)
+      .maybeSingle()
+    if (lead.error) return { error: 'The follow-up could not be added.' }
+    if (!lead.data) return { error: 'That record no longer exists.' }
+    clientId = lead.data.converted_client_id
   }
 
   const { error } = await db.from('tasks').insert({

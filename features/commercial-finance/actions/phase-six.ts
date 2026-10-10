@@ -251,14 +251,20 @@ export async function savePhaseSixRecordAction(
 
   if (result.error || !result.data) {
     const message = String(result.error?.message ?? "");
+    const conversionRefused = message.includes("leads_converted_status_check") || message.includes("leads_conversion_guarded");
+    // The update never sets the converted_* columns, so the conversion guard can only fire on a
+    // status flip: submitting anything but Converted for a saved lead means it was Converted.
+    const leavingConverted = kind === "lead" && Boolean(id && isUuid(id)) && values.status !== "Converted";
     return {
       error: result.error?.code === "23505"
         ? "That reference or scenario name already exists."
-        : message.includes("leads_converted_status_check") || message.includes("leads_conversion_guarded")
-          ? "A lead becomes Converted by using Convert lead on its page."
-          : message.includes("sales_opportunities_lost_reason_check")
-            ? "Say why this opportunity was lost."
-            : "The record could not be saved. Check related records, dates and amounts.",
+        : conversionRefused && leavingConverted
+          ? "A converted lead cannot be changed back to another status."
+          : conversionRefused
+            ? "A lead becomes Converted by using Convert lead on its page."
+            : message.includes("sales_opportunities_lost_reason_check")
+              ? "Say why this opportunity was lost."
+              : "The record could not be saved. Check related records, dates and amounts.",
     };
   }
 

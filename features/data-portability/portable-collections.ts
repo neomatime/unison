@@ -109,7 +109,7 @@ export const portableDefinitions: Record<PortableCollection, PortableDefinition>
   },
   "sales-opportunities": {
     id: "sales-opportunities", label: "Sales Opportunities", table: "sales_opportunities", orderBy: "updated_at",
-    columns: [column("id", "ID", "uuid"), column("name", "Name"), column("client_name", "Client Name"), column("stage", "Stage"), column("expected_value", "Expected Value", "number"), column("currency", "Currency"), column("probability_percent", "Probability", "integer"), column("expected_close", "Expected Close", "date"), column("next_step", "Next Step"), column("won_at", "Won At", "datetime"), column("updated_at", "Updated At", "datetime")],
+    columns: [column("id", "ID", "uuid"), column("name", "Name"), column("client_name", "Client Name"), column("stage", "Stage"), column("expected_value", "Expected Value", "number"), column("currency", "Currency"), column("probability_percent", "Probability", "integer"), column("expected_close", "Expected Close", "date"), column("next_step", "Next Step"), column("lost_reason", "Lost Reason"), column("won_at", "Won At", "datetime"), column("updated_at", "Updated At", "datetime")],
     importColumns: [column("name", "Name", "text", true), column("client_name", "Client Name", "text", true), column("client_id", "Client ID", "uuid"), column("lead_id", "Lead ID", "uuid"), column("owner_id", "Owner ID", "uuid"), column("stage", "Stage"), column("expected_value", "Expected Value", "number"), column("currency", "Currency"), column("probability_percent", "Probability", "integer"), column("expected_close", "Expected Close", "date"), column("next_step", "Next Step"), column("lost_reason", "Lost Reason"), column("notes", "Notes")],
   },
   quotes: {

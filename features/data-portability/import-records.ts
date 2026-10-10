@@ -99,6 +99,12 @@ export function normalizeImportedRows(definition: PortableDefinition, headers: s
       issues.push({ row: index + 2, field: "Status", message: "Status cannot be Converted: a lead becomes Converted by using Convert lead on its page." });
       valid = false;
     }
+    // An opportunity can be Lost only with a reason; a database check refuses it otherwise,
+    // which would fail the whole batch, so skip just this row with a clear message.
+    if (valid && definition.table === "sales_opportunities" && record.stage === "Lost" && !String(record.lost_reason ?? "").trim()) {
+      issues.push({ row: index + 2, field: "Stage", message: "Stage Lost needs a Lost reason." });
+      valid = false;
+    }
     if (valid) records.push(record);
   });
   return { records, issues, fatal: false };

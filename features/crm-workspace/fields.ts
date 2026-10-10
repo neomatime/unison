@@ -55,7 +55,8 @@ export type FollowUpFields = {
   title: string
   priority: string
   due_at: string | null
-  assignee_id: string | null
+  /** undefined: the form had no assignee field at all. null: Unassigned was chosen. */
+  assignee_id: string | null | undefined
 }
 
 export function readFollowUpFields(form: FormData): FollowUpFields | { error: string } {
@@ -65,7 +66,8 @@ export function readFollowUpFields(form: FormData): FollowUpFields | { error: st
   if (!isOneOf(FOLLOW_UP_PRIORITIES, priority)) return { error: 'Choose a valid priority.' }
   const dueDate = optional(form, 'dueDate')
   if (dueDate && !isValidIsoDate(dueDate)) return { error: 'Enter a valid due date.' }
-  const assigneeId = optional(form, 'assigneeId')
+  // An empty value is a choice (Unassigned); only a missing field leaves the choice to the server.
+  const assigneeId = form.has('assigneeId') ? optional(form, 'assigneeId') : undefined
   if (assigneeId && !isUuid(assigneeId)) return { error: 'Choose a valid assignee.' }
   // Noon UTC, so the date reads the same in every timezone from UTC-11 to UTC+11.
   return { title, priority, due_at: dueDate ? `${dueDate}T12:00:00.000Z` : null, assignee_id: assigneeId }
@@ -93,7 +95,11 @@ export function normalizeCompanyName(name: string): string {
   return name.trim().replace(/\s+/g, ' ').toLowerCase()
 }
 
-/** The person asked for, else the signed-in user's own team profile, else nobody. */
-export function resolveFollowUpAssignee(requested: string | null, ownProfileIds: readonly string[]): string | null {
-  return requested ?? ownProfileIds[0] ?? null
+/**
+ * The person asked for; nobody when Unassigned was chosen (null); the signed-in user's own
+ * team profile, else nobody, only when no choice was submitted at all (undefined).
+ */
+export function resolveFollowUpAssignee(requested: string | null | undefined, ownProfileIds: readonly string[]): string | null {
+  if (requested === undefined) return ownProfileIds[0] ?? null
+  return requested
 }

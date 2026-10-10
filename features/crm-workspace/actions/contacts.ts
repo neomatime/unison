@@ -14,7 +14,7 @@ export async function addContactAction(
   _previous: ActionState,
   form: FormData,
 ): Promise<ActionState> {
-  if (!(parentKind in PARENT_COLUMN) || !isUuid(parentId)) return { error: 'That record is invalid.' }
+  if (!Object.hasOwn(PARENT_COLUMN, parentKind) || !isUuid(parentId)) return { error: 'That record is invalid.' }
   const fields = readContactFields(form)
   if ('error' in fields) return { error: fields.error }
   const { organization, db } = await writeContext()
@@ -39,7 +39,11 @@ export async function addContactAction(
   // The first contact is primary automatically; later ones only when asked.
   if ((existing.count ?? 0) === 0 || form.get('isPrimary') === 'on') {
     const primary = await db.rpc('set_primary_contact', { p_contact_id: inserted.data.id })
-    if (primary.error) return { error: 'The contact was added, but could not be made primary.' }
+    if (primary.error) {
+      // The contact exists even though this step failed, so the pages must show it.
+      revalidateWorkspacePages()
+      return { error: 'The contact was added, but could not be made primary.' }
+    }
   }
   revalidateWorkspacePages()
   return { success: 'Contact added.' }
