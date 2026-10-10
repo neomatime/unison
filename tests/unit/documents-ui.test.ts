@@ -183,3 +183,33 @@ test('the quote and invoice pages mount the document actions and the line editor
     assert.match(source, mounted, `${kind} page keeps its detail wiring`)
   }
 })
+
+test('the document sheet prints what the view says as text, with print styling, and loads only view-supplied images', () => {
+  const source = component('document-sheet')
+  assert.ok(!isClientModule(source), 'the sheet is a server component')
+  assert.doesNotMatch(source, /dangerouslySetInnerHTML/, 'user text is never rendered as HTML')
+  assert.doesNotMatch(source, /useState\(|useEffect\(/)
+  assert.match(source, /@page\s*\{\s*size:\s*A4/)
+  assert.match(source, /print-color-adjust:\s*exact/)
+  const images = [...source.matchAll(/<img\s[^>]*src=\{([^}]+)\}/g)].map((match) => match[1].trim())
+  assert.ok(images.length >= 2)
+  for (const src of images) assert.match(src, /^view\.(headerImage|logo)$/, `an image src must come from the checked view: ${src}`)
+  assert.doesNotMatch(source, /himark|HIMARK|\/brand\//i, 'no company-specific value in the sheet')
+})
+
+test('the print button is a client module and the document pages check the id before they load anything', () => {
+  assert.ok(isClientModule(component('print-button')))
+  assert.match(component('print-button'), /window\.print\(\)/)
+  for (const [route, id, kind] of [
+    [['commercial', 'quotes', '[quoteId]'], 'quoteId', 'quote'],
+    [['finance', 'invoices', '[invoiceId]'], 'invoiceId', 'invoice'],
+  ] as const) {
+    const source = read('app', '(unison)', ...route, 'document', 'page.tsx')
+    const check = source.indexOf(`isUuid(${id})`)
+    const load = source.indexOf(`getDocument('${kind}', ${id})`)
+    assert.ok(check > -1 && load > -1 && check < load, `${kind} document page rejects a malformed id before loading`)
+    assert.match(source, /<DocumentSheet view=\{view\} \/>/)
+    assert.match(source, /<PrintButton \/>/)
+    assert.match(source, /buildDocumentView\(/)
+  }
+})
