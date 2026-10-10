@@ -1740,6 +1740,7 @@ const MESSAGES: ReadonlyArray<readonly [token: string, message: string]> = [
   ['QUOTE_CANNOT_REOPEN', 'A sent quote cannot go back to a draft. Duplicate it as a new draft to revise it.'],
   ['INVOICE_CANNOT_REOPEN', 'An issued invoice cannot go back to a draft. Cancel it and raise a new one.'],
   ['INVOICE_CANCELLED', 'A cancelled invoice cannot be changed. Raise a new invoice instead.'],
+  ['DOCUMENT_NUMBER_EXHAUSTED', 'This year\'s numbers for this kind of document have run out. Contact support.'],
   ['QUOTE_FROZEN', 'This quote has already been sent and can no longer be edited. To revise it, duplicate it as a new draft.'],
   ['INVOICE_FROZEN', 'This invoice has already been issued and can no longer be edited. To correct it, cancel it and raise a new one.'],
   ['DOCUMENT_NUMBER_GENERATED', 'Numbers are generated automatically when a document is sent or issued.'],
@@ -2132,6 +2133,7 @@ test('a draft quote is built from the live client and company details, with no n
   assert.equal(view.termsNumbered, true)
   assert.deepEqual(view.details.map((row) => row.label), ['Quote no.', 'Issue date', 'Valid until', 'Currency', 'Client ref'])
   assert.deepEqual(view.details[0], { label: 'Quote no.', value: 'Draft' })
+  assert.deepEqual(buildDocumentView({ kind: 'quote', record: { ...draftQuote, issue_date: '2020-01-01' }, lines, client, settings }).details[1], { label: 'Issue date', value: '—' }, 'a date typed on a draft is not printed: it is set when the quote is sent')
   assert.deepEqual(view.project, { title: 'Phase 1', lines: ['Discovery', 'Project Ref: P-1'] })
   assert.equal(view.closing?.heading, 'Next steps')
   assert.equal(view.headerImage, '/brand/header.png')
@@ -2355,7 +2357,8 @@ export function buildDocumentView(input: { kind: DocumentKind; record: Row; line
   const number = rawNumber && !isDraftReference(rawNumber) ? rawNumber : null
   const currency = text(record.currency) ?? 'ZAR'
   const clientRef = text(record.client_ref)
-  const issueDate = formatDocumentDate(record.issue_date) ?? '—'
+  // A draft has no issue date yet: it is set the day the document goes out, whatever was typed on the draft.
+  const issueDate = (draft ? null : formatDocumentDate(record.issue_date)) ?? '—'
   const secondDate = formatDocumentDate(quote ? record.valid_until : record.due_date) ?? '—'
 
   const details = [
@@ -4395,7 +4398,7 @@ export default async function Page({ params }: { params: Promise<{ quoteId: stri
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-muted-foreground">
-          {view.draft ? 'This is a draft. Its number and the copies of the client and company details are fixed when it is sent.' : 'This is the frozen copy that was sent.'}
+          {view.draft ? 'This is a draft. Its number, its date, the VAT rate and the copies of the client and company details are fixed when it is sent.' : 'This is the frozen copy that was sent.'}
           {view.issuerMissing ? (
             <>
               {' '}
@@ -4411,7 +4414,7 @@ export default async function Page({ params }: { params: Promise<{ quoteId: stri
 }
 ```
 
-`app/(unison)/finance/invoices/[invoiceId]/document/page.tsx`: the same with `invoiceId`, `getDocument('invoice', invoiceId)`, `kind: 'invoice'`, `category="Finance"`, title fallback `'Draft invoice'`, description `"The invoice as the client will see it."`, parent `{ label: 'Invoice', href: \`/finance/invoices/${invoiceId}\` }`, and the draft sentence `This is a draft. Its number and the copies of the client and company details are fixed when it is issued.` / `This is the frozen copy that was issued.`.
+`app/(unison)/finance/invoices/[invoiceId]/document/page.tsx`: the same with `invoiceId`, `getDocument('invoice', invoiceId)`, `kind: 'invoice'`, `category="Finance"`, title fallback `'Draft invoice'`, description `"The invoice as the client will see it."`, parent `{ label: 'Invoice', href: \`/finance/invoices/${invoiceId}\` }`, and the draft sentence `This is a draft. Its number, its date, the VAT rate and the copies of the client and company details are fixed when it is issued.` / `This is the frozen copy that was issued.`.
 
 - [ ] **Step 5: Run the gates.** `node --test --experimental-strip-types tests/unit/documents-ui.test.ts`, then `pnpm typecheck`, `pnpm test`, `pnpm build`; all exit 0. Show each new guard bites (for example, add `dangerouslySetInnerHTML`, change an `<img src>` to a literal path, move the id check below the load), and say how in the report. Render check with a throwaway script outside the source tree: server-render `DocumentSheet` for (a) a draft quote with a company, (b) a sent invoice, (c) a document with no company details and no client address, and (d) hostile and very long text; state what the markup showed, and say plainly that you did not run it in a browser. The visual check against the design happens in Task 9.
 
