@@ -71,6 +71,80 @@ test('a sent quote prints only its frozen snapshot, whatever the live data now s
   ])
 })
 
+// A snapshot and a "live" copy that differ in every printed field, so any read from live data shows up.
+const liveSettings = {
+  legal_name: 'LIVE Co', tagline: 'LIVE tagline', address_line1: 'LIVE 1 Road', address_line2: 'LIVE Suite', city: 'LIVE City', postal_code: 'LIVE-PC', country: 'LIVE Land',
+  vat_number: 'LIVE-VAT', email: 'live@live.example', phone: 'LIVE phone', website: 'live.example',
+  bank_name: 'LIVE Bank', bank_account_name: 'LIVE Account', bank_account_number: 'LIVE-123', bank_branch_code: 'LIVE-BR', bank_account_type: 'LIVE Type',
+  default_quote_terms: 'LIVE quote term', default_payment_terms: 'LIVE payment term', quote_closing_text: 'LIVE quote closing',
+  invoice_closing_text: 'LIVE invoice closing', logo_path: '/brand/live-logo.png', header_image_path: '/brand/live-header.png',
+}
+const liveClient = { name: 'LIVE Client', address_line1: 'LIVE Client St', address_line2: 'LIVE Client Suite', city: 'LIVE Clientville', postal_code: 'LIVE-CPC', country: 'LIVE Clientland', vat_number: 'LIVE-CVAT' }
+const snapshotIssuer = {
+  legal_name: 'Snap Co', tagline: 'Snap tagline', address_line1: 'Snap 1 Road', address_line2: 'Snap Suite', city: 'Snap City', postal_code: 'SN-1', country: 'Snapland',
+  vat_number: 'SNAP-VAT', email: 'snap@snap.example', phone: 'Snap phone', website: 'snap.example',
+  bank_name: 'Snap Bank', bank_account_name: 'Snap Account', bank_account_number: 'SNAP-123', bank_branch_code: 'SNAP-BR', bank_account_type: 'Snap Type',
+  quote_closing_text: 'Snap quote closing', invoice_closing_text: 'Snap invoice closing', logo_path: '/brand/snap-logo.png', header_image_path: '/brand/snap-header.png',
+}
+const snapshotBillTo = { name: 'Snap Client', address_line1: 'Snap Client St', address_line2: 'Snap Client Suite', city: 'Snap Clientville', postal_code: 'SN-C1', country: 'Snap Clientland', vat_number: 'SNAP-CVAT' }
+
+test('a sent quote prints every field from its snapshot and none from the live client or company details', () => {
+  const sent = {
+    ...draftQuote, status: 'Sent', quote_number: 'TST-Q-2026-00002', issue_date: '2026-10-07', valid_until: '2026-11-06', terms: '1. Snap term one\n2. Snap term two',
+    currency: 'USD', vat_rate: '7.50', bill_to: snapshotBillTo, issuer: snapshotIssuer,
+  }
+  const view = buildDocumentView({ kind: 'quote', record: sent, lines, client: liveClient, settings: liveSettings })
+  assert.deepEqual(view.billTo, ['Snap Client', 'Snap Client St', 'Snap Client Suite', 'Snap Clientville, SN-C1', 'Snap Clientland', 'VAT No: SNAP-CVAT'])
+  assert.equal(view.from.name, 'Snap Co')
+  assert.deepEqual(view.from.lines, ['Snap 1 Road', 'Snap Suite', 'Snap City, SN-1', 'Snapland'])
+  assert.equal(view.from.vatNumber, 'SNAP-VAT')
+  assert.equal(view.tagline, 'Snap tagline')
+  assert.deepEqual(view.footer, { email: 'snap@snap.example', phone: 'Snap phone', website: 'snap.example' })
+  assert.equal(view.logo, '/brand/snap-logo.png')
+  assert.equal(view.headerImage, '/brand/snap-header.png')
+  assert.deepEqual(view.bank, [
+    { label: 'Bank', value: 'Snap Bank' }, { label: 'Account Name', value: 'Snap Account' }, { label: 'Account Number', value: 'SNAP-123' },
+    { label: 'Branch Code', value: 'SNAP-BR' }, { label: 'Account Type', value: 'Snap Type' },
+  ])
+  assert.deepEqual(view.closing, { heading: 'Next steps', paragraphs: ['Snap quote closing'] })
+  assert.deepEqual(view.terms, ['Snap term one', 'Snap term two'])
+  assert.equal(view.currency, 'USD')
+  assert.equal(view.details[3].value, 'USD')
+  assert.equal(view.totals.vatLabel, 'VAT (7.5%)')
+  assert.doesNotMatch(JSON.stringify(view), /LIVE/, 'nothing live is printed on a sent quote')
+})
+
+test('a sent invoice prints every field from its snapshot and none from the live client or company details', () => {
+  const issued = {
+    status: 'Issued', invoice_number: 'TST-I-2026-00009', client_name: 'Snap Client', currency: 'EUR', vat_rate: '12.00', subtotal: 100, tax_amount: 12, total_amount: 112,
+    issue_date: '2026-10-07', due_date: '2026-11-06', payment_terms: 'Snap pay one\nSnap pay two', project_name: null, project_description: null, project_ref: null, client_ref: null,
+    bill_to: snapshotBillTo, issuer: snapshotIssuer,
+  }
+  const view = buildDocumentView({ kind: 'invoice', record: issued, lines, client: liveClient, settings: liveSettings })
+  assert.deepEqual(view.billTo, ['Snap Client', 'Snap Client St', 'Snap Client Suite', 'Snap Clientville, SN-C1', 'Snap Clientland', 'VAT No: SNAP-CVAT'])
+  assert.equal(view.from.name, 'Snap Co')
+  assert.deepEqual(view.bank.map((row) => row.value), ['Snap Bank', 'Snap Account', 'SNAP-123', 'SNAP-BR', 'Snap Type'])
+  assert.deepEqual(view.closing, { heading: 'Thank you', paragraphs: ['Snap invoice closing'] })
+  assert.deepEqual(view.terms, ['Snap pay one', 'Snap pay two'])
+  assert.equal(view.currency, 'EUR')
+  assert.equal(view.totals.vatLabel, 'VAT (12%)')
+  assert.equal(view.logo, '/brand/snap-logo.png')
+  assert.equal(view.headerImage, '/brand/snap-header.png')
+  assert.doesNotMatch(JSON.stringify(view), /LIVE/, 'nothing live is printed on an issued invoice')
+})
+
+test('a sent document with no terms of its own prints none: it never falls back to the live default terms', () => {
+  const sentQuote = { ...draftQuote, status: 'Sent', quote_number: 'TST-Q-2026-00003', terms: null, bill_to: snapshotBillTo, issuer: snapshotIssuer }
+  assert.deepEqual(buildDocumentView({ kind: 'quote', record: sentQuote, lines, client: liveClient, settings: liveSettings }).terms, [])
+  const issuedInvoice = {
+    status: 'Issued', invoice_number: 'TST-I-2026-00010', client_name: 'Snap Client', currency: 'ZAR', vat_rate: 15, subtotal: 100, tax_amount: 15, total_amount: 115,
+    issue_date: '2026-10-07', due_date: '2026-11-06', payment_terms: null, bill_to: snapshotBillTo, issuer: snapshotIssuer,
+  }
+  assert.deepEqual(buildDocumentView({ kind: 'invoice', record: issuedInvoice, lines, client: liveClient, settings: liveSettings }).terms, [])
+  const draftWithoutTerms = buildDocumentView({ kind: 'quote', record: { ...draftQuote, terms: null }, lines, client: liveClient, settings: liveSettings })
+  assert.deepEqual(draftWithoutTerms.terms, ['LIVE quote term'], 'a draft, in contrast, does show the live default terms')
+})
+
 test('only what exists is shown: no address, no bank, no project, no closing text, no footer', () => {
   const bare = { legal_name: 'Bare Co' }
   const record = { ...draftQuote, project_name: null, project_description: null, project_ref: null, client_ref: null }
@@ -126,7 +200,7 @@ test('a zero-rated document still shows a VAT row of 0.00', () => {
   assert.equal(fractional.totals.vatLabel, 'VAT (15.5%)')
 })
 
-test('hostile and very long text is passed through verbatim as text, never trimmed or interpreted', () => {
+test('hostile and very long text is passed through as plain text: markup is not interpreted and nothing is truncated', () => {
   const hostile = '<img src=x onerror=alert(1)> & "quotes"'
   const long = 'word '.repeat(700).trim()
   const view = buildDocumentView({

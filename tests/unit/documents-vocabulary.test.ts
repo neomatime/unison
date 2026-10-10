@@ -46,6 +46,16 @@ test('every database error token the app maps is raised by the send and issue mi
   for (const token of DOCUMENT_ERROR_TOKENS) assert.ok(sendIssue.includes(`'${token}'`), `${token} must be raised by the migration`)
 })
 
+test('every token the send and issue migrations raise is either mapped or knowingly left unmapped', () => {
+  const unmapped = ['DOCUMENT_KIND_UNKNOWN'] // a programming error, never shown to a person
+  const sendIssue = migration('20261011110000_documents_send_issue.sql') + migration('20261011120000_documents_hardening.sql')
+  const raised = new Set([...sendIssue.matchAll(/raise exception '([A-Z_]+)'/g)].map((match) => match[1]))
+  assert.ok(raised.size >= 20, `expected to find the raised tokens, found ${raised.size}`)
+  for (const token of raised) {
+    assert.ok(DOCUMENT_ERROR_TOKENS.includes(token) || unmapped.includes(token), `${token} is raised by a migration but has no message in errors.ts`)
+  }
+})
+
 test('database tokens become plain messages, and anything else is left to the caller', () => {
   assert.match(documentErrorMessage('QUOTE_NEEDS_LINES')!, /at least one line/i)
   assert.match(documentErrorMessage('INVOICE_NEEDS_CLIENT')!, /client/i)

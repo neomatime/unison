@@ -20,6 +20,13 @@ test('parseDecimal accepts plain decimals with a comma or spaces and rejects eve
   for (const bad of ['', 'abc', '-1', '1e3', '1.2.3', '1,200.50', '.5', '5.', '1234567890123']) assert.equal(parseDecimal(bad), null, bad)
 })
 
+test('parseDecimal refuses a comma that looks like a thousands separator but keeps a decimal comma', () => {
+  for (const ambiguous of ['1,200', '2,500', '10,000', '1 200,500']) assert.equal(parseDecimal(ambiguous), null, ambiguous)
+  assert.deepEqual(parseDecimal('2,5'), { value: 2.5, decimals: 1 })
+  assert.deepEqual(parseDecimal('99,99'), { value: 99.99, decimals: 2 })
+  assert.deepEqual(parseDecimal('1 200,5'), { value: 1200.5, decimals: 1 })
+})
+
 test('a line reads title, description, quantity, price and VAT code', () => {
   assert.deepEqual(readLineFields(form(line)), {
     title: 'Advisory day', description: 'One day', quantity: 2, unit_price: 1500, vat_code: 'standard', price_list_item_id: null,
@@ -48,6 +55,16 @@ test('a line refuses what the database would refuse, with a message that says wh
   ]
   for (const [override, message] of cases) assert.match(error(readLineFields(form({ ...line, ...override })))!, message, JSON.stringify(override))
   assert.equal(error(readLineFields(form({ ...line, unitPrice: '0' }))), undefined, 'a free line is allowed')
+})
+
+test('a quantity or price typed with a thousands comma is refused with a message that says what to type', () => {
+  for (const typed of ['1,200', '2,500']) {
+    assert.match(error(readLineFields(form({ ...line, quantity: typed })))!, /Enter a quantity as a plain number.*no thousands separators/, `quantity ${typed}`)
+    assert.match(error(readLineFields(form({ ...line, unitPrice: typed })))!, /Enter a unit price as a plain number.*no thousands separators/, `unit price ${typed}`)
+    assert.match(error(readPriceItemFields(form({ title: 'x', unitPrice: typed, vatCode: 'standard' })))!, /Enter a unit price as a plain number/, `price item ${typed}`)
+  }
+  assert.equal((readLineFields(form({ ...line, quantity: '2,5' })) as { quantity: number }).quantity, 2.5)
+  assert.equal((readLineFields(form({ ...line, unitPrice: '1 200,5' })) as { unit_price: number }).unit_price, 1200.5)
 })
 
 test('a price list item reads title, description, price and VAT code', () => {
@@ -106,6 +123,14 @@ test('company details refuse a bad prefix, VAT rate, days, email or image path',
     [{ defaultQuoteTerms: 'x'.repeat(5001) }, /too long/i],
   ]
   for (const [override, message] of cases) assert.match(error(readCompanyFields(form({ ...company, ...override })))!, message, JSON.stringify(override))
+})
+
+test('a very long malicious email is refused promptly, not after a backtracking storm', () => {
+  const started = performance.now()
+  const result = readCompanyFields(form({ ...company, email: '@'.repeat(5000) }))
+  const elapsed = performance.now() - started
+  assert.match(error(result)!, /email is too long/i)
+  assert.ok(elapsed < 100, `took ${elapsed.toFixed(1)} ms`)
 })
 
 test('project details and the client reference read with limits', () => {

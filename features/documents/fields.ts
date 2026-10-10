@@ -13,7 +13,10 @@ const PREFIX = /^[A-Z0-9]{2,8}$/
 
 /** "1500", "99.50", "1 200,5" -> a number and how many decimals were typed; null when it is not a plain non-negative decimal. */
 export function parseDecimal(raw: string): { value: number; decimals: number } | null {
-  const cleaned = raw.replace(/[\s ]/g, '').replace(',', '.')
+  const squeezed = raw.replace(/\s/g, '')
+  // "1,200" is almost certainly a thousands separator, and reading it as 1.2 would be a 1000x error: refuse it.
+  if (/^\d+,\d{3}$/.test(squeezed)) return null
+  const cleaned = squeezed.replace(',', '.')
   if (!/^\d{1,12}(\.\d+)?$/.test(cleaned)) return null
   return { value: Number(cleaned), decimals: cleaned.includes('.') ? cleaned.split('.')[1].length : 0 }
 }
@@ -22,7 +25,7 @@ type Failure = { error: string }
 
 function readMoney(form: FormData, key: string, label: string): number | Failure {
   const parsed = parseDecimal(value(form, key))
-  if (!parsed) return { error: `Enter a ${label}, for example 1500 or 99.50.` }
+  if (!parsed) return { error: `Enter a ${label} as a plain number, for example 1500 or 99.50 (no thousands separators).` }
   if (parsed.decimals > 2) return { error: `The ${label} can have at most 2 decimals.` }
   if (parsed.value > 9999999.99) return { error: `The ${label} is too large.` }
   return parsed.value
@@ -50,7 +53,7 @@ export function readLineFields(form: FormData): LineFields | Failure {
   if (description && description.length > 2000) return { error: 'The description is too long (2,000 characters at most).' }
 
   const quantity = parseDecimal(value(form, 'quantity'))
-  if (!quantity) return { error: 'Enter a quantity, for example 1 or 2.5.' }
+  if (!quantity) return { error: 'Enter a quantity as a plain number, for example 1 or 2.5 (a dot or comma for decimals, no thousands separators).' }
   if (quantity.decimals > 3) return { error: 'The quantity can have at most 3 decimals.' }
   if (quantity.value <= 0) return { error: 'Quantity must be more than zero.' }
   if (quantity.value > 99999.999) return { error: 'The quantity is too large.' }
@@ -151,8 +154,8 @@ export function readCompanyFields(form: FormData): CompanyFields | Failure {
   const paymentDays = readInteger(form, 'defaultPaymentDays', 0, 365, 'Payment days must be between 0 and 365.')
   if (typeof paymentDays !== 'number') return paymentDays
   const email = optional(form, 'email')
-  if (email && !/^\S+@\S+\.\S+$/.test(email)) return { error: 'Enter a valid company email.' }
   if (email && email.length > 200) return { error: 'The company email is too long.' }
+  if (email && !/^\S+@\S+\.\S+$/.test(email)) return { error: 'Enter a valid company email.' }
   const logo = optional(form, 'logoPath')
   const header = optional(form, 'headerImagePath')
   for (const path of [logo, header]) {
