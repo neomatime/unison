@@ -32,9 +32,9 @@ export function ContactsSection({ parent, contacts, note }: { parent: Parent | n
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <button type="button" onClick={() => setEditingId(contact.id)} className="border border-border px-3 py-1.5 text-xs font-semibold">Edit</button>
-                  {!contact.isPrimary ? <ActionButton action={makePrimaryContactAction.bind(null, contact.id)} label="Make primary" /> : null}
-                  <ActionButton action={archiveContactAction.bind(null, contact.id)} label="Remove" tone="danger" confirmText={`Remove ${contact.fullName} from this account's contacts?`} />
+                  <button type="button" onClick={() => setEditingId(contact.id)} aria-label={`Edit ${contact.fullName}`} className="border border-border px-3 py-1.5 text-xs font-semibold">Edit</button>
+                  {!contact.isPrimary ? <ActionButton action={makePrimaryContactAction.bind(null, contact.id)} label="Make primary" ariaLabel={`Make primary: ${contact.fullName}`} /> : null}
+                  <ActionButton action={archiveContactAction.bind(null, contact.id)} label="Remove" ariaLabel={`Remove ${contact.fullName}`} tone="danger" confirmText={`Remove ${contact.fullName} from this account's contacts?`} />
                 </div>
               </li>
             ),

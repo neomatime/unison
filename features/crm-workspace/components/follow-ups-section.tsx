@@ -29,7 +29,7 @@ export function FollowUpsSection({
                   {item.assignee ?? 'Unassigned'} · {item.priority} · {item.dueAt ? <DueDate iso={item.dueAt} /> : 'No due date'}
                 </p>
               </div>
-              <ActionButton action={setFollowUpDoneAction.bind(null, item.id, true)} label="Mark done" />
+              <ActionButton action={setFollowUpDoneAction.bind(null, item.id, true)} label="Mark done" ariaLabel={`Mark done: ${item.title}`} />
             </li>
           ))}
         </ul>
@@ -43,7 +43,7 @@ export function FollowUpsSection({
             {done.map((item) => (
               <li key={item.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-3">
                 <p className="text-sm text-[var(--briefing-muted)] line-through">{item.title}</p>
-                <ActionButton action={setFollowUpDoneAction.bind(null, item.id, false)} label="Reopen" />
+                <ActionButton action={setFollowUpDoneAction.bind(null, item.id, false)} label="Reopen" ariaLabel={`Reopen: ${item.title}`} />
               </li>
             ))}
           </ul>

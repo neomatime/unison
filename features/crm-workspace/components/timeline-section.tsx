@@ -71,8 +71,8 @@ export function TimelineSection({ kind, id, initial, currentUserId, canModerate 
                     </div>
                     {canChange ? (
                       <div className="flex gap-2">
-                        <button type="button" onClick={() => setEditingId(entry.id)} className="border border-border px-3 py-1.5 text-xs font-semibold">Edit</button>
-                        <ActionButton action={deleteActivityAction.bind(null, entry.id)} label="Remove" tone="danger" confirmText="Remove this entry? This cannot be undone." />
+                        <button type="button" onClick={() => setEditingId(entry.id)} aria-label={`Edit ${entry.subject}`} className="border border-border px-3 py-1.5 text-xs font-semibold">Edit</button>
+                        <ActionButton action={deleteActivityAction.bind(null, entry.id)} label="Remove" ariaLabel={`Remove ${entry.subject}`} tone="danger" confirmText="Remove this entry? This cannot be undone." />
                       </div>
                     ) : null}
                   </div>
@@ -106,10 +106,15 @@ function KindSelect({ defaultValue }: { defaultValue?: string }) {
 
 function LogActivityForm({ kind, id }: { kind: ParentKind; id: string }) {
   const [state, action, pending] = useActionState(logActivityAction.bind(null, kind, id), undefined)
+  // React resets the form after a save; remounting the date field with it clears the picker too.
+  const [savedCount, setSavedCount] = useState(0)
+  useEffect(() => {
+    if (state?.success) setSavedCount((count) => count + 1)
+  }, [state])
   return (
     <form action={action} className="grid gap-3 p-5 md:grid-cols-2">
       <KindSelect />
-      <OccurredAtField />
+      <OccurredAtField key={savedCount} />
       <input name="subject" required aria-label="Subject" placeholder="What happened?" className={`${input} md:col-span-2`} />
       <textarea name="body" aria-label="Notes" placeholder="Notes" className={`${area} md:col-span-2`} />
       <div className="flex items-center justify-between gap-3 md:col-span-2">

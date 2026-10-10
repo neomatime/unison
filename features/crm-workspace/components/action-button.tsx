@@ -10,11 +10,14 @@ export function ActionButton({
   label,
   confirmText,
   tone,
+  ariaLabel,
 }: {
   action: (previous: ActionState, form: FormData) => Promise<ActionState>
   label: string
   confirmText?: string
   tone?: 'danger'
+  /** Names the row for assistive tech when the visible label alone is ambiguous. Starts with the visible label. */
+  ariaLabel?: string
 }) {
   const [state, run, pending] = useActionState(action, undefined)
   return (
@@ -27,6 +30,7 @@ export function ActionButton({
       <button
         type="submit"
         disabled={pending}
+        aria-label={ariaLabel}
         className={`border px-3 py-1.5 text-xs font-semibold disabled:opacity-60 ${tone === 'danger' ? 'border-destructive/30 text-destructive' : 'border-border text-foreground'}`}
       >
         {pending ? 'Working…' : label}
