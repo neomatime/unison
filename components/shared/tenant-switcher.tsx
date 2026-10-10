@@ -45,9 +45,6 @@ export function TenantSwitcher({ collapsed = false }: { collapsed?: boolean }) {
         </>}
       </button>
 
-      {/* TEMPORARY DIAGNOSTIC - remove once the partner level display is confirmed. */}
-      {collapsed ? null : <p className="mt-1 break-all text-[0.6rem] text-muted-foreground">diag: partnerLevel={String(active.partnerLevel)} · orgs={organizations.map((organization) => `${organization.slug}:${String(organization.partnerLevel)}`).join(',')}</p>}
-
       {open && hasMultipleOrganizations ? (
         <div
           className={cn(
