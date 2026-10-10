@@ -284,7 +284,7 @@ test('the PDF layout module is loadable by tests: relative imports, no directive
     assert.doesNotMatch(source, /^\s*['"]use (client|server)['"]/, name)
     assert.doesNotMatch(source, /server-only/, name)
     assert.doesNotMatch(source, /from\s+['"]@\//, name)
-    assert.doesNotMatch(source, /<[A-Z][A-Za-z]*[\s>]/, `${name} must use createElement, not JSX`)
+    assert.doesNotMatch(source, /(?:^|[(=,?:]|return)\s*<[A-Za-z][A-Za-z.]*[\s/>]/m, `${name} must use createElement, not JSX`)
   }
 })
 
@@ -1927,9 +1927,9 @@ test('the email action checks everything cheap first, sends once, and records on
     'readEmailFields(',
     'getDocument(',
     'isDraftStatus(',
-    'HOURLY_EMAIL_CAP',
+    '>= HOURLY_EMAIL_CAP',
     'makeDocumentPdf(',
-    'MAX_EMAIL_PDF_BYTES',
+    '> MAX_EMAIL_PDF_BYTES',
     'await sendEmail(',
     "rpc('record_document_email'",
   ].map((marker) => {
