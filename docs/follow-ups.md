@@ -1035,3 +1035,53 @@ The Overview is now a CRM dashboard and the sidebar has no Delivery section. Des
   The refresh-on-change path (`record_change_events` to `RealtimeRefresh` to `router.refresh()`) exists and every source
   table writes to it, but it was not watched end to end.
 - **`pnpm lint` cannot run in this checkout:** `eslint` is not installed, so lint was not run.
+
+## From the daily CRM loop slice (2026-10-10)
+
+What the contacts, timeline, follow-ups, lead conversion and stage-control slice deliberately left out or could not prove.
+
+- **No email or inbox sync.** Emails are logged by hand.
+- **No reminder emails or notifications for follow-ups** (roadmap Stage 4). Follow-ups show on the record and in My Tasks.
+- **No CRM roles.** Any member can log, convert a lead and change a stage. Only edit and delete of a logged activity is limited
+  to its author or an owner or admin.
+- **Contacts are not in global search.**
+- **Removing the primary contact leaves none primary** until another is chosen; nothing promotes one automatically.
+- **A converted lead's own contact fields stay on the lead** as history; the contact lives on the client.
+- **`activities` audits updates and deletes only**, not inserts (the log is the record of the insert).
+- **The client page's timeline gathers a lead's entries through `converted_client_id`**, so a lead converted before this slice
+  would not appear. There are none (production held no leads).
+- **The stage control saves with a "Change stage" button, not on select change.** Choosing Lost needs a reason first, and a
+  deliberate click avoids accidental stage changes. The spec said "saves on change"; this was accepted as an amendment.
+- **Forms clear typed text after a failed save** (React 19 resets a form after its action), except the activity time, the
+  Convert client choice and the stage control, which are held in state. The subject, notes and contact fields reset.
+- **"Load more" on the timeline starts over from the first page** whenever anything on the page is saved or revalidated.
+- **Contact, follow-up and activity controls stay live on an archived client.**
+- **A follow-up due today is flagged Overdue from the afternoon** (it is stored at midday UTC). This is the existing
+  `DueDate` component; deciding when "today" ends is a product choice.
+- **A bad or foreign assignee on a follow-up reports "That record no longer exists."**, which names the wrong problem.
+- **Row buttons' accessible names repeat for entries with the same subject**, and keep the old name while a request is pending.
+- **`types/database.ts` is stale** (no `contacts`, `activities` or the new `leads` conversion columns), so the new code reads
+  them through untyped clients and the website-leads route casts one lookup. Regenerating the types removes the casts.
+- **A lead CSV import with a lowercase `converted` status** fails the whole batch like any invalid status; `Converted` itself is
+  skipped row by row with a message.
+- **Two leads converted into the same client with no primary contact can collide** on the one-primary rule (it rolls back
+  cleanly with a generic message), and the chosen client is not locked during conversion (archiving it mid-call is possible).
+- **The concurrency tests cannot prove the locks**; they show the outcome, not that two sessions truly overlapped.
+- **Not exercised signed in.** The Convert flow, contacts, timeline "Load more", follow-ups and the stage control were checked
+  with fixture data in a throwaway preview (no overflow at 375, 768 and desktop widths, every control labelled, hostile text
+  shown as text), with unit and source-guard tests, and with SQL tests against fixture organisations for the database rules.
+  The server actions were never run end to end in a signed-in session against real records.
+- **Follow-ups take a date, not a time of day** (stored at midday UTC). The spec said "date and time"; accepted as an amendment.
+  The column is a timestamp, so a time input can be added later.
+- **After a stage change the "Stage updated" message disappears at once**, because the control is re-created when the stored
+  stage changes (so it never shows a stale stage). The new stage is shown in the select and the header.
+- **Three actions rely on the database to scope by organisation** (`makePrimaryContactAction`, `convertLeadAction`,
+  `loadMoreTimelineAction`): they call functions that check membership themselves, instead of filtering on the active
+  organisation in code.
+- **Unused leftovers:** `RecordWorkspace.record.status` is read by nothing, `WorkspaceSection` has an unused `action` prop,
+  and `tests/unit/crm-workspace-actions-source.test.ts` repeats some of `crm-workspace-ui.test.ts`.
+- **`createFixtureUser` in the RLS helpers leaves an orphaned auth user if the membership insert fails after the user is
+  created.** The suite's teardown now tolerates a failed setup, but this one path still needs closing.
+- **The RLS suite (`pnpm test:rls`) runs against production.** On 2026-10-10 the only failures were the two known
+  `provision-organization` tests; the CRM overview tests had gone stale (they needed a Lost reason, a conversion date, and the
+  new project/retainer client counts) and were updated.

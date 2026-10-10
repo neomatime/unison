@@ -70,7 +70,7 @@ before(async () => {
     { organization_id: orgA, company_name: 'Lead New', contact_name: 'c', status: 'New' },
     { organization_id: orgA, company_name: 'Lead Contacted', contact_name: 'c', status: 'Contacted' },
     { organization_id: orgA, company_name: 'Lead Qualified', contact_name: 'c', status: 'Qualified' },
-    { organization_id: orgA, company_name: 'Lead Converted', contact_name: 'c', status: 'Converted' },
+    { organization_id: orgA, company_name: 'Lead Converted', contact_name: 'c', status: 'Converted', converted_at: new Date().toISOString() },
     { organization_id: orgA, company_name: 'Lead Disqualified', contact_name: 'c', status: 'Disqualified' },
     { organization_id: orgA, company_name: 'Lead Archived', contact_name: 'c', status: 'New', archived_at: new Date().toISOString() },
     { organization_id: orgA, company_name: 'Lead Old Open', contact_name: 'c', status: 'New', created_at: twoMonthsAgo },
@@ -93,7 +93,7 @@ before(async () => {
     { organization_id: orgA, name: 'Opp 200', client_name: 'Delta', stage: 'Discovery', expected_value: 200, currency: 'ZAR', expected_close: lastMonthTenth },
     { organization_id: orgA, name: 'Opp 50', client_name: 'Epsilon', stage: 'Discovery', expected_value: 50, currency: 'ZAR', expected_close: dateOnly(year, month, 5) },
     { organization_id: orgA, name: 'Opp Unvalued', client_name: 'Zeta', stage: 'Proposal', expected_value: 0, currency: 'ZAR' },
-    { organization_id: orgA, name: 'Opp Lost', client_name: 'Eta', stage: 'Lost', expected_value: 9999, currency: 'ZAR' },
+    { organization_id: orgA, name: 'Opp Lost', client_name: 'Eta', stage: 'Lost', lost_reason: 'Fixture', expected_value: 9999, currency: 'ZAR' },
     { organization_id: orgA, name: 'Opp Archived', client_name: 'Theta', stage: 'Discovery', expected_value: 8888, currency: 'ZAR', archived_at: new Date().toISOString() },
     { organization_id: orgA, name: 'Won ZAR', client_name: 'Iota', stage: 'Won', expected_value: 2000, currency: 'ZAR' },
     { organization_id: orgA, name: 'Won USD', client_name: 'Kappa', stage: 'Won', expected_value: 400, currency: 'USD' },
@@ -123,7 +123,7 @@ test('a plain member reads the KPIs, each following its stated definition', asyn
 
   // Clients: archived ones leave the total. At the end of last month the
   // archived-today client was still active, so it counts there.
-  assert.deepEqual(data.clients, { total: 2, at_previous_month_end: 2 })
+  assert.deepEqual(data.clients, { total: 2, at_previous_month_end: 2, project: 0, retainer: 0 })
 
   // Leads: New / Contacted / Qualified are open, Converted / Disqualified / archived are not.
   assert.equal(data.leads.open, 4)
@@ -299,7 +299,7 @@ test('activity respects the limit and the plan', async () => {
 test('another organisation sees only its own rows, even with the same call', async () => {
   const own = await kpis(outsiderClient, orgB)
   assert.equal(own.error, null)
-  assert.deepEqual(own.data.clients, { total: 1, at_previous_month_end: 0 })
+  assert.deepEqual(own.data.clients, { total: 1, at_previous_month_end: 0, project: 0, retainer: 0 })
   assert.equal(own.data.leads.open, 0)
   assert.deepEqual(own.data.quotes, { active: 0, sent: 0 })
   assert.deepEqual(own.data.revenue.by_currency, [])
@@ -346,7 +346,7 @@ test('editing a won opportunity does not re-date the win, and re-winning does', 
     .update({ notes: 'edited later', won_at: new Date().toISOString() }).eq('id', id).select('won_at').single()
   assert.equal(new Date(edited.data!.won_at).getTime(), original, 'an edit, even one that sends a new won_at, keeps the original date')
 
-  const lost = await admin.from('sales_opportunities').update({ stage: 'Lost' }).eq('id', id).select('won_at').single()
+  const lost = await admin.from('sales_opportunities').update({ stage: 'Lost', lost_reason: 'Fixture' }).eq('id', id).select('won_at').single()
   assert.equal(lost.data!.won_at, null, 'a deal that is no longer won has no win date')
 
   const rewon = await admin.from('sales_opportunities').update({ stage: 'Won', won_at: new Date().toISOString() }).eq('id', id).select('won_at').single()
