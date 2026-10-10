@@ -818,6 +818,9 @@ begin
     select s.vat_rate into v_rate from public.organization_settings s where s.organization_id = new.organization_id;
     if found then
       new.vat_rate := v_rate;
+    else
+      -- No settings yet: the default rate, never a typed one.
+      new.vat_rate := 15.00;
     end if;
     new.subtotal := 0;
     new.tax_amount := 0;
@@ -891,6 +894,9 @@ begin
     select s.vat_rate into v_rate from public.organization_settings s where s.organization_id = new.organization_id;
     if found then
       new.vat_rate := v_rate;
+    else
+      -- No settings yet: the default rate, never a typed one.
+      new.vat_rate := 15.00;
     end if;
     new.subtotal := 0;
     new.tax_amount := 0;
@@ -1485,6 +1491,21 @@ test('duplicating a quote makes a new draft with the same lines and project deta
 
   const crossOrg = await otherClient.rpc('duplicate_quote', { p_id: id })
   assert.ok(crossOrg.error, 'another organisation cannot duplicate it')
+})
+
+test('a document in an organisation with no company details still gets the default VAT rate, never a typed one', async () => {
+  const quote = must(await otherClient.from('quotes').insert({ organization_id: orgB, client_id: clientB, client_name: 'Doc Client B', vat_rate: 0 }).select('vat_rate').single())
+  assert.equal(Number(quote.vat_rate), 15)
+  const invoice = must(await otherClient.from('invoices').insert({ organization_id: orgB, client_id: clientB, client_name: 'Doc Client B', vat_rate: 0 }).select('vat_rate').single())
+  assert.equal(Number(invoice.vat_rate), 15)
+})
+
+test('a plain member of the organisation cannot change its company details', async () => {
+  const changed = await memberClient.from('organization_settings').update({ legal_name: 'Hacked', bank_account_number: '999' }).eq('organization_id', orgA).select('id')
+  assert.deepEqual(changed.data, [], 'row level security hides the row from an update')
+  const stored = must(await admin.from('organization_settings').select('legal_name, bank_account_number').eq('organization_id', orgA).single())
+  assert.equal(stored.legal_name, 'Test Co (Pty) Ltd')
+  assert.equal(stored.bank_account_number, '000111')
 })
 
 test('the numbering function is not callable and the new functions are not open to anon', async () => {
