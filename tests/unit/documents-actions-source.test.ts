@@ -61,3 +61,31 @@ test('revalidation names the route group so it matches the real pages', () => {
   assert.match(source, /\/\(unison\)\/commercial\/quotes\/\[quoteId\]/)
   assert.match(source, /\/\(unison\)\/finance\/invoices\/\[invoiceId\]/)
 })
+
+test('moving a line checks its direction at runtime and tells a vanished line apart from a save failure', () => {
+  const source = read('actions', 'lines.ts')
+  const move = source.slice(source.indexOf('export async function moveLineAction'))
+  const check = move.indexOf("direction !== 'up' && direction !== 'down'")
+  assert.ok(check > -1, 'the direction is validated at runtime, not only by its type')
+  assert.ok(check < move.indexOf('documentContext()'), 'the direction is checked before anything is read')
+  assert.match(move, /That move is not valid\./)
+  assert.match(move, /if \(moved\.error\) return \{ error: lineError\(moved\.error\) \}\s+if \(!moved\.data\) return \{ error: 'That line no longer exists\.' \}/, 'a line deleted mid-move gets its own message')
+})
+
+test('saving the company details also refreshes the document pages that print them', () => {
+  const source = read('actions', 'company.ts')
+  assert.match(source, /revalidatePath\('\/settings\/company'\)/)
+  assert.match(source, /revalidateDocumentPages\(\)/, 'a draft document prints the live company details')
+})
+
+test('a price item that is archived cannot be opened for editing', () => {
+  const source = read('queries', 'list-price-items.ts')
+  const getter = source.slice(source.indexOf('export async function getPriceItem'))
+  assert.match(getter, /\.is\('archived_at', null\)/)
+})
+
+test('getDocument is wrapped in cache() so one page loads a document once', () => {
+  const source = read('queries', 'get-document.ts')
+  assert.match(source, /import \{ cache \} from 'react'/)
+  assert.match(source, /export const getDocument = cache\(/)
+})

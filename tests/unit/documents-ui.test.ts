@@ -150,6 +150,10 @@ test('the line editor is a client module whose forms keep typed values and whose
   assert.match(source, /ariaLabel=\{`Remove: \$\{line\.title\}`\}/)
   assert.match(source, /aria-label=\{`Edit line: \$\{line\.title\}`\}/)
   assert.match(source, /locked/, 'a sent document shows no editing controls')
+  assert.match(source, /locked \? null : <AddLineForm/, 'the add form is rendered only while the document is not locked')
+  assert.match(source, /editing && !locked/, 'a locked line never opens its edit form')
+  assert.match(source, /\{locked \? null : \(/, 'a locked line shows no controls')
+  assert.match(source, /sent or issued, so its lines are frozen/, 'the locked note covers invoices as well as quotes')
 })
 
 test('the line editor offers the price list and fills the line from it, but a free-text line stays possible', () => {
@@ -235,4 +239,16 @@ test('printing neutralises every shell ancestor of the sheet, so it flows from t
     '.document-print { position: static !important; width: 210mm !important',
   ]) assert.ok(print.includes(needle), `the print block must contain: ${needle}`)
   assert.doesNotMatch(print, /visibility:\s*hidden/, 'the old hide-everything approach would still clip and anchor to the shell')
+})
+
+test('the company details form shows its success banner beside the save button and clears it on the next edit', () => {
+  const source = component('company-details-form')
+  assert.match(source, /onChange=\{\(\) => setDirty\(true\)\}/, 'any edit marks the form dirty')
+  assert.match(source, /setDirty\(false\)/, 'a new submit clears the dirty flag')
+  assert.match(source, /state\?\.success && !dirty/, 'the banner is hidden once the user edits again')
+  assert.ok(source.indexOf('<FormError') < source.indexOf('state?.success && !dirty'), 'the banner sits under the error')
+  assert.ok(source.indexOf('state?.success && !dirty') < source.indexOf('<FormFooter'), 'the banner sits above the footer')
+  assert.match(source, /placeholder="\/brand\/logo\.png"/)
+  assert.match(source, /placeholder="\/brand\/header\.png"/)
+  assert.doesNotMatch(source, /placeholder="[^"]*(himark|banner)/i, 'the placeholders carry no company-specific file')
 })

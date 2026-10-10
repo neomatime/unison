@@ -86,6 +86,7 @@ export async function moveLineAction(
   _form: FormData,
 ): Promise<ActionState> {
   if (!isDocumentKind(kind) || !isUuid(documentId) || !isUuid(lineId)) return { error: NOT_FOUND }
+  if (direction !== 'up' && direction !== 'down') return { error: 'That move is not valid.' }
   const { organization, db } = await documentContext()
   const info = DOCUMENTS[kind]
   const read = await db
@@ -111,7 +112,8 @@ export async function moveLineAction(
       .eq('organization_id', organization.id)
       .select('id')
       .maybeSingle()
-    if (moved.error || !moved.data) return { error: lineError(moved.error) }
+    if (moved.error) return { error: lineError(moved.error) }
+    if (!moved.data) return { error: 'That line no longer exists.' }
   }
   revalidateDocumentPages()
   return { success: 'Moved.' }

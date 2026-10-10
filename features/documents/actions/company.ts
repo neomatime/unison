@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 
 import { roleHasPermission } from '@/config/roles'
 import { readCompanyFields } from '../fields'
+import { revalidateDocumentPages } from '../revalidate'
 import { documentContext } from '../server-context'
 import type { ActionState } from '../types'
 
@@ -18,5 +19,6 @@ export async function saveCompanyDetailsAction(_previous: ActionState, form: For
     .select('id')
   if (saved.error || !saved.data?.length) return { error: 'The company details could not be saved. Check the values and try again.' }
   revalidatePath('/settings/company')
+  revalidateDocumentPages()
   return { success: 'Company details saved.' }
 }

@@ -29,7 +29,7 @@ export function LineEditor({
   return (
     <WorkspaceSection
       title="Lines"
-      description={locked ? 'This document has been sent, so its lines are frozen.' : 'What is being sold. The VAT and the total are calculated for you.'}
+      description={locked ? 'This document has been sent or issued, so its lines are frozen.' : 'What is being sold. The VAT and the total are calculated for you.'}
     >
       {lines.length ? (
         <ul className="divide-y divide-border">

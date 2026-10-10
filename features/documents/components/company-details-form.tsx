@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState, useTransition } from 'react'
+import { useActionState, useState, useTransition } from 'react'
 
 import { WorkspaceHeader } from '@/components/shared/workspace-header'
 import { TextAreaField, TextField } from '@/components/ui/form-fields'
@@ -11,6 +11,7 @@ import type { CompanySettings } from '../types'
 export function CompanyDetailsForm({ settings, canEdit }: { settings: CompanySettings | null; canEdit: boolean }) {
   const [state, run, pending] = useActionState(saveCompanyDetailsAction, undefined)
   const [, startTransition] = useTransition()
+  const [dirty, setDirty] = useState(false)
   const value = (key: keyof CompanySettings, fallback = '') => String(settings?.[key] ?? fallback)
 
   return (
@@ -26,13 +27,12 @@ export function CompanyDetailsForm({ settings, canEdit }: { settings: CompanySet
           Only an owner or admin can change these details.
         </p>
       ) : null}
-      {state?.success ? (
-        <p role="status" className="mb-4 border border-success/25 bg-success-soft/45 px-4 py-3 text-sm text-success">{state.success}</p>
-      ) : null}
       <form
+        onChange={() => setDirty(true)}
         onSubmit={(event) => {
           event.preventDefault()
           const data = new FormData(event.currentTarget)
+          setDirty(false)
           startTransition(() => run(data))
         }}
         className="mx-auto max-w-5xl space-y-5"
@@ -75,12 +75,15 @@ export function CompanyDetailsForm({ settings, canEdit }: { settings: CompanySet
           </FormSection>
 
           <FormSection title="Branding" description="A file in the app’s /brand folder, for example /brand/banner.png. Leave a field empty for a plain header.">
-            <TextField name="logoPath" label="Logo image" placeholder="/brand/himark-wordmark.png" defaultValue={value('logo_path')} />
-            <TextField name="headerImagePath" label="Header image" placeholder="/brand/banner.png" defaultValue={value('header_image_path')} />
+            <TextField name="logoPath" label="Logo image" placeholder="/brand/logo.png" defaultValue={value('logo_path')} />
+            <TextField name="headerImagePath" label="Header image" placeholder="/brand/header.png" defaultValue={value('header_image_path')} />
           </FormSection>
         </fieldset>
 
         <FormError message={state?.error} />
+        {state?.success && !dirty && !pending ? (
+          <p role="status" className="border border-success/25 bg-success-soft/45 px-4 py-3 text-sm text-success">{state.success}</p>
+        ) : null}
         {canEdit ? <FormFooter cancelHref="/settings" submitLabel="Save company details" pending={pending} /> : null}
       </form>
     </>

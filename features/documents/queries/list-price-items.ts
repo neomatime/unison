@@ -18,7 +18,7 @@ export async function listPriceItems(options: { includeArchived?: boolean } = {}
 export async function getPriceItem(id: string): Promise<PriceItem | null> {
   if (!isUuid(id)) return null
   const { organization, db } = await documentContext()
-  const result = await db.from('price_list_items').select(COLUMNS).eq('id', id).eq('organization_id', organization.id).maybeSingle()
+  const result = await db.from('price_list_items').select(COLUMNS).eq('id', id).eq('organization_id', organization.id).is('archived_at', null).maybeSingle()
   if (result.error) throw result.error
   return (result.data as PriceItem | null) ?? null
 }

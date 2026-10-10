@@ -1,5 +1,7 @@
 import 'server-only'
 
+import { cache } from 'react'
+
 import { isUuid } from '@/lib/utils'
 import { documentContext } from '../server-context'
 import type { CompanySettings, DocumentLine } from '../types'
@@ -12,8 +14,11 @@ export type DocumentBundle = {
   settings: CompanySettings | null
 }
 
-/** A quote or invoice with its lines, its live client and the company details; null when it does not exist. */
-export async function getDocument(kind: DocumentKind, id: string): Promise<DocumentBundle | null> {
+/**
+ * A quote or invoice with its lines, its live client and the company details; null when it does not exist.
+ * Wrapped in cache() so the header actions and the lines editor of one page share a single load per request.
+ */
+export const getDocument = cache(async (kind: DocumentKind, id: string): Promise<DocumentBundle | null> => {
   if (!isDocumentKind(kind) || !isUuid(id)) return null
   const { organization, db } = await documentContext()
   const info = DOCUMENTS[kind]
@@ -38,4 +43,4 @@ export async function getDocument(kind: DocumentKind, id: string): Promise<Docum
     client: (client.data as Record<string, any> | null) ?? null,
     settings: (settings.data as CompanySettings | null) ?? null,
   }
-}
+})
