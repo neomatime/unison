@@ -154,3 +154,25 @@ test('the Convert form keeps the client choice in state so a reset after a faile
   assert.match(source, /name="clientId" value="new" checked=\{choice === 'new'\} onChange=\{\(\) => setChoice\('new'\)\}/)
   assert.doesNotMatch(source, /defaultChecked/, 'an uncontrolled radio is reset by React after the action')
 })
+
+test('the stage control is a client module, offers every stage, and asks for a reason on Lost', () => {
+  const source = read('components', 'stage-control.tsx')
+  assert.ok(isClient(source))
+  assert.match(source, /OPPORTUNITY_STAGES\.map/)
+  assert.match(source, /chosen === 'Lost' \?/)
+  assert.match(source, /name="lostReason" required/)
+  assert.match(source, /name="stage" value=\{chosen\} onChange=/, 'the stage is controlled state, so a reset after the action does not change it')
+  assert.match(source, /name="lostReason" required[^\n]*value=\{reason\} onChange=/, 'the reason is controlled state, so a failed save keeps what was typed')
+  assert.doesNotMatch(source, /defaultValue|defaultChecked/, 'an uncontrolled field is reset by React after the action')
+  const page = readFileSync(join(workspace, 'app', '(unison)', 'commercial', 'sales', '[opportunityId]', 'page.tsx'), 'utf8')
+  assert.match(page, /<StageControl opportunityId=\{opportunityId\}/)
+  assert.match(page, /workspace\.record\.stage && !workspace\.record\.archived/, 'no control for a missing or archived opportunity')
+})
+
+test('the opportunity page rejects a malformed id before it loads the workspace, so it is a 404 and not a database error', () => {
+  const source = readFileSync(join(workspace, 'app', '(unison)', 'commercial', 'sales', '[opportunityId]', 'page.tsx'), 'utf8')
+  const pageStart = source.indexOf('export default async function Page')
+  const check = source.indexOf('if (!isUuid(opportunityId)) notFound()', pageStart)
+  assert.ok(check > -1, 'the page itself must call notFound() for an id that is not a uuid')
+  assert.ok(check < source.indexOf('await loadWorkspace(opportunityId)', pageStart), 'the check must come before the page loads the workspace')
+})
