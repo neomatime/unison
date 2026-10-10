@@ -298,7 +298,17 @@ export function OrganisationSettingsLink() {
         <Settings2 aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-muted-foreground" />
         <div>
           <h2 id="organisation-settings-heading" className="unison-section-title text-xs text-foreground">Organisation Settings</h2>
-          <p className="mt-2 text-xs leading-5 text-muted-foreground">Additional defaults, permissions and policies are not available in this release.</p>
+          <ul className="mt-3 space-y-2 text-sm">
+            <li>
+              <Link href="/settings/company" className="font-semibold text-brand hover:underline">Company details</Link>
+              <span className="block text-xs text-muted-foreground">Printed on quotes and invoices.</span>
+            </li>
+            <li>
+              <Link href="/settings/price-list" className="font-semibold text-brand hover:underline">Price list</Link>
+              <span className="block text-xs text-muted-foreground">Products and services to pick from.</span>
+            </li>
+          </ul>
+          <p className="mt-3 text-xs leading-5 text-muted-foreground">Additional defaults, permissions and policies are not available in this release.</p>
         </div>
       </div>
     </section>

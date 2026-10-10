@@ -104,3 +104,39 @@ test('a client can carry a billing address and a VAT number', () => {
   const form = read('features', 'clients', 'components', 'client-form.tsx')
   for (const name of ['addressLine1', 'addressLine2', 'city', 'postalCode', 'country', 'vatNumber']) assert.match(form, new RegExp(`name="${name}"`))
 })
+
+const component = (name: string) => read('features', 'documents', 'components', `${name}.tsx`)
+const isClientModule = (source: string) => /^\s*['"]use client['"]/.test(source)
+
+test('the long forms call their action by hand so a failed save keeps what was typed', () => {
+  for (const name of ['company-details-form', 'price-item-form']) {
+    const source = component(name)
+    assert.ok(isClientModule(source), `${name} uses hooks`)
+    assert.doesNotMatch(source, /<form\s+action=/, `${name}: React resets a <form action> after it runs`)
+    assert.match(source, /startTransition\(/, `${name} submits through startTransition`)
+    assert.match(source, /event\.preventDefault\(\)/)
+  }
+})
+
+test('only an owner or admin sees editable company details, and the page is a server route', () => {
+  const form = component('company-details-form')
+  assert.match(form, /<fieldset\s+disabled=\{!canEdit\}/)
+  const page = read('app', '(unison)', 'settings', 'company', 'page.tsx')
+  assert.match(page, /getCompanySettings\(\)/)
+  assert.doesNotMatch(page, /^\s*['"]use client['"]/)
+})
+
+test('the price list page reads only valid ids, and archives instead of deleting', () => {
+  const page = read('app', '(unison)', 'settings', 'price-list', 'page.tsx')
+  assert.match(page, /isUuid\(/)
+  const screen = component('price-list-screen')
+  assert.match(screen, /archivePriceItemAction/)
+  assert.doesNotMatch(screen, /delete/i)
+})
+
+test('the organisation profile links to the company details and the price list', () => {
+  const screen = read('features', 'organizations', 'components', 'organization-profile-screen.tsx')
+  assert.match(screen, /href="\/settings\/company"/)
+  assert.match(screen, /href="\/settings\/price-list"/)
+  assert.match(screen, /Additional defaults, permissions and policies are not available in this release\./, 'the existing sentence stays')
+})
