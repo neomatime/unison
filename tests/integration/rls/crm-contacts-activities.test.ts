@@ -290,8 +290,59 @@ test('a quote writes sent and accepted once each, from their own timestamps', as
   assert.equal((await entries('quote_id', id, 'quote.sent')).length, 1, 'accepting does not add a sent entry')
 })
 
+const SLACK_MS = 10_000
+const years = (count: number) => new Date(Date.now() + count * 365 * 86_400_000).toISOString()
+
+test('a member cannot forge a quote.sent entry: a Draft quote with a sent_at writes none', async () => {
+  const made = await memberClient
+    .from('quotes')
+    .insert({ organization_id: orgA, quote_number: 'CQ-FORGE-DRAFT', client_name: 'Acme', status: 'Draft', sent_at: years(5) })
+    .select('id')
+    .single()
+  assert.equal(made.error, null)
+  assert.deepEqual(await entries('quote_id', made.data!.id, 'quote.sent'), [])
+  assert.deepEqual(await entries('quote_id', made.data!.id, 'quote.accepted'), [])
+})
+
+test('a quote.sent entry is never dated in the future, even when sent_at is', async () => {
+  const made = await memberClient
+    .from('quotes')
+    .insert({ organization_id: orgA, quote_number: 'CQ-FORGE-SENT', client_name: 'Acme', status: 'Sent', sent_at: years(1) })
+    .select('id')
+    .single()
+  assert.equal(made.error, null)
+  const sent = await entries('quote_id', made.data!.id, 'quote.sent')
+  assert.equal(sent.length, 1)
+  assert.ok(new Date(sent[0].occurred_at).getTime() <= Date.now() + SLACK_MS, 'capped at now')
+  assert.equal(sent[0].created_by, member.id, 'stamped with the member who made it')
+})
+
+test('a quote.accepted entry is never dated in the future, and Declined with an accepted_at writes none', async () => {
+  const made = await memberClient
+    .from('quotes')
+    .insert({ organization_id: orgA, quote_number: 'CQ-FORGE-ACCEPT', client_name: 'Acme', status: 'Sent' })
+    .select('id')
+    .single()
+  assert.equal(made.error, null)
+  const accept = await memberClient.from('quotes').update({ status: 'Accepted', accepted_at: years(2) }).eq('id', made.data!.id)
+  assert.equal(accept.error, null)
+  const accepted = await entries('quote_id', made.data!.id, 'quote.accepted')
+  assert.equal(accepted.length, 1)
+  assert.ok(new Date(accepted[0].occurred_at).getTime() <= Date.now() + SLACK_MS, 'capped at now')
+
+  const declined = await memberClient
+    .from('quotes')
+    .insert({ organization_id: orgA, quote_number: 'CQ-FORGE-DECLINE', client_name: 'Acme', status: 'Sent' })
+    .select('id')
+    .single()
+  assert.equal(declined.error, null)
+  const decline = await memberClient.from('quotes').update({ status: 'Declined', accepted_at: new Date().toISOString() }).eq('id', declined.data!.id)
+  assert.equal(decline.error, null)
+  assert.deepEqual(await entries('quote_id', declined.data!.id, 'quote.accepted'), [], 'no acceptance entry for a declined quote')
+})
+
 test('the trigger functions cannot be called as RPCs', async () => {
-  for (const name of ['log_opportunity_stage_change', 'log_quote_milestones']) {
+  for (const name of ['log_opportunity_stage_change', 'log_quote_milestones', 'activities_freeze']) {
     const { error } = await memberClient.rpc(name)
     assert.match(error!.message, new RegExp(`permission denied for function ${name}|Could not find the function`), name)
   }
