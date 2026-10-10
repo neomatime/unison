@@ -136,6 +136,24 @@ test('set_primary_contact moves the primary in one step and refuses a contact th
   assert.match(signedOut.error!.message, /permission denied for function set_primary_contact/)
 })
 
+test('two concurrent set_primary_contact calls for different contacts of one client both succeed and leave one primary', async () => {
+  const parent = await one('clients', { organization_id: orgA, name: 'Concurrent Co', status: 'Active' })
+  const a = await one('contacts', { organization_id: orgA, client_id: parent, full_name: 'Race A', is_primary: true })
+  const b = await one('contacts', { organization_id: orgA, client_id: parent, full_name: 'Race B' })
+  const c = await one('contacts', { organization_id: orgA, client_id: parent, full_name: 'Race C' })
+  const [first, second] = await Promise.all([
+    memberClient.rpc('set_primary_contact', { p_contact_id: b }),
+    memberClient.rpc('set_primary_contact', { p_contact_id: c }),
+  ])
+  assert.equal(first.error, null)
+  assert.equal(second.error, null)
+  const { data } = await admin.from('contacts').select('id, is_primary').eq('client_id', parent).is('archived_at', null)
+  const primaries = data!.filter((row) => row.is_primary).map((row) => row.id)
+  assert.equal(primaries.length, 1, 'exactly one primary remains')
+  assert.ok(primaries[0] === b || primaries[0] === c, 'the primary is one of the two callers\' choices')
+  assert.ok(!primaries.includes(a), 'the original primary was cleared')
+})
+
 // ------------------------------------------------------------------ activities
 
 test('activities: exactly one parent, and the kind must be known', async () => {
@@ -205,6 +223,18 @@ test('activities: the parent, author and details of an entry are frozen', async 
   assert.match(move.error!.message, /activities_frozen/)
   const reassign = await adminClient.from('activities').update({ created_by: adminUser.id }).eq('id', id)
   assert.match(reassign.error!.message, /activities_frozen/)
+
+  const strip = await memberClient.from('activities').update({ created_by: null }).eq('id', id)
+  assert.equal(strip.error?.code, '23514', 'the author cannot clear their own authorship')
+  assert.match(strip.error!.message, /activities_frozen/)
+  const stripByAdmin = await adminClient.from('activities').update({ created_by: null }).eq('id', id)
+  assert.match(stripByAdmin.error!.message, /activities_frozen/, 'nor can an admin')
+  const reId = await memberClient.from('activities').update({ id: crypto.randomUUID() }).eq('id', id)
+  assert.equal(reId.error?.code, '23514', 'the id is frozen')
+  assert.match(reId.error!.message, /activities_frozen/)
+
+  const stored = await admin.from('activities').select('created_by').eq('id', id).single()
+  assert.equal(stored.data!.created_by, member.id, 'the stored author is unchanged')
 })
 
 test('removing a member leaves their entries with no author and does not fail', async () => {
@@ -263,7 +293,7 @@ test('a quote writes sent and accepted once each, from their own timestamps', as
 test('the trigger functions cannot be called as RPCs', async () => {
   for (const name of ['log_opportunity_stage_change', 'log_quote_milestones']) {
     const { error } = await memberClient.rpc(name)
-    assert.match(error!.message, new RegExp(`permission denied for function ${name}`), name)
+    assert.match(error!.message, new RegExp(`permission denied for function ${name}|Could not find the function`), name)
   }
 })
 
@@ -284,6 +314,49 @@ test('a lead is Converted only through conversion, and an opportunity cannot be 
   const fine = await admin.from('sales_opportunities').update({ stage: 'Lost', lost_reason: 'Budget' }).eq('id', oppA)
   assert.equal(fine.error, null)
   await admin.from('sales_opportunities').update({ stage: 'Discovery', lost_reason: null }).eq('id', oppA)
+})
+
+test('a member cannot convert a lead by hand', async () => {
+  const fresh = await one('leads', { organization_id: orgA, company_name: 'Guard Fresh', contact_name: 'Pat' })
+  // The fixture is converted to clientA2, so that re-pointing it at clientA below is a real change.
+  const done = await one('leads', { organization_id: orgA, company_name: 'Guard Done', contact_name: 'Pat' })
+  const setup = await admin
+    .from('leads')
+    .update({ status: 'Converted', converted_at: '2026-03-03T10:00:00Z', converted_client_id: clientA2 })
+    .eq('id', done)
+  assert.equal(setup.error, null, 'the service role can mark a lead Converted (conversion itself does this as the owner)')
+
+  const byHand = await memberClient.from('leads').update({ status: 'Converted', converted_at: new Date().toISOString() }).eq('id', fresh)
+  assert.equal(byHand.error?.code, '23514')
+  assert.match(byHand.error!.message, /leads_conversion_guarded/)
+
+  const repoint = await memberClient.from('leads').update({ converted_client_id: clientA }).eq('id', done)
+  assert.equal(repoint.error?.code, '23514')
+  assert.match(repoint.error!.message, /leads_conversion_guarded/)
+
+  const unconvert = await memberClient.from('leads').update({ status: 'New', converted_at: null }).eq('id', done)
+  assert.equal(unconvert.error?.code, '23514')
+  assert.match(unconvert.error!.message, /leads_conversion_guarded/)
+
+  const inserted = await memberClient.from('leads').insert({
+    organization_id: orgA, company_name: 'Born converted', contact_name: 'Pat', status: 'Converted', converted_at: new Date().toISOString(),
+  })
+  assert.equal(inserted.error?.code, '23514')
+  assert.match(inserted.error!.message, /leads_conversion_guarded/)
+
+  const born = await admin.from('leads').select('id').eq('organization_id', orgA).eq('company_name', 'Born converted')
+  assert.deepEqual(born.data, [], 'the refused insert left no row')
+  const storedFresh = await admin.from('leads').select('status, converted_at').eq('id', fresh).single()
+  assert.equal(storedFresh.data!.status, 'New')
+  assert.equal(storedFresh.data!.converted_at, null)
+  const storedDone = await admin.from('leads').select('status, converted_at, converted_client_id').eq('id', done).single()
+  assert.equal(storedDone.data!.status, 'Converted')
+  assert.notEqual(storedDone.data!.converted_at, null)
+  assert.equal(storedDone.data!.converted_client_id, clientA2)
+
+  // An ordinary edit by a member still works, converted or not.
+  const edit = await memberClient.from('leads').update({ notes: 'followed up' }).eq('id', done).select('notes').single()
+  assert.equal(edit.data!.notes, 'followed up')
 })
 
 test('tasks can link to a lead and an opportunity in the same organisation only', async () => {

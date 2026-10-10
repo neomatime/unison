@@ -125,19 +125,23 @@ revoke all on public.activities from anon, authenticated;
 grant select, insert, update, delete on public.activities to authenticated;
 
 -- What may change on a logged entry: its kind (within the logged kinds), subject, body and time.
--- Parent, author and details are fixed. created_by may become null, because removing a
--- member sets it null through a foreign key action, which is an UPDATE this trigger sees.
+-- Id, parent, author and details are fixed. created_by may become null only through the
+-- foreign key action that follows removing a member: referential actions run as the table
+-- owner, while members run as authenticated (or anon), so a direct change to created_by,
+-- including setting it to null, by a member is refused.
 create or replace function public.activities_freeze() returns trigger
 language plpgsql security invoker set search_path = '' as $$
 begin
-  if new.organization_id is distinct from old.organization_id
+  if new.id is distinct from old.id
+     or new.organization_id is distinct from old.organization_id
      or new.created_at is distinct from old.created_at
      or new.lead_id is distinct from old.lead_id
      or new.client_id is distinct from old.client_id
      or new.opportunity_id is distinct from old.opportunity_id
      or new.quote_id is distinct from old.quote_id
      or new.details is distinct from old.details
-     or (new.created_by is distinct from old.created_by and new.created_by is not null) then
+     or (new.created_by is distinct from old.created_by
+         and (new.created_by is not null or current_user in ('authenticated', 'anon'))) then
     raise exception 'activities_frozen: only the kind, subject, body and time of a logged entry can change'
       using errcode = '23514';
   end if;
@@ -229,6 +233,34 @@ alter table public.leads
   -- A lead is Converted only through conversion, which sets converted_at.
   add constraint leads_converted_status_check check ((status = 'Converted') = (converted_at is not null));
 
+-- A member cannot convert, un-convert or re-point a lead by hand: only the conversion
+-- function (security definer, so it runs as the owner), the service role and referential
+-- actions (which run as the owner) may touch these columns. Members run as authenticated.
+create or replace function public.leads_guard_conversion() returns trigger
+language plpgsql security invoker set search_path = '' as $$
+begin
+  if current_user in ('authenticated', 'anon') and (
+       (tg_op = 'INSERT' and (
+          new.status = 'Converted'
+          or new.converted_at is not null
+          or new.converted_client_id is not null
+          or new.converted_opportunity_id is not null))
+       or (tg_op = 'UPDATE' and (
+          new.converted_at is distinct from old.converted_at
+          or new.converted_client_id is distinct from old.converted_client_id
+          or new.converted_opportunity_id is distinct from old.converted_opportunity_id
+          or (new.status = 'Converted') is distinct from (old.status = 'Converted')))
+     ) then
+    raise exception 'leads_conversion_guarded: a lead is converted by using Convert lead on its page'
+      using errcode = '23514';
+  end if;
+  return new;
+end $$;
+
+create trigger leads_guard_conversion before insert or update on public.leads
+  for each row execute function public.leads_guard_conversion();
+revoke all on function public.leads_guard_conversion() from public, anon, authenticated;
+
 alter table public.sales_opportunities
   add constraint sales_opportunities_lost_reason_check
   check (stage <> 'Lost' or nullif(trim(lost_reason), '') is not null);
@@ -277,6 +309,11 @@ begin
   if not found then
     raise exception 'CONTACT_NOT_FOUND' using errcode = 'P0002';
   end if;
+  -- Lock the parent's contacts so concurrent callers queue instead of colliding on the index.
+  perform 1 from public.contacts
+    where organization_id = c.organization_id
+      and ((c.client_id is not null and client_id = c.client_id) or (c.lead_id is not null and lead_id = c.lead_id))
+    for update;
   update public.contacts
     set is_primary = false
     where organization_id = c.organization_id and is_primary and archived_at is null and id <> c.id
