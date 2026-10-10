@@ -18,13 +18,19 @@ declare
   v_created_client boolean := false;
   v_has_primary boolean;
 begin
-  -- Locking the lead row serialises two simultaneous conversions of the same lead.
-  select * into v_lead from public.leads where id = p_lead_id for update;
-  -- The same answer for "no such lead" and "not yours", so existence is not revealed.
-  if not found or not public.is_member_of(v_lead.organization_id) then
+  -- Membership is checked before anything is locked, so a non-member and a missing
+  -- lead get the same answer at the same speed and never wait on another
+  -- organisation's conversion.
+  select l.organization_id into v_org from public.leads l where l.id = p_lead_id;
+  if not found or not public.is_member_of(v_org) then
     raise exception 'LEAD_NOT_FOUND' using errcode = '42501';
   end if;
-  v_org := v_lead.organization_id;
+  -- Locking the lead row serialises two simultaneous conversions of the same lead.
+  select * into v_lead from public.leads where id = p_lead_id for update;
+  if not found then
+    raise exception 'LEAD_NOT_FOUND' using errcode = '42501';
+  end if;
+  -- Checked only after the lock: both may have changed while this call waited.
   if v_lead.archived_at is not null then
     raise exception 'LEAD_ARCHIVED' using errcode = '23514';
   end if;
@@ -84,8 +90,10 @@ begin
     update public.contacts set is_primary = true where id = v_contact_id;
   end if;
 
-  -- 4. Follow-ups already on the lead now also belong to the client.
-  update public.tasks set client_id = v_client_id where lead_id = v_lead.id and organization_id = v_org;
+  -- 4. Follow-ups already on the lead now also belong to the client, unless they
+  --    were already tied to a client of their own.
+  update public.tasks set client_id = v_client_id
+    where lead_id = v_lead.id and organization_id = v_org and client_id is null;
 
   -- 5. The opportunity, at the first stage, with the lead's owner and value.
   insert into public.sales_opportunities(organization_id, name, client_id, client_name, lead_id, owner_id, stage, expected_value, currency, notes)

@@ -150,6 +150,21 @@ test('contacts and follow-ups already on the lead move to the client; archived c
   assert.equal(followUp.lead_id, leadId, 'the follow-up keeps its lead link')
 })
 
+test('a follow-up on the lead that already has its own client keeps it, and keeps its lead link', async () => {
+  const otherClient = await newClient({ name: 'Follow-up Own Client Co' })
+  const leadId = await newLead({ company_name: 'Own Client Follow-up Co' })
+  const owned = (await admin.from('tasks').insert({ organization_id: orgA, title: 'Already tied', lead_id: leadId, client_id: otherClient }).select('id').single()).data!.id
+  const free = (await admin.from('tasks').insert({ organization_id: orgA, title: 'Not yet tied', lead_id: leadId }).select('id').single()).data!.id
+
+  const { data } = await convert(leadId)
+  const keptTask = (await admin.from('tasks').select('client_id, lead_id').eq('id', owned).single()).data!
+  assert.equal(keptTask.client_id, otherClient, 'a follow-up already tied to a client is not moved')
+  assert.equal(keptTask.lead_id, leadId)
+  const relinked = (await admin.from('tasks').select('client_id, lead_id').eq('id', free).single()).data!
+  assert.equal(relinked.client_id, data.client_id)
+  assert.equal(relinked.lead_id, leadId)
+})
+
 test('converting twice is refused and creates nothing more', async () => {
   const leadId = await newLead({ company_name: 'Twice Co' })
   await convert(leadId)
