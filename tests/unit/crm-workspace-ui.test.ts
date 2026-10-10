@@ -137,3 +137,20 @@ test('the lead import skips Converted rows with a message instead of letting the
   assert.match(source, /Convert lead on its page/)
   assert.ok(source.indexOf('record.status === "Converted"') < source.indexOf('if (valid) records.push(record)'), 'the check must come before the row is accepted')
 })
+
+test('the lead page rejects a malformed id before it loads the workspace, so it is a 404 and not a database error', () => {
+  const source = readFileSync(join(workspace, 'app', '(unison)', 'commercial', 'leads', '[leadId]', 'page.tsx'), 'utf8')
+  const check = source.indexOf('if (!isUuid(leadId)) notFound()')
+  assert.ok(check > -1, 'the page must call notFound() for an id that is not a uuid')
+  const pageStart = source.indexOf('export default async function Page')
+  assert.ok(check > pageStart, 'the check belongs in the page itself')
+  assert.ok(check < source.indexOf('await loadWorkspace(leadId)', pageStart), 'the check must come before the page loads the workspace')
+})
+
+test('the Convert form keeps the client choice in state so a reset after a failed submit does not change it', () => {
+  const source = read('components', 'convert-lead-form.tsx')
+  assert.match(source, /useState\(matches\[0\]\?\.id \?\? 'new'\)/, 'the choice starts on the first existing match, or new')
+  assert.match(source, /name="clientId" value=\{match\.id\} checked=\{choice === match\.id\} onChange=\{\(\) => setChoice\(match\.id\)\}/)
+  assert.match(source, /name="clientId" value="new" checked=\{choice === 'new'\} onChange=\{\(\) => setChoice\('new'\)\}/)
+  assert.doesNotMatch(source, /defaultChecked/, 'an uncontrolled radio is reset by React after the action')
+})

@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useActionState } from 'react'
+import { useActionState, useState } from 'react'
 
 import { convertLeadAction } from '../actions/convert-lead'
 import { Feedback } from './form-parts'
@@ -16,6 +16,9 @@ export function ConvertLeadForm({
   matches: Array<{ id: string; name: string }>
 }) {
   const [state, action, pending] = useActionState(convertLeadAction.bind(null, leadId), undefined)
+  // Controlled: React resets a form after its action finishes, which would put uncontrolled radios
+  // back on the first match and could attach a retry to the wrong client.
+  const [choice, setChoice] = useState(matches[0]?.id ?? 'new')
   return (
     <form action={action} className="space-y-5">
       <div className="border border-border bg-card p-5">
@@ -34,14 +37,14 @@ export function ConvertLeadForm({
             {matches.length === 1 ? 'A client with this name already exists' : 'Clients with this name already exist'}
           </legend>
           <div className="mt-2 space-y-2 text-sm">
-            {matches.map((match, index) => (
+            {matches.map((match) => (
               <label key={match.id} className="flex items-center gap-2">
-                <input type="radio" name="clientId" value={match.id} defaultChecked={index === 0} />
+                <input type="radio" name="clientId" value={match.id} checked={choice === match.id} onChange={() => setChoice(match.id)} />
                 Add to <strong>{match.name}</strong>
               </label>
             ))}
             <label className="flex items-center gap-2">
-              <input type="radio" name="clientId" value="new" />
+              <input type="radio" name="clientId" value="new" checked={choice === 'new'} onChange={() => setChoice('new')} />
               Create a separate new client
             </label>
           </div>
