@@ -5,6 +5,8 @@ import { ArchiveConfirmation, ArchiveTrigger } from '@/components/shared/archive
 import { WorkspaceHeader } from '@/components/shared/workspace-header'
 import { DetailTile, SummaryTile } from '@/components/ui/record-tiles'
 import { StatusBadge } from '@/components/ui/status-badge'
+import { RecordWorkspaceSections } from '@/features/crm-workspace/components/record-workspace'
+import type { RecordWorkspace } from '@/features/crm-workspace/types'
 import { formatDate } from '@/lib/utils'
 import { archiveClientAction } from '../actions/archive-client'
 import { ClientDocuments } from './client-documents'
@@ -19,7 +21,7 @@ function statusTone(status: string): 'brand' | 'warning' | 'info' | 'neutral' {
 // A Server Component, deliberately: the archive confirmation is a two-step,
 // plain-HTML flow rather than a client-side dialog, so it works identically
 // with or without JS having loaded. See components/shared/archive-confirmation.
-export function ClientDetail({ client, confirmArchive, archiveError }: { client: ClientRecord; confirmArchive?: boolean; archiveError?: boolean }) {
+export function ClientDetail({ client, workspace, confirmArchive, archiveError }: { client: ClientRecord; workspace: RecordWorkspace; confirmArchive?: boolean; archiveError?: boolean }) {
   const archived = Boolean(client.archived_at)
   const detailHref = `/operations/clients/${client.id}`
 
@@ -98,6 +100,7 @@ export function ClientDetail({ client, confirmArchive, archiveError }: { client:
         </div>
       </aside>
     </div>
+    <RecordWorkspaceSections workspace={workspace} sections={['contacts', 'followups', 'timeline']} />
     {!archived ? <ClientDocuments /> : null}
   </>
 }

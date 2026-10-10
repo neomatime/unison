@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import type { ReactNode } from "react";
 
 import { WorkPage } from "@/components/shared/work-page";
 import { formatCurrency } from "@/lib/utils/format-money";
@@ -84,7 +85,17 @@ const moneyKeys = new Set([
   "varianceValue",
 ]);
 
-export async function PhaseSixDetail({ kind, id }: { kind: PhaseSixKind; id: string }) {
+export async function PhaseSixDetail({
+  kind,
+  id,
+  actions,
+  after,
+}: {
+  kind: PhaseSixKind;
+  id: string;
+  actions?: ReactNode;
+  after?: ReactNode;
+}) {
   const record = await getPhaseSixRecord(kind, id);
   if (!record) notFound();
   const info = meta[kind];
@@ -98,12 +109,15 @@ export async function PhaseSixDetail({ kind, id }: { kind: PhaseSixKind; id: str
       <section className="border border-border bg-card">
         <header className="flex items-center justify-between border-b border-border p-6">
           <p className="text-xs tracking-[0.16em] text-brand uppercase">Governed record</p>
-          <Link
-            href={`${info.base}/${record.id}/edit`}
-            className="bg-brand px-4 py-2 text-sm font-semibold text-white"
-          >
-            Edit record
-          </Link>
+          <div className="flex flex-wrap items-center gap-2">
+            {actions}
+            <Link
+              href={`${info.base}/${record.id}/edit`}
+              className="bg-brand px-4 py-2 text-sm font-semibold text-white"
+            >
+              Edit record
+            </Link>
+          </div>
         </header>
         <dl className="grid sm:grid-cols-2">
           {fields[kind].map(([label, key]) => (
@@ -116,6 +130,7 @@ export async function PhaseSixDetail({ kind, id }: { kind: PhaseSixKind; id: str
           ))}
         </dl>
       </section>
+      {after}
     </WorkPage>
   );
 }
