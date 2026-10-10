@@ -194,7 +194,7 @@ export async function savePhaseSixRecordAction(
       if (!isOneOf(INVOICE_ISSUED_STATUSES, status)) {
         return { error: "Choose Issued, Partially Paid, Paid, Overdue or Cancelled." };
       }
-      const balance = status === "Paid" ? 0 : Math.min(state.total, Math.max(0, number(form, "balanceAmount", state.total)));
+      const balance = status === "Paid" || status === "Cancelled" ? 0 : Math.min(state.total, Math.max(0, number(form, "balanceAmount", state.total)));
       values = {
         status,
         balance_amount: balance,

@@ -10,7 +10,7 @@ const MESSAGES: ReadonlyArray<readonly [token: string, message: string]> = [
   ['INVOICE_NEEDS_LINES', 'Add at least one line first.'],
   ['QUOTE_NEEDS_CLIENT', 'Choose a client from your client list first. If this is a prospect, convert the lead to a client first.'],
   ['INVOICE_NEEDS_CLIENT', 'Choose a client from your client list first. If this is a prospect, convert the lead to a client first.'],
-  ['COMPANY_DETAILS_MISSING', 'Fill in the company name and document prefix under Settings, Company details, first.'],
+  ['COMPANY_DETAILS_MISSING', 'The company name and document prefix are not set up yet. Ask an owner or admin to fill them in under Settings, Company details.'],
   ['QUOTE_VALID_BEFORE_ISSUE', 'The valid-until date has already passed. Choose a later date.'],
   ['INVOICE_DUE_BEFORE_ISSUE', 'The due date cannot be before the issue date.'],
   ['QUOTE_USE_SEND', 'Use Send quote to send a quote.'],

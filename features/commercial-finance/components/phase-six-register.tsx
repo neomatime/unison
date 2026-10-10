@@ -1,6 +1,7 @@
 import { WorkspaceHeader } from "@/components/shared/workspace-header";
 import { MetricCard } from "@/features/delivery/components/delivery-primitives";
 import { formatCurrency } from "@/lib/utils/format-money";
+import { INVOICE_ISSUED_STATUSES } from "@/features/documents/vocabulary";
 import { portableDefinitions } from "@/features/data-portability/portable-collections";
 import {
   RecordCollectionWorkspace,
@@ -16,6 +17,12 @@ import {
   type PhaseSixKind,
   type PhaseSixRecord,
 } from "../queries/phase-six";
+
+// An unsent draft carries a balance equal to its total, and a paid or cancelled invoice collects nothing:
+// only an issued, partly paid or overdue invoice is still collectible.
+const COLLECTIBLE_INVOICE_STATUSES: readonly string[] = INVOICE_ISSUED_STATUSES.filter(
+  (status) => status !== "Paid" && status !== "Cancelled",
+);
 
 const loaders: Record<PhaseSixKind, () => Promise<PhaseSixRecord[]>> = {
   lead: listLeads,
@@ -210,7 +217,9 @@ function registerConfig(kind: PhaseSixKind, rows: PhaseSixRecord[]) {
     };
   }
   if (kind === "invoice") {
-    const outstanding = rows.filter((row) => Number(row.balanceAmount ?? 0) > 0);
+    const outstanding = rows.filter(
+      (row) => COLLECTIBLE_INVOICE_STATUSES.includes(String(row.status)) && Number(row.balanceAmount ?? 0) > 0,
+    );
     const overdue = rows.filter((row) => row.status === "Overdue");
     return {
       category: "Finance",

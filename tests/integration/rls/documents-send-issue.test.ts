@@ -423,3 +423,22 @@ test('issuing an invoice from another organisation is told it was not found', as
   assert.match(outsider.error.message, /INVOICE_NOT_FOUND/)
   assert.equal((await row('invoices', id)).status, 'Draft')
 })
+
+test("a member cannot attach another organisation's client to a quote or invoice", async () => {
+  // Inserting: the composite foreign key (client_id, organization_id) refuses a client of another organisation.
+  const quoteInsert = await memberClient.from('quotes').insert({ organization_id: orgA, client_id: clientB, client_name: 'Doc Client B' })
+  assert.ok(quoteInsert.error, "a quote cannot be created for another organisation's client")
+  const invoiceInsert = await memberClient.from('invoices').insert({ organization_id: orgA, client_id: clientB, client_name: 'Doc Client B' })
+  assert.ok(invoiceInsert.error, "an invoice cannot be created for another organisation's client")
+
+  // Updating: the stored client stays the one it had.
+  const quote = await draftQuote()
+  const quoteUpdate = await memberClient.from('quotes').update({ client_id: clientB }).eq('id', quote)
+  assert.ok(quoteUpdate.error, "a draft quote cannot be moved to another organisation's client")
+  assert.equal((await row('quotes', quote)).client_id, clientA, 'the quote keeps its client')
+
+  const invoice = await draftInvoice()
+  const invoiceUpdate = await memberClient.from('invoices').update({ client_id: clientB }).eq('id', invoice)
+  assert.ok(invoiceUpdate.error, "a draft invoice cannot be moved to another organisation's client")
+  assert.equal((await row('invoices', invoice)).client_id, clientA, 'the invoice keeps its client')
+})

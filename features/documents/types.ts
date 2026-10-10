@@ -53,14 +53,3 @@ export type DocumentLine = {
   line_amount: number | string
   price_list_item_id: string | null
 }
-
-/** The client details a document prints. */
-export type ClientFacts = {
-  name: string
-  address_line1: string | null
-  address_line2: string | null
-  city: string | null
-  postal_code: string | null
-  country: string | null
-  vat_number: string | null
-}

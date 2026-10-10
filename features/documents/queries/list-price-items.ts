@@ -6,11 +6,9 @@ import type { PriceItem } from '../types'
 
 const COLUMNS = 'id,title,description,unit_price,vat_code,archived_at'
 
-export async function listPriceItems(options: { includeArchived?: boolean } = {}): Promise<PriceItem[]> {
+export async function listPriceItems(): Promise<PriceItem[]> {
   const { organization, db } = await documentContext()
-  let query = db.from('price_list_items').select(COLUMNS).eq('organization_id', organization.id).order('title')
-  if (!options.includeArchived) query = query.is('archived_at', null)
-  const result = await query
+  const result = await db.from('price_list_items').select(COLUMNS).eq('organization_id', organization.id).is('archived_at', null).order('title')
   if (result.error) throw result.error
   return (result.data ?? []) as PriceItem[]
 }

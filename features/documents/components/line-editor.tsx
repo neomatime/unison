@@ -12,6 +12,11 @@ import { VAT_CODES, VAT_LABELS, type DocumentKind, type VatCode } from '../vocab
 
 const field = 'h-10 w-full rounded-none border border-border bg-background px-3 text-sm'
 
+const LOCKED_NOTE: Record<DocumentKind, string> = {
+  quote: 'This document has been sent or issued, so its lines are frozen. To revise it, duplicate it as a new draft.',
+  invoice: 'This document has been sent or issued, so its lines are frozen. To correct it, cancel it and raise a new one.',
+}
+
 type Totals = { subtotal: number | string; tax: number | string; total: number | string; vatRate: number | string }
 
 export function LineEditor({
@@ -29,7 +34,7 @@ export function LineEditor({
   return (
     <WorkspaceSection
       title="Lines"
-      description={locked ? 'This document has been sent or issued, so its lines are frozen.' : 'What is being sold. The VAT and the total are calculated for you.'}
+      description={locked ? LOCKED_NOTE[kind] : 'What is being sold. The VAT and the total are calculated for you.'}
     >
       {lines.length ? (
         <ul className="divide-y divide-border">

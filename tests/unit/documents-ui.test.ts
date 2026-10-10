@@ -57,6 +57,25 @@ test('a sent quote saves only its status and notes; an issued invoice only its s
   assert.deepEqual(keys, ['balance_amount', 'notes', 'paid_at', 'status'])
 })
 
+test('the invoices register counts only collectible invoices as outstanding', () => {
+  const register = read('features', 'commercial-finance', 'components', 'phase-six-register.tsx')
+  assert.match(register, /INVOICE_ISSUED_STATUSES\.filter\(\s*\(status\) => status !== "Paid" && status !== "Cancelled"/, 'collectible = issued statuses minus Paid and Cancelled')
+  const invoice = between(register, 'if (kind === "invoice") {', 'const overdue', 'invoice register')
+  assert.match(invoice, /COLLECTIBLE_INVOICE_STATUSES\.includes\(String\(row\.status\)\)/, 'a draft, paid or cancelled invoice is not outstanding')
+  assert.match(invoice, /balanceAmount/, 'the balance is still checked')
+})
+
+test('cancelling an issued invoice zeroes its balance, so a cancel-and-reissue is not counted twice', () => {
+  const action = read('features', 'commercial-finance', 'actions', 'phase-six.ts')
+  const invoice = between(action, INVOICE_OPENER, EXPENSE_OPENER, 'invoice branch')
+  const issued = between(invoice, '// Issued:', '} else {', 'issued invoice branch')
+  assert.match(issued, /const balance = status === "Paid" \|\| status === "Cancelled" \? 0 :/, 'Paid and Cancelled both leave nothing collectible')
+  const literal = issued.match(/values = \{([\s\S]*?)\n\s*\};/)
+  assert.ok(literal, 'the issued-invoice branch assigns an object literal to values')
+  const keys = [...literal[1].matchAll(/^\s*([a-z_]+)\s*[:,]/gm)].map((match) => match[1]).sort()
+  assert.deepEqual(keys, ['balance_amount', 'notes', 'paid_at', 'status'])
+})
+
 test('the register and detail queries show a draft as a draft, not as a reference code', () => {
   const queries = read('features', 'commercial-finance', 'queries', 'phase-six.ts')
   assert.match(queries, /isDraftReference\(/)
@@ -154,6 +173,9 @@ test('the line editor is a client module whose forms keep typed values and whose
   assert.match(source, /editing && !locked/, 'a locked line never opens its edit form')
   assert.match(source, /\{locked \? null : \(/, 'a locked line shows no controls')
   assert.match(source, /sent or issued, so its lines are frozen/, 'the locked note covers invoices as well as quotes')
+  assert.match(source, /To revise it, duplicate it as a new draft\./, 'a locked quote says how to revise it')
+  assert.match(source, /To correct it, cancel it and raise a new one\./, 'a locked invoice says how to correct it')
+  assert.match(source, /locked \? LOCKED_NOTE\[kind\]/, 'the note depends on the kind of document')
 })
 
 test('the line editor offers the price list and fills the line from it, but a free-text line stays possible', () => {
