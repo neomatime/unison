@@ -190,9 +190,11 @@ test('the document sheet prints what the view says as text, with print styling, 
   assert.doesNotMatch(source, /dangerouslySetInnerHTML/, 'user text is never rendered as HTML')
   assert.doesNotMatch(source, /useState\(|useEffect\(/)
   assert.match(source, /@page\s*\{\s*size:\s*A4/)
-  assert.match(source, /print-color-adjust:\s*exact/)
+  assert.match(source, /-webkit-print-color-adjust:\s*exact/, 'the prefixed declaration')
+  assert.match(source, /(?<![-\w])print-color-adjust:\s*exact/, 'the unprefixed declaration')
   const images = [...source.matchAll(/<img\s[^>]*src=\{([^}]+)\}/g)].map((match) => match[1].trim())
-  assert.ok(images.length >= 2)
+  assert.equal(images.length, 3, 'the header, the logo and the closing photo are the only images')
+  assert.equal([...source.matchAll(/<img\b/g)].length, images.length, 'every <img> has a src taken from the view')
   for (const src of images) assert.match(src, /^view\.(headerImage|logo)$/, `an image src must come from the checked view: ${src}`)
   assert.doesNotMatch(source, /himark|HIMARK|\/brand\//i, 'no company-specific value in the sheet')
 })
@@ -212,4 +214,25 @@ test('the print button is a client module and the document pages check the id be
     assert.match(source, /<PrintButton \/>/)
     assert.match(source, /buildDocumentView\(/)
   }
+})
+
+test('printing neutralises every shell ancestor of the sheet, so it flows from the top of the page and is not clipped', () => {
+  const source = component('document-sheet')
+  const print = between(source, '@media print', '`\n', 'print block')
+  // The rule that applies to the sheet's ancestors, on its own, so the sheet's own rule cannot satisfy these checks.
+  const shell = between(print, '*:has(.document-print), .unison-route-view {', '}', 'shell rule')
+  for (const needle of [
+    'transform: none !important',
+    'animation: none !important',
+    'overflow: visible !important',
+    'height: auto !important',
+    'max-height: none !important',
+    'position: static !important',
+    'display: block !important',
+  ]) assert.ok(shell.includes(needle), `the rule for the sheet's ancestors must contain: ${needle}`)
+  for (const needle of [
+    '*:has(.document-print) > *:not(:has(.document-print)):not(.document-print) { display: none !important; }',
+    '.document-print { position: static !important; width: 210mm !important',
+  ]) assert.ok(print.includes(needle), `the print block must contain: ${needle}`)
+  assert.doesNotMatch(print, /visibility:\s*hidden/, 'the old hide-everything approach would still clip and anchor to the shell')
 })
