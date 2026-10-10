@@ -93,6 +93,12 @@ export function normalizeImportedRows(definition: PortableDefinition, headers: s
         valid = false;
       }
     }
+    // A lead becomes Converted only through Convert lead; a database guard refuses it for
+    // members, which would fail the whole batch, so skip just this row with a clear message.
+    if (valid && definition.table === "leads" && record.status === "Converted") {
+      issues.push({ row: index + 2, field: "Status", message: "Status cannot be Converted: a lead becomes Converted by using Convert lead on its page." });
+      valid = false;
+    }
     if (valid) records.push(record);
   });
   return { records, issues, fatal: false };

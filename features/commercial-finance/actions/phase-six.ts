@@ -96,6 +96,9 @@ export async function savePhaseSixRecordAction(
       return { error: "Opportunity name and client or prospect are required." };
     }
     const stage = text(form, "stage") || "Discovery";
+    if (stage === "Lost" && !optional(form, "lostReason")) {
+      return { error: "Say why this opportunity was lost." };
+    }
     table = "sales_opportunities";
     values = {
       organization_id: organization.id,
@@ -247,10 +250,15 @@ export async function savePhaseSixRecordAction(
     : await db.from(table).insert(values).select("id").single();
 
   if (result.error || !result.data) {
+    const message = String(result.error?.message ?? "");
     return {
       error: result.error?.code === "23505"
         ? "That reference or scenario name already exists."
-        : "The record could not be saved. Check related records, dates and amounts.",
+        : message.includes("leads_converted_status_check") || message.includes("leads_conversion_guarded")
+          ? "A lead becomes Converted by using Convert lead on its page."
+          : message.includes("sales_opportunities_lost_reason_check")
+            ? "Say why this opportunity was lost."
+            : "The record could not be saved. Check related records, dates and amounts.",
     };
   }
 

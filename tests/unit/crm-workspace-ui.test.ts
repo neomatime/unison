@@ -97,13 +97,43 @@ test('each record page passes the workspace into the page, not just defines it',
   for (const { source, kind, idName, component, sections } of cases) {
     assert.ok(source.includes(`getRecordWorkspace('${kind}', ${idName})`), `${kind} page loads its workspace`)
     assert.ok(source.includes(`sections={${sections}}`), `${kind} page lists its sections`)
-    assert.ok(
-      source.includes(`<PhaseSixDetail kind="${kind}" id={${idName}} after={<${component} ${idName}={${idName}} />} />`),
-      `${kind} page must pass <${component}> as PhaseSixDetail's after prop`,
-    )
+    // Other props (the lead page's Convert button in `actions`) may sit between id and after.
+    const mounted = new RegExp(`<PhaseSixDetail\\s+kind="${kind}"\\s+id=\\{${idName}\\}(\\s+actions=\\{[\\s\\S]*?\\})?\\s+after=\\{<${component} ${idName}=\\{${idName}\\} />\\}\\s*/>`)
+    assert.match(source, mounted, `${kind} page must pass <${component}> as PhaseSixDetail's after prop`)
   }
   const client = page('operations', 'clients', '[clientId]')
   assert.match(client, /getRecordWorkspace\('client', clientId\)/)
   assert.match(client, /<ClientDetail[^>]*workspace=\{workspace\}/, 'the client page must hand the workspace to ClientDetail')
   assert.match(read('..', '..', 'features', 'clients', 'components', 'client-detail.tsx'), /<RecordWorkspaceSections workspace=\{workspace\} sections=\{\['contacts', 'followups', 'timeline'\]\} \/>/)
+})
+
+test('the lead form no longer offers Converted, and conversion is only reachable through the Convert page', () => {
+  const form = readFileSync(join(workspace, 'features', 'commercial-finance', 'components', 'phase-six-form.tsx'), 'utf8')
+  assert.match(form, /value\("status"\) === "Converted" \? \["New", "Contacted", "Qualified", "Disqualified", "Converted"\] : \["New", "Contacted", "Qualified", "Disqualified"\]/)
+  const page = readFileSync(join(workspace, 'app', '(unison)', 'commercial', 'leads', '[leadId]', 'convert', 'page.tsx'), 'utf8')
+  assert.match(page, /findMatchingClients\(companyName\)/)
+  assert.match(page, /lead\.status === 'Converted' \|\| lead\.archivedAt/, 'an already converted or archived lead is sent back')
+  const leadPage = readFileSync(join(workspace, 'app', '(unison)', 'commercial', 'leads', '[leadId]', 'page.tsx'), 'utf8')
+  assert.match(leadPage, /!workspace\.conversion && !workspace\.record\.archived/, 'the button is hidden once converted or archived')
+})
+
+test('the save action refuses Lost without a reason and explains the Converted rule', () => {
+  const action = readFileSync(join(workspace, 'features', 'commercial-finance', 'actions', 'phase-six.ts'), 'utf8')
+  assert.match(action, /stage === "Lost" && !optional\(form, "lostReason"\)/)
+  assert.match(action, /leads_converted_status_check/)
+  assert.match(action, /leads_conversion_guarded/, 'a member hits the guard trigger first, not the check')
+  assert.match(action, /sales_opportunities_lost_reason_check/)
+})
+
+test('the website lead intake leaves an already converted lead alone instead of failing on replay', () => {
+  const route = readFileSync(join(workspace, 'app', 'api', 'integrations', 'website-leads', 'route.ts'), 'utf8')
+  assert.match(route, /converted_at/, 'the intake must check for a converted lead before upserting')
+  assert.ok(route.indexOf('converted_at') < route.indexOf('.upsert('), 'the check must come before the upsert')
+})
+
+test('the lead import skips Converted rows with a message instead of letting the database guard fail the batch', () => {
+  const source = readFileSync(join(workspace, 'features', 'data-portability', 'import-records.ts'), 'utf8')
+  assert.match(source, /definition\.table === "leads" && record\.status === "Converted"/)
+  assert.match(source, /Convert lead on its page/)
+  assert.ok(source.indexOf('record.status === "Converted"') < source.indexOf('if (valid) records.push(record)'), 'the check must come before the row is accepted')
 })

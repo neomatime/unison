@@ -94,7 +94,7 @@ function Fields({
       <Select name="source" label="Lead source" options={["Referral", "Website", "Campaign", "Event", "Partner", "Outbound", "Other"]} value={value("source", "Referral")} />
       <OptionSelect name="ownerId" label="Lead owner" options={options.members} value={value("ownerId")} optional />
       <MoneyFields amountName="estimatedValue" amountLabel="Estimated value" amount={value("estimatedValue", "0")} currency={value("currency", "ZAR")} />
-      <Select name="status" label="Qualification status" options={["New", "Contacted", "Qualified", "Disqualified", "Converted"]} value={value("status", "New")} />
+      <Select name="status" label="Qualification status" options={value("status") === "Converted" ? ["New", "Contacted", "Qualified", "Disqualified", "Converted"] : ["New", "Contacted", "Qualified", "Disqualified"]} value={value("status", "New")} />
       <TextArea name="notes" label="Qualification notes" value={value("notes")} />
     </>
   );
@@ -110,7 +110,7 @@ function Fields({
       <Field name="probabilityPercent" label="Probability (%)" type="number" min={0} max={100} value={value("probabilityPercent", "0")} />
       <Field name="expectedClose" label="Expected close" type="date" value={value("expectedClose")} />
       <Field name="nextStep" label="Next step" value={value("nextStep")} />
-      <Field name="lostReason" label="Lost reason" value={value("lostReason")} />
+      <Field name="lostReason" label="Lost reason (required when the stage is Lost)" value={value("lostReason")} />
       <TextArea name="notes" label="Commercial notes" value={value("notes")} />
     </>
   );

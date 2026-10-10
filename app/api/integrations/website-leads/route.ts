@@ -56,11 +56,37 @@ export async function POST(request: Request) {
   if (!parsed.success) return badRequest('The lead payload is invalid.')
 
   const supabase = createAdminSupabase()
+  const lead = mapWebsiteLead(parsed.data)
+
+  // A replay of a submission whose lead has since been converted must not touch it:
+  // the upsert below would reset its status and fail the converted-status check.
+  // converted_at is not in the generated database types yet, so the result is typed here.
+  const existing = (await supabase
+    .from('leads')
+    .select('id, converted_at')
+    .eq('organization_id', lead.organization_id)
+    .eq('website_submission_key', lead.website_submission_key ?? '')
+    .maybeSingle()) as unknown as {
+    data: { id: string; converted_at: string | null } | null
+    error: { code?: string } | null
+  }
+  if (existing.error) {
+    console.error('[website-leads] lead lookup failed', { code: existing.error.code })
+    return NextResponse.json(
+      { message: 'The lead could not be recorded.' },
+      { status: 502, headers: { 'Cache-Control': 'no-store' } },
+    )
+  }
+  if (existing.data?.converted_at) {
+    return NextResponse.json(
+      { leadId: existing.data.id },
+      { status: 202, headers: { 'Cache-Control': 'no-store' } },
+    )
+  }
+
   const { data, error } = await supabase
     .from('leads')
-    .upsert(mapWebsiteLead(parsed.data), {
-      onConflict: 'organization_id,website_submission_key',
-    })
+    .upsert(lead, { onConflict: 'organization_id,website_submission_key' })
     .select('id')
     .single()
 
