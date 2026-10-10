@@ -3,7 +3,8 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import test from 'node:test'
 
-const read = (...parts: string[]) => readFileSync(join(process.cwd(), ...parts), 'utf8')
+// Git on Windows may check files out with CRLF line endings; the guards match on LF.
+const read = (...parts: string[]) => readFileSync(join(process.cwd(), ...parts), 'utf8').replace(/\r\n/g, '\n')
 
 /** The text between two exact markers; fails loudly if either is missing or they are out of order. */
 function between(source: string, start: string, end: string, label: string) {
