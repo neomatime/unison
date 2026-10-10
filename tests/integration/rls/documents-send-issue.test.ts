@@ -102,6 +102,7 @@ test('quotes and invoices count separately, in order, and a refused send leaves 
   const invoice = await issue(await draftInvoice())
   assert.equal(invoice.error, null)
   assert.match(invoice.data.number, /^TST-I-\d{4}-\d{5}$/)
+  assert.match(invoice.data.number, /-00001$/, 'the invoice counter is independent of the quote counter')
   const invoiceNumber = Number(String(invoice.data.number).split('-').pop())
   const second = await issue(await draftInvoice())
   assert.equal(Number(String(second.data.number).split('-').pop()), invoiceNumber + 1)
@@ -217,16 +218,21 @@ test('once a quote is sent, nothing printed on it can change, but its status and
 test('the snapshot does not change when the client or the company details change afterwards', async () => {
   const id = await draftQuote()
   assert.equal((await send(id)).error, null)
-  await admin.from('clients').update({ name: 'Renamed Client', vat_number: 'VAT-CHANGED', address_line1: 'Moved' }).eq('id', clientA)
-  await admin.from('organization_settings').update({ legal_name: 'Renamed Co', bank_name: 'Other Bank' }).eq('organization_id', orgA)
-  const quote = await row('quotes', id)
-  assert.equal(quote.bill_to.name, 'Doc Client A')
-  assert.equal(quote.bill_to.vat_number, 'VAT-A')
-  assert.equal(quote.issuer.legal_name, 'Test Co (Pty) Ltd')
-  assert.equal(quote.issuer.bank_name, 'Test Bank')
-  assert.equal(quote.client_name, 'Doc Client A')
-  await admin.from('clients').update({ name: 'Doc Client A', vat_number: 'VAT-A', address_line1: '1 Test Road' }).eq('id', clientA)
-  await admin.from('organization_settings').update({ legal_name: 'Test Co (Pty) Ltd', bank_name: 'Test Bank' }).eq('organization_id', orgA)
+  try {
+    assert.equal((await admin.from('clients').update({ name: 'Renamed Client', vat_number: 'VAT-CHANGED', address_line1: 'Moved' }).eq('id', clientA)).error, null)
+    assert.equal((await admin.from('organization_settings').update({ legal_name: 'Renamed Co', bank_name: 'Other Bank' }).eq('organization_id', orgA)).error, null)
+    const quote = await row('quotes', id)
+    assert.equal(quote.bill_to.name, 'Doc Client A')
+    assert.equal(quote.bill_to.vat_number, 'VAT-A')
+    assert.equal(quote.issuer.legal_name, 'Test Co (Pty) Ltd')
+    assert.equal(quote.issuer.bank_name, 'Test Bank')
+    assert.equal(quote.client_name, 'Doc Client A')
+  } finally {
+    const restoredClient = await admin.from('clients').update({ name: 'Doc Client A', vat_number: 'VAT-A', address_line1: '1 Test Road' }).eq('id', clientA)
+    const restoredSettings = await admin.from('organization_settings').update({ legal_name: 'Test Co (Pty) Ltd', bank_name: 'Test Bank' }).eq('organization_id', orgA)
+    assert.equal(restoredClient.error, null, 'the client is restored')
+    assert.equal(restoredSettings.error, null, 'the company details are restored')
+  }
 })
 
 test('issuing an invoice numbers it, sets its dates, balance and terms, and freezes it', async () => {
@@ -302,5 +308,118 @@ test('the numbering function is not callable and the new functions are not open 
   ] as const) {
     const result = await anonymous.rpc(name, args)
     assert.ok(result.error, `anon cannot call ${name}`)
+    assert.match(result.error.message, /permission denied/i, `anon is refused ${name} on privilege, not on the argument`)
   }
+})
+
+test('a sent_at typed on a draft is cleared, so the send stamps the real time and writes the timeline entry', async () => {
+  const id = await draftQuote({ sent_at: '2020-01-01T00:00:00Z' })
+  assert.equal((await row('quotes', id)).sent_at, null, 'a typed sent_at is cleared on a draft')
+  assert.equal((await send(id)).error, null)
+  const quote = await row('quotes', id)
+  assert.ok(quote.sent_at)
+  assert.ok(Math.abs(Date.now() - new Date(quote.sent_at).getTime()) < 2 * 60_000, 'sent_at is the real time of the send')
+  const entries = (await admin.from('activities').select('kind').eq('quote_id', id).eq('kind', 'quote.sent')).data!
+  assert.equal(entries.length, 1)
+})
+
+test('an invoice is dated the day it is issued, whatever date was typed on the draft', async () => {
+  const id = await draftInvoice({ issue_date: '2020-01-01' })
+  const { data, error } = await issue(id)
+  assert.equal(error, null)
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Africa/Johannesburg' })
+  const invoice = await row('invoices', id)
+  assert.equal(invoice.issue_date, today)
+  assert.equal(String(data.number).split('-')[2], today.slice(0, 4), 'the year in the number is the year of the date')
+})
+
+test('the VAT rate is taken from the company details at the moment of sending or issuing', async () => {
+  const setRate = async (rate: number) => {
+    const result = await admin.from('organization_settings').update({ vat_rate: rate }).eq('organization_id', orgA)
+    assert.equal(result.error, null)
+  }
+  try {
+    const quoteId = await draftQuote({}, false)
+    const invoiceId = await draftInvoice({}, false)
+    assert.equal((await memberClient.from('quote_lines').insert({ organization_id: orgA, quote_id: quoteId, position: 1, title: 'Rate', quantity: 1, unit_price: 100 })).error, null)
+    assert.equal((await memberClient.from('invoice_lines').insert({ organization_id: orgA, invoice_id: invoiceId, position: 1, title: 'Rate', quantity: 1, unit_price: 100 })).error, null)
+
+    // A member cannot change the rate of a draft.
+    assert.equal(Number((await row('quotes', quoteId)).vat_rate), 15)
+    await memberClient.from('quotes').update({ vat_rate: 5 }).eq('id', quoteId)
+    await memberClient.from('invoices').update({ vat_rate: 5 }).eq('id', invoiceId)
+    assert.equal(Number((await row('quotes', quoteId)).vat_rate), 15, 'a member cannot change the rate on a draft quote')
+    assert.equal(Number((await row('invoices', invoiceId)).vat_rate), 15, 'a member cannot change the rate on a draft invoice')
+
+    await setRate(20)
+    assert.equal((await send(quoteId)).error, null)
+    const quote = await row('quotes', quoteId)
+    assert.equal(Number(quote.vat_rate), 20)
+    assert.equal(Number(quote.tax_amount), 20)
+    assert.equal(Number(quote.total_amount), 120)
+
+    assert.equal((await issue(invoiceId)).error, null)
+    const invoice = await row('invoices', invoiceId)
+    assert.equal(Number(invoice.vat_rate), 20)
+    assert.equal(Number(invoice.tax_amount), 20)
+    assert.equal(Number(invoice.total_amount), 120)
+    assert.equal(Number(invoice.balance_amount), 120, 'the balance follows the total at the rate in force when it was issued')
+  } finally {
+    await setRate(15)
+  }
+})
+
+test('a cancelled invoice stays cancelled', async () => {
+  const id = await draftInvoice()
+  assert.equal((await issue(id)).error, null)
+  assert.equal((await memberClient.from('invoices').update({ status: 'Cancelled' }).eq('id', id)).error, null)
+  refused((await memberClient.from('invoices').update({ status: 'Issued' }).eq('id', id)).error, 'INVOICE_CANCELLED')
+  refused((await memberClient.from('invoices').update({ status: 'Paid' }).eq('id', id)).error, 'INVOICE_CANCELLED')
+  refused((await memberClient.from('invoices').update({ status: 'Draft' }).eq('id', id)).error, 'INVOICE_CANNOT_REOPEN')
+  assert.equal((await row('invoices', id)).status, 'Cancelled')
+})
+
+test('the issuer snapshot holds exactly what is printed', async () => {
+  const id = await draftQuote()
+  assert.equal((await send(id)).error, null)
+  const quote = await row('quotes', id)
+  const printed = [
+    'legal_name', 'tagline', 'address_line1', 'address_line2', 'city', 'postal_code', 'country', 'vat_number', 'email', 'phone', 'website',
+    'bank_name', 'bank_account_name', 'bank_account_number', 'bank_branch_code', 'bank_account_type', 'quote_closing_text',
+    'invoice_closing_text', 'logo_path', 'header_image_path',
+  ]
+  assert.deepEqual(Object.keys(quote.issuer).sort(), [...printed].sort())
+})
+
+test("lines cannot be moved into or out of a sent quote, and an issued invoice's lines cannot be edited", async () => {
+  const draft = await draftQuote()
+  const sentQuote = await draftQuote()
+  assert.equal((await send(sentQuote)).error, null)
+  const draftLine = must(await admin.from('quote_lines').select('id').eq('quote_id', draft).single()).id
+  const sentLine = must(await admin.from('quote_lines').select('id').eq('quote_id', sentQuote).single()).id
+  refused((await memberClient.from('quote_lines').update({ quote_id: sentQuote }).eq('id', draftLine)).error, 'QUOTE_FROZEN')
+  refused((await memberClient.from('quote_lines').update({ quote_id: draft }).eq('id', sentLine)).error, 'QUOTE_FROZEN')
+
+  const invoice = await draftInvoice()
+  assert.equal((await issue(invoice)).error, null)
+  refused((await memberClient.from('invoice_lines').update({ unit_price: 1 }).eq('invoice_id', invoice)).error, 'INVOICE_FROZEN')
+})
+
+test("a sent quote's rate and organisation cannot be changed", async () => {
+  const id = await draftQuote()
+  assert.equal((await send(id)).error, null)
+  await memberClient.from('quotes').update({ vat_rate: 5 }).eq('id', id)
+  assert.equal(Number((await row('quotes', id)).vat_rate), 15, 'the rate does not move')
+  const moved = await memberClient.from('quotes').update({ organization_id: orgB }).eq('id', id)
+  assert.ok(moved.error, 'a quote cannot be moved to another organisation')
+  assert.equal((await row('quotes', id)).organization_id, orgA)
+  assert.equal((await memberClient.from('quotes').update({ status: 'Expired' }).eq('id', id)).error, null, 'a sent quote may expire')
+})
+
+test('issuing an invoice from another organisation is told it was not found', async () => {
+  const id = await draftInvoice()
+  const outsider = await issue(id, otherClient)
+  assert.ok(outsider.error)
+  assert.match(outsider.error.message, /INVOICE_NOT_FOUND/)
+  assert.equal((await row('invoices', id)).status, 'Draft')
 })
