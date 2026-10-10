@@ -1,5 +1,6 @@
 export const permissions = [
   { id: 'organization.manage', description: 'Manage organization settings.' },
+  { id: 'company.manage', description: 'Edit the company details printed on quotes and invoices.' },
   { id: 'members.manage', description: 'Invite, update, and remove organization members.' },
   { id: 'modules.manage', description: 'Configure modules enabled for an organization.' },
 ] as const
