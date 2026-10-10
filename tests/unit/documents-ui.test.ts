@@ -236,7 +236,7 @@ test('printing neutralises every shell ancestor of the sheet, so it flows from t
   ]) assert.ok(shell.includes(needle), `the rule for the sheet's ancestors must contain: ${needle}`)
   for (const needle of [
     '*:has(.document-print) > *:not(:has(.document-print)):not(.document-print) { display: none !important; }',
-    '.document-print { position: static !important; width: 210mm !important',
+    '.document-print { position: relative !important; width: 210mm !important',
   ]) assert.ok(print.includes(needle), `the print block must contain: ${needle}`)
   assert.doesNotMatch(print, /visibility:\s*hidden/, 'the old hide-everything approach would still clip and anchor to the shell')
 })

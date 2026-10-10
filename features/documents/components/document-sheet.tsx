@@ -24,7 +24,7 @@ const PRINT_CSS = `
       transform: none !important; animation: none !important; transition: none !important;
     }
     *:has(.document-print) > *:not(:has(.document-print)):not(.document-print) { display: none !important; }
-    .document-print { position: static !important; width: 210mm !important; max-width: none !important; min-height: 296mm; margin: 0 !important; overflow: visible !important; box-shadow: none !important; }
+    .document-print { position: relative !important; width: 210mm !important; max-width: none !important; min-height: 296mm; margin: 0 !important; overflow: visible !important; box-shadow: none !important; }
   }
 `
 
@@ -49,34 +49,34 @@ export function DocumentSheet({ view }: { view: DocumentView }) {
           </p>
         ) : null}
 
-        <header className="relative h-[46mm] bg-[#bcd9f5]">
+        <header className="relative h-[34mm] bg-[#bcd9f5]">
           {view.headerImage ? <img src={view.headerImage} alt="" className="absolute inset-0 h-full w-full object-cover object-right-bottom" /> : null}
           <div className="relative flex h-full flex-col justify-center px-[12mm]">
             {view.logo ? (
-              <img src={view.logo} alt={view.from.name ?? ''} className="h-[24mm] w-auto self-start object-contain object-left" />
+              <img src={view.logo} alt={view.from.name ?? ''} className="h-[18mm] w-auto self-start object-contain object-left" />
             ) : view.from.name ? (
               <p className="break-words text-[20pt] font-semibold tracking-[0.2em]">{view.from.name}</p>
             ) : null}
           </div>
         </header>
 
-        <section className="grid grid-cols-[1fr_auto] gap-[8mm] px-[12mm] pt-[10mm]">
+        <section className="grid grid-cols-[1fr_auto] gap-[8mm] px-[12mm] pt-[6mm]">
           <div className="min-w-0">
-            <h2 className="text-[40pt] font-light tracking-[0.22em]">{view.title}</h2>
+            <h2 className="text-[34pt] font-light tracking-[0.22em]">{view.title}</h2>
             {view.tagline ? <p className={`mt-2 text-[8pt] uppercase tracking-[0.35em] ${MUTED}`}>{view.tagline}</p> : null}
             <div className={`mt-5 ${RULE}`} />
           </div>
-          <dl className="grid max-w-[70mm] grid-cols-[auto_1fr] items-baseline gap-x-[8mm] gap-y-[2.2mm] border-l border-[#c9d4e3] pl-[8mm] text-[8pt]">
+          <dl className="grid max-w-[70mm] grid-cols-[auto_minmax(0,1fr)] items-baseline gap-x-[8mm] gap-y-[2.2mm] border-l border-[#c9d4e3] pl-[8mm] text-[8pt]">
             {view.details.map((row) => (
               <Fragment key={row.label}>
                 <dt className={`uppercase tracking-[0.2em] ${MUTED}`}>{row.label}</dt>
-                <dd className="break-words font-medium uppercase tracking-[0.1em]">{row.value}</dd>
+                <dd className="[overflow-wrap:anywhere] font-medium uppercase tracking-[0.1em]">{row.value}</dd>
               </Fragment>
             ))}
           </dl>
         </section>
 
-        <section className="mt-[10mm] grid grid-cols-3 gap-[6mm] px-[12mm]">
+        <section className="mt-[7mm] grid grid-cols-3 gap-[6mm] px-[12mm]">
           <div className={`min-w-0 ${hasProject || hasFrom ? 'border-r border-[#d8e0ec] pr-[5mm]' : ''}`}>
             <p className={`text-[7.5pt] uppercase tracking-[0.25em] ${MUTED}`}>{view.billToHeading}</p>
             {view.billTo.map((line, index) => (
@@ -104,7 +104,7 @@ export function DocumentSheet({ view }: { view: DocumentView }) {
           </div>
         </section>
 
-        <section className="mt-[8mm] px-[12mm]">
+        <section className="mt-[6mm] px-[12mm]">
           <table className="w-full table-fixed border-collapse">
             <colgroup>
               <col />
@@ -114,22 +114,22 @@ export function DocumentSheet({ view }: { view: DocumentView }) {
             </colgroup>
             <thead className="bg-[#0c2a4d] text-white">
               <tr>
-                <th scope="col" className="px-[4mm] py-[3mm] text-left text-[7.5pt] font-medium uppercase tracking-[0.25em]">Description</th>
-                <th scope="col" className="px-[2mm] py-[3mm] text-center text-[7.5pt] font-medium uppercase tracking-[0.25em]">Qty</th>
-                <th scope="col" className="px-[4mm] py-[3mm] text-right text-[7.5pt] font-medium uppercase tracking-[0.25em]">Unit price ({view.currency})</th>
-                <th scope="col" className="px-[4mm] py-[3mm] text-right text-[7.5pt] font-medium uppercase tracking-[0.25em]">Amount ({view.currency})</th>
+                <th scope="col" className="px-[4mm] py-[2mm] text-left text-[7.5pt] font-medium uppercase tracking-[0.25em]">Description</th>
+                <th scope="col" className="px-[2mm] py-[2mm] text-center text-[7.5pt] font-medium uppercase tracking-[0.25em]">Qty</th>
+                <th scope="col" className="px-[4mm] py-[2mm] text-right text-[7.5pt] font-medium uppercase tracking-[0.25em]">Unit price ({view.currency})</th>
+                <th scope="col" className="px-[4mm] py-[2mm] text-right text-[7.5pt] font-medium uppercase tracking-[0.25em]">Amount ({view.currency})</th>
               </tr>
             </thead>
             <tbody>
               {view.lines.map((line, index) => (
                 <tr key={index} className="break-inside-avoid">
-                  <td className="px-[4mm] py-[3mm] align-top">
+                  <td className="px-[4mm] py-[2mm] align-top">
                     <p className="break-words font-semibold">{line.title}</p>
                     {line.description ? <p className={`mt-0.5 whitespace-pre-line break-words text-[9pt] ${MUTED}`}>{line.description}</p> : null}
                   </td>
-                  <td className="px-[2mm] py-[3mm] text-center align-top">{line.quantity}</td>
-                  <td className="px-[4mm] py-[3mm] text-right align-top">{line.unitPrice}</td>
-                  <td className="px-[4mm] py-[3mm] text-right align-top">{line.amount}</td>
+                  <td className="px-[2mm] py-[2mm] text-center align-top">{line.quantity}</td>
+                  <td className="px-[4mm] py-[2mm] text-right align-top">{line.unitPrice}</td>
+                  <td className="px-[4mm] py-[2mm] text-right align-top">{line.amount}</td>
                 </tr>
               ))}
               {view.lines.length === 0 ? (
@@ -141,7 +141,7 @@ export function DocumentSheet({ view }: { view: DocumentView }) {
           </table>
         </section>
 
-        <section className="mt-[6mm] grid grid-cols-[1fr_78mm] gap-[8mm] px-[12mm]">
+        <section className="mt-[5mm] grid grid-cols-[1fr_78mm] gap-[8mm] px-[12mm]">
           <div className="min-w-0">
             {view.terms.length ? (
               <>
@@ -169,23 +169,23 @@ export function DocumentSheet({ view }: { view: DocumentView }) {
           </dl>
         </section>
 
-        <section className="mt-[8mm] grid grid-cols-3">
-          <div className={view.bank.length ? 'break-inside-avoid bg-[#e3ebf5] px-[12mm] py-[6mm]' : ''}>
+        <section className="mt-[5mm] grid grid-cols-[38%_34%_28%]">
+          <div className={view.bank.length ? 'break-inside-avoid bg-[#e3ebf5] px-[12mm] py-[3mm]' : ''}>
             {view.bank.length ? (
               <>
                 <h3 className="text-[8pt] uppercase tracking-[0.25em]">Bank details</h3>
-                <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-[8.5pt]">
+                <dl className="mt-3 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1 text-[8.5pt]">
                   {view.bank.map((row) => (
                     <Fragment key={row.label}>
                       <dt className={MUTED}>{row.label}</dt>
-                      <dd className="break-words">{row.value}</dd>
+                      <dd className="[overflow-wrap:anywhere]">{row.value}</dd>
                     </Fragment>
                   ))}
                 </dl>
               </>
             ) : null}
           </div>
-          <div className="min-w-0 break-inside-avoid px-[6mm] py-[6mm]">
+          <div className="min-w-0 break-inside-avoid px-[6mm] py-[3mm]">
             {view.closing ? (
               <>
                 <h3 className="text-[8pt] uppercase tracking-[0.25em]">{view.closing.heading}</h3>
@@ -195,12 +195,12 @@ export function DocumentSheet({ view }: { view: DocumentView }) {
               </>
             ) : null}
           </div>
-          <div className="relative min-h-[34mm]">
+          <div className="relative min-h-[28mm]">
             {view.headerImage ? <img src={view.headerImage} alt="" className="absolute inset-0 h-full w-full object-cover object-right" /> : null}
           </div>
         </section>
 
-        <footer className="mx-[12mm] mt-[6mm] flex flex-wrap items-center justify-between gap-3 border-t border-[#c9d4e3] py-[4mm] text-[8.5pt]">
+        <footer className="mx-[12mm] mt-[4mm] flex flex-wrap items-center justify-between gap-3 border-t border-[#c9d4e3] py-[3mm] text-[8.5pt]">
           <div className="flex flex-wrap gap-x-6 gap-y-1">
             {view.footer.email ? <span className="break-all">{view.footer.email}</span> : null}
             {view.footer.phone ? <span>{view.footer.phone}</span> : null}

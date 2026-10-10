@@ -33,7 +33,7 @@ export default async function Page({ params }: { params: Promise<{ quoteId: stri
         </p>
         <PrintButton />
       </div>
-      <DocumentSheet view={view} />
+      <div className="overflow-x-auto"><DocumentSheet view={view} /></div>
     </WorkPage>
   )
 }
