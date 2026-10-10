@@ -2706,7 +2706,7 @@ test('record pages mount the workspace sections', () => {
 **Files:**
 - Create: `features/crm-workspace/components/convert-lead-form.tsx`
 - Create: `app/(unison)/commercial/leads/[leadId]/convert/page.tsx`
-- Modify: `app/(unison)/commercial/leads/[leadId]/page.tsx` (add the Convert button), `features/commercial-finance/components/phase-six-form.tsx` (lead status options), `features/commercial-finance/actions/phase-six.ts` (guards), `app/api/integrations/website-leads/route.ts` (leave a converted lead alone on replay)
+- Modify: `app/(unison)/commercial/leads/[leadId]/page.tsx` (add the Convert button), `features/commercial-finance/components/phase-six-form.tsx` (lead status options), `features/commercial-finance/actions/phase-six.ts` (guards), `app/api/integrations/website-leads/route.ts` (leave a converted lead alone on replay), `features/data-portability/import-records.ts` (skip Converted lead rows)
 - Modify: `tests/unit/crm-workspace-ui.test.ts`
 
 **Interfaces:**
@@ -2892,6 +2892,28 @@ and inside the `kind === "lead"` branch, directly after `const contactEmail = op
 
 Leave the rest of the handler (the `if (error || !data)` branch and the 202 response) as it is. Read `mapWebsiteLead` first and confirm its return value has `organization_id` and `website_submission_key` fields with those exact names; if it names them differently, use its names and say so in the report. Do not change anything else in the file.
 
+- [ ] **Step 5c: Let a lead import skip Converted rows instead of failing the batch.** `features/data-portability/portable-collections.ts` lets a lead import carry a `status` column, and `app/api/records/import/route.ts` inserts the whole batch as the signed-in user, so once any lead is Converted, re-importing an export (which includes "Converted") would hit the conversion guard and fail every row. In `features/data-portability/import-records.ts`, inside `normalizeImportedRows`, in the `rows.forEach` callback, directly before `if (valid) records.push(record);`, add:
+
+```ts
+    // A lead becomes Converted only through Convert lead; a database guard refuses it for
+    // members, which would fail the whole batch, so skip just this row with a clear message.
+    if (valid && definition.table === "leads" && record.status === "Converted") {
+      issues.push({ row: index + 2, field: "Status", message: "Status cannot be Converted: a lead becomes Converted by using Convert lead on its page." });
+      valid = false;
+    }
+```
+
+Do not change anything else in the file. `import-records.ts` imports `server-only`, so a unit test cannot import it; add this source guard to `tests/unit/crm-workspace-ui.test.ts` (Step 6):
+
+```ts
+test('the lead import skips Converted rows with a message instead of letting the database guard fail the batch', () => {
+  const source = readFileSync(join(workspace, 'features', 'data-portability', 'import-records.ts'), 'utf8')
+  assert.match(source, /definition\.table === "leads" && record\.status === "Converted"/)
+  assert.match(source, /Convert lead on its page/)
+  assert.ok(source.indexOf('record.status === "Converted"') < source.indexOf('if (valid) records.push(record)'), 'the check must come before the row is accepted')
+})
+```
+
 - [ ] **Step 6: Extend the guards** in `tests/unit/crm-workspace-ui.test.ts`:
 
 ```ts
@@ -2922,7 +2944,7 @@ test('the website lead intake leaves an already converted lead alone instead of 
 
 - [ ] **Step 7: Render check.** In the scratchpad harness, render `ConvertLeadForm` with zero, one and two matches; confirm the radios, the default selection (first match), the hidden `clientId=new` when there are none, and escaped hostile company names.
 
-- [ ] **Step 8: Gates and commit.** `pnpm typecheck`, `pnpm test`, `pnpm build` all exit 0. Commit the new files and the four modified files by path: `feat(crm): convert a lead from its page, keep Converted reachable only through conversion, and let the website intake replay safely`.
+- [ ] **Step 8: Gates and commit.** `pnpm typecheck`, `pnpm test`, `pnpm build` all exit 0. Commit the new files and the five modified files by path: `feat(crm): convert a lead from its page, keep Converted reachable only through conversion, and let the website intake replay safely`.
 
 ---
 
