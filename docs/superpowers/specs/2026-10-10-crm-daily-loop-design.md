@@ -66,8 +66,10 @@ One entry on a record's timeline.
   with `created_by = auth.uid()` (so authorship cannot be forged). A member updates or deletes only a **logged**
   entry they wrote; an owner or admin may edit or delete any logged entry. System entries have no update or
   delete policy at all, so nobody can change them.
-- System entries are written by a `security definer` function `record_activity(...)` that the database triggers
-  call; `EXECUTE` on it is revoked from `public`, `anon` and `authenticated`.
+- System entries are written only by `security definer` functions: the stage and quote triggers and
+  `convert_lead`. Members cannot insert a system kind directly, so those functions need elevated rights; the
+  trigger functions have `EXECUTE` revoked from `public`, `anon` and `authenticated`. The author recorded on a
+  system entry is the signed-in member, or null when there is none (a service-role write).
 - Audit trigger on update and delete only (inserts are the log itself).
 
 ### Changes to existing tables
@@ -89,10 +91,13 @@ Production holds no CRM rows, so these checks apply cleanly. Existing records ar
 A button on the lead page opens a real page, `/commercial/leads/[leadId]/convert`, which shows what will be
 created and, if a non-archived client with the same company name exists (compared ignoring capitals and extra
 spaces), offers "add to <client>" or "create a separate client". Submitting calls the database function
-`convert_lead(p_lead_id uuid, p_client_id uuid default null) returns jsonb`, `security invoker`, one transaction:
+`convert_lead(p_lead_id uuid, p_client_id uuid default null) returns jsonb`, one transaction. It is `security
+definer` (it must write system entries that members cannot write directly), so it does its own checks:
 
-1. Refuses a caller who is not a member (42501), a lead that is archived, already converted, or not in the
-   caller's organisation, and a `p_client_id` that is archived or in another organisation.
+1. Refuses a caller who is not a member of the lead's organisation (reported as "lead not found", so it does not
+   reveal that the lead exists), a lead that is archived or already converted, and a `p_client_id` that is
+   archived or in another organisation. Two simultaneous conversions of one lead are serialised by locking the
+   lead row, so exactly one succeeds.
 2. **Client:** with `p_client_id`, uses it. Otherwise creates one from the lead: `name` = company name,
    `industry`, `contact_name`, `contact_email`, `contact_phone`, status `Onboarding`, and `engagement_type` only
    when the lead's value is exactly `Retainer` or `Project`.
@@ -157,7 +162,8 @@ reported as not found. Nothing falls back to a default when a read fails.
   wrong-organisation links refused for `contacts`, `activities` and the new task and lead columns; the
   parent-exactly-one and one-primary rules; authorship cannot be forged; edit and delete limited to the author or
   an owner or admin; system entries immutable; triggers write the right entries; `convert_lead` for a new client,
-  an existing client, contact reuse, rollback when a later step fails, double conversion refused, a client in
+  an existing client, contact reuse, rollback when a later step fails (forced with a lead whose contact name is
+  blank, which fails after the client is created), double and simultaneous conversion refused, a client in
   another organisation refused, a non-member refused; the Converted and Lost checks; `record_timeline` for each
   page kind; `anon` has no access.
 - **Unit:** the form readers; a drift test keeping the activity kinds in the code equal to the database check;
@@ -179,7 +185,8 @@ reported as not found. Nothing falls back to a default when a read fails.
 
 - `unison-uat` is production. Every test row is deleted, with its audit events. Rolled-back probes before
   applying any migration.
-- Migrations are append-only; this slice adds one (or two if a review finds a hole).
+- Migrations are append-only; this slice adds two (contacts, activities and the rules; then `convert_lead`),
+  and more only if a review finds a hole.
 - A control in the UI is a claim the product supports it. No role-based behaviour is invented.
 - Secrets live in `.env.local` only.
 - Never `git add -A`; stage explicit paths. Commit and push only when the user asks.
