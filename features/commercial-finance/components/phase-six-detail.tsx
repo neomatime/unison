@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 
 import { WorkPage } from "@/components/shared/work-page";
 import { formatCurrency } from "@/lib/utils/format-money";
+import { isDraftReference } from "@/features/documents/vocabulary";
 import {
   getPhaseSixRecord,
   type PhaseSixKind,
@@ -35,9 +36,10 @@ const fields: Record<PhaseSixKind, Array<[string, string]>> = {
     ["Last activity", "lastActivityAt"], ["Notes", "notes"],
   ],
   quote: [
-    ["Client", "clientName"], ["Client contact", "contactName"], ["Lead", "lead"],
-    ["Opportunity", "opportunity"], ["Owner", "owner"], ["Valid until", "validUntil"],
-    ["Subtotal", "subtotal"], ["Tax", "taxAmount"], ["Total", "totalAmount"],
+    ["Number", "quoteNumber"], ["Client", "clientName"], ["Client contact", "contactName"], ["Lead", "lead"],
+    ["Opportunity", "opportunity"], ["Owner", "owner"], ["Issue date", "issueDate"], ["Valid until", "validUntil"],
+    ["Project", "projectName"], ["Project reference", "projectRef"], ["Client reference", "clientRef"],
+    ["Subtotal", "subtotal"], ["VAT rate", "vatRate"], ["Tax", "taxAmount"], ["Total", "totalAmount"],
     ["Status", "status"], ["Sent", "sentAt"], ["Accepted", "acceptedAt"],
     ["Terms", "terms"], ["Notes", "notes"],
   ],
@@ -49,10 +51,11 @@ const fields: Record<PhaseSixKind, Array<[string, string]>> = {
     ["Notes", "notes"],
   ],
   invoice: [
-    ["Client", "clientName"], ["Project", "project"], ["Source quote", "quote"],
+    ["Number", "invoiceNumber"], ["Client", "clientName"], ["Project", "project"], ["Source quote", "quote"],
     ["Opportunity", "opportunity"], ["Finance owner", "owner"],
-    ["Issue date", "issueDate"], ["Due date", "dueDate"], ["Subtotal", "subtotal"],
-    ["Tax", "taxAmount"], ["Total", "totalAmount"], ["Outstanding balance", "balanceAmount"],
+    ["Issue date", "issueDate"], ["Due date", "dueDate"],
+    ["Project name", "projectName"], ["Project reference", "projectRef"], ["Client reference", "clientRef"],
+    ["Subtotal", "subtotal"], ["VAT rate", "vatRate"], ["Tax", "taxAmount"], ["Total", "totalAmount"], ["Outstanding balance", "balanceAmount"],
     ["Status", "status"], ["Paid", "paidAt"], ["Payment terms", "paymentTerms"],
     ["Notes", "notes"],
   ],
@@ -144,9 +147,13 @@ function formatValue(key: string, value: unknown, record: PhaseSixRecord) {
       .join("\n");
   }
   if (key === "manualReviewRequired") return value ? "Required" : "No";
+  if ((key === "quoteNumber" || key === "invoiceNumber") && isDraftReference(value)) {
+    return key === "invoiceNumber" ? "Assigned when it is issued" : "Assigned when it is sent";
+  }
   if (moneyKeys.has(key)) {
     return formatCurrency(Number(value), String(record.currency ?? "ZAR"));
   }
+  if (key === "vatRate") return `${Number(value)}%`;
   if (key === "probabilityPercent" || key === "confidencePercent") return `${value}%`;
   if (key.endsWith("At")) return new Date(String(value)).toLocaleString("en-ZA");
   if (

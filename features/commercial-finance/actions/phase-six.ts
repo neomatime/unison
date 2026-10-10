@@ -7,6 +7,14 @@ import { getSessionContext } from "@/lib/auth/get-session-context";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { isUuid } from "@/lib/utils";
 import type { PhaseSixKind } from "../queries/phase-six";
+import { documentErrorMessage } from "@/features/documents/errors";
+import { readDocumentExtras } from "@/features/documents/fields";
+import {
+  INVOICE_ISSUED_STATUSES,
+  QUOTE_DRAFT_STATUSES,
+  QUOTE_SENT_STATUSES,
+  isDraftStatus,
+} from "@/features/documents/vocabulary";
 
 export type PhaseSixActionState = { error?: string } | undefined;
 
@@ -50,6 +58,20 @@ async function clientName(
     name = result.data.name;
   }
   return { clientId, name, invalid: false };
+}
+
+const isOneOf = (options: readonly string[], candidate: string) => options.includes(candidate);
+
+/** The stored status and total of a quote or invoice, so a sent or issued document is saved differently. */
+async function readDocumentState(db: any, table: string, organizationId: string, id: string) {
+  const result = await db
+    .from(table)
+    .select("status,total_amount")
+    .eq("id", id)
+    .eq("organization_id", organizationId)
+    .maybeSingle();
+  if (result.error || !result.data) return null;
+  return { status: String(result.data.status), total: Number(result.data.total_amount) };
 }
 
 export async function savePhaseSixRecordAction(
@@ -118,73 +140,78 @@ export async function savePhaseSixRecordAction(
       notes: optional(form, "notes"),
     };
   } else if (kind === "quote") {
-    const quoteNumber = text(form, "quoteNumber");
-    const resolvedClient = await clientName(db, organization.id, form);
-    if (resolvedClient.invalid) return { error: "The selected client could not be verified." };
-    if (!quoteNumber || !resolvedClient.name) {
-      return { error: "Quote number and client or prospect are required." };
-    }
-    const subtotal = Math.max(0, number(form, "subtotal"));
-    const taxAmount = Math.max(0, number(form, "taxAmount"));
-    const totalAmount = Math.max(0, number(form, "totalAmount", subtotal + taxAmount));
-    const status = text(form, "status") || "Draft";
+    const extras = readDocumentExtras(form);
+    if ("error" in extras) return { error: extras.error };
+    const state = id && isUuid(id) ? await readDocumentState(db, "quotes", organization.id, id) : null;
+    if (id && isUuid(id) && !state) return { error: "That quote could not be loaded." };
+    const status = text(form, "status");
     table = "quotes";
-    values = {
-      organization_id: organization.id,
-      quote_number: quoteNumber,
-      client_id: resolvedClient.clientId,
-      client_name: resolvedClient.name,
-      contact_name: optional(form, "contactName"),
-      lead_id: identifier(form, "leadId"),
-      opportunity_id: identifier(form, "opportunityId"),
-      owner_id: identifier(form, "ownerId"),
-      valid_until: optional(form, "validUntil"),
-      subtotal,
-      tax_amount: taxAmount,
-      total_amount: totalAmount,
-      currency: text(form, "currency") || "ZAR",
-      status,
-      sent_at: status === "Sent" ? new Date().toISOString() : null,
-      accepted_at: status === "Accepted" ? new Date().toISOString() : null,
-      terms: optional(form, "terms"),
-      notes: optional(form, "notes"),
-    };
-  } else if (kind === "invoice") {
-    const invoiceNumber = text(form, "invoiceNumber");
-    const resolvedClient = await clientName(db, organization.id, form);
-    if (resolvedClient.invalid) return { error: "The selected client could not be verified." };
-    if (!invoiceNumber || !resolvedClient.name) {
-      return { error: "Invoice number and client are required." };
+    if (state && !isDraftStatus("quote", state.status)) {
+      // Sent: only the status and the notes can change; the database refuses everything else.
+      if (!isOneOf(QUOTE_SENT_STATUSES, status)) return { error: "Choose Sent, Accepted, Declined or Expired." };
+      values = { status, notes: optional(form, "notes") };
+    } else {
+      if (status && !isOneOf(QUOTE_DRAFT_STATUSES, status)) {
+        return { error: "A draft quote is Draft or Internal Review. Use Send quote to send it." };
+      }
+      const resolvedClient = await clientName(db, organization.id, form);
+      if (resolvedClient.invalid) return { error: "The selected client could not be verified." };
+      if (!resolvedClient.name) return { error: "Choose a client or enter a prospect name." };
+      values = {
+        organization_id: organization.id,
+        client_id: resolvedClient.clientId,
+        client_name: resolvedClient.name,
+        contact_name: optional(form, "contactName"),
+        lead_id: identifier(form, "leadId"),
+        opportunity_id: identifier(form, "opportunityId"),
+        owner_id: identifier(form, "ownerId"),
+        valid_until: optional(form, "validUntil"),
+        currency: text(form, "currency") || "ZAR",
+        status: status || "Draft",
+        terms: optional(form, "terms"),
+        notes: optional(form, "notes"),
+        ...extras,
+      };
     }
-    const subtotal = Math.max(0, number(form, "subtotal"));
-    const taxAmount = Math.max(0, number(form, "taxAmount"));
-    const totalAmount = Math.max(0, number(form, "totalAmount", subtotal + taxAmount));
-    const status = text(form, "status") || "Draft";
-    const balanceAmount = status === "Paid"
-      ? 0
-      : Math.min(totalAmount, Math.max(0, number(form, "balanceAmount", totalAmount)));
+  } else if (kind === "invoice") {
+    const extras = readDocumentExtras(form);
+    if ("error" in extras) return { error: extras.error };
+    const state = id && isUuid(id) ? await readDocumentState(db, "invoices", organization.id, id) : null;
+    if (id && isUuid(id) && !state) return { error: "That invoice could not be loaded." };
+    const status = text(form, "status");
     table = "invoices";
-    values = {
-      organization_id: organization.id,
-      invoice_number: invoiceNumber,
-      client_id: resolvedClient.clientId,
-      client_name: resolvedClient.name,
-      project_id: identifier(form, "projectId"),
-      quote_id: identifier(form, "quoteId"),
-      opportunity_id: identifier(form, "opportunityId"),
-      owner_id: identifier(form, "ownerId"),
-      issue_date: optional(form, "issueDate"),
-      due_date: optional(form, "dueDate"),
-      subtotal,
-      tax_amount: taxAmount,
-      total_amount: totalAmount,
-      balance_amount: balanceAmount,
-      currency: text(form, "currency") || "ZAR",
-      status,
-      paid_at: status === "Paid" ? new Date().toISOString() : null,
-      payment_terms: optional(form, "paymentTerms"),
-      notes: optional(form, "notes"),
-    };
+    if (state && !isDraftStatus("invoice", state.status)) {
+      // Issued: only the status, the balance and the notes can change (payments arrive in a later release).
+      if (!isOneOf(INVOICE_ISSUED_STATUSES, status)) {
+        return { error: "Choose Issued, Partially Paid, Paid, Overdue or Cancelled." };
+      }
+      const balance = status === "Paid" ? 0 : Math.min(state.total, Math.max(0, number(form, "balanceAmount", state.total)));
+      values = {
+        status,
+        balance_amount: balance,
+        paid_at: status === "Paid" ? new Date().toISOString() : null,
+        notes: optional(form, "notes"),
+      };
+    } else {
+      const resolvedClient = await clientName(db, organization.id, form);
+      if (resolvedClient.invalid) return { error: "The selected client could not be verified." };
+      if (!resolvedClient.name) return { error: "Choose a client." };
+      values = {
+        organization_id: organization.id,
+        client_id: resolvedClient.clientId,
+        client_name: resolvedClient.name,
+        project_id: identifier(form, "projectId"),
+        quote_id: identifier(form, "quoteId"),
+        opportunity_id: identifier(form, "opportunityId"),
+        owner_id: identifier(form, "ownerId"),
+        due_date: optional(form, "dueDate"),
+        currency: text(form, "currency") || "ZAR",
+        status: "Draft",
+        payment_terms: optional(form, "paymentTerms"),
+        notes: optional(form, "notes"),
+        ...extras,
+      };
+    }
   } else if (kind === "expense") {
     const description = text(form, "description");
     const amount = number(form, "amount", -1);
@@ -256,15 +283,16 @@ export async function savePhaseSixRecordAction(
     // status flip: submitting anything but Converted for a saved lead means it was Converted.
     const leavingConverted = kind === "lead" && Boolean(id && isUuid(id)) && values.status !== "Converted";
     return {
-      error: result.error?.code === "23505"
-        ? "That reference or scenario name already exists."
-        : conversionRefused && leavingConverted
-          ? "A converted lead cannot be changed back to another status."
-          : conversionRefused
-            ? "A lead becomes Converted by using Convert lead on its page."
-            : message.includes("sales_opportunities_lost_reason_check")
-              ? "Say why this opportunity was lost."
-              : "The record could not be saved. Check related records, dates and amounts.",
+      error: documentErrorMessage(message)
+        ?? (result.error?.code === "23505"
+          ? "That reference or scenario name already exists."
+          : conversionRefused && leavingConverted
+            ? "A converted lead cannot be changed back to another status."
+            : conversionRefused
+              ? "A lead becomes Converted by using Convert lead on its page."
+              : message.includes("sales_opportunities_lost_reason_check")
+                ? "Say why this opportunity was lost."
+                : "The record could not be saved. Check related records, dates and amounts."),
     };
   }
 

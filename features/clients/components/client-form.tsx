@@ -17,6 +17,8 @@ const engagementOptions = [{ id: 'Retainer', name: 'Retainer' }, { id: 'Project'
 
 export function ClientForm({ mode, client, action }: { mode: 'create' | 'edit'; client?: ClientRecord; action: ClientFormAction }) {
   const [state, formAction, pending] = useActionState(action, undefined)
+  // The billing columns are not in the generated database types yet, so read them untyped.
+  const billing = client as unknown as Record<string, string | null> | undefined
   const backHref = client ? `/operations/clients/${client.id}` : '/operations/clients'
 
   return <>
@@ -44,6 +46,15 @@ export function ClientForm({ mode, client, action }: { mode: 'create' | 'edit'; 
         <TextField name="contactEmail" label="Contact email" type="email" defaultValue={client?.contact_email} />
         <TextField name="contactPhone" label="Contact phone" type="tel" defaultValue={client?.contact_phone} />
         <TextField name="billingEmail" label="Billing email" type="email" defaultValue={client?.billing_email} />
+      </FormSection>
+
+      <FormSection title="Billing address and VAT" description="Printed on quotes and invoices. Copied onto a document when it is sent or issued.">
+        <TextField name="addressLine1" label="Address line 1" defaultValue={billing?.address_line1} />
+        <TextField name="addressLine2" label="Address line 2" defaultValue={billing?.address_line2} />
+        <TextField name="city" label="City" defaultValue={billing?.city} />
+        <TextField name="postalCode" label="Postal code" defaultValue={billing?.postal_code} />
+        <TextField name="country" label="Country" defaultValue={billing?.country} />
+        <TextField name="vatNumber" label="VAT number" defaultValue={billing?.vat_number} />
       </FormSection>
 
       <FormSection title="Status and health" description="Drives where this client appears across the workspace.">

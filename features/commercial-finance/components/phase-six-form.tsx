@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, type ReactNode } from "react";
 
 import { WorkspaceHeader } from "@/components/shared/workspace-header";
+import { INVOICE_ISSUED_STATUSES, QUOTE_SENT_STATUSES, isDraftStatus } from "@/features/documents/vocabulary";
 import { savePhaseSixRecordAction } from "../actions/phase-six";
 import type {
   PhaseSixKind,
@@ -115,45 +116,71 @@ function Fields({
     </>
   );
 
-  if (kind === "quote") return (
-    <>
-      <Field name="quoteNumber" label="Quote number" required value={value("quoteNumber", value("name"))} />
-      <ClientFields options={options.clients} clientId={value("clientId")} clientName={value("clientName")} />
-      <Field name="contactName" label="Client contact" value={value("contactName")} />
-      <OptionSelect name="leadId" label="Related lead" options={options.leads} value={value("leadId")} optional />
-      <OptionSelect name="opportunityId" label="Related opportunity" options={options.opportunities} value={value("opportunityId")} optional />
-      <OptionSelect name="ownerId" label="Quote owner" options={options.members} value={value("ownerId")} optional />
-      <Field name="validUntil" label="Valid until" type="date" value={value("validUntil")} />
-      <Field name="subtotal" label="Subtotal" type="number" min={0} step="0.01" value={value("subtotal", "0")} />
-      <Field name="taxAmount" label="Tax amount" type="number" min={0} step="0.01" value={value("taxAmount", "0")} />
-      <Field name="totalAmount" label="Quote total" type="number" min={0} step="0.01" value={value("totalAmount")} />
-      <Currency value={value("currency", "ZAR")} />
-      <Select name="status" label="Status" options={["Draft", "Internal Review", "Sent", "Accepted", "Declined", "Expired"]} value={value("status", "Draft")} />
-      <TextArea name="terms" label="Terms and conditions" value={value("terms")} />
-      <TextArea name="notes" label="Commercial notes" value={value("notes")} />
-    </>
-  );
+  if (kind === "quote") {
+    if (record && !isDraftStatus("quote", record.status)) {
+      return (
+        <>
+          <Notice>
+            This quote has been sent, so its lines, prices and details are frozen. You can still change its status and notes. To revise it, duplicate it as a new draft from its page.
+          </Notice>
+          <Select name="status" label="Status" options={[...QUOTE_SENT_STATUSES]} value={value("status", "Sent")} />
+          <TextArea name="notes" label="Commercial notes" value={value("notes")} />
+        </>
+      );
+    }
+    return (
+      <>
+        <Notice>The quote number is assigned when the quote is sent. Save the draft, then add its lines on the quote page.</Notice>
+        <ClientFields options={options.clients} clientId={value("clientId")} clientName={value("clientName")} />
+        <Field name="contactName" label="Client contact" value={value("contactName")} />
+        <OptionSelect name="leadId" label="Related lead" options={options.leads} value={value("leadId")} optional />
+        <OptionSelect name="opportunityId" label="Related opportunity" options={options.opportunities} value={value("opportunityId")} optional />
+        <OptionSelect name="ownerId" label="Quote owner" options={options.members} value={value("ownerId")} optional />
+        <Field name="validUntil" label="Valid until (default 30 days after it is sent)" type="date" value={value("validUntil")} />
+        <Currency value={value("currency", "ZAR")} />
+        <Field name="projectName" label="Project name (printed on the quote)" value={value("projectName")} />
+        <Field name="projectRef" label="Project reference" value={value("projectRef")} />
+        <Field name="clientRef" label="Client reference (their PO number)" value={value("clientRef")} />
+        <Select name="status" label="Status" options={["Draft", "Internal Review"]} value={value("status", "Draft")} />
+        <TextArea name="projectDescription" label="Project description" value={value("projectDescription")} />
+        <TextArea name="terms" label="Terms and conditions (one per line)" value={value("terms", record ? "" : (options.defaults.quoteTerms ?? ""))} />
+        <TextArea name="notes" label="Commercial notes (internal)" value={value("notes")} />
+      </>
+    );
+  }
 
-  if (kind === "invoice") return (
-    <>
-      <Field name="invoiceNumber" label="Invoice number" required value={value("invoiceNumber", value("name"))} />
-      <ClientFields options={options.clients} clientId={value("clientId")} clientName={value("clientName")} />
-      <OptionSelect name="projectId" label="Project" options={options.projects} value={value("projectId")} optional />
-      <OptionSelect name="quoteId" label="Source quote" options={options.quotes} value={value("quoteId")} optional />
-      <OptionSelect name="opportunityId" label="Opportunity" options={options.opportunities} value={value("opportunityId")} optional />
-      <OptionSelect name="ownerId" label="Finance owner" options={options.members} value={value("ownerId")} optional />
-      <Field name="issueDate" label="Issue date" type="date" value={value("issueDate")} />
-      <Field name="dueDate" label="Due date" type="date" value={value("dueDate")} />
-      <Field name="subtotal" label="Subtotal" type="number" min={0} step="0.01" value={value("subtotal", "0")} />
-      <Field name="taxAmount" label="Tax amount" type="number" min={0} step="0.01" value={value("taxAmount", "0")} />
-      <Field name="totalAmount" label="Invoice total" type="number" min={0} step="0.01" value={value("totalAmount")} />
-      <Field name="balanceAmount" label="Outstanding balance" type="number" min={0} step="0.01" value={value("balanceAmount")} />
-      <Currency value={value("currency", "ZAR")} />
-      <Select name="status" label="Payment status" options={["Draft", "Issued", "Partially Paid", "Paid", "Overdue", "Cancelled"]} value={value("status", "Draft")} />
-      <TextArea name="paymentTerms" label="Payment terms" value={value("paymentTerms")} />
-      <TextArea name="notes" label="Payment notes" value={value("notes")} />
-    </>
-  );
+  if (kind === "invoice") {
+    if (record && !isDraftStatus("invoice", record.status)) {
+      return (
+        <>
+          <Notice>
+            This invoice has been issued, so its lines, prices and details are frozen. You can still change its payment status, the outstanding balance and the notes. To correct it, cancel it and raise a new one.
+          </Notice>
+          <Select name="status" label="Payment status" options={[...INVOICE_ISSUED_STATUSES]} value={value("status", "Issued")} />
+          <Field name="balanceAmount" label="Outstanding balance" type="number" min={0} step="0.01" value={value("balanceAmount")} />
+          <TextArea name="notes" label="Payment notes" value={value("notes")} />
+        </>
+      );
+    }
+    return (
+      <>
+        <Notice>The invoice number is assigned when the invoice is issued. Save the draft, then add its lines on the invoice page.</Notice>
+        <ClientFields options={options.clients} clientId={value("clientId")} clientName={value("clientName")} />
+        <OptionSelect name="projectId" label="Delivery project (optional)" options={options.projects} value={value("projectId")} optional />
+        <OptionSelect name="quoteId" label="Source quote" options={options.quotes} value={value("quoteId")} optional />
+        <OptionSelect name="opportunityId" label="Opportunity" options={options.opportunities} value={value("opportunityId")} optional />
+        <OptionSelect name="ownerId" label="Finance owner" options={options.members} value={value("ownerId")} optional />
+        <Field name="dueDate" label="Due date (default 30 days after it is issued)" type="date" value={value("dueDate")} />
+        <Currency value={value("currency", "ZAR")} />
+        <Field name="projectName" label="Project name (printed on the invoice)" value={value("projectName")} />
+        <Field name="projectRef" label="Project reference" value={value("projectRef")} />
+        <Field name="clientRef" label="Client reference (their PO number)" value={value("clientRef")} />
+        <TextArea name="projectDescription" label="Project description" value={value("projectDescription")} />
+        <TextArea name="paymentTerms" label="Payment terms" value={value("paymentTerms", record ? "" : (options.defaults.paymentTerms ?? ""))} />
+        <TextArea name="notes" label="Payment notes (internal)" value={value("notes")} />
+      </>
+    );
+  }
 
   if (kind === "expense") return (
     <>
@@ -231,6 +258,10 @@ function MoneyFields({
 
 function Currency({ value }: { value: string }) {
   return <Select name="currency" label="Currency" options={["ZAR", "USD", "GBP", "EUR"]} value={value} />;
+}
+
+function Notice({ children }: { children: ReactNode }) {
+  return <p className="border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground md:col-span-2">{children}</p>;
 }
 
 function Field({

@@ -3,6 +3,7 @@ import "server-only";
 import { getSessionContext } from "@/lib/auth/get-session-context";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { isUuid } from "@/lib/utils";
+import { isDraftReference } from "@/features/documents/vocabulary";
 
 export type PhaseSixKind =
   | "lead"
@@ -21,6 +22,7 @@ export type PhaseSixOptions = {
   leads: SelectOption[];
   opportunities: SelectOption[];
   quotes: SelectOption[];
+  defaults: { quoteTerms: string | null; paymentTerms: string | null };
 };
 export type PhaseSixRecord = Record<string, unknown> & {
   id: string;
@@ -41,10 +43,17 @@ const makeMap = (options: SelectOption[]) =>
 const nameFor = (map: Map<string, string>, id: unknown, fallback = "Unassigned") =>
   typeof id === "string" ? map.get(id) ?? fallback : fallback;
 
+/** A draft carries a generated reference; the registers show it as a draft for the client, not as a code. */
+const documentName = (reference: unknown, clientName: unknown, kind: "quote" | "invoice") => {
+  if (!isDraftReference(reference)) return String(reference);
+  const label = kind === "quote" ? "Draft quote" : "Draft invoice";
+  return clientName ? `${label} · ${String(clientName)}` : label;
+};
+
 export async function getPhaseSixOptions(): Promise<PhaseSixOptions> {
   const { organization, db } = await context();
   const organizationId = organization.id;
-  const [members, clients, projects, vendors, leads, opportunities, quotes] = await Promise.all([
+  const [members, clients, projects, vendors, leads, opportunities, quotes, settings] = await Promise.all([
     db.from("team_members").select("id,full_name").eq("organization_id", organizationId).eq("status", "Active").is("archived_at", null).order("full_name"),
     db.from("clients").select("id,name").eq("organization_id", organizationId).is("archived_at", null).order("name"),
     db.from("projects").select("id,name").eq("organization_id", organizationId).is("archived_at", null).order("name"),
@@ -52,8 +61,9 @@ export async function getPhaseSixOptions(): Promise<PhaseSixOptions> {
     db.from("leads").select("id,company_name").eq("organization_id", organizationId).is("archived_at", null).order("company_name"),
     db.from("sales_opportunities").select("id,name").eq("organization_id", organizationId).is("archived_at", null).order("name"),
     db.from("quotes").select("id,quote_number").eq("organization_id", organizationId).is("archived_at", null).order("quote_number"),
+    db.from("organization_settings").select("default_quote_terms,default_payment_terms").eq("organization_id", organizationId).maybeSingle(),
   ]);
-  for (const result of [members, clients, projects, vendors, leads, opportunities, quotes]) {
+  for (const result of [members, clients, projects, vendors, leads, opportunities, quotes, settings]) {
     if (result.error) throw result.error;
   }
   return {
@@ -64,6 +74,10 @@ export async function getPhaseSixOptions(): Promise<PhaseSixOptions> {
     leads: (leads.data ?? []).map((row: any) => ({ id: row.id, label: row.company_name })),
     opportunities: (opportunities.data ?? []).map((row: any) => ({ id: row.id, label: row.name })),
     quotes: (quotes.data ?? []).map((row: any) => ({ id: row.id, label: row.quote_number })),
+    defaults: {
+      quoteTerms: settings.data?.default_quote_terms ?? null,
+      paymentTerms: settings.data?.default_payment_terms ?? null,
+    },
   };
 }
 
@@ -123,7 +137,7 @@ export async function listQuotes(): Promise<PhaseSixRecord[]> {
   const opportunities = makeMap(options.opportunities);
   return rows.map((row: any) => ({
     id: row.id,
-    name: row.quote_number,
+    name: documentName(row.quote_number, row.client_name, "quote"),
     quoteNumber: row.quote_number,
     clientId: row.client_id,
     clientName: row.client_name,
@@ -135,6 +149,12 @@ export async function listQuotes(): Promise<PhaseSixRecord[]> {
     ownerId: row.owner_id,
     owner: nameFor(members, row.owner_id),
     validUntil: row.valid_until,
+    issueDate: row.issue_date,
+    projectName: row.project_name,
+    projectDescription: row.project_description,
+    projectRef: row.project_ref,
+    clientRef: row.client_ref,
+    vatRate: row.vat_rate,
     subtotal: row.subtotal,
     taxAmount: row.tax_amount,
     totalAmount: row.total_amount,
@@ -185,7 +205,7 @@ export async function listInvoices(): Promise<PhaseSixRecord[]> {
   const opportunities = makeMap(options.opportunities);
   return rows.map((row: any) => ({
     id: row.id,
-    name: row.invoice_number,
+    name: documentName(row.invoice_number, row.client_name, "invoice"),
     invoiceNumber: row.invoice_number,
     clientId: row.client_id,
     clientName: row.client_name,
@@ -199,6 +219,11 @@ export async function listInvoices(): Promise<PhaseSixRecord[]> {
     owner: nameFor(members, row.owner_id),
     issueDate: row.issue_date,
     dueDate: row.due_date,
+    projectName: row.project_name,
+    projectDescription: row.project_description,
+    projectRef: row.project_ref,
+    clientRef: row.client_ref,
+    vatRate: row.vat_rate,
     subtotal: row.subtotal,
     taxAmount: row.tax_amount,
     totalAmount: row.total_amount,
