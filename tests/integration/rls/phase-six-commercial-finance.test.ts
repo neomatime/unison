@@ -195,11 +195,13 @@ test('commercial and finance writes cannot target another organization', async (
 
 test('financial constraints reject invalid invoice and forecast values', async () => {
   const client = await signedInClient(ownerA.email, ownerA.password)
-  const { error: invoiceError } = await client.from('invoices').insert({
+  // A draft invoice's balance follows its total, so the rule is shown on an issued one
+  // (only the service role can create that). Totals come from lines, so total is 0 here.
+  const { error: invoiceError } = await admin.from('invoices').insert({
     organization_id: orgA,
     invoice_number: 'INVALID-BALANCE',
     client_name: 'Persistent Prospect',
-    total_amount: 100,
+    status: 'Issued',
     balance_amount: 150,
   })
   assert.ok(invoiceError, 'balance greater than total must be rejected')
