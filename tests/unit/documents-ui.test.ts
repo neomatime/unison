@@ -140,3 +140,46 @@ test('the organisation profile links to the company details and the price list',
   assert.match(screen, /href="\/settings\/price-list"/)
   assert.match(screen, /Additional defaults, permissions and policies are not available in this release\./, 'the existing sentence stays')
 })
+
+test('the line editor is a client module whose forms keep typed values and whose controls are labelled', () => {
+  const source = component('line-editor')
+  assert.ok(isClientModule(source))
+  assert.doesNotMatch(source, /<form\s+action=/, 'React resets a <form action> after it runs')
+  assert.match(source, /startTransition\(/)
+  for (const action of ['addLineAction', 'updateLineAction', 'removeLineAction', 'moveLineAction']) assert.match(source, new RegExp(action))
+  assert.match(source, /ariaLabel=\{`Remove: \$\{line\.title\}`\}/)
+  assert.match(source, /aria-label=\{`Edit line: \$\{line\.title\}`\}/)
+  assert.match(source, /locked/, 'a sent document shows no editing controls')
+})
+
+test('the line editor offers the price list and fills the line from it, but a free-text line stays possible', () => {
+  const source = component('line-editor')
+  assert.match(source, /Fill from the price list/)
+  assert.match(source, /priceListItemId/)
+  assert.match(source, /One-off line/)
+})
+
+test('the Send, Issue and Duplicate buttons are server-rendered and confirm before they act', () => {
+  const source = component('document-actions')
+  assert.ok(!isClientModule(source))
+  assert.doesNotMatch(source, /useState\(|useEffect\(|useActionState\(/)
+  assert.match(source, /sendQuoteAction\.bind\(null, id\)/)
+  assert.match(source, /issueInvoiceAction\.bind\(null, id\)/)
+  assert.match(source, /duplicateQuoteAction\.bind\(null, id\)/)
+  assert.match(source, /confirmText=/)
+  assert.match(source, /isDraftStatus\(kind, status\)/)
+})
+
+test('the quote and invoice pages mount the document actions and the line editor behind the existing record check', () => {
+  const page = (...parts: string[]) => read('app', '(unison)', ...parts, 'page.tsx')
+  for (const [source, kind, id, component] of [
+    [page('commercial', 'quotes', '[quoteId]'), 'quote', 'quoteId', 'QuoteWorkspace'],
+    [page('finance', 'invoices', '[invoiceId]'), 'invoice', 'invoiceId', 'InvoiceLines'],
+  ] as const) {
+    assert.match(source, /<DocumentActions\s/, `${kind} page mounts the document actions`)
+    assert.match(source, /<LineEditor\s/, `${kind} page mounts the line editor`)
+    assert.match(source, new RegExp(`getDocument\\('${kind}', ${id}\\)`))
+    const mounted = new RegExp(`<PhaseSixDetail\\s+kind="${kind}"\\s+id=\\{${id}\\}\\s+actions=\\{[\\s\\S]*?\\}\\s+after=\\{<${component} ${id}=\\{${id}\\} />\\}\\s*/>`)
+    assert.match(source, mounted, `${kind} page keeps its detail wiring`)
+  }
+})
