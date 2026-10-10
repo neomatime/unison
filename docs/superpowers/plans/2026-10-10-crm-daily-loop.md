@@ -2706,7 +2706,7 @@ test('record pages mount the workspace sections', () => {
 **Files:**
 - Create: `features/crm-workspace/components/convert-lead-form.tsx`
 - Create: `app/(unison)/commercial/leads/[leadId]/convert/page.tsx`
-- Modify: `app/(unison)/commercial/leads/[leadId]/page.tsx` (add the Convert button), `features/commercial-finance/components/phase-six-form.tsx` (lead status options), `features/commercial-finance/actions/phase-six.ts` (guards)
+- Modify: `app/(unison)/commercial/leads/[leadId]/page.tsx` (add the Convert button), `features/commercial-finance/components/phase-six-form.tsx` (lead status options), `features/commercial-finance/actions/phase-six.ts` (guards), `app/api/integrations/website-leads/route.ts` (leave a converted lead alone on replay)
 - Modify: `tests/unit/crm-workspace-ui.test.ts`
 
 **Interfaces:**
@@ -2847,13 +2847,50 @@ and inside the `kind === "lead"` branch, directly after `const contactEmail = op
     return {
       error: result.error?.code === "23505"
         ? "That reference or scenario name already exists."
-        : message.includes("leads_converted_status_check")
+        : message.includes("leads_converted_status_check") || message.includes("leads_conversion_guarded")
           ? "A lead becomes Converted by using Convert lead on its page."
           : message.includes("sales_opportunities_lost_reason_check")
             ? "Say why this opportunity was lost."
             : "The record could not be saved. Check related records, dates and amounts.",
     };
 ```
+
+- [ ] **Step 5b: Make the website lead intake safe for converted leads.** The website's replays upsert the whole lead on `(organization_id, website_submission_key)`, which would now fail `leads_converted_status_check` (a 502 for the website) once the lead has been converted. In `app/api/integrations/website-leads/route.ts`, replace the block from `const supabase = createAdminSupabase()` through the end of the upsert (`.single()`) with:
+
+```ts
+  const supabase = createAdminSupabase()
+  const lead = mapWebsiteLead(parsed.data)
+
+  // A replay of a submission whose lead has since been converted must not touch it:
+  // the upsert below would reset its status and fail the converted-status check.
+  const existing = await supabase
+    .from('leads')
+    .select('id, converted_at')
+    .eq('organization_id', lead.organization_id)
+    .eq('website_submission_key', lead.website_submission_key)
+    .maybeSingle()
+  if (existing.error) {
+    console.error('[website-leads] lead lookup failed', { code: existing.error.code })
+    return NextResponse.json(
+      { message: 'The lead could not be recorded.' },
+      { status: 502, headers: { 'Cache-Control': 'no-store' } },
+    )
+  }
+  if (existing.data?.converted_at) {
+    return NextResponse.json(
+      { leadId: existing.data.id },
+      { status: 202, headers: { 'Cache-Control': 'no-store' } },
+    )
+  }
+
+  const { data, error } = await supabase
+    .from('leads')
+    .upsert(lead, { onConflict: 'organization_id,website_submission_key' })
+    .select('id')
+    .single()
+```
+
+Leave the rest of the handler (the `if (error || !data)` branch and the 202 response) as it is. Read `mapWebsiteLead` first and confirm its return value has `organization_id` and `website_submission_key` fields with those exact names; if it names them differently, use its names and say so in the report. Do not change anything else in the file.
 
 - [ ] **Step 6: Extend the guards** in `tests/unit/crm-workspace-ui.test.ts`:
 
@@ -2872,13 +2909,20 @@ test('the save action refuses Lost without a reason and explains the Converted r
   const action = readFileSync(join(workspace, 'features', 'commercial-finance', 'actions', 'phase-six.ts'), 'utf8')
   assert.match(action, /stage === "Lost" && !optional\(form, "lostReason"\)/)
   assert.match(action, /leads_converted_status_check/)
+  assert.match(action, /leads_conversion_guarded/, 'a member hits the guard trigger first, not the check')
   assert.match(action, /sales_opportunities_lost_reason_check/)
+})
+
+test('the website lead intake leaves an already converted lead alone instead of failing on replay', () => {
+  const route = readFileSync(join(workspace, 'app', 'api', 'integrations', 'website-leads', 'route.ts'), 'utf8')
+  assert.match(route, /converted_at/, 'the intake must check for a converted lead before upserting')
+  assert.ok(route.indexOf('converted_at') < route.indexOf('.upsert('), 'the check must come before the upsert')
 })
 ```
 
 - [ ] **Step 7: Render check.** In the scratchpad harness, render `ConvertLeadForm` with zero, one and two matches; confirm the radios, the default selection (first match), the hidden `clientId=new` when there are none, and escaped hostile company names.
 
-- [ ] **Step 8: Gates and commit.** `pnpm typecheck`, `pnpm test`, `pnpm build` all exit 0. Commit the new files and the three modified files by path: `feat(crm): convert a lead from its page, and keep Converted reachable only through conversion`.
+- [ ] **Step 8: Gates and commit.** `pnpm typecheck`, `pnpm test`, `pnpm build` all exit 0. Commit the new files and the four modified files by path: `feat(crm): convert a lead from its page, keep Converted reachable only through conversion, and let the website intake replay safely`.
 
 ---
 
