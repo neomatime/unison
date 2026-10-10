@@ -172,7 +172,7 @@ test('company settings: owners and admins write, members read, nobody reads anot
   assert.equal(ownRead.data?.bank_name, 'Test Bank')
 
   const anon = await anonymous.from('organization_settings').select('id')
-  assert.ok(anon.error || anon.data?.length === 0, 'anon reads nothing')
+  assert.ok(anon.error, 'anon has no privilege on the settings, so the read is an error')
 })
 
 test('company settings constraints: prefix, VAT rate, days and image paths', async () => {
@@ -244,8 +244,39 @@ test('a client’s billing address and VAT number can be saved by a member', asy
 })
 
 test('anon has no access to the new tables', async () => {
-  for (const table of ['price_list_items', 'quote_lines', 'invoice_lines']) {
+  for (const table of ['price_list_items', 'quote_lines', 'invoice_lines', 'organization_settings']) {
     const result = await anonymous.from(table).select('id')
-    assert.ok(result.error || result.data?.length === 0, `${table}`)
+    assert.ok(result.error, `${table}: anon has no privilege, so a read is an error and not an empty list`)
   }
+  const quote = await newQuote()
+  const insert = await anonymous.from('quote_lines').insert({ organization_id: orgA, quote_id: quote.id, title: 'x', quantity: 1, unit_price: 1 })
+  assert.ok(insert.error, 'anon cannot insert a line')
+})
+
+test('an oversized document is refused cleanly and leaves the totals as they were', async () => {
+  const max = { quantity: 99999.999, unit_price: 9999999.99, vat_code: 'zero' }
+  const lineCount = async (quoteId: string) => {
+    const result = await admin.from('quote_lines').select('id', { count: 'exact', head: true }).eq('quote_id', quoteId)
+    if (result.error) throw new Error(result.error.message)
+    return result.count
+  }
+
+  const quote = await newQuote()
+  const first = await quoteLine(quote.id, { ...max, position: 1 })
+  assert.equal(first.error, null, 'one maximum zero-rated line fits')
+  const before = await read('quotes', quote.id)
+  assert.equal(await lineCount(quote.id), 1)
+
+  const second = await quoteLine(quote.id, { ...max, position: 2 })
+  assert.ok(second.error, 'a second maximum line overflows the subtotal and is refused')
+  const after = await read('quotes', quote.id)
+  assert.deepEqual([after.subtotal, after.tax_amount, after.total_amount].map(Number), [before.subtotal, before.tax_amount, before.total_amount].map(Number))
+  assert.equal(await lineCount(quote.id), 1, 'the refused line was not kept')
+
+  const fresh = await newQuote()
+  const standard = await quoteLine(fresh.id, { ...max, vat_code: 'standard' })
+  assert.ok(standard.error, 'VAT pushes the total over the limit, so the line is refused')
+  const untouched = await read('quotes', fresh.id)
+  assert.deepEqual([untouched.subtotal, untouched.tax_amount, untouched.total_amount].map(Number), [0, 0, 0])
+  assert.equal(await lineCount(fresh.id), 0)
 })
