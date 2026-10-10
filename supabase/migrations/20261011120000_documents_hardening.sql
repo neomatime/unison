@@ -207,7 +207,8 @@ begin
       raise exception 'INVOICE_FROZEN' using errcode = '23514';
     end if;
   end if;
-  if new.status = 'Draft' then
+  -- A draft's balance follows its total, including at the moment it is issued (the rate may change then).
+  if new.status = 'Draft' or (tg_op = 'UPDATE' and old.status = 'Draft') then
     new.balance_amount := new.total_amount;
   end if;
   return new;
