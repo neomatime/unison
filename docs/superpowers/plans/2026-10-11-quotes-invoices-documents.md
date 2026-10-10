@@ -1700,7 +1700,7 @@ test('a document kind is only quote or invoice, never an inherited key', () => {
 })
 
 test('every database error token the app maps is raised by the send and issue migration', () => {
-  const sendIssue = migration('20261011110000_documents_send_issue.sql')
+  const sendIssue = migration('20261011110000_documents_send_issue.sql') + migration('20261011120000_documents_hardening.sql')
   for (const token of DOCUMENT_ERROR_TOKENS) assert.ok(sendIssue.includes(`'${token}'`), `${token} must be raised by the migration`)
 })
 
@@ -1739,6 +1739,7 @@ const MESSAGES: ReadonlyArray<readonly [token: string, message: string]> = [
   ['INVOICE_USE_ISSUE', 'Use Issue invoice to issue an invoice.'],
   ['QUOTE_CANNOT_REOPEN', 'A sent quote cannot go back to a draft. Duplicate it as a new draft to revise it.'],
   ['INVOICE_CANNOT_REOPEN', 'An issued invoice cannot go back to a draft. Cancel it and raise a new one.'],
+  ['INVOICE_CANCELLED', 'A cancelled invoice cannot be changed. Raise a new invoice instead.'],
   ['QUOTE_FROZEN', 'This quote has already been sent and can no longer be edited. To revise it, duplicate it as a new draft.'],
   ['INVOICE_FROZEN', 'This invoice has already been issued and can no longer be edited. To correct it, cancel it and raise a new one.'],
   ['DOCUMENT_NUMBER_GENERATED', 'Numbers are generated automatically when a document is sent or issued.'],
@@ -2963,6 +2964,7 @@ test('the quote and invoice forms no longer ask for a number or any total', () =
   for (const name of ['quoteNumber', 'invoiceNumber', 'subtotal', 'taxAmount', 'totalAmount']) {
     assert.doesNotMatch(form, new RegExp(`name="${name}"`), `${name} is generated or calculated`)
   }
+  assert.doesNotMatch(form, /name="issueDate"/, 'an invoice is dated the day it is issued; the draft form has no issue date to type')
   assert.match(form, /isDraftStatus\(/, 'the form behaves differently for a sent or issued document')
   assert.match(form, /QUOTE_SENT_STATUSES/)
   assert.match(form, /INVOICE_ISSUED_STATUSES/)
@@ -3168,7 +3170,6 @@ async function readDocumentState(db: any, table: string, organizationId: string,
         quote_id: identifier(form, "quoteId"),
         opportunity_id: identifier(form, "opportunityId"),
         owner_id: identifier(form, "ownerId"),
-        issue_date: optional(form, "issueDate"),
         due_date: optional(form, "dueDate"),
         currency: text(form, "currency") || "ZAR",
         status: "Draft",
@@ -3269,7 +3270,6 @@ function Notice({ children }: { children: ReactNode }) {
         <OptionSelect name="quoteId" label="Source quote" options={options.quotes} value={value("quoteId")} optional />
         <OptionSelect name="opportunityId" label="Opportunity" options={options.opportunities} value={value("opportunityId")} optional />
         <OptionSelect name="ownerId" label="Finance owner" options={options.members} value={value("ownerId")} optional />
-        <Field name="issueDate" label="Issue date (default: the day it is issued)" type="date" value={value("issueDate")} />
         <Field name="dueDate" label="Due date (default 30 days after it is issued)" type="date" value={value("dueDate")} />
         <Currency value={value("currency", "ZAR")} />
         <Field name="projectName" label="Project name (printed on the invoice)" value={value("projectName")} />
