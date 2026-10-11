@@ -13,7 +13,7 @@ them through Stage 2 before starting anything else.
       definitions stay wrong. (`product-definition.md`, `first-buyer-readiness.md`, `permissions.md` and the
       Core/Framework tier descriptions still describe a delivery product.)
 
-## Stage 1: the daily CRM loop (built 2026-10-10; waiting for the signed-in walk-through)
+## Stage 1: the daily CRM loop (built 2026-10-10; walked signed in 2026-10-11)
 
 - [x] Lead → client conversion (creates the client, a primary contact and an opportunity; links back to the lead)
 - [x] Contacts: several people per client and per lead, one marked primary
@@ -21,7 +21,7 @@ them through Stage 2 before starting anything else.
 - [x] Tasks and follow-ups created from a record, shown on that record, and feeding My Tasks on the dashboard
 - [x] Quick stage change on an opportunity (without opening the edit form; saved with a Change stage button)
 - [x] Tests for each of the above, including the database rules (RLS suite) and a fixture preview at three widths
-- [ ] **Walked in a signed-in session against real records** (not done yet: the user does this; Stage 1 is not finished until it is)
+- [x] **Walked in a signed-in session against real records** (walked 2026-10-11 by the user; the walk found that nothing linked a login to a team profile, fixed by migration 20261011170000)
 
 ## Stage 2: make quotes and invoices real documents (slices A, B and C built 2026-10-11; waiting for the signed-in walk-through)
 
