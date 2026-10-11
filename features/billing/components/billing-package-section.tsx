@@ -3,16 +3,23 @@ import Link from 'next/link'
 import { ActionButton } from '@/features/crm-workspace/components/action-button'
 import { WorkspaceSection } from '@/features/crm-workspace/components/workspace-section'
 import { formatAmount } from '@/features/documents/document-view'
+import { DOCUMENTS } from '@/features/documents/vocabulary'
 import { formatCurrency } from '@/lib/utils/format-money'
 import {
-  createFirstDocumentAction, createMonthlyInvoiceAction, endEngagementAction, endSupportAction,
+  createFirstDocumentAction, discardBillingDraftAction, endEngagementAction, endSupportAction,
 } from '../actions/billing'
 import type { PackageView } from '../billing-package-model'
 import { getBillingPackage } from '../queries/get-billing-package'
-import { AddSupportForm, ChangeTierForm, SetPackageForm, TopUpForm } from './billing-forms'
+import { AddSupportForm, ChangeTierForm, MonthlyInvoiceForm, SetPackageForm, TopUpForm } from './billing-forms'
 
 const money = (amount: number) => formatCurrency(amount, 'ZAR')
-const TOP_UP_RATE = 'Extra credits are charged per credit at the rate card top-up rate. The invoice is built as a draft for you to review.'
+const DRAFT_NOTE = 'The invoice is built as a draft for you to review.'
+
+/** The top-up rate from the package's rate card row, with the proposed note when the rate is not yet agreed. */
+function topUpLabel(pkg: PackageView): string {
+  if (pkg.topUpRate === null) return `Extra credits are charged per credit at the rate card top-up rate. ${DRAFT_NOTE}`
+  return `${money(pkg.topUpRate)} per credit excluding VAT${pkg.topUpProposed ? ' (proposed rate, not yet agreed)' : ''}. ${DRAFT_NOTE}`
+}
 
 function PackageCard({ pkg }: { pkg: PackageView }) {
   return (
@@ -21,7 +28,8 @@ function PackageCard({ pkg }: { pkg: PackageView }) {
         <div>
           <p className="text-sm font-semibold text-foreground">{pkg.name} <span className="font-normal text-[var(--briefing-muted)]">· {pkg.kind === 'retainer' ? 'Retainer' : 'Project'}</span></p>
           <p className="text-xs text-[var(--briefing-muted)]">
-            Started {pkg.startDate}
+            {pkg.state === 'scheduled' ? `Starts on ${pkg.startDate}` : `Started ${pkg.startDate}`}
+            {pkg.endedOn !== null ? ` · runs until ${pkg.endedOn}` : ''}
             {pkg.fee !== null ? ` · ${money(pkg.fee)}${pkg.kind === 'retainer' ? ' a month' : ''} excluding VAT` : ''}
             {pkg.credits !== null ? ` · ${pkg.credits} credits included` : ''}
           </p>
@@ -38,25 +46,31 @@ function PackageCard({ pkg }: { pkg: PackageView }) {
               <ActionButton action={createFirstDocumentAction.bind(null, pkg.id, 'quote')} label="Create first quote" ariaLabel={`Create first quote: ${pkg.name}`} />
             </>
           ) : null}
-          <ActionButton action={endEngagementAction.bind(null, pkg.id)} label="End package" ariaLabel={`End package: ${pkg.name}`} confirmText="End this package? Any support services on it end too. Documents already built are not changed." tone="danger" />
+          {pkg.canEnd ? (
+            <ActionButton action={endEngagementAction.bind(null, pkg.id)} label="End package" ariaLabel={`End package: ${pkg.name}`} confirmText="End this package? Any support services on it end too, and any that have not started yet are removed. Documents already built are not changed." tone="danger" />
+          ) : null}
         </div>
       </div>
       {pkg.firstBuilt ? <p className="text-xs text-[var(--briefing-muted)]">The first invoice has been built{pkg.kind === 'retainer' ? '; the implementation fee is billed once' : ''}.</p> : null}
+      {pkg.state === 'scheduled' ? <p className="text-xs text-[var(--briefing-muted)]">This package has not started yet. Its documents can be built from {pkg.startDate}.</p> : null}
 
       {pkg.kind === 'project' ? (
         <div className="space-y-2">
           {pkg.support.filter((s) => s.active).map((s) => (
             <div key={s.id} className="flex flex-wrap items-center justify-between gap-2 text-sm">
               <span>{s.title} <span className="text-xs text-[var(--briefing-muted)]">· {money(s.price)} a month{s.credits !== null ? ` · ${s.credits} credits` : ''} · since {s.startDate}</span></span>
-              <ActionButton action={endSupportAction.bind(null, s.id)} label="End service" ariaLabel={`End service: ${s.title}`} confirmText="End this support service?" tone="danger" />
+              {pkg.canManageSupport ? <ActionButton action={endSupportAction.bind(null, s.id)} label="End service" ariaLabel={`End service: ${s.title}`} confirmText="End this support service?" tone="danger" /> : null}
             </div>
           ))}
-          <AddSupportForm engagementId={pkg.id} services={pkg.availableSupport.map((s) => ({ key: s.key, label: `${s.title} (${money(s.price)} a month)` }))} />
+          {pkg.canManageSupport ? <AddSupportForm engagementId={pkg.id} services={pkg.availableSupport.map((s) => ({ key: s.key, label: `${s.title} (${money(s.price)} a month)` }))} /> : null}
         </div>
       ) : (
-        <ChangeTierForm engagementId={pkg.id} tiers={pkg.otherTiers.map((t) => ({ key: t.key, label: `${t.name} (${money(t.fee)} a month)` }))} />
+        <div className="space-y-2">
+          {pkg.canChangeTier ? <ChangeTierForm engagementId={pkg.id} tiers={pkg.otherTiers.map((t) => ({ key: t.key, label: `${t.name} (${money(t.fee)} a month)` }))} /> : null}
+          {pkg.state === 'in_force' && pkg.endedOn !== null ? <p className="text-xs text-[var(--briefing-muted)]">A change of tier is already scheduled: this tier runs until {pkg.endedOn}.</p> : null}
+        </div>
       )}
-      <TopUpForm engagementId={pkg.id} rateLabel={TOP_UP_RATE} />
+      {pkg.canTopUp ? <TopUpForm engagementId={pkg.id} rateLabel={topUpLabel(pkg)} /> : null}
     </li>
   )
 }
@@ -80,9 +94,9 @@ export async function BillingPackageSection({ clientId }: { clientId: string }) 
       )}
 
       {view.canBuildMonthly ? (
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-5 py-4">
-          <p className="text-sm text-[var(--briefing-muted)]">The retainer&apos;s monthly fee (from the month after it started) and the support services running this month.</p>
-          <ActionButton action={createMonthlyInvoiceAction.bind(null, clientId)} label="Create this month's invoice" />
+        <div className="space-y-3 border-t border-border px-5 py-4">
+          <p className="text-sm text-[var(--briefing-muted)]">The retainer&apos;s monthly fee (from the month after it started) and the support services running in the month, as a draft for you to review. Choose an earlier month to bill one that was missed.</p>
+          <MonthlyInvoiceForm clientId={clientId} />
         </div>
       ) : null}
 
@@ -99,8 +113,11 @@ export async function BillingPackageSection({ clientId }: { clientId: string }) 
           <ul className="divide-y divide-border">
             {view.documents.map((d) => (
               <li key={d.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-3 text-sm">
-                <Link href={`/finance/invoices/${d.id}`} className="font-semibold text-brand hover:underline">{d.label}</Link>
-                <span className="text-muted-foreground">{d.isDraft ? 'Draft' : d.number} · {d.status} · {d.currency} {formatAmount(d.total)}</span>
+                <Link href={`${DOCUMENTS.invoice.base}/${d.id}`} className="font-semibold text-brand hover:underline">{d.label}</Link>
+                <span className="flex flex-wrap items-center gap-3">
+                  <span className="text-muted-foreground">{d.isDraft ? 'Draft' : d.number} · {d.status} · {d.currency} {formatAmount(d.total)}</span>
+                  {d.isDraft ? <ActionButton action={discardBillingDraftAction.bind(null, d.id)} label="Discard draft" ariaLabel={`Discard draft: ${d.label}`} confirmText="Discard this draft? You can build it again from the package." tone="danger" /> : null}
+                </span>
               </li>
             ))}
           </ul>

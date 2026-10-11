@@ -4,7 +4,7 @@ import { useActionState } from 'react'
 
 import type { ActionState } from '@/features/documents/types'
 import {
-  addSupportAction, changeTierAction, createTopUpAction, setPackageAction,
+  addSupportAction, changeTierAction, createMonthlyInvoiceAction, createTopUpAction, setPackageAction,
 } from '../actions/billing'
 
 const field = 'h-10 w-full rounded-none border border-border bg-background px-3 text-sm'
@@ -78,6 +78,21 @@ export function TopUpForm({ engagementId, rateLabel }: { engagementId: string; r
       <p className="self-center text-xs text-[var(--briefing-muted)]">{rateLabel}</p>
       <button disabled={pending} className={button}>{pending ? 'Building…' : 'Build top-up invoice'}</button>
       <div className="md:col-span-3"><Feedback state={state} /></div>
+    </form>
+  )
+}
+
+/** Builds the client's monthly invoice as a draft, for this month or an earlier one. Nothing is issued or sent. */
+export function MonthlyInvoiceForm({ clientId }: { clientId: string }) {
+  const [state, action, pending] = useActionState(createMonthlyInvoiceAction.bind(null, clientId), undefined)
+  return (
+    <form action={action} className="grid gap-3 md:grid-cols-[1fr_auto]">
+      <label className="text-xs text-[var(--briefing-muted)]">
+        Month (leave empty for this month)
+        <input name="month" type="month" aria-label="Month (leave empty for this month)" className={`${field} mt-1`} />
+      </label>
+      <button disabled={pending} className={`${button} self-end`}>{pending ? 'Building…' : "Create this month's invoice"}</button>
+      <div className="md:col-span-2"><Feedback state={state} /></div>
     </form>
   )
 }

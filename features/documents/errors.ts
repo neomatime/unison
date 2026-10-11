@@ -67,15 +67,17 @@ const MESSAGES: ReadonlyArray<readonly [token: string, message: string]> = [
   ['RATE_ITEM_UNAVAILABLE', 'That price is not on the rate card any more. Ask an owner or admin to check Settings, Price list.'],
   ['RATE_CARD_FIXED', 'A rate card item cannot be created by hand, and its kind, package and credits cannot be changed.'],
   ['RATE_CARD_ADMIN_ONLY', 'Only an owner or admin can change a rate card price.'],
+  ['RATE_CARD_NOT_ARCHIVABLE', 'A rate card item cannot be archived. Edit its price instead.'],
   ['RATE_LINE_LOCKED', 'This line comes from the rate card, so its price, quantity and wording cannot be changed. Remove it and build the document again, or add a custom line.'],
   ['BILLING_COLUMNS_GENERATED', 'The billing link on a document is set automatically.'],
-  ['FIRST_INVOICE_EXISTS', 'A first invoice already exists for this package. Cancel it first if you need to build it again.'],
-  ['FIRST_INVOICE_MISSING', "Build and issue the retainer's first invoice before the monthly ones."],
+  ['FIRST_INVOICE_EXISTS', 'A first invoice already exists for this package. Discard the draft, or cancel the issued invoice, first.'],
+  ['FIRST_INVOICE_MISSING', "Build the retainer's first invoice before the monthly ones."],
   ['IMPLEMENTATION_ALREADY_BILLED', 'This retainer continues an earlier one, so its implementation fee has already been billed.'],
   ['NOTHING_TO_BILL', 'There is nothing to bill for that month: no retainer month after the first, and no support service running.'],
-  ['MONTH_ALREADY_BILLED', 'That month has already been invoiced for this client. Cancel that invoice first if you need to build it again.'],
+  ['MONTH_ALREADY_BILLED', 'That month has already been invoiced for this client. Discard the draft, or cancel the issued invoice, first.'],
   ['BILLING_MONTH_INVALID', 'Choose this month or an earlier one.'],
   ['TOP_UP_CREDITS_INVALID', 'Enter a whole number of credits from 1 to 10,000.'],
+  ['BILLING_DRAFT_ONLY', 'Only a draft built from a client package can be discarded.'],
 ]
 
 export const DOCUMENT_ERROR_TOKENS: readonly string[] = MESSAGES.map(([token]) => token)

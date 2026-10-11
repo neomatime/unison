@@ -19,6 +19,8 @@ export type BillingDocumentRow = {
   total_amount: number | string; currency: string; created_at: string
 }
 export type BillingPackageInput = {
+  /** Today's South African calendar date (YYYY-MM-DD), the date the database functions use. */
+  today: string
   engagements: EngagementRow[]
   support: SupportRow[]
   rateRows: RateRow[]
@@ -26,6 +28,8 @@ export type BillingPackageInput = {
   documents: BillingDocumentRow[]
 }
 
+/** in_force: started and not ended before today; scheduled: starts after today; ended: ended before today. */
+export type PackageState = 'in_force' | 'scheduled' | 'ended'
 export type SupportView = { id: string; key: string; title: string; price: number; credits: number | null; startDate: string; endedOn: string | null; active: boolean }
 export type PackageView = {
   id: string
@@ -34,13 +38,26 @@ export type PackageView = {
   name: string
   startDate: string
   endedOn: string | null
+  state: PackageState
+  /** Not ended: in force today (even with an end date still to come) or scheduled to start. */
   active: boolean
   fee: number | null
   credits: number | null
   /** Built and not cancelled: true for the whole chain of a replaced retainer. */
   firstBuilt: boolean
-  /** An active package whose chain has no first invoice yet. A retainer that replaced another can build it too: the invoice is stored against the chain's root. */
+  /** In force today and the chain has no first invoice yet. A retainer that replaced another can build it too: the invoice is stored against the chain's root. */
   canBuildFirst: boolean
+  /** In force today, as the database's top-up function requires. */
+  canTopUp: boolean
+  /** A retainer in force today with no end date: the database refuses a change while one is already scheduled. */
+  canChangeTier: boolean
+  /** A project in force today with no end date: support services are added and ended only then. */
+  canManageSupport: boolean
+  /** Not ended and without an end date already set (the database refuses to end a package that has one, such as a retainer whose tier change is scheduled). */
+  canEnd: boolean
+  /** The top-up rate per credit from this package's rate card row (null when the row is missing), and whether it is only proposed. */
+  topUpRate: number | null
+  topUpProposed: boolean
   /** Retainer only: how many active projects the tier allows (null = no limit) and how many the client has. */
   initiativeLimit: number | null
   activeProjects: number
@@ -67,19 +84,31 @@ function documentLabel(row: BillingDocumentRow): string {
   return row.billing_month ? `Monthly invoice, ${MONTH.format(new Date(`${row.billing_month}T00:00:00Z`))}` : 'Monthly invoice'
 }
 
+/** The state of an engagement on a given day, the way the database decides it ("ended" means ended before today). */
+export function packageState(engagement: Pick<EngagementRow, 'start_date' | 'ended_on'>, today: string): PackageState {
+  if (engagement.ended_on !== null && engagement.ended_on < today) return 'ended'
+  if (engagement.start_date > today) return 'scheduled'
+  return 'in_force'
+}
+
 export function buildBillingPackageView(input: BillingPackageInput): BillingPackageView {
   const monthlyRows = input.rateRows.filter((row) => row.item_kind === 'retainer_monthly')
   const projectRows = input.rateRows.filter((row) => row.item_kind === 'project')
   const supportRows = input.rateRows.filter((row) => row.item_kind === 'support')
   const firstBuilt = new Set(input.firstInvoiceEngagementIds)
+  // The database counts a project towards the initiative limit while it has no end date at all (ended_on is null), so this
+  // counts the same way; end dates are never in the future for a project, so it also equals "not ended".
   const activeProjects = input.engagements.filter((e) => e.kind === 'project' && e.ended_on === null).length
 
   const toOption = (row: RateRow): PackageOption => ({ key: String(row.package_key), name: packageName(String(row.package_key)), fee: Number(row.unit_price), credits: num(row.credits) })
   const packageOptions = { retainers: monthlyRows.map(toOption), projects: projectRows.map(toOption) }
 
   const views: PackageView[] = input.engagements.map((e) => {
-    const active = e.ended_on === null
+    const state = packageState(e, input.today)
+    const inForce = state === 'in_force'
     const row = (e.kind === 'retainer' ? monthlyRows : projectRows).find((r) => r.package_key === e.package_key)
+    const topUpKey = e.kind === 'retainer' ? `retainer.${e.package_key}.top_up` : 'project.top_up'
+    const topUpRow = input.rateRows.find((r) => r.rate_key === topUpKey)
     const support = input.support
       .filter((s) => s.engagement_id === e.id)
       .map((s): SupportView => {
@@ -88,6 +117,7 @@ export function buildBillingPackageView(input: BillingPackageInput): BillingPack
       })
     const runningKeys = new Set(support.filter((s) => s.active).map((s) => s.key))
     const built = firstBuilt.has(e.root_id)
+    const canManageSupport = e.kind === 'project' && inForce && e.ended_on === null
     return {
       id: e.id,
       kind: e.kind,
@@ -95,16 +125,23 @@ export function buildBillingPackageView(input: BillingPackageInput): BillingPack
       name: packageName(e.package_key),
       startDate: e.start_date,
       endedOn: e.ended_on,
-      active,
+      state,
+      active: state !== 'ended',
       fee: row ? Number(row.unit_price) : null,
       credits: row ? num(row.credits) : null,
       firstBuilt: built,
-      canBuildFirst: active && !built,
+      canBuildFirst: inForce && !built,
+      canTopUp: inForce,
+      canChangeTier: e.kind === 'retainer' && inForce && e.ended_on === null,
+      canManageSupport,
+      canEnd: state !== 'ended' && e.ended_on === null,
+      topUpRate: topUpRow ? Number(topUpRow.unit_price) : null,
+      topUpProposed: topUpRow?.rate_status === 'proposed',
       initiativeLimit: e.kind === 'retainer' ? (row?.initiative_limit ?? null) : null,
       activeProjects: e.kind === 'retainer' ? activeProjects : 0,
       otherTiers: e.kind === 'retainer' ? packageOptions.retainers.filter((o) => o.key !== e.package_key).map((o) => ({ key: o.key, name: o.name, fee: o.fee })) : [],
       support,
-      availableSupport: e.kind === 'project' && active
+      availableSupport: canManageSupport
         ? supportRows.filter((r) => r.package_key === e.package_key && !runningKeys.has(r.rate_key)).map((r) => ({ key: r.rate_key, title: r.title, price: Number(r.unit_price), credits: num(r.credits) }))
         : [],
     }

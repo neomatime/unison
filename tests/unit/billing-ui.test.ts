@@ -43,7 +43,7 @@ test('every billing control binds exactly the arguments its action takes', () =>
   const counts = boundArgumentCounts()
   assert.deepEqual(Object.keys(counts).sort(), [
     'addSupportAction', 'changeTierAction', 'createFirstDocumentAction', 'createMonthlyInvoiceAction', 'createTopUpAction',
-    'endEngagementAction', 'endSupportAction', 'setPackageAction',
+    'discardBillingDraftAction', 'endEngagementAction', 'endSupportAction', 'setPackageAction',
   ], 'the action file exports exactly the built actions')
   const expectedBinds: Record<string, string> = {
     createFirstDocumentAction: "createFirstDocumentAction.bind(null, pkg.id, 'invoice')",
@@ -54,6 +54,7 @@ test('every billing control binds exactly the arguments its action takes', () =>
     changeTierAction: 'changeTierAction.bind(null, engagementId)',
     addSupportAction: 'addSupportAction.bind(null, engagementId)',
     createTopUpAction: 'createTopUpAction.bind(null, engagementId)',
+    discardBillingDraftAction: 'discardBillingDraftAction.bind(null, d.id)',
   }
   const source = section() + forms()
   for (const [action, bind] of Object.entries(expectedBinds)) {
@@ -75,11 +76,53 @@ test('the first invoice and quote buttons sit inside the canBuildFirst condition
   assert.equal(source.match(/createFirstDocumentAction\.bind/g)?.length, 2, 'only the two gated buttons build a first document')
 })
 
-test('the monthly invoice button is inside the canBuildMonthly condition', () => {
+test('the monthly invoice form is inside the canBuildMonthly condition, with an optional month and nothing issued', () => {
   assert.match(
     section(),
-    /\{view\.canBuildMonthly \? \(\s*<div[^\n]*>\s*<p[^\n]*<\/p>\s*<ActionButton action=\{createMonthlyInvoiceAction\.bind\(null, clientId\)\} label="Create this month's invoice" \/>\s*<\/div>\s*\) : null\}/,
+    /\{view\.canBuildMonthly \? \(\s*<div[^\n]*>\s*<p[^\n]*<\/p>\s*<MonthlyInvoiceForm clientId=\{clientId\} \/>\s*<\/div>\s*\) : null\}/,
   )
+  assert.equal(section().match(/<MonthlyInvoiceForm/g)?.length, 1, 'one monthly form, the gated one')
+  const source = forms()
+  const form = source.slice(source.indexOf('export function MonthlyInvoiceForm'))
+  assert.match(form, /useActionState\(createMonthlyInvoiceAction\.bind\(null, clientId\), undefined\)/)
+  assert.match(form, /<input name="month" type="month" aria-label="Month \(leave empty for this month\)"/, 'the month is optional (no required)')
+  assert.doesNotMatch(form.slice(0, form.indexOf('</form>')), /required/, 'an empty month means this month')
+  assert.match(form, /Month \(leave empty for this month\)/)
+  assert.match(form, /"Create this month's invoice"/)
+  assert.doesNotMatch(form.slice(0, form.indexOf('</form>')), /\b(issue|send)\b/i, 'the form builds a draft only')
+})
+
+test('the package card gates each control on the flag the view model computes from the South African today', () => {
+  const source = section()
+  assert.match(source, /\{pkg\.state === 'scheduled' \? `Starts on \$\{pkg\.startDate\}` : `Started \$\{pkg\.startDate\}`\}/)
+  assert.match(source, /\{pkg\.canEnd \? \(\s*<ActionButton action=\{endEngagementAction\.bind\(null, pkg\.id\)\}[^\n]*\/>\s*\) : null\}/)
+  assert.equal(source.match(/endEngagementAction\.bind/g)?.length, 1, 'End package exists only behind canEnd')
+  assert.match(source, /\{pkg\.canTopUp \? <TopUpForm engagementId=\{pkg\.id\} rateLabel=\{topUpLabel\(pkg\)\} \/> : null\}/)
+  assert.equal(source.match(/<TopUpForm/g)?.length, 1, 'Top-up exists only behind canTopUp')
+  assert.match(source, /\{pkg\.canChangeTier \? <ChangeTierForm engagementId=\{pkg\.id\} tiers=\{pkg\.otherTiers/)
+  assert.equal(source.match(/<ChangeTierForm/g)?.length, 1, 'Change tier exists only behind canChangeTier')
+  assert.match(source, /\{pkg\.canManageSupport \? <ActionButton action=\{endSupportAction\.bind\(null, s\.id\)\}/)
+  assert.match(source, /\{pkg\.canManageSupport \? <AddSupportForm engagementId=\{pkg\.id\}/)
+  assert.equal(source.match(/endSupportAction\.bind/g)?.length, 1)
+  assert.equal(source.match(/<AddSupportForm/g)?.length, 1)
+})
+
+test('the top-up form shows the rate from the rate card row and says when it is only proposed', () => {
+  const source = section()
+  assert.match(source, /return `\$\{money\(pkg\.topUpRate\)\} per credit excluding VAT\$\{pkg\.topUpProposed \? ' \(proposed rate, not yet agreed\)' : ''\}\. \$\{DRAFT_NOTE\}`/)
+  assert.match(source, /const money = \(amount: number\) => formatCurrency\(amount, 'ZAR'\)/, 'the repo money helper')
+  assert.match(source, /if \(pkg\.topUpRate === null\) return/, 'a missing rate row falls back to plain words, never a made-up number')
+})
+
+test('each draft built from the package can be discarded, with a confirm, and links use the invoice base path', () => {
+  const source = section()
+  assert.match(source, /<Link href=\{`\$\{DOCUMENTS\.invoice\.base\}\/\$\{d\.id\}`\}/)
+  assert.doesNotMatch(source, /\/finance\/invoices\//, 'no hard-coded invoice path')
+  assert.match(
+    source,
+    /\{d\.isDraft \? <ActionButton action=\{discardBillingDraftAction\.bind\(null, d\.id\)\} label="Discard draft" ariaLabel=\{`Discard draft: \$\{d\.label\}`\} confirmText="Discard this draft\? You can build it again from the package\." tone="danger" \/> : null\}/,
+  )
+  assert.equal(source.match(/discardBillingDraftAction\.bind/g)?.length, 1, 'only drafts get the button')
 })
 
 test('Change tier is only for retainers, and the support services only for projects', () => {
@@ -120,6 +163,16 @@ test('the price list: rate card items are tagged, Edit is for custom items or an
   assert.equal(source.match(/archivePriceItemAction/g)?.length, 2, 'one import and one gated button: no other way to archive from the screen')
   assert.match(source, /A rate card item can be edited here but not archived\./, 'an owner or admin is told why there is no Archive')
   assert.match(source, /Rate card items can only be changed by an owner or admin, and cannot be archived here\./, 'a member is told too')
+  // The action itself only archives custom items, so a hand-made request for a rate card item finds nothing.
+  const action = read('features', 'documents', 'actions', 'price-list.ts')
+  const archive = action.slice(action.indexOf('export async function archivePriceItemAction'))
+  assert.match(archive, /\.update\(\{ archived_at: new Date\(\)\.toISOString\(\) \}\)\s*\.eq\('id', id\)\s*\.eq\('organization_id', organization\.id\)\s*\.is\('rate_key', null\)\s*\.select\('id'\)/)
+})
+
+test('a rate card item\'s VAT code is shown as fixed on the price list form, a custom item keeps the choice', () => {
+  const source = read('features', 'documents', 'components', 'price-item-form.tsx')
+  assert.match(source, /\{item\?\.rate_key \? \([\s\S]*?<input type="hidden" name="vatCode" value=\{item\.vat_code\} \/>[\s\S]*?\) : \(\s*<label[^>]*>\s*VAT\s*<select name="vatCode"/)
+  assert.equal(source.match(/name="vatCode"/g)?.length, 2, 'one fixed value for a rate card item, one choice for a custom item')
 })
 
 test('a rate card item opened for editing by hand is not offered to a member', () => {

@@ -30,12 +30,21 @@ export function PriceItemForm({ item }: { item: PriceItem | null }) {
         Unit price
         <input name="unitPrice" required inputMode="decimal" aria-label="Unit price" defaultValue={item ? String(item.unit_price) : ''} className={`${field} mt-1.5`} />
       </label>
-      <label className="text-sm font-medium">
-        VAT
-        <select name="vatCode" aria-label="VAT" defaultValue={item?.vat_code ?? 'standard'} className={`${field} mt-1.5`}>
-          {VAT_CODES.map((code) => <option key={code} value={code}>{VAT_LABELS[code]}</option>)}
-        </select>
-      </label>
+      {item?.rate_key ? (
+        // A rate card item's VAT code is fixed (the database refuses a change), so it is shown, not offered.
+        <p className="text-sm font-medium">
+          VAT
+          <input type="hidden" name="vatCode" value={item.vat_code} />
+          <span className="mt-1.5 block text-sm font-normal text-muted-foreground">{VAT_LABELS[item.vat_code as keyof typeof VAT_LABELS] ?? item.vat_code} (fixed for a rate card item)</span>
+        </p>
+      ) : (
+        <label className="text-sm font-medium">
+          VAT
+          <select name="vatCode" aria-label="VAT" defaultValue={item?.vat_code ?? 'standard'} className={`${field} mt-1.5`}>
+            {VAT_CODES.map((code) => <option key={code} value={code}>{VAT_LABELS[code]}</option>)}
+          </select>
+        </label>
+      )}
       {item?.item_kind === 'retainer_monthly' ? (
         <label className="text-sm font-medium">
           Active projects allowed (leave empty for no limit)

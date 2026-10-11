@@ -93,10 +93,13 @@ export async function createFirstDocumentAction(engagementId: string, kind: 'inv
   return openBuilt(kind, result.data)
 }
 
-export async function createMonthlyInvoiceAction(clientId: string, _previous: ActionState, _form: FormData): Promise<ActionState> {
+export async function createMonthlyInvoiceAction(clientId: string, _previous: ActionState, form: FormData): Promise<ActionState> {
   if (!isUuid(clientId)) return { error: NOT_FOUND_CLIENT }
+  // An empty month means this South African month (the database decides); a typed one is YYYY-MM.
+  const month = String(form.get('month') ?? '').trim()
+  if (month !== '' && !/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) return { error: 'Enter a month such as 2026-10.' }
   const { db } = await documentContext()
-  const result = await db.rpc('create_monthly_invoice', { p_client: clientId, p_month: null })
+  const result = await db.rpc('create_monthly_invoice', { p_client: clientId, p_month: month === '' ? null : `${month}-01` })
   if (result.error) return failureState(result.error, 'The invoice could not be built. Please try again.')
   return openBuilt('invoice', result.data)
 }
@@ -109,4 +112,14 @@ export async function createTopUpAction(engagementId: string, _previous: ActionS
   const result = await db.rpc('create_top_up_invoice', { p_engagement: engagementId, p_credits: Number(raw) })
   if (result.error) return failureState(result.error, 'The top-up invoice could not be built. Please try again.')
   return openBuilt('invoice', result.data)
+}
+
+/** Deletes a draft built from the package (and its lines), so the first invoice or the month can be built again. */
+export async function discardBillingDraftAction(invoiceId: string, _previous: ActionState, _form: FormData): Promise<ActionState> {
+  if (!isUuid(invoiceId)) return { error: 'That invoice was not found.' }
+  const { db } = await documentContext()
+  const result = await db.rpc('discard_billing_draft', { p_invoice: invoiceId })
+  if (result.error) return failureState(result.error, 'The draft could not be discarded. Please try again.')
+  revalidateBillingPages()
+  return { success: 'Draft discarded.' }
 }

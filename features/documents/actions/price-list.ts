@@ -28,11 +28,13 @@ export async function savePriceItemAction(id: string | undefined, _previous: Act
 export async function archivePriceItemAction(id: string, _previous: ActionState, _form: FormData): Promise<ActionState> {
   if (!isUuid(id)) return { error: 'That price list item was not found.' }
   const { organization, db } = await documentContext()
+  // Custom items only: a rate card item is never archived from the app (the database refuses it too), so for this action it does not exist.
   const archived = await db
     .from('price_list_items')
     .update({ archived_at: new Date().toISOString() })
     .eq('id', id)
     .eq('organization_id', organization.id)
+    .is('rate_key', null)
     .select('id')
     .maybeSingle()
   if (archived.error || !archived.data) return { error: 'That item no longer exists.' }

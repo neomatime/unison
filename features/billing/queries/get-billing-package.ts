@@ -36,6 +36,8 @@ export async function getBillingPackage(clientId: string): Promise<BillingPackag
   ])
   for (const result of [rates, support, firsts, documents]) if (result.error) throw result.error
   return buildBillingPackageView({
+    // The South African calendar date, as private.sa_today() gives it to the database functions ('en-CA' formats YYYY-MM-DD).
+    today: new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Johannesburg' }).format(new Date()),
     engagements: engagementRows,
     support: support.data ?? [],
     rateRows: rates.data ?? [],
