@@ -6,6 +6,8 @@ import { admin, cleanup, createFixtureOrg, createFixtureUser, signedInClient } f
 
 type U = { id: string; email: string; password: string }
 
+const startedAt = new Date().toISOString()
+
 let orgA: string
 let orgB: string
 let orgBig: string
@@ -48,15 +50,22 @@ before(async () => {
 })
 
 after(async () => {
-  await cleanup([orgA, orgB, orgBig].filter(Boolean), [member?.id, other?.id, bigMember?.id].filter(Boolean))
+  try {
+    await cleanup([orgA, orgB, orgBig].filter(Boolean), [member?.id, other?.id, bigMember?.id].filter(Boolean))
+  } finally {
+    // The 1,100 fixture invoices write 2,200 audit rows (an insert and a delete each) that outlive their organisation,
+    // and cleanup() may not reach all of them (it reads at most 1,000 rows at a time). Only this test suite deletes
+    // organisations, so a null-organisation 'invoices' event created since this file started can only be its own.
+    await admin.from('audit_events').delete().is('organization_id', null).eq('resource', 'invoices').gte('created_at', startedAt)
+  }
 })
 
 test('lead cards count active and qualified leads and sum the estimated value per currency; archived leads are left out', async () => {
   must(await admin.from('leads').insert([
-    { organization_id: orgA, company_name: 'L1', contact_name: 'c', status: 'New', estimated_value: 100 },
-    { organization_id: orgA, company_name: 'L2', contact_name: 'c', status: 'Qualified', estimated_value: 200 },
+    { organization_id: orgA, company_name: 'L1', contact_name: 'c', status: 'New', estimated_value: 100, currency: 'ZAR' },
+    { organization_id: orgA, company_name: 'L2', contact_name: 'c', status: 'Qualified', estimated_value: 200, currency: 'ZAR' },
     { organization_id: orgA, company_name: 'L3', contact_name: 'c', status: 'Qualified', estimated_value: 50, currency: 'USD' },
-    { organization_id: orgA, company_name: 'L4', contact_name: 'c', status: 'Qualified', estimated_value: 999, archived_at: now() },
+    { organization_id: orgA, company_name: 'L4', contact_name: 'c', status: 'Qualified', estimated_value: 999, currency: 'ZAR', archived_at: now() },
   ]).select('id'))
   assert.deepEqual(await summary('lead'), { count: 3, qualified: 2, value: { ZAR: 300, USD: 50 } })
 })
@@ -65,8 +74,8 @@ test('quote cards count active and accepted quotes and sum the totals', async ()
   const quote = must(await memberClient.from('quotes').insert({ organization_id: orgA, client_id: clientA, client_name: 'Reg Client A' }).select('id').single())
   assert.equal((await memberClient.from('quote_lines').insert({ organization_id: orgA, quote_id: quote.id, position: 1, title: 'Advisory', quantity: 2, unit_price: 100 })).error, null)
   must(await admin.from('quotes').insert([
-    { organization_id: orgA, quote_number: 'REG-Q-1', client_name: 'x', status: 'Accepted' },
-    { organization_id: orgA, quote_number: 'REG-Q-2', client_name: 'x', status: 'Sent', archived_at: now() },
+    { organization_id: orgA, quote_number: 'REG-Q-1', client_name: 'x', status: 'Accepted', currency: 'ZAR' },
+    { organization_id: orgA, quote_number: 'REG-Q-2', client_name: 'x', status: 'Sent', currency: 'ZAR', archived_at: now() },
   ]).select('id'))
   const result = await summary('quote')
   assert.equal(result.count, 2)
@@ -76,11 +85,11 @@ test('quote cards count active and accepted quotes and sum the totals', async ()
 
 test('sales cards count open opportunities and weight their value by probability; Won and Lost are not open', async () => {
   must(await admin.from('sales_opportunities').insert([
-    { organization_id: orgA, name: 'O1', client_name: 'x', stage: 'Proposal', expected_value: 1000, probability_percent: 50 },
+    { organization_id: orgA, name: 'O1', client_name: 'x', stage: 'Proposal', expected_value: 1000, probability_percent: 50, currency: 'ZAR' },
     { organization_id: orgA, name: 'O2', client_name: 'x', stage: 'Negotiation', expected_value: 400, probability_percent: 25, currency: 'USD' },
-    { organization_id: orgA, name: 'O3', client_name: 'x', stage: 'Won', expected_value: 5000, probability_percent: 100 },
-    { organization_id: orgA, name: 'O4', client_name: 'x', stage: 'Lost', expected_value: 7000, probability_percent: 0, lost_reason: 'Went with a competitor' },
-    { organization_id: orgA, name: 'O5', client_name: 'x', stage: 'Proposal', expected_value: 900, probability_percent: 90, archived_at: now() },
+    { organization_id: orgA, name: 'O3', client_name: 'x', stage: 'Won', expected_value: 5000, probability_percent: 100, currency: 'ZAR' },
+    { organization_id: orgA, name: 'O4', client_name: 'x', stage: 'Lost', expected_value: 7000, probability_percent: 0, currency: 'ZAR', lost_reason: 'Went with a competitor' },
+    { organization_id: orgA, name: 'O5', client_name: 'x', stage: 'Proposal', expected_value: 900, probability_percent: 90, currency: 'ZAR', archived_at: now() },
   ]).select('id'))
   assert.deepEqual(await summary('opportunity'), { open: 2, pipeline: { ZAR: 1000, USD: 400 }, weighted: { ZAR: 500, USD: 100 } })
 })
@@ -109,11 +118,11 @@ test('invoice cards count the register, the collectible balance and the overdue 
 test('expense cards sum the spend and the approved spend and count those awaiting approval', async () => {
   const date = new Date().toISOString().slice(0, 10)
   must(await admin.from('expenses').insert([
-    { organization_id: orgA, description: 'E1', amount: 100, expense_date: date, status: 'Approved' },
-    { organization_id: orgA, description: 'E2', amount: 50, expense_date: date, status: 'Submitted' },
-    { organization_id: orgA, description: 'E3', amount: 25, expense_date: date, status: 'Awaiting Approval' },
+    { organization_id: orgA, description: 'E1', amount: 100, expense_date: date, status: 'Approved', currency: 'ZAR' },
+    { organization_id: orgA, description: 'E2', amount: 50, expense_date: date, status: 'Submitted', currency: 'ZAR' },
+    { organization_id: orgA, description: 'E3', amount: 25, expense_date: date, status: 'Awaiting Approval', currency: 'ZAR' },
     { organization_id: orgA, description: 'E4', amount: 10, expense_date: date, status: 'Draft', currency: 'USD' },
-    { organization_id: orgA, description: 'E5', amount: 999, expense_date: date, status: 'Approved', archived_at: now() },
+    { organization_id: orgA, description: 'E5', amount: 999, expense_date: date, status: 'Approved', currency: 'ZAR', archived_at: now() },
   ]).select('id'))
   assert.deepEqual(await summary('expense'), { spend: { ZAR: 175, USD: 10 }, awaiting: 2, approved: { ZAR: 100 } })
 })

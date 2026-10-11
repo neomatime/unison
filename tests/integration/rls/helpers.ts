@@ -75,6 +75,9 @@ export async function signedInClient(email: string, password: string): Promise<S
   return client
 }
 
+// Audit-event ids are deleted in chunks of this size so a large fixture cannot overflow the request URL.
+const ID_CHUNK = 200
+
 // GUARANTEE: cleanup() must remove every row a fixture caused, in every
 // table, with no exceptions -- including audit_events rows that
 // delete_organization() deliberately leaves behind. That survival is correct
@@ -251,8 +254,10 @@ export async function cleanup(organizationIds: string[], userIds: string[]) {
     if (deliveryEventsError) errors.push(deliveryEventsError)
 
     const auditIds = [...(orgEvent ?? []), ...(clientEvents ?? []), ...(deliveryEvents ?? [])].map((row) => row.id as string)
-    if (auditIds.length > 0) {
-      const { error: auditDeleteError } = await admin.from('audit_events').delete().in('id', auditIds)
+    // In chunks: a large fixture produces thousands of audit events, and one .in('id', [...]) with that many uuids
+    // makes the request URL too long ("Bad Request").
+    for (let start = 0; start < auditIds.length; start += ID_CHUNK) {
+      const { error: auditDeleteError } = await admin.from('audit_events').delete().in('id', auditIds.slice(start, start + ID_CHUNK))
       if (auditDeleteError) errors.push(auditDeleteError)
     }
   }
@@ -267,8 +272,8 @@ export async function cleanup(organizationIds: string[], userIds: string[]) {
     if (membershipEventsError) errors.push(membershipEventsError)
 
     const membershipAuditIds = (membershipEvents ?? []).map((row) => row.id as string)
-    if (membershipAuditIds.length > 0) {
-      const { error: membershipAuditDeleteError } = await admin.from('audit_events').delete().in('id', membershipAuditIds)
+    for (let start = 0; start < membershipAuditIds.length; start += ID_CHUNK) {
+      const { error: membershipAuditDeleteError } = await admin.from('audit_events').delete().in('id', membershipAuditIds.slice(start, start + ID_CHUNK))
       if (membershipAuditDeleteError) errors.push(membershipAuditDeleteError)
     }
   }
