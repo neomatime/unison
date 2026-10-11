@@ -83,7 +83,7 @@ test('collected, due and pipeline are grouped by month and currency; overdue and
   await opportunity({ expected_value: 400, probability_percent: 25, expected_close: addDays(today, -90) })
   await opportunity({ expected_value: 800, probability_percent: 50, expected_close: firstOfMonth(today, 12) })
   await opportunity({ stage: 'Won', expected_close: addDays(nextMonth, 5) })
-  await opportunity({ stage: 'Lost', expected_close: addDays(nextMonth, 5) })
+  await opportunity({ stage: 'Lost', lost_reason: 'Went with a competitor', expected_close: addDays(nextMonth, 5) })
   await opportunity({ expected_close: addDays(nextMonth, 5), archived_at: new Date().toISOString() })
   await opportunity({ currency: 'USD', expected_value: 100, probability_percent: 10, expected_close: addDays(nextMonth, 5) })
 
