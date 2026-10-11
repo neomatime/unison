@@ -226,9 +226,12 @@ test('the document sheet prints what the view says as text, with print styling, 
   assert.doesNotMatch(source, /himark|HIMARK|\/brand\//i, 'no company-specific value in the sheet')
 })
 
-test('the print button is a client module and the document pages check the id before they load anything', () => {
-  assert.ok(isClientModule(component('print-button')))
-  assert.match(component('print-button'), /window\.print\(\)/)
+test('the print button opens a bare print page; the document and print pages check the id before they load anything', () => {
+  assert.doesNotMatch(component('print-button'), /window\.print\(\)/, 'the button no longer prints the page with its shell around it')
+  assert.match(component('print-button'), /target="_blank"/)
+  assert.ok(isClientModule(component('auto-print')))
+  assert.match(component('auto-print'), /window\.print\(\)/, 'the bare page opens the print dialog itself, after its pictures loaded')
+  assert.match(component('auto-print'), /document\.images/)
   for (const [route, id, kind] of [
     [['commercial', 'quotes', '[quoteId]'], 'quoteId', 'quote'],
     [['finance', 'invoices', '[invoiceId]'], 'invoiceId', 'invoice'],
@@ -238,8 +241,14 @@ test('the print button is a client module and the document pages check the id be
     const load = source.indexOf(`getDocument('${kind}', ${id})`)
     assert.ok(check > -1 && load > -1 && check < load, `${kind} document page rejects a malformed id before loading`)
     assert.match(source, /<DocumentSheet view=\{view\} \/>/)
-    assert.match(source, /<PrintButton \/>/)
+    assert.ok(source.includes(`<PrintButton href={\`/print/${kind}/\${${id}}\`} />`), `the ${kind} page links its print button to the bare print page`)
     assert.match(source, /buildDocumentView\(/)
+    const bare = read('app', '(print)', 'print', kind, `[${id}]`, 'page.tsx')
+    const bareCheck = bare.indexOf(`isUuid(${id})`)
+    const bareLoad = bare.indexOf(`getDocument('${kind}', ${id})`)
+    assert.ok(bareCheck > -1 && bareLoad > -1 && bareCheck < bareLoad, `the bare ${kind} print page rejects a malformed id before loading`)
+    assert.match(bare, /<DocumentSheet view=\{view\} \/>/)
+    assert.match(bare, /<AutoPrint \/>/)
   }
 })
 
@@ -345,6 +354,7 @@ test('the sheet and the PDF cover the whole page: the bottom section stretches t
   assert.match(sheet, /<footer className="[^"]*bg-\[#bcd9f5\] px-\[12mm\][^"]*">/, 'the footer is a full-width band, not an inset rule')
   assert.doesNotMatch(sheet, /<footer className="[^"]*mx-\[12mm\]/, 'the footer has no side margin')
   assert.match(sheet, /@page \{ size: A4; margin: 0; \}/, 'the printed page has no margin')
+  assert.match(sheet, /\.document-print \{ position: relative !important; width: 100% !important; max-width: none !important; min-height: calc\(100vh - 1mm\);/, 'when printed the sheet is as wide and as tall as the paper, whatever size the paper is')
   const pdf = readFileSync(join(process.cwd(), 'features', 'documents', 'pdf', 'render-document-pdf.ts'), 'utf8')
   assert.match(pdf, /minHeight: mm\(28\), flexGrow: 1 \}/, 'the PDF bottom row grows to the bottom of the page')
   assert.match(pdf, /paddingHorizontal: mm\(12\), paddingVertical: mm\(4\), backgroundColor: BAND \}/, 'the PDF footer is a full-width band')

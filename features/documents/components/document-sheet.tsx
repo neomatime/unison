@@ -25,7 +25,7 @@ const PRINT_CSS = `
       transform: none !important; animation: none !important; transition: none !important;
     }
     *:has(.document-print) > *:not(:has(.document-print)):not(.document-print) { display: none !important; }
-    .document-print { position: relative !important; width: 100% !important; max-width: none !important; min-height: 296mm; margin: 0 !important; overflow: visible !important; box-shadow: none !important; }
+    .document-print { position: relative !important; width: 100% !important; max-width: none !important; min-height: calc(100vh - 1mm); margin: 0 !important; overflow: visible !important; box-shadow: none !important; }
   }
 `
 
