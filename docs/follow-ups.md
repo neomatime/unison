@@ -1127,3 +1127,33 @@ or could not prove.
   page were checked with unit and source tests, SQL tests against fixture organisations for every database rule, a
   fixture preview in the browser pane (layout at desktop and phone width, print layout emulated, hostile text), and
   reviews; they were not run in a signed-in session against real records.
+
+## From the delivery slice (PDF, email, quote to invoice; 2026-10-11)
+
+- **Not exercised signed in, and the server-action PDF path has never run.** The PDF was drawn inside Next only from a
+  route handler; drawing one inside the email server action (in the page's function) has been checked by unit and source
+  tests, a production build and the file trace, but never by a real send. The signed-in walk-through must email at least
+  one document (to your own address first).
+- **Public brand files must be committed before deploying.** `public/brand/banner.png` and `himark-wordmark.png` are
+  untracked. Every frozen document names them in its snapshot, so without them every PDF download and email fails.
+- **No delivery receipts.** Graph accepts a message and reports nothing more; the Emails sent list says what was handed to
+  the mail server, not that the client's mailbox accepted it. No stored copy of each PDF (the SHA-256 fingerprint is kept).
+- **The email record can be written by any member directly** (the function is executable by `authenticated`); it proves a
+  member asserted the send. A cancelled invoice is refused by the action and the screen but not by the database function.
+- **The PDF differs from the on-screen sheet in three ways:** the closing strip beside "Next steps" is a plain band, the
+  table header does not repeat on later pages, and the footer follows the content instead of sitting at the bottom edge
+  of the page. The dark H mark is still not in `public/brand` as its own file.
+- **The banner is 1.5 MB**, so a PDF with it is about 1.7 MB, under the 2 MB email budget but with little room. A lighter
+  header image (about 1000 px wide JPEG) would leave room for long documents.
+- **Emails sent shows the latest 50 only** and does not say when more exist. The hourly cap of 50 is checked by the action,
+  not enforced by the database, and a simultaneous burst can overshoot slightly.
+- **Plain addresses only:** no display names, lists, CC or BCC, internationalised addresses, or local parts over 64
+  characters (Graph refuses those; nothing is recorded). A subject of 300 non-ASCII characters can make an over-long
+  encoded header; the send fails safely.
+- **Create invoice** stays on an Accepted quote after invoices exist (the list below shows them); its confirmation does not
+  mention them. Percentage or milestone invoicing and tracking how much of a quote is billed are not built.
+- **Test depth:** the new screens are covered by source-text guards, not behavioural tests; the database test does not
+  assert that `owner_id` and `opportunity_id` are copied onto the invoice (the SQL copies them); `eslint` is not installed in
+  this checkout, so lint has never been run on this slice.
+- **The download routes ship all of `public/` (about 14 MB)** because the image loader joins a computed path; the page
+  routes ship `public/brand` (9 MB). Both are far below the function size limits; narrowing is an optimisation.

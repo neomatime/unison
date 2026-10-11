@@ -166,3 +166,35 @@ organisation is reported as not found. Nothing falls back to a default when a re
 - A control in the UI is a claim the product supports it. No role-based behaviour is invented.
 - No real address, bank, VAT or phone value in code or tests. Secrets live in `.env.local` only.
 - Never `git add -A`; stage explicit paths. Commit and push only when the user asks.
+
+## Amendments made while planning and building
+
+Small, deliberate departures from the text above, each decided with a reason and recorded in the plan and its ledger.
+
+1. **Helvetica, not an embedded font.** The standard fonts cover every South African name and address (Latin-1 and the
+   WinAnsi extras), add no font files or licences, and keep the PDF small. Text the font cannot draw is replaced with `?`
+   and never crashes the render.
+2. **The table header is not repeated on further pages.** Rows and the totals block never split across pages (a row of
+   more than 1,200 characters may, so a row taller than a page is not drawn over the next section).
+3. **The email size budget is 2,000,000 bytes, not 3 MB.** Graph takes the raw message in one request of about 4 MB and
+   the PDF is base64 twice over inside it. A larger PDF can still be downloaded; emailing it is refused. A frozen
+   document keeps the image paths it was sent with, so a lighter header image helps future documents only.
+4. **The header image is drawn once** (the top band). A Buffer image is embedded again every time it is drawn, so the
+   strip beside the closing text is a plain light-blue block in the PDF.
+5. **`serverExternalPackages: ['@react-pdf/renderer']`** and **`outputFileTracingIncludes`** for `public/brand` on the two
+   download routes and the two page routes (a server action runs in its page's function). The keys escape the brackets of
+   a dynamic segment: unescaped, they match nothing.
+6. **A regenerated PDF has the same content but not the same bytes** (the PDF info carries a creation time). The email
+   record's SHA-256 fingerprints the exact bytes that were attached.
+7. **Email addresses are ASCII only** (no internationalised domains or local parts); the same pattern is in the database
+   and in the code.
+8. **The hourly cap is checked by the action** by counting `document_emails` rows; it is a guard against accidents, not a
+   security boundary.
+9. **A corrupt or mislabelled brand image stops the PDF** (the file's first bytes are checked against its extension, and a
+   PNG must end with its IEND chunk) instead of producing a PDF without its header.
+10. **A Cancelled invoice cannot be emailed** (the PDF can still be downloaded). The action and the screen refuse it; the
+    database function does not yet (follow-up).
+11. **`EMAIL_TRANSPORT=log` records nothing.** `sendEmail` reports whether a message was delivered, and the action skips
+    the record when it was not, so local work against the production database leaves no false "sent" rows.
+12. **What a record proves.** `record_document_email` is callable by any member (the spec's design), so a record shows that
+    a member asserted the send, not that the mail server delivered it.

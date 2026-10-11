@@ -23,15 +23,16 @@ them through Stage 2 before starting anything else.
 - [x] Tests for each of the above, including the database rules (RLS suite) and a fixture preview at three widths
 - [ ] **Walked in a signed-in session against real records** (not done yet: the user does this; Stage 1 is not finished until it is)
 
-## Stage 2: make quotes and invoices real documents (slice A built 2026-10-11; waiting for the signed-in walk-through)
+## Stage 2: make quotes and invoices real documents (slices A and B built 2026-10-11; waiting for the signed-in walk-through)
 
 - [x] Quote line items and a products/services price list (invoices too)
 - [x] Generated quote and invoice numbers (no more typing them)
 - [x] Tax and totals worked out from the lines, not typed
 - [ ] **Walked in a signed-in session against real records** (not done yet: the user does this; slice A is not finished until it is)
-- [ ] PDF for a quote and an invoice
-- [ ] Send a quote or invoice by email, and record that it was sent
-- [ ] Quote → invoice in one step
+- [x] PDF for a quote and an invoice (slice B; download from a sent quote or issued invoice)
+- [x] Send a quote or invoice by email, and record that it was sent (slice B; shared company mailbox, every send recorded)
+- [x] Quote → invoice in one step (slice B; from an Accepted quote, every line copied)
+- [ ] **Slice B walked in a signed-in session, including one real email** (not done yet: the user does this)
 - [ ] Payments table; the invoice balance and "Paid" / "Partially paid" come from it
 - [ ] "Overdue" set automatically, not by hand
 - [ ] Forecast worked out from the pipeline instead of typed in
