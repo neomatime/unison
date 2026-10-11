@@ -41,6 +41,10 @@ const saMonthOffset = (offset: number) => {
   const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Johannesburg' }).format(new Date())
   return iso(new Date(Date.UTC(Number(today.slice(0, 4)), Number(today.slice(5, 7)) - 1 + offset, 1)))
 }
+/** A date `days` days from an ISO date (UTC arithmetic on a calendar date). */
+const shiftDays = (date: string, days: number) => iso(new Date(Date.parse(`${date}T00:00:00Z`) + days * 86_400_000))
+/** The given day of the month that `start` (a first day) begins. */
+const dayOf = (start: string, dayOfMonth: number) => `${start.slice(0, 8)}${String(dayOfMonth).padStart(2, '0')}`
 const monthEnd = (start: string) => iso(new Date(Date.UTC(Number(start.slice(0, 4)), Number(start.slice(5, 7)), 0)))
 
 let counter = 0
@@ -518,17 +522,49 @@ test('Ruling 8: a retainer ended this month with no replacement is still billed 
   assert.equal(Number((await invoice(built.data as string)).total_amount), 172500)
 })
 
-test('Ruling 8: a retainer that ended before the month is not billed for it, but is for the month it ended in', async () => {
+test('Ruling 8: a retainer that ended in an earlier month is not billed for later months, but is for the month it ended in', async () => {
   const client = await newClient()
-  const retainer = await packageFor(client, 'growth', day(-200))
+  const month = monthOffset(-3)
+  const retainer = await packageFor(client, 'growth', shiftDays(month, -60))
   assert.equal((await firstDoc(retainer)).error, null)
-  const ended = day(-100)
-  assert.equal((await memberClient.rpc('end_engagement', { p_engagement: retainer, p_ended_on: ended })).error, null)
+  assert.equal((await memberClient.rpc('end_engagement', { p_engagement: retainer, p_ended_on: dayOf(month, 9) })).error, null)
+  refused((await monthly(client, monthOffset(-2))).error, 'NOTHING_TO_BILL')
   refused((await monthly(client, monthOffset(0))).error, 'NOTHING_TO_BILL')
-  const lastMonth = await monthly(client, monthStart(ended))
+  const lastMonth = await monthly(client, month)
   assert.equal(lastMonth.error, null, 'the month it ended in')
   assert.match((await invoiceLines(lastMonth.data as string))[0].title, /Growth Partner: monthly retainer/)
   assert.equal(Number((await invoice(lastMonth.data as string)).total_amount), 172500)
+})
+
+test('Ruling 8: an old retainer that ended in the month a NEW retainer started is billed for that month; the new one from the next month, once its first invoice exists', async () => {
+  const client = await newClient()
+  const month = monthOffset(-3)
+  const old = await packageFor(client, 'growth', shiftDays(month, -60))
+  assert.equal((await firstDoc(old)).error, null)
+  assert.equal((await memberClient.rpc('end_engagement', { p_engagement: old, p_ended_on: dayOf(month, 9) })).error, null)
+  const fresh = await packageFor(client, 'private', dayOf(month, 10))
+  const freshRow = must(await admin.from('client_engagements').select('root_id, replaces_id').eq('id', fresh).single())
+  assert.equal(freshRow.root_id, fresh, 'a new chain, not a tier change')
+  assert.equal(freshRow.replaces_id, null)
+
+  const shared = await monthly(client, month)
+  assert.equal(shared.error, null, 'the old retainer was in force for part of the month and its chain began earlier')
+  const sharedLines = await invoiceLines(shared.data as string)
+  assert.equal(sharedLines.length, 1, 'the new chain\'s first month is its own first invoice\'s, so only the old retainer is billed')
+  assert.match(sharedLines[0].title, /Growth Partner: monthly retainer/)
+  assert.equal(Number((await invoice(shared.data as string)).total_amount), 172500)
+
+  const next = monthOffset(-2)
+  refused((await monthly(client, next)).error, 'FIRST_INVOICE_MISSING')
+  const freshFirst = await firstDoc(fresh)
+  assert.equal(freshFirst.error, null)
+  assert.equal(Number((await invoice(freshFirst.data as string)).total_amount), 460000, 'the new chain\'s own first invoice, at its own tier')
+  const nextBuilt = await monthly(client, next)
+  assert.equal(nextBuilt.error, null)
+  const nextLines = await invoiceLines(nextBuilt.data as string)
+  assert.equal(nextLines.length, 1)
+  assert.match(nextLines[0].title, /Private Partner: monthly retainer/)
+  assert.equal(Number((await invoice(nextBuilt.data as string)).total_amount), 230000)
 })
 
 test('Ruling 8: a retainer replaced inside a month bills that month at the later tier, and the month before at the earlier one', async () => {

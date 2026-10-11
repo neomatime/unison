@@ -4,8 +4,9 @@
 --    of the chain is called: the first retainer's implementation fee stands for the whole chain, and a tier change bills no
 --    new implementation fee, so an upgrade or downgrade made before the first invoice does not change it (Ruling 9).
 -- 2. A retainer is billed for a month if it was in force at any time in that month, like a support service, with no
---    proration; when several overlap (a tier change inside the month), the one in force on the last day (the latest start)
---    is billed (Ruling 8).
+--    proration; among the retainers that overlap the month and whose chain started in an earlier month, the latest start is
+--    billed (a tier change inside the month bills the later tier; an old retainer that ended in the month a new chain
+--    started is still billed for it) (Ruling 8).
 -- 3. A support service that starts after its project ended is never billed, and ending a project removes the support
 --    services that have not started by the end date.
 -- 4. discard_billing_draft: a member deletes a draft built from a client package (members have no delete grant on
@@ -88,9 +89,9 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------------
--- 2. The monthly invoice. Re-created from 20261012120000_billing_documents.sql; changed: the retainer is the one that
---    overlaps the month (the latest start when several do), and a support service is billed only if it started by the end
---    of its project.
+-- 2. The monthly invoice. Re-created from 20261012120000_billing_documents.sql; changed: the retainer is the latest-start
+--    one that overlaps the month and whose chain started before the month, and a support service is billed only if it
+--    started by the end of its project.
 -- ---------------------------------------------------------------------------
 create or replace function public.create_monthly_invoice(p_client uuid, p_month date default null) returns uuid
 language plpgsql security definer set search_path = '' as $$
@@ -99,7 +100,6 @@ declare
   v_month date := private.month_start(coalesce(p_month, private.sa_today()));
   v_end date;
   v_ret public.client_engagements%rowtype;
-  v_root_start date;
   v_has_ret boolean := false;
   v_support integer;
   v_item public.price_list_items%rowtype;
@@ -123,20 +123,22 @@ begin
     raise exception 'MONTH_ALREADY_BILLED' using errcode = '23514';
   end if;
 
-  -- In force at any time in the month; after a tier change inside the month, the tier in force on its last day.
-  select * into v_ret from public.client_engagements e
+  -- In force at any time in the month, and eligible: its chain started in an earlier month (a chain's first month is
+  -- covered by its first invoice). Among those, the latest start: after a tier change inside the month, the tier in force
+  -- on its last day; when an old retainer ended in the month and a new chain started in it, the old one (the new chain's
+  -- first month is its first invoice's).
+  select e.* into v_ret from public.client_engagements e
+  join public.client_engagements r on r.id = e.root_id
   where e.client_id = p_client and e.kind = 'retainer' and e.start_date <= v_end and (e.ended_on is null or e.ended_on >= v_month)
+    and private.month_start(r.start_date) < v_month
   order by e.start_date desc limit 1;
   if found then
-    select r.start_date into v_root_start from public.client_engagements r where r.id = v_ret.root_id;
-    if v_month > private.month_start(v_root_start) then
-      if not exists (
-        select 1 from public.invoices i where i.engagement_id = v_ret.root_id and i.billing_kind = 'first' and i.status <> 'Cancelled'
-      ) then
-        raise exception 'FIRST_INVOICE_MISSING' using errcode = '23514';
-      end if;
-      v_has_ret := true;
+    if not exists (
+      select 1 from public.invoices i where i.engagement_id = v_ret.root_id and i.billing_kind = 'first' and i.status <> 'Cancelled'
+    ) then
+      raise exception 'FIRST_INVOICE_MISSING' using errcode = '23514';
     end if;
+    v_has_ret := true;
   end if;
 
   select count(*) into v_support
