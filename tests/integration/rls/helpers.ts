@@ -263,6 +263,9 @@ export async function cleanup(organizationIds: string[], userIds: string[]) {
         'price_list_items',
         'quote_lines',
         'invoice_lines',
+        'client_engagements',
+        'engagement_support',
+        'project_dependencies',
       ])
       .or(`old_value->>organization_id.eq.${id},new_value->>organization_id.eq.${id}`))
     if (deliveryEventsError) errors.push(deliveryEventsError)

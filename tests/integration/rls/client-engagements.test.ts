@@ -157,7 +157,7 @@ test('changing tier: refusals (same tier, ended retainer, bad date, a project, o
   for (let i = 0; i < 3; i += 1) assert.equal((await setPackage(client, 'digital_presence')).error, null)
   refused((await memberClient.rpc('change_retainer_tier', { p_engagement: first, p_new_package_key: 'signature', p_start_date: day() })).error, 'INITIATIVE_LIMIT_REACHED')
   const project = (await setPackage(await newClient(), 'digital_presence')).data as string
-  refused((await memberClient.rpc('change_retainer_tier', { p_engagement: project, p_new_package_key: 'private', p_start_date: day() })).error, 'ENGAGEMENT_ENDED')
+  refused((await memberClient.rpc('change_retainer_tier', { p_engagement: project, p_new_package_key: 'private', p_start_date: day() })).error, 'ENGAGEMENT_NOT_RETAINER')
   assert.equal((await memberClient.rpc('end_engagement', { p_engagement: first, p_ended_on: day() })).error, null)
   refused((await memberClient.rpc('change_retainer_tier', { p_engagement: first, p_new_package_key: 'private', p_start_date: day(1) })).error, 'ENGAGEMENT_ENDED')
 })
@@ -173,14 +173,15 @@ test('support services: only a service of that project, once at a time, only on 
   refused((await memberClient.rpc('add_support_service', { p_engagement: project, p_service_key: 'support.nonsense', p_start_date: day() })).error, 'RATE_ITEM_UNAVAILABLE')
   refused((await memberClient.rpc('add_support_service', { p_engagement: project, p_service_key: 'support.social_media_content', p_start_date: day(-30) })).error, 'PACKAGE_START_INVALID')
   const retainer = (await setPackage(client, 'growth')).data as string
-  refused((await memberClient.rpc('add_support_service', { p_engagement: retainer, p_service_key: 'support.social_media_content', p_start_date: day() })).error, 'ENGAGEMENT_ENDED')
+  refused((await memberClient.rpc('add_support_service', { p_engagement: retainer, p_service_key: 'support.social_media_content', p_start_date: day() })).error, 'ENGAGEMENT_NOT_PROJECT')
 
   assert.equal((await memberClient.rpc('end_support_service', { p_support: added.data as string, p_ended_on: day(-2) })).error, null)
   assert.equal((await memberClient.rpc('add_support_service', { p_engagement: project, p_service_key: 'support.communication_asset_care', p_start_date: day(-1) })).error, null)
   assert.equal((await memberClient.rpc('end_engagement', { p_engagement: project, p_ended_on: day() })).error, null)
   const open = must(await admin.from('engagement_support').select('id').eq('engagement_id', project).is('ended_on', null))
   assert.equal(open.length, 0)
-  refused((await memberClient.rpc('end_support_service', { p_support: added.data as string, p_ended_on: day() })).error, 'PACKAGE_START_INVALID')
+  refused((await memberClient.rpc('end_support_service', { p_support: added.data as string, p_ended_on: day() })).error, 'SUPPORT_ALREADY_ENDED')
+  refused((await memberClient.rpc('add_support_service', { p_engagement: project, p_service_key: 'support.communication_asset_care', p_start_date: day() })).error, 'ENGAGEMENT_ENDED')
   refused((await outsiderClient.rpc('end_support_service', { p_support: added.data as string, p_ended_on: day() })).error, 'SUPPORT_NOT_FOUND')
 })
 
@@ -190,4 +191,77 @@ test('two people recording a retainer for the same client at once: exactly one s
   assert.equal(results.filter((r) => r.error === null).length, 1)
   assert.equal(results.filter((r) => r.error !== null).length, 1)
   assert.equal(must(await admin.from('client_engagements').select('id').eq('client_id', client).eq('kind', 'retainer').is('ended_on', null)).length, 1)
+})
+
+test('an engagement or a support service cannot be ended in the future or before it started', async () => {
+  const client = await newClient()
+  const project = (await setPackage(client, 'visual_communication', day(-20))).data as string
+  const support = (await memberClient.rpc('add_support_service', { p_engagement: project, p_service_key: 'support.communication_asset_care', p_start_date: day(-10) })).data as string
+  refused((await memberClient.rpc('end_support_service', { p_support: support, p_ended_on: day(3) })).error, 'PACKAGE_END_INVALID')
+  refused((await memberClient.rpc('end_support_service', { p_support: support, p_ended_on: day(-11) })).error, 'PACKAGE_END_INVALID')
+  refused((await memberClient.rpc('end_engagement', { p_engagement: project, p_ended_on: day(3) })).error, 'PACKAGE_END_INVALID')
+  refused((await memberClient.rpc('end_engagement', { p_engagement: project, p_ended_on: day(-21) })).error, 'PACKAGE_END_INVALID')
+  // Nothing was ended by the refused attempts, and a valid date still works.
+  assert.equal((await engagement(project)).ended_on, null)
+  assert.equal(must(await admin.from('engagement_support').select('ended_on').eq('id', support).single()).ended_on, null)
+  assert.equal((await memberClient.rpc('end_support_service', { p_support: support, p_ended_on: day(-10) })).error, null)
+  assert.equal((await memberClient.rpc('end_engagement', { p_engagement: project, p_ended_on: day(-20) })).error, null)
+  assert.equal((await engagement(project)).ended_on, day(-20))
+})
+
+test('a new retainer may not start on or before the end of an earlier one; the day after is allowed', async () => {
+  const client = await newClient()
+  const first = (await setPackage(client, 'growth', day(-30))).data as string
+  assert.equal((await memberClient.rpc('end_engagement', { p_engagement: first, p_ended_on: day(-10) })).error, null)
+  refused((await setPackage(client, 'signature', day(-10))).error, 'PACKAGE_OVERLAP')
+  refused((await setPackage(client, 'signature', day(-20))).error, 'PACKAGE_OVERLAP')
+  assert.equal(must(await admin.from('client_engagements').select('id').eq('client_id', client).eq('kind', 'retainer')).length, 1)
+  const next = await setPackage(client, 'signature', day(-9))
+  assert.equal(next.error, null)
+  assert.equal((await engagement(next.data as string)).start_date, day(-9))
+  // While that retainer is active, the active-retainer refusal still comes first.
+  refused((await setPackage(client, 'growth', day())).error, 'CLIENT_HAS_RETAINER')
+})
+
+test('the new refusal tokens: not a retainer, not a project, support already ended, archived client', async () => {
+  const client = await newClient()
+  const project = (await setPackage(client, 'visual_communication', day(-20))).data as string
+  const retainer = (await setPackage(client, 'growth', day(-20))).data as string
+  refused((await memberClient.rpc('change_retainer_tier', { p_engagement: project, p_new_package_key: 'private', p_start_date: day() })).error, 'ENGAGEMENT_NOT_RETAINER')
+  refused((await memberClient.rpc('add_support_service', { p_engagement: retainer, p_service_key: 'support.podcast_content', p_start_date: day() })).error, 'ENGAGEMENT_NOT_PROJECT')
+  const support = (await memberClient.rpc('add_support_service', { p_engagement: project, p_service_key: 'support.podcast_content', p_start_date: day(-5) })).data as string
+  assert.equal((await memberClient.rpc('end_support_service', { p_support: support, p_ended_on: day(-4) })).error, null)
+  refused((await memberClient.rpc('end_support_service', { p_support: support, p_ended_on: day(-3) })).error, 'SUPPORT_ALREADY_ENDED')
+
+  const archived = await newClient()
+  const archivedRetainer = (await setPackage(archived, 'growth', day(-20))).data as string
+  const archivedProject = (await setPackage(archived, 'visual_communication', day(-20))).data as string
+  assert.equal((await admin.from('clients').update({ archived_at: new Date().toISOString() }).eq('id', archived)).error, null)
+  refused((await memberClient.rpc('change_retainer_tier', { p_engagement: archivedRetainer, p_new_package_key: 'private', p_start_date: day() })).error, 'CLIENT_NOT_FOUND')
+  refused((await memberClient.rpc('add_support_service', { p_engagement: archivedProject, p_service_key: 'support.podcast_content', p_start_date: day() })).error, 'CLIENT_NOT_FOUND')
+})
+
+test('two projects recorded at the same moment when one place is left: exactly one is accepted', async () => {
+  const client = await newClient()
+  assert.equal((await setPackage(client, 'signature')).error, null)
+  assert.equal((await setPackage(client, 'digital_presence')).error, null)
+  const results = await Promise.all([setPackage(client, 'operating_model'), setPackage(client, 'digital_experience', null, ownerClient)])
+  assert.equal(results.filter((r) => r.error === null).length, 1)
+  refused(results.find((r) => r.error !== null)!.error, 'INITIATIVE_LIMIT_REACHED')
+  assert.equal(must(await admin.from('client_engagements').select('id').eq('client_id', client).eq('kind', 'project').is('ended_on', null)).length, 2)
+})
+
+test('a tier change that lands exactly on the new tier\'s limit is allowed; the client type follows the first package', async () => {
+  const client = await newClient()
+  assert.equal(must(await admin.from('clients').select('engagement_type').eq('id', client).single()).engagement_type, null)
+  assert.equal((await setPackage(client, 'digital_presence')).error, null)
+  assert.equal(must(await admin.from('clients').select('engagement_type').eq('id', client).single()).engagement_type, 'Project')
+  const retainer = (await setPackage(client, 'growth', day(-10))).data as string
+  assert.equal(must(await admin.from('clients').select('engagement_type').eq('id', client).single()).engagement_type, 'Retainer')
+  assert.equal((await setPackage(client, 'operating_model')).error, null)
+  // Growth with 2 active projects changed to Signature (limit 2): exactly at the limit, allowed.
+  const changed = await memberClient.rpc('change_retainer_tier', { p_engagement: retainer, p_new_package_key: 'signature', p_start_date: day(-5) })
+  assert.equal(changed.error, null)
+  // The new tier is full: a third project is refused.
+  refused((await setPackage(client, 'digital_experience')).error, 'INITIATIVE_LIMIT_REACHED')
 })
