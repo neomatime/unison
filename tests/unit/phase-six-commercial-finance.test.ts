@@ -47,6 +47,18 @@ test("all six modules use authenticated server queries and actions", () => {
     assert.match(queries, new RegExp('"' + table + '"'));
   }
   assert.match(queries, /db\.from\(table\)/);
+  assert.match(queries, /getSessionContext\(\)/);
+  assert.match(queries, /"financial_forecasts"/);
+  // The register page query takes its table from the register rules: the five tables are named there, once.
+  const specSource = read("features/registers/register-spec.ts");
+  const pageQuery = read("features/registers/queries/query-register.ts");
+  for (const table of tables.filter((name) => name !== "financial_forecasts")) {
+    assert.match(specSource, new RegExp("table: '" + table + "'"));
+  }
+  assert.match(pageQuery, /import 'server-only'/);
+  assert.match(pageQuery, /db\.from\(spec\.table\)/);
+  assert.match(pageQuery, /getSessionContext\(\)/);
+  assert.match(pageQuery, /applyRegisterFilters\(query, kind, params, organization\.id\)/);
   assert.match(actions, /"use server"/);
   assert.match(actions, /getSessionContext\(\)/);
   assert.match(actions, /eq\("organization_id", organization\.id\)/);

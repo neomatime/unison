@@ -56,3 +56,57 @@ test('the single-record read no longer loads a whole table', () => {
   assert.match(body, /kind === ['"]forecast['"][^\n]*\.find\(/, 'the one remaining find is the forecast path')
   assert.match(registers('queries', 'query-register.ts'), /PGRST103/, 'a page past the end is handled')
 })
+
+test('the register screen reads the address, asks for one page and the summary, and shows the three states', () => {
+  const source = registers('components', 'register-screen.tsx')
+  assert.doesNotMatch(source, /^\s*['"]use (client|server)['"]/, 'a server component')
+  assert.match(source, /readRegisterParams\(/)
+  assert.match(source, /queryRegister\(/)
+  assert.match(source, /getRegisterSummary\(/)
+  assert.match(source, /buildCards\(/)
+  assert.match(source, /Nothing matches these filters/)
+  assert.match(source, /Clear filters/)
+  assert.match(source, /Enter at least 2 characters to search\./)
+  assert.match(source, /Showing /)
+  assert.match(source, /aria-sort/)
+  assert.match(source, /Previous/)
+  assert.match(source, /Next/)
+  assert.match(source, /archiveRecordAction/)
+  assert.match(source, /restoreRecordAction/)
+  assert.doesNotMatch(source, /Duplicate/, 'Duplicate only pretended to work and is not offered')
+})
+
+test('the toolbar is a client component that changes the address and offers the four controls', () => {
+  const source = registers('components', 'register-toolbar.tsx')
+  assert.match(source, /^'use client'/)
+  assert.match(source, /name="q"/)
+  assert.match(source, /name="status"/)
+  assert.match(source, /name="owner"/)
+  assert.match(source, /name="archived"/)
+  assert.match(source, /useRouter\(/)
+  assert.doesNotMatch(source, /server-only|queries\//, 'a client component imports no server code')
+})
+
+test('the five registers pass the address on, keep PhaseSixRegister, and the old whole-table loading is gone', () => {
+  for (const [path, kind] of [
+    [['commercial', 'leads'], 'lead'], [['commercial', 'quotes'], 'quote'], [['commercial', 'sales'], 'opportunity'],
+    [['finance', 'invoices'], 'invoice'], [['finance', 'expenses'], 'expense'],
+  ] as const) {
+    const page = read('app', '(unison)', ...path, 'page.tsx')
+    assert.match(page, /PhaseSixRegister/)
+    assert.match(page, new RegExp(`kind="${kind}"`))
+    assert.match(page, /searchParams/)
+  }
+  const register = read('features', 'commercial-finance', 'components', 'phase-six-register.tsx')
+  assert.match(register, /RegisterScreen/)
+  assert.doesNotMatch(register, /listLeads|listQuotes|listOpportunities|listInvoices|listExpenses/)
+  const queries = read('features', 'commercial-finance', 'queries', 'phase-six.ts')
+  assert.doesNotMatch(queries, /export (const|async function) list(Leads|Quotes|Opportunities|Invoices|Expenses)/)
+  assert.doesNotMatch(queries, /allRows\(/)
+})
+
+test('the register rules are the only place a column name for the page comes from', () => {
+  for (const name of ['register-screen.tsx', 'register-toolbar.tsx']) {
+    assert.doesNotMatch(registers('components', name), /\.order\(|\.ilike\(|\.range\(/, `${name} does not build queries`)
+  }
+})

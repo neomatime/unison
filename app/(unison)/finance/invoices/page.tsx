@@ -1,5 +1,5 @@
 import { PhaseSixRegister } from '@/features/commercial-finance/components/phase-six-register'
 
-export default function Page() {
-  return <PhaseSixRegister kind="invoice" />
+export default async function Page({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  return <PhaseSixRegister kind="invoice" searchParams={await searchParams} />
 }

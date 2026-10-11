@@ -118,21 +118,6 @@ export async function mapRows(kind: Exclude<PhaseSixKind, "forecast">, rows: any
   return rows.map((row) => mapPhaseSixRow(kind, row, names));
 }
 
-// Removed in Task 3 when the register screen stops loading whole tables.
-async function allRows(table: string, orderColumn: string, ascending: boolean) {
-  const { organization, db } = await context();
-  const result = await db.from(table).select("*").eq("organization_id", organization.id).order(orderColumn, { ascending });
-  if (result.error) throw result.error;
-  return result.data ?? [];
-}
-
-// Removed in Task 3 when the register screen stops loading whole tables.
-export const listLeads = async () => mapRows("lead", await allRows("leads", "created_at", false));
-export const listQuotes = async () => mapRows("quote", await allRows("quotes", "created_at", false));
-export const listOpportunities = async () => mapRows("opportunity", await allRows("sales_opportunities", "created_at", false));
-export const listInvoices = async () => mapRows("invoice", await allRows("invoices", "created_at", false));
-export const listExpenses = async () => mapRows("expense", await allRows("expenses", "expense_date", false));
-
 export async function listForecasts(): Promise<PhaseSixRecord[]> {
   const { rows, options } = await records("financial_forecasts", "period_start", false);
   const members = makeMap(options.members);
