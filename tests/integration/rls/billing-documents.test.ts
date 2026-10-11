@@ -1,9 +1,13 @@
 import assert from 'node:assert/strict'
 import test, { after, before } from 'node:test'
-import type { SupabaseClient } from '@supabase/supabase-js'
+import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 
 import { admin, cleanup, createFixtureOrg, createFixtureUser, signedInClient } from './helpers.ts'
 import { seedRateCard } from './rate-card-fixture.ts'
+
+const anonymous = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!, {
+  auth: { autoRefreshToken: false, persistSession: false },
+})
 
 type U = { id: string; email: string; password: string }
 
@@ -299,7 +303,8 @@ test('an archived rate card item stops the build with a clear refusal and leaves
   const client = await newClient()
   const engagementId = await packageFor(client, 'digital_experience')
   const item = must(await admin.from('price_list_items').select('id').eq('organization_id', orgA).eq('rate_key', 'project.digital_experience').single())
-  assert.equal((await ownerClient.from('price_list_items').update({ archived_at: new Date().toISOString() }).eq('id', item.id)).error, null)
+  // Retired the way a migration would (the service role): no signed-in role may archive a rate card item.
+  assert.equal((await admin.from('price_list_items').update({ archived_at: new Date().toISOString() }).eq('id', item.id)).error, null)
   try {
     refused((await firstDoc(engagementId)).error, 'RATE_ITEM_UNAVAILABLE')
     assert.equal(must(await admin.from('invoices').select('id').eq('client_id', client)).length, 0)
@@ -348,7 +353,7 @@ test('nothing crosses organisations', async () => {
   refused((await outsiderClient.rpc('create_invoice_from_quote', { p_quote_id: (await firstDoc(engagementId, 'quote')).data as string })).error, 'QUOTE_NOT_FOUND')
 })
 
-test('a tier change before any first invoice: the successor builds the chain\'s first invoice at the new tier, linked to the root', async () => {
+test('a tier change before any first invoice: the successor builds the chain\'s first invoice at the ROOT\'s tier, linked to the root', async () => {
   const client = await newClient()
   const root = await packageFor(client, 'growth', day(-100))
   const changed = await memberClient.rpc('change_retainer_tier', { p_engagement: root, p_new_package_key: 'private', p_start_date: day(-5) })
@@ -359,13 +364,17 @@ test('a tier change before any first invoice: the successor builds the chain\'s 
   const row = await invoice(built.data as string)
   assert.equal(row.billing_kind, 'first')
   assert.equal(row.engagement_id, root, 'the link is the chain\'s root')
-  assert.equal(Number(row.total_amount), 460000)
+  assert.equal(Number(row.total_amount), 345000, 'the Growth first invoice: the first retainer\'s implementation fee stands for the chain')
   const l = await invoiceLines(row.id)
   assert.equal(l.length, 2)
-  assert.match(l[0].title, /Private Partner: monthly retainer/)
-  assert.match(l[1].title, /Private Partner: one-time implementation/)
-  assert.deepEqual(l.map((x) => Number(x.unit_price)), [200000, 200000])
+  assert.match(l[0].title, /Growth Partner: monthly retainer/)
+  assert.match(l[1].title, /Growth Partner: one-time implementation/)
+  assert.deepEqual(l.map((x) => Number(x.unit_price)), [150000, 150000])
   assert.deepEqual(l.map((x) => x.rate_locked), [true, true])
+  const timeline = must(await admin.from('activities').select('subject, details').eq('client_id', client).eq('kind', 'billing.document_built'))
+  assert.equal(timeline.length, 1)
+  assert.match(timeline[0].subject, /Growth Partner: monthly retainer/)
+  assert.equal((timeline[0].details as Record<string, unknown>).built_through, successor)
 
   refused((await firstDoc(root)).error, 'FIRST_INVOICE_EXISTS')
   refused((await firstDoc(successor)).error, 'IMPLEMENTATION_ALREADY_BILLED')
@@ -411,7 +420,8 @@ test('a first quote built through a successor is linked to the root and converts
   const qrow = await quote(q1.data as string)
   assert.equal(qrow.engagement_id, root)
   assert.equal(qrow.billing_kind, 'first')
-  assert.equal(Number(qrow.total_amount), 460000)
+  assert.equal(Number(qrow.total_amount), 345000, 'built at the root\'s tier (Growth), like the first invoice')
+  assert.match((await lines('quote_lines', 'quote_id', qrow.id))[1].title, /Growth Partner: one-time implementation/)
 
   for (const id of [q1.data as string, q2.data as string]) {
     numberSeed += 1
@@ -474,4 +484,144 @@ test('a built document cannot be moved to another client, but a hand-made draft 
 
   const hand = must(await memberClient.from('invoices').insert({ organization_id: orgA, client_id: client, client_name: 'Hand made' }).select('id').single())
   assert.equal((await memberClient.from('invoices').update({ client_id: elsewhere }).eq('id', hand.id)).error, null)
+})
+
+test('the currency of a built draft is fixed for a member, on invoices and quotes; a hand-made draft keeps it free', async () => {
+  const client = await newClient()
+  const engagementId = await packageFor(client, 'signature')
+  const built = await firstDoc(engagementId)
+  const builtQuote = await firstDoc(engagementId, 'quote')
+  assert.equal(built.error, null)
+  assert.equal(builtQuote.error, null)
+  refused((await memberClient.from('invoices').update({ currency: 'USD' }).eq('id', built.data as string).select('id')).error, 'BILLING_COLUMNS_GENERATED')
+  refused((await memberClient.from('quotes').update({ currency: 'USD' }).eq('id', builtQuote.data as string).select('id')).error, 'BILLING_COLUMNS_GENERATED')
+  assert.equal((await invoice(built.data as string)).currency, 'ZAR')
+  assert.equal((await quote(builtQuote.data as string)).currency, 'ZAR')
+  // Other fields of the built draft stay editable.
+  assert.equal((await memberClient.from('invoices').update({ notes: 'Checked' }).eq('id', built.data as string)).error, null)
+
+  const hand = must(await memberClient.from('invoices').insert({ organization_id: orgA, client_id: client, client_name: 'Hand made' }).select('id').single())
+  assert.equal((await memberClient.from('invoices').update({ currency: 'USD' }).eq('id', hand.id)).error, null)
+})
+
+test('Ruling 8: a retainer ended this month with no replacement is still billed for this month', async () => {
+  const client = await newClient()
+  const retainer = await packageFor(client, 'growth', day(-100))
+  assert.equal((await firstDoc(retainer)).error, null)
+  // Today is the latest allowed end date (end dates may not be in the future); by the UTC day it is never after the SA day.
+  assert.equal((await memberClient.rpc('end_engagement', { p_engagement: retainer, p_ended_on: day(0) })).error, null)
+  const built = await monthly(client, monthOffset(0))
+  assert.equal(built.error, null, 'in force for part of the month: billed for it, no proration')
+  const l = await invoiceLines(built.data as string)
+  assert.equal(l.length, 1)
+  assert.match(l[0].title, /Growth Partner: monthly retainer/)
+  assert.equal(Number((await invoice(built.data as string)).total_amount), 172500)
+})
+
+test('Ruling 8: a retainer that ended before the month is not billed for it, but is for the month it ended in', async () => {
+  const client = await newClient()
+  const retainer = await packageFor(client, 'growth', day(-200))
+  assert.equal((await firstDoc(retainer)).error, null)
+  const ended = day(-100)
+  assert.equal((await memberClient.rpc('end_engagement', { p_engagement: retainer, p_ended_on: ended })).error, null)
+  refused((await monthly(client, monthOffset(0))).error, 'NOTHING_TO_BILL')
+  const lastMonth = await monthly(client, monthStart(ended))
+  assert.equal(lastMonth.error, null, 'the month it ended in')
+  assert.match((await invoiceLines(lastMonth.data as string))[0].title, /Growth Partner: monthly retainer/)
+  assert.equal(Number((await invoice(lastMonth.data as string)).total_amount), 172500)
+})
+
+test('Ruling 8: a retainer replaced inside a month bills that month at the later tier, and the month before at the earlier one', async () => {
+  const client = await newClient()
+  const root = await packageFor(client, 'growth', day(-200))
+  assert.equal((await firstDoc(root)).error, null)
+  const month = monthOffset(-2)
+  const changed = await memberClient.rpc('change_retainer_tier', { p_engagement: root, p_new_package_key: 'private', p_start_date: `${month.slice(0, 8)}15` })
+  assert.equal(changed.error, null)
+  assert.equal(must(await admin.from('client_engagements').select('ended_on').eq('id', root).single()).ended_on, `${month.slice(0, 8)}14`)
+
+  const replacedIn = await monthly(client, month)
+  assert.equal(replacedIn.error, null)
+  const replacedLines = await invoiceLines(replacedIn.data as string)
+  assert.equal(replacedLines.length, 1, 'one retainer line: the two tiers are never both billed')
+  assert.match(replacedLines[0].title, /Private Partner: monthly retainer/)
+  assert.equal(Number((await invoice(replacedIn.data as string)).total_amount), 230000)
+
+  const before = await monthly(client, monthOffset(-3))
+  assert.equal(before.error, null)
+  assert.match((await invoiceLines(before.data as string))[0].title, /Growth Partner: monthly retainer/)
+  assert.equal(Number((await invoice(before.data as string)).total_amount), 172500)
+})
+
+test('support that starts after its project ended is never billed, and ending a project removes support that had not started', async () => {
+  const client = await newClient()
+  const project = await packageFor(client, 'digital_presence', monthOffset(-6))
+  const projectEnd = `${monthOffset(-3).slice(0, 8)}10`
+  const lateStart = `${monthOffset(-2).slice(0, 8)}05`
+  const running = await memberClient.rpc('add_support_service', { p_engagement: project, p_service_key: 'support.digital_presence_management', p_start_date: monthOffset(-5) })
+  assert.equal(running.error, null)
+  const late = await memberClient.rpc('add_support_service', { p_engagement: project, p_service_key: 'support.website_care', p_start_date: lateStart })
+  assert.equal(late.error, null)
+
+  assert.equal((await memberClient.rpc('end_engagement', { p_engagement: project, p_ended_on: projectEnd })).error, null)
+  const left = must(await admin.from('engagement_support').select('id, service_key, ended_on').eq('engagement_id', project))
+  assert.deepEqual(left.map((s) => s.id), [running.data], 'the service that had not started by the end date is removed')
+  assert.equal(left[0].ended_on, projectEnd, 'the running one ends with the project')
+
+  // A row like the ones the earlier end_engagement left behind: it starts after the project ended.
+  assert.equal((await admin.from('engagement_support').insert({ organization_id: orgA, engagement_id: project, service_key: 'support.website_care', start_date: lateStart, ended_on: lateStart })).error, null)
+  refused((await monthly(client, monthOffset(-2))).error, 'NOTHING_TO_BILL')
+
+  const projectMonth = await monthly(client, monthOffset(-3))
+  assert.equal(projectMonth.error, null, 'the month the project ended in still bills the service that ran in it')
+  const l = await invoiceLines(projectMonth.data as string)
+  assert.deepEqual(l.map((x) => x.title), ['Digital Presence Management: monthly'])
+  assert.equal(Number((await invoice(projectMonth.data as string)).subtotal), 20000)
+})
+
+test('discard_billing_draft: a member discards a built draft and builds it again; nothing else can be discarded', async () => {
+  const discard = (id: string, db: SupabaseClient = memberClient) => db.rpc('discard_billing_draft', { p_invoice: id })
+  const client = await newClient()
+  const retainer = await packageFor(client, 'growth', day(-100))
+
+  const first = await firstDoc(retainer)
+  assert.equal(first.error, null)
+  assert.equal((await discard(first.data as string)).error, null)
+  assert.equal(must(await admin.from('invoices').select('id').eq('id', first.data as string)).length, 0, 'the draft is gone')
+  assert.equal(must(await admin.from('invoice_lines').select('id').eq('invoice_id', first.data as string)).length, 0, 'and its lines with it')
+  const rebuilt = await firstDoc(retainer)
+  assert.equal(rebuilt.error, null, 'the first-invoice slot is free again')
+
+  const month = await monthly(client, monthOffset(0))
+  assert.equal(month.error, null)
+  refused((await monthly(client, monthOffset(0))).error, 'MONTH_ALREADY_BILLED')
+  assert.equal((await discard(month.data as string)).error, null)
+  const again = await monthly(client, monthOffset(0))
+  assert.equal(again.error, null, 'the month is free again')
+
+  // Another organisation, an unknown id and a signed-out caller cannot discard it; it is still there.
+  refused((await discard(again.data as string, outsiderClient)).error, 'INVOICE_NOT_FOUND')
+  refused((await discard('00000000-0000-4000-8000-00000000abcd')).error, 'INVOICE_NOT_FOUND')
+  const signedOut = await anonymous.rpc('discard_billing_draft', { p_invoice: again.data as string })
+  assert.ok(signedOut.error)
+  assert.match(signedOut.error!.message, /permission denied for function discard_billing_draft/)
+  assert.equal(must(await admin.from('invoices').select('id').eq('id', again.data as string)).length, 1)
+
+  // Issued and cancelled invoices are not drafts; a hand-made draft has no billing link.
+  numberSeed += 1
+  assert.equal((await admin.from('invoices').update({ invoice_number: `T-I-${Date.now()}-${numberSeed}`, status: 'Issued' }).eq('id', again.data as string)).error, null)
+  refused((await discard(again.data as string)).error, 'BILLING_DRAFT_ONLY')
+  await cancel(rebuilt.data as string)
+  refused((await discard(rebuilt.data as string)).error, 'BILLING_DRAFT_ONLY')
+  const hand = must(await memberClient.from('invoices').insert({ organization_id: orgA, client_id: client, client_name: 'Hand made' }).select('id').single())
+  refused((await discard(hand.id)).error, 'BILLING_DRAFT_ONLY')
+  for (const id of [again.data as string, rebuilt.data as string, hand.id]) {
+    assert.equal(must(await admin.from('invoices').select('id').eq('id', id)).length, 1, `${id} is kept`)
+  }
+
+  // A top-up draft can be discarded too.
+  const topped = await topUp(retainer, 3)
+  assert.equal(topped.error, null)
+  assert.equal((await discard(topped.data as string)).error, null)
+  assert.equal(must(await admin.from('invoices').select('id').eq('id', topped.data as string)).length, 0)
 })

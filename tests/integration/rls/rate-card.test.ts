@@ -69,8 +69,9 @@ test('only an owner or admin can change a rate card price, and not the item\'s i
   const growth = await rateItem('retainer.growth.monthly')
   const byMember = await memberClient.from('price_list_items').update({ unit_price: 1 }).eq('id', growth.id).select('id')
   refused(byMember.error, 'RATE_CARD_ADMIN_ONLY')
+  // Archiving is refused for every signed-in role, before the owner/admin check (see the archive test below).
   const archiveByMember = await memberClient.from('price_list_items').update({ archived_at: new Date().toISOString() }).eq('id', growth.id).select('id')
-  refused(archiveByMember.error, 'RATE_CARD_ADMIN_ONLY')
+  refused(archiveByMember.error, 'RATE_CARD_NOT_ARCHIVABLE')
   const byOwner = await ownerClient.from('price_list_items').update({ unit_price: 150001 }).eq('id', growth.id).select('unit_price').single()
   assert.equal(byOwner.error, null)
   assert.equal(Number(byOwner.data!.unit_price), 150001)
@@ -147,6 +148,42 @@ test('an admin can change a rate card price and description, an owner can change
   assert.equal(byOwner.error, null)
   assert.equal(byOwner.data!.description, 'Owner wording')
   refused((await memberClient.from('price_list_items').update({ description: 'Member wording' }).eq('id', care.id).select('id')).error, 'RATE_CARD_ADMIN_ONLY')
+})
+
+test('no signed-in role can archive or restore a rate card item or change its VAT code; an admin can still change its price', async () => {
+  const item = await rateItem('project.digital_experience')
+  assert.equal(item.archived_at, null)
+  assert.equal(item.vat_code, 'standard')
+  for (const [who, db] of [['owner', ownerClient], ['admin', adminClient], ['member', memberClient]] as const) {
+    const archived = await db.from('price_list_items').update({ archived_at: new Date().toISOString() }).eq('id', item.id).select('id')
+    assert.ok(archived.error, `${who}: archive refused`)
+    refused(archived.error, 'RATE_CARD_NOT_ARCHIVABLE')
+    const vat = await db.from('price_list_items').update({ vat_code: 'zero' }).eq('id', item.id).select('id')
+    assert.ok(vat.error, `${who}: VAT change refused`)
+    refused(vat.error, 'RATE_CARD_FIXED')
+  }
+  const unchanged = await rateItem('project.digital_experience')
+  assert.equal(unchanged.archived_at, null)
+  assert.equal(unchanged.vat_code, 'standard')
+
+  // A rate card item retired by a migration (the service role) cannot be restored by a signed-in role either.
+  assert.equal((await admin.from('price_list_items').update({ archived_at: new Date().toISOString() }).eq('id', item.id)).error, null)
+  try {
+    refused((await ownerClient.from('price_list_items').update({ archived_at: null }).eq('id', item.id).select('id')).error, 'RATE_CARD_NOT_ARCHIVABLE')
+  } finally {
+    assert.equal((await admin.from('price_list_items').update({ archived_at: null }).eq('id', item.id)).error, null)
+  }
+
+  const priced = await adminClient.from('price_list_items').update({ unit_price: 65001 }).eq('id', item.id).select('unit_price').single()
+  assert.equal(priced.error, null)
+  assert.equal(Number(priced.data!.unit_price), 65001)
+  // Saving the price list form sends the unchanged VAT code with the price: that is not a change, so it is allowed.
+  assert.equal((await adminClient.from('price_list_items').update({ unit_price: 65000, vat_code: 'standard' }).eq('id', item.id)).error, null)
+  assert.equal(Number((await rateItem('project.digital_experience')).unit_price), 65000)
+
+  // A custom item is unaffected: a member may change its VAT code and archive it.
+  const custom = must(await memberClient.from('price_list_items').insert({ organization_id: orgA, title: 'Custom VAT', unit_price: 10 }).select('id').single())
+  assert.equal((await memberClient.from('price_list_items').update({ vat_code: 'zero', archived_at: new Date().toISOString() }).eq('id', custom.id)).error, null)
 })
 
 test('a rate card item cannot be moved to another organisation, even by someone who belongs to both', async () => {
