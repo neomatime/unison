@@ -89,3 +89,38 @@ test('getDocument is wrapped in cache() so one page loads a document once', () =
   assert.match(source, /import \{ cache \} from 'react'/)
   assert.match(source, /export const getDocument = cache\(/)
 })
+
+test('the email action checks everything cheap first, sends once, and records only after the mail server accepts', () => {
+  const source = read('actions', 'email.ts')
+  assert.match(source, /^'use server'/)
+  const order = [
+    'isDocumentKind(kind)',
+    'readEmailFields(',
+    'getDocument(',
+    'isDraftStatus(',
+    '>= HOURLY_EMAIL_CAP',
+    'makeDocumentPdf(',
+    '> MAX_EMAIL_PDF_BYTES',
+    'await sendEmail(',
+    "rpc('record_document_email'",
+  ].map((marker) => {
+    const at = source.indexOf(marker)
+    assert.ok(at > -1, `${marker} must appear in the email action`)
+    return at
+  })
+  assert.deepEqual([...order].sort((a, b) => a - b), order, 'the steps must run in this order')
+  assert.equal(source.split('await sendEmail(').length - 1, 1, 'exactly one send')
+  assert.equal(source.split("rpc('record_document_email'").length - 1, 1, 'exactly one record')
+  assert.match(source, /catch \(error\)[\s\S]*?refused the message/, 'a refusal by the mail server is reported, not recorded')
+  assert.doesNotMatch(source, /process\.env|GRAPH_|MAIL_FROM|createClient\(|SUPABASE_SECRET/, 'no secrets and no service client in the action')
+  assert.match(source, /Sent, but we couldn't record it/)
+})
+
+test('the shared email module is loadable by tests', () => {
+  for (const name of ['email.ts', 'action-failure.ts']) {
+    const source = read(name)
+    assert.ok(!isClient(source), name)
+    assert.doesNotMatch(source, /server-only/, name)
+    assert.doesNotMatch(source, /from\s+['"]@\//, name)
+  }
+})
