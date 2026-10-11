@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { buildCsv, buildPdf, buildXlsx } from "@/features/data-portability/file-formats";
 import { isPortableCollection, portableDefinitions } from "@/features/data-portability/portable-collections";
 import { applyRegisterFilters, applyRegisterOrder } from "@/features/registers/apply-filters";
-import { EXPORT_LIMIT, EXPORT_TOO_MANY, readExportRequest } from "@/features/registers/export-query";
+import { EXPORT_LIMIT, EXPORT_TOO_MANY, isOverCap, readAllRows, readExportRequest } from "@/features/registers/export-query";
 import { getSessionContext } from "@/lib/auth/get-session-context";
 import { createServerSupabase } from "@/lib/supabase/server";
 
@@ -25,21 +25,30 @@ export async function GET(request: Request) {
     if (ids.some((id) => !uuidPattern.test(id))) return NextResponse.json({ message: "The export contains an invalid record identifier." }, { status: 400 });
 
     const supabase = await createServerSupabase();
-    const selected = (supabase as any).from(definition.table).select(definition.columns.map((item) => item.key).join(","));
-    let query;
-    if (exportRequest.kind && exportRequest.params) {
-      // A register export: everything that matches the page's filters, whichever page the person was on. `ids` is ignored.
-      // applyRegisterFilters scopes by organisation.
-      query = applyRegisterOrder(applyRegisterFilters(selected, exportRequest.kind, exportRequest.params, organization.id), exportRequest.kind, exportRequest.params);
-    } else {
-      query = selected.eq("organization_id", organization.id).order(definition.orderBy, { ascending: false });
-      if (ids.length) query = query.in("id", ids.slice(0, EXPORT_LIMIT));
-    }
-    // One row more than the cap, so "too many" can be told apart from "exactly the cap" without counting.
-    const { data, error } = await query.limit(EXPORT_LIMIT + 1);
-    if (error) return NextResponse.json({ message: error.message }, { status: 422 });
-    const rows = (data ?? []) as Record<string, unknown>[];
-    if (rows.length > EXPORT_LIMIT) return NextResponse.json({ message: EXPORT_TOO_MANY }, { status: 413 });
+    const columns = definition.columns.map((item) => item.key).join(",");
+    const { kind, params } = exportRequest;
+    // The same filters for the count and for every page of rows. A register export is everything that matches the page's
+    // filters, whichever page the person was on (`ids` is ignored); applyRegisterFilters scopes by organisation.
+    const scope = (builder: any) => {
+      if (kind && params) return applyRegisterFilters(builder, kind, params, organization.id);
+      const scoped = builder.eq("organization_id", organization.id);
+      return ids.length ? scoped.in("id", ids.slice(0, EXPORT_LIMIT)) : scoped;
+    };
+    const order = (builder: any) => (kind && params ? applyRegisterOrder(builder, kind, params) : builder.order(definition.orderBy, { ascending: false }).order("id", { ascending: true }));
+
+    // The server answers at most 1,000 rows per request whatever limit() asks for, so the size is decided from an exact
+    // count first, and the rows are then read range by range.
+    const counted = await scope((supabase as any).from(definition.table).select(columns, { count: "exact", head: true }));
+    if (counted.error) return NextResponse.json({ message: counted.error.message }, { status: 422 });
+    if (typeof counted.count !== "number") return NextResponse.json({ message: "The export could not be prepared." }, { status: 500 });
+    if (isOverCap(counted.count)) return NextResponse.json({ message: EXPORT_TOO_MANY }, { status: 413 });
+    const read = await readAllRows<Record<string, unknown>>(
+      (from, to) => order(scope((supabase as any).from(definition.table).select(columns))).range(from, to),
+      counted.count,
+    );
+    if (read.error) return NextResponse.json({ message: read.error }, { status: 422 });
+    if (read.tooMany) return NextResponse.json({ message: EXPORT_TOO_MANY }, { status: 413 });
+    const rows = read.rows;
 
     let bytes: Buffer;
     let mime: string;

@@ -6,7 +6,7 @@ import { portableDefinitions, type PortableCollection } from '@/features/data-po
 import { HealthBadge, MetricCard } from '@/features/delivery/components/delivery-primitives'
 import { collectionSlug } from '@/features/product-ui/collection-route-storage'
 import { archiveRecordAction, restoreRecordAction } from '../actions/archive'
-import { readRegisterParams, registerHref, type RawParams } from '../read-register-params'
+import { readRegisterParams, registerHref, typedSearch, type RawParams } from '../read-register-params'
 import { getRegisterSummary } from '../queries/get-register-summary'
 import { listOwners } from '../queries/list-owners'
 import { queryRegister } from '../queries/query-register'
@@ -29,6 +29,8 @@ export async function RegisterScreen({ kind, searchParams }: { kind: RegisterKin
   const frame = REGISTER_FRAMES[kind]
   const spec = REGISTERS[kind]
   const params = readRegisterParams(kind, searchParams)
+  // The search box shows what was typed in the address (so it agrees with "Enter at least 2 characters"), not the cleaned text.
+  const typed = typedSearch(searchParams)
   const [{ records, total, window }, summary, owners] = await Promise.all([queryRegister(kind, params), getRegisterSummary(kind), listOwners()])
   const cards = buildCards(kind, summary)
   const rows = records.map((record) => toRegisterRow(kind, record))
@@ -53,9 +55,9 @@ export async function RegisterScreen({ kind, searchParams }: { kind: RegisterKin
       </div>
       <section className="mt-5 overflow-hidden rounded-none border border-border bg-card">
         <RegisterToolbar
-          key={params.q}
+          key={typed}
           base={frame.base}
-          q={params.q}
+          q={typed}
           status={params.status}
           owner={params.owner}
           archived={params.archived}
@@ -145,7 +147,7 @@ export async function RegisterScreen({ kind, searchParams }: { kind: RegisterKin
         )}
         {rows.length > 0 ? (
           <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-5 py-3 text-xs text-muted-foreground">
-            <p>Showing {window.from}–{window.to} of {total.toLocaleString('en-ZA')}</p>
+            <p>Showing {window.from.toLocaleString('en-ZA')}–{window.to.toLocaleString('en-ZA')} of {total.toLocaleString('en-ZA')}</p>
             <nav aria-label="Pages" className="flex items-center gap-3">
               {window.page > 1 ? (
                 <Link href={registerHref(frame.base, params, { page: window.page - 1 })} rel="prev" className="unison-action-control border border-border px-3 py-1.5 font-medium text-foreground hover:bg-muted">Previous</Link>

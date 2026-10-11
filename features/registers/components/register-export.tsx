@@ -34,7 +34,8 @@ export function RegisterExport({ collection, kind, query }: { collection: string
       document.body.appendChild(link)
       link.click()
       link.remove()
-      URL.revokeObjectURL(url)
+      // Safari and iOS abort the download if the address is revoked straight away.
+      setTimeout(() => URL.revokeObjectURL(url), 1000)
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'The export could not be prepared.')
     } finally {

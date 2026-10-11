@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { PAGE_SIZE, cleanSearch, readRegisterParams, registerHref } from '../../features/registers/read-register-params.ts'
+import { PAGE_SIZE, cleanSearch, readRegisterParams, registerHref, typedSearch } from '../../features/registers/read-register-params.ts'
 
 const UUID = '3b241101-e2bb-4255-8caf-4136c566a962'
 
@@ -16,6 +16,18 @@ test('search text keeps letters, digits, spaces and . @ + \' - and nothing else'
   assert.equal(cleanSearch('"; drop table leads; --'), 'drop table leads --')
   assert.equal(cleanSearch('x'.repeat(500)).length, 120)
   assert.equal(cleanSearch(''), '')
+})
+
+test('an accent typed as a letter plus a combining mark is kept, not split', () => {
+  assert.equal(cleanSearch('José Zoë'), 'José Zoë')
+  assert.equal(cleanSearch('José'), cleanSearch('José'))
+})
+
+test('the box shows what was typed in the address, even a single character that is not searched', () => {
+  assert.equal(typedSearch(new URLSearchParams('q=a')), 'a')
+  assert.equal(typedSearch({ q: '  a,b ' }), 'a,b')
+  assert.equal(typedSearch({}), '')
+  assert.equal(readRegisterParams('lead', { q: 'a' }).searchTooShort, true)
 })
 
 test('an empty address gives the defaults', () => {

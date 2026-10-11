@@ -26,13 +26,15 @@ async function setArchived(kind: string, id: string, archive: boolean): Promise<
   if (!found.data) return { error: 'That record was not found.' }
   if (archive && found.data.archived_at) return { error: 'This record is already archived.' }
   if (!archive && !found.data.archived_at) return { error: 'This record is not archived.' }
-  const result = await db
+  // The state is part of the write, so two people acting at once cannot both succeed or overwrite each other's timestamp.
+  const write = db
     .from(table)
     .update({ archived_at: archive ? new Date().toISOString() : null })
     .eq('id', id)
     .eq('organization_id', organization.id)
-    .select('id')
-  if (result.error || !result.data?.length) return { error: 'The record could not be changed. Please try again.' }
+  const result = await (archive ? write.is('archived_at', null) : write.not('archived_at', 'is', null)).select('id')
+  if (result.error) return { error: 'The record could not be changed. Please try again.' }
+  if (!result.data?.length) return { error: archive ? 'This record is already archived.' : 'This record is not archived.' }
   refresh(kind, id)
   return { success: archive ? 'Archived.' : 'Restored.' }
 }

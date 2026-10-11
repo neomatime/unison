@@ -43,6 +43,9 @@ test('the archive actions check the kind and the id first, write only archived_a
   assert.match(source, /\.eq\('organization_id', organization\.id\)/)
   assert.match(source, /This record is already archived\./)
   assert.match(source, /This record is not archived\./)
+  assert.match(source, /\.is\('archived_at', null\)/, 'archiving only touches a row that is not archived yet')
+  assert.match(source, /\.not\('archived_at', 'is', null\)/, 'restoring only touches a row that is archived')
+  assert.match(source, /!result\.data\?\.length\) return \{ error: archive \? 'This record is already archived\.' : 'This record is not archived\.' \}/, 'no row updated means someone else got there first')
 })
 
 test('the single-record read no longer loads a whole table', () => {

@@ -30,9 +30,15 @@ const first = (raw: RawParams, key: string): string => {
 
 /** Keeps letters, digits, spaces and . @ + ' - ; every other run becomes one space; trimmed and cut to 120 characters. */
 export function cleanSearch(raw: string): string {
-  const text = raw.replace(/[^\p{L}\p{N} .@+'-]+/gu, ' ').replace(/\s+/g, ' ').trim()
+  // Composed first: "e" + a combining accent would otherwise lose the accent and split the word.
+  const text = raw.normalize('NFC').replace(/[^\p{L}\p{N} .@+'-]+/gu, ' ').replace(/\s+/g, ' ').trim()
   // By code points, so a character written with two UTF-16 units is never cut in half.
   return Array.from(text).slice(0, SEARCH_MAX).join('').trim()
+}
+
+/** What the person typed in the address as the search (trimmed, not cleaned), so the search box can show it. */
+export function typedSearch(raw: RawParams): string {
+  return first(raw, 'q').trim()
 }
 
 export function readRegisterParams(kind: RegisterKind, raw: RawParams): RegisterParams {

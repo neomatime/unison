@@ -2,6 +2,9 @@ import assert from 'node:assert/strict'
 import test, { after, before } from 'node:test'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 
+import { applyRegisterFilters, applyRegisterOrder } from '../../../features/registers/apply-filters.ts'
+import { isOverCap, readAllRows } from '../../../features/registers/export-query.ts'
+import { readRegisterParams } from '../../../features/registers/read-register-params.ts'
 import { admin, cleanup, createFixtureOrg, createFixtureUser, signedInClient } from './helpers.ts'
 
 type U = { id: string; email: string; password: string }
@@ -158,6 +161,28 @@ test('a register with more than 1,000 rows pages to its last row with the exact 
   assert.ok(pastEnd.error?.code === 'PGRST103' || (pastEnd.data ?? []).length === 0, 'past the end is an error or an empty page, never more rows')
   const ids = new Set([...pageOne.data!, ...lastPage.data!].map((row) => row.id))
   assert.equal(ids.size, 50, 'no row appears on both pages')
+})
+
+test('the export reader gets all 1,100 invoices past the 1,000-row server limit, once each, as the member', async () => {
+  // Uses the 1,100 invoices the paging test above inserted, through the same filters, order, count and reader as the export route.
+  assert.equal(bulkInvoiceIds.length, 1100, 'the paging test above must have inserted the fixture')
+  const params = readRegisterParams('invoice', new URLSearchParams(''))
+  const counted = await applyRegisterFilters((bigClient as any).from('invoices').select('id', { count: 'exact', head: true }), 'invoice', params, orgBig)
+  assert.equal(counted.error, null)
+  assert.equal(counted.count, 1100)
+  assert.equal(isOverCap(counted.count), false)
+  const read = await readAllRows<{ id: string }>(
+    (from, to) => applyRegisterOrder(applyRegisterFilters((bigClient as any).from('invoices').select('id'), 'invoice', params, orgBig), 'invoice', params).range(from, to),
+    counted.count!,
+  )
+  assert.equal(read.error, null)
+  assert.equal(read.tooMany, false)
+  assert.equal(read.rows.length, 1100, 'all of them, not the first 1,000')
+  assert.equal(new Set(read.rows.map((row) => row.id)).size, 1100, 'no duplicates between ranges')
+  assert.deepEqual(new Set(read.rows.map((row) => row.id)), new Set(bulkInvoiceIds))
+  // A member of another organisation counts none of them through the same filters.
+  const foreign = await applyRegisterFilters((otherClient as any).from('invoices').select('id', { count: 'exact', head: true }), 'invoice', params, orgBig)
+  assert.equal(foreign.count, 0)
 })
 
 test('the forecast no longer counts an archived invoice as money still due', async () => {
