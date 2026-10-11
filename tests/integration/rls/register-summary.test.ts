@@ -6,7 +6,8 @@ import { admin, cleanup, createFixtureOrg, createFixtureUser, signedInClient } f
 
 type U = { id: string; email: string; password: string }
 
-const startedAt = new Date().toISOString()
+/** The ids of the 1,100 bulk fixture invoices, so their audit rows can be removed exactly. */
+const bulkInvoiceIds: string[] = []
 
 let orgA: string
 let orgB: string
@@ -53,10 +54,13 @@ after(async () => {
   try {
     await cleanup([orgA, orgB, orgBig].filter(Boolean), [member?.id, other?.id, bigMember?.id].filter(Boolean))
   } finally {
-    // The 1,100 fixture invoices write 2,200 audit rows (an insert and a delete each) that outlive their organisation,
-    // and cleanup() may not reach all of them (it reads at most 1,000 rows at a time). Only this test suite deletes
-    // organisations, so a null-organisation 'invoices' event created since this file started can only be its own.
-    await admin.from('audit_events').delete().is('organization_id', null).eq('resource', 'invoices').gte('created_at', startedAt)
+    // The 1,100 fixture invoices write 2,200 audit rows (an insert and a delete each) that outlive their organisation.
+    // cleanup() cannot be relied on to reach all of them (PostgREST caps its selects at 1,000 rows), so this test removes
+    // exactly the audit rows of its own invoices, by the ids it inserted, and nothing else.
+    for (let start = 0; start < bulkInvoiceIds.length; start += 200) {
+      const { error } = await admin.from('audit_events').delete().eq('resource', 'invoices').in('resource_id', bulkInvoiceIds.slice(start, start + 200))
+      if (error) console.error('could not remove the bulk invoice audit rows:', error)
+    }
   }
 })
 
@@ -139,7 +143,7 @@ test('an unknown register is refused, another organisation sees nothing, a non-m
 test('a register with more than 1,000 rows pages to its last row with the exact total', async () => {
   const rows = Array.from({ length: 1100 }, () => ({ organization_id: orgBig, client_name: 'Bulk Client' }))
   for (let start = 0; start < rows.length; start += 500) {
-    must(await admin.from('invoices').insert(rows.slice(start, start + 500)).select('id'))
+    bulkInvoiceIds.push(...must(await admin.from('invoices').insert(rows.slice(start, start + 500)).select('id')).map((row) => row.id as string))
   }
   assert.equal((await summary('invoice', bigClient, orgBig)).count, 1100)
   const pageOne = await bigClient.from('invoices').select('id', { count: 'exact' }).eq('organization_id', orgBig).is('archived_at', null).order('created_at', { ascending: false }).order('id', { ascending: true }).range(0, 24)

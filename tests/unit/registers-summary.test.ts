@@ -47,3 +47,12 @@ test('the card labels are the ones the registers show today', () => {
   assert.deepEqual(buildCards('opportunity', {}).map((card) => card.label), ['Open opportunities', 'Pipeline value', 'Weighted forecast'])
   assert.deepEqual(buildCards('expense', {}).map((card) => card.label), ['Recorded expenses', 'Awaiting approval', 'Approved'])
 })
+
+test('a populated summary puts each figure on its own card, so a swapped key fails', () => {
+  const values = (kind: Parameters<typeof buildCards>[0], summary: unknown) => buildCards(kind, summary).map((card) => card.value)
+  assert.deepEqual(values('lead', { count: 4, qualified: 2, value: { ZAR: 1500 } }), ['4', '2', money(1500, 'ZAR')])
+  assert.deepEqual(values('quote', { count: 7, accepted: 3, value: { ZAR: 2300 } }), ['7', '3', money(2300, 'ZAR')])
+  assert.deepEqual(values('opportunity', { open: 2, pipeline: { ZAR: 1000 }, weighted: { ZAR: 500 } }), ['2', money(1000, 'ZAR'), money(500, 'ZAR')])
+  assert.deepEqual(values('invoice', { count: 9, outstanding: { ZAR: 460 }, overdue: 2 }), ['9', money(460, 'ZAR'), '2'])
+  assert.deepEqual(values('expense', { spend: { ZAR: 175 }, awaiting: 2, approved: { ZAR: 100 } }), [money(175, 'ZAR'), '2', money(100, 'ZAR')])
+})

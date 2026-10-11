@@ -30,7 +30,9 @@ const first = (raw: RawParams, key: string): string => {
 
 /** Keeps letters, digits, spaces and . @ + ' - ; every other run becomes one space; trimmed and cut to 120 characters. */
 export function cleanSearch(raw: string): string {
-  return raw.replace(/[^\p{L}\p{N} .@+'-]+/gu, ' ').replace(/\s+/g, ' ').trim().slice(0, SEARCH_MAX).trim()
+  const text = raw.replace(/[^\p{L}\p{N} .@+'-]+/gu, ' ').replace(/\s+/g, ' ').trim()
+  // By code points, so a character written with two UTF-16 units is never cut in half.
+  return Array.from(text).slice(0, SEARCH_MAX).join('').trim()
 }
 
 export function readRegisterParams(kind: RegisterKind, raw: RawParams): RegisterParams {
@@ -45,7 +47,7 @@ export function readRegisterParams(kind: RegisterKind, raw: RawParams): Register
   return {
     q: searchTooShort ? '' : cleaned,
     status: spec.statuses.includes(status) ? status : null,
-    owner: isUuid(owner) ? owner : null,
+    owner: isUuid(owner) ? owner.toLowerCase() : null,
     archived: first(raw, 'archived') === '1',
     sort: Object.hasOwn(spec.sortable, sort) ? sort : null,
     dir: first(raw, 'dir') === 'desc' ? 'desc' : 'asc',

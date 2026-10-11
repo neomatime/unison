@@ -66,3 +66,18 @@ test('registerHref omits defaults, applies a change, and returns to page 1 when 
   assert.equal(registerHref('/finance/invoices', readRegisterParams('invoice', {})), '/finance/invoices')
   assert.equal(registerHref('/finance/invoices', base, { sort: 'due', dir: 'desc' }), '/finance/invoices?q=acme&status=Overdue&sort=due&dir=desc')
 })
+
+test('a sort that is an inherited object key is ignored', () => {
+  for (const sort of ['constructor', 'toString', '__proto__']) assert.equal(readRegisterParams('invoice', { sort }).sort, null, sort)
+})
+
+test('an owner uuid is returned in lower case', () => {
+  assert.equal(readRegisterParams('invoice', { owner: UUID.toUpperCase() }).owner, UUID)
+})
+
+test('a search cut to 120 characters never splits a character outside the basic plane', () => {
+  const cut = cleanSearch('a'.repeat(119) + '\u{1D49C}' + 'b'.repeat(10)) // U+1D49C is a letter written with two UTF-16 units
+  assert.equal(Array.from(cut).length, 120)
+  assert.equal(cut.endsWith('\u{1D49C}'), true)
+  assert.doesNotMatch(cut, /[\uD800-\uDBFF](?![\uDC00-\uDFFF])/, 'no lone high surrogate')
+})
