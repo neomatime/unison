@@ -52,7 +52,7 @@ const fields: Record<PhaseSixKind, Array<[string, string]>> = {
     ["Notes", "notes"],
   ],
   invoice: [
-    ["Number", "invoiceNumber"], ["Client", "clientName"], ["Project", "project"], ["Source quote", "quote"],
+    ["Number", "invoiceNumber"], ["Client", "clientName"], ["Client contact", "contactName"], ["Project", "project"], ["Source quote", "quote"],
     ["Opportunity", "opportunity"], ["Finance owner", "owner"],
     ["Issue date", "issueDate"], ["Due date", "dueDate"],
     ["Project name", "projectName"], ["Project reference", "projectRef"], ["Client reference", "clientRef"],

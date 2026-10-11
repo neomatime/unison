@@ -163,11 +163,13 @@ export async function savePhaseSixRecordAction(
       const resolvedClient = await clientName(db, organization.id, form);
       if (resolvedClient.invalid) return { error: "The selected client could not be verified." };
       if (!resolvedClient.name) return { error: "Choose a client or enter a prospect name." };
+      const contact = optional(form, "contactName");
+      if (contact && contact.length > 200) return { error: "The client contact is too long (200 characters at most)." };
       values = {
         organization_id: organization.id,
         client_id: resolvedClient.clientId,
         client_name: resolvedClient.name,
-        contact_name: optional(form, "contactName"),
+        contact_name: contact,
         lead_id: identifier(form, "leadId"),
         opportunity_id: identifier(form, "opportunityId"),
         owner_id: identifier(form, "ownerId"),
@@ -197,10 +199,13 @@ export async function savePhaseSixRecordAction(
       const resolvedClient = await clientName(db, organization.id, form);
       if (resolvedClient.invalid) return { error: "The selected client could not be verified." };
       if (!resolvedClient.name) return { error: "Choose a client." };
+      const contact = optional(form, "contactName");
+      if (contact && contact.length > 200) return { error: "The client contact is too long (200 characters at most)." };
       values = {
         organization_id: organization.id,
         client_id: resolvedClient.clientId,
         client_name: resolvedClient.name,
+        contact_name: contact,
         project_id: identifier(form, "projectId"),
         quote_id: identifier(form, "quoteId"),
         opportunity_id: identifier(form, "opportunityId"),

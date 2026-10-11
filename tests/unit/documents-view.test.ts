@@ -238,3 +238,21 @@ test('amounts, quantities and dates are formatted for the page', () => {
   assert.equal(formatDocumentDate(''), null)
   assert.equal(formatDocumentDate('garbage'), 'garbage')
 })
+
+test('the client contact is printed as an Attention line under the client name, on a quote and on an invoice, and left out when empty', () => {
+  const quote = buildDocumentView({ kind: 'quote', record: { ...draftQuote, contact_name: 'Thandi Dlamini' }, lines, client, settings })
+  assert.deepEqual(quote.billTo, ['Client Co', 'Attention: Thandi Dlamini', '2 Client Street', 'Clientville, 5678', 'Clientland', 'VAT No: CV1'])
+  const invoice = buildDocumentView({ kind: 'invoice', record: { ...draftQuote, quote_number: undefined, invoice_number: 'DRAFT-abcd1234', due_date: null, contact_name: '  Sipho Nkosi ' }, lines, client, settings })
+  assert.equal(invoice.billTo[1], 'Attention: Sipho Nkosi')
+  const none = buildDocumentView({ kind: 'quote', record: { ...draftQuote, contact_name: '   ' }, lines, client, settings })
+  assert.deepEqual(none.billTo, ['Client Co', '2 Client Street', 'Clientville, 5678', 'Clientland', 'VAT No: CV1'])
+})
+
+test('a document that has gone out prints its own contact, with the client name from the frozen copy', () => {
+  const sent = buildDocumentView({
+    kind: 'quote',
+    record: { ...draftQuote, status: 'Sent', quote_number: 'Q-1', contact_name: 'Thandi Dlamini', bill_to: { name: 'Snapshot Client' }, issuer: {} },
+    lines, client, settings,
+  })
+  assert.deepEqual(sent.billTo, ['Snapshot Client', 'Attention: Thandi Dlamini'])
+})
