@@ -3,7 +3,9 @@ import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
-import { crc32, deflateSync } from 'node:zlib'
+import { crc32, deflateSync, inflateSync } from 'node:zlib'
+
+import { PDFArray, PDFDocument, PDFName, type PDFObject, type PDFRawStream } from 'pdf-lib'
 
 import { buildDocumentView } from '../../features/documents/document-view.ts'
 import { loadPdfImages } from '../../features/documents/pdf/load-pdf-images.ts'
@@ -41,6 +43,29 @@ function view(kind: 'quote' | 'invoice', over: Record<string, unknown> = {}, lin
   })
 }
 const pageCount = (pdf: Buffer) => (pdf.toString('latin1').match(/\/Type\s*\/Page(?![A-Za-z])/g) ?? []).length
+
+/**
+ * The text drawn on each page, with all white space removed. The standard fonts write each string as hex
+ * character codes inside the page's (deflated) content stream, so decoding those hex strings is enough to tell
+ * which page a piece of text landed on.
+ */
+async function pageTexts(pdf: Buffer): Promise<string[]> {
+  const doc = await PDFDocument.load(pdf)
+  return doc.getPages().map((page) => {
+    const contents = page.node.get(PDFName.of('Contents')) as PDFObject
+    const parts = contents instanceof PDFArray ? contents.asArray() : [contents]
+    return parts
+      .map((part) => {
+        const stream = doc.context.lookup(part) as PDFRawStream
+        const raw = Buffer.from(stream.contents)
+        const data = (stream.dict.get(PDFName.of('Filter')) ? inflateSync(raw) : raw).toString('latin1')
+        return [...data.matchAll(/<([0-9a-fA-F]*)>/g)].map((match) => Buffer.from(match[1], 'hex').toString('latin1')).join('')
+      })
+      .join('')
+      .replace(/\s+/g, '')
+  })
+}
+const pageOf = (pages: string[], text: string) => pages.findIndex((page) => page.includes(text.replace(/\s+/g, '')))
 
 function chunk(type: string, data: Buffer) {
   const length = Buffer.alloc(4); length.writeUInt32BE(data.length)
@@ -132,6 +157,28 @@ test('a document with no company details and no lines still renders', async () =
   assert.equal(pdf.subarray(0, 5).toString('latin1'), '%PDF-')
 })
 
+test('the totals and the bank details are never split across pages, even when long terms and closing text let their sections break', async () => {
+  const terms = Array.from({ length: 14 }, (_, i) => `Condition ${i + 1}: the work is billed as agreed and any change to the scope is quoted again before it starts.`).join('\n')
+  // Taller than a page in its narrow column, so the closing text has to run on and the section has to break.
+  const closing = Array.from({ length: 30 }, (_, i) => `Paragraph ${i + 1} of the closing text, long enough that this whole section can no longer be kept on one page.`).join('\n')
+  let termsSplit = 0
+  let bankSectionSplit = 0
+  // Each extra line moves the terms and the bank section down, so the sweep crosses the page boundary at every point of both.
+  for (let count = 0; count <= 24; count++) {
+    const pdf = await renderDocumentPdf(view('quote', { terms }, Array.from({ length: count }, (_, i) => line(i + 1)), { quote_closing_text: closing }), NO_IMAGES)
+    const pages = await pageTexts(pdf)
+    const where = `with ${count} lines`
+    assert.ok(pageOf(pages, 'SUBTOTAL') > -1, where)
+    assert.equal(pageOf(pages, 'SUBTOTAL'), pageOf(pages, 'TOTAL (ZAR)'), `the totals split ${where}`)
+    assert.equal(pageOf(pages, 'SUBTOTAL'), pageOf(pages, '460.00'), `the total split ${where}`)
+    assert.equal(pageOf(pages, 'BANK DETAILS'), pageOf(pages, 'Cheque'), `the bank details split ${where}`)
+    if (pageOf(pages, 'Condition 1:') !== pageOf(pages, 'Condition 14:')) termsSplit += 1
+    if (pageOf(pages, 'Paragraph 1 of') !== pageOf(pages, 'Paragraph 30 of')) bankSectionSplit += 1
+  }
+  assert.ok(termsSplit > 0, 'the sweep includes documents whose terms run onto the next page')
+  assert.ok(bankSectionSplit > 0, 'the sweep includes documents whose closing text runs onto the next page')
+})
+
 test('images from the brand folder are drawn and the PDF stays valid', async () => {
   const root = mkdtempSync(join(tmpdir(), 'pdf-brand-'))
   mkdirSync(join(root, 'public', 'brand'), { recursive: true })
@@ -159,6 +206,31 @@ test('loadPdfImages returns nothing when there are no paths, and refuses anythin
 test('loadPdfImages fails loudly when the file is missing rather than drawing a PDF without it', async () => {
   const root = mkdtempSync(join(tmpdir(), 'pdf-brand-'))
   await assert.rejects(loadPdfImages({ headerImage: '/brand/missing.png', logo: null }, root))
+})
+
+test('loadPdfImages refuses a file whose bytes are not the image its name says, or a cut-off PNG, and accepts a real PNG and JPEG', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'pdf-brand-'))
+  mkdirSync(join(root, 'public', 'brand'), { recursive: true })
+  const png = makePng(40, 20)
+  const jpeg = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.alloc(64, 1), Buffer.from([0xff, 0xd9])])
+  const files: Record<string, Buffer> = {
+    'text.png': Buffer.from('this is not an image at all, just some text'),
+    'jpeg-bytes.png': jpeg,
+    'png-bytes.jpg': png,
+    'cut-off.png': png.subarray(0, png.length - 12),
+    'empty.png': Buffer.alloc(0),
+    'good.png': png,
+    'good.jpeg': jpeg,
+  }
+  for (const [name, data] of Object.entries(files)) writeFileSync(join(root, 'public', 'brand', name), data)
+  for (const name of ['text.png', 'jpeg-bytes.png', 'png-bytes.jpg', 'empty.png']) {
+    await assert.rejects(loadPdfImages({ headerImage: `/brand/${name}`, logo: null }, root), /not a (PNG|JPEG) image/, name)
+  }
+  await assert.rejects(loadPdfImages({ headerImage: null, logo: '/brand/cut-off.png' }, root), /incomplete/)
+  const loaded = await loadPdfImages({ headerImage: '/brand/good.png', logo: '/brand/good.jpeg' }, root)
+  assert.equal(loaded.header?.format, 'png')
+  assert.equal(loaded.logo?.format, 'jpg')
+  assert.ok(loaded.header?.data.equals(png))
 })
 
 // ---- source guards ----

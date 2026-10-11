@@ -177,7 +177,7 @@ function termsAndTotals(view: DocumentView) {
   const totalRow = (key: string, value: string, background: string, color: string, size: number, vertical: number) =>
     h(
       View,
-      { style: s({ flexDirection: 'row', justifyContent: 'space-between', backgroundColor: background, paddingHorizontal: mm(4), paddingVertical: mm(vertical) }) },
+      { wrap: false, style: s({ flexDirection: 'row', justifyContent: 'space-between', backgroundColor: background, paddingHorizontal: mm(4), paddingVertical: mm(vertical) }) },
       h(Text, { style: s({ fontSize: 9, letterSpacing: 1.6, color }) }, upper(key)),
       h(Text, { style: s({ fontSize: size, fontFamily: 'Helvetica-Bold', color }) }, value),
     )
@@ -187,7 +187,8 @@ function termsAndTotals(view: DocumentView) {
     terms,
     h(
       View,
-      { style: s({ width: mm(78), flexShrink: 0 }) },
+      // The totals are never split, even when long terms let this section break across pages.
+      { wrap: false, style: s({ width: mm(78), flexShrink: 0 }) },
       totalRow('Subtotal', view.totals.subtotal, TOTAL_BG, INK, 9, 2.5),
       totalRow(view.totals.vatLabel, view.totals.vat, TOTAL_BG, INK, 9, 2.5),
       totalRow(`Total (${view.currency})`, view.totals.total, INK, WHITE, 13, 3.5),
@@ -201,7 +202,9 @@ function bankAndClosing(view: DocumentView) {
     { wrap: !short(view.from.name, ...view.bank.map((row) => row.value), ...(view.closing?.paragraphs ?? [])), style: s({ flexDirection: 'row', marginTop: mm(5), minHeight: mm(28) }) },
     h(
       View,
-      { style: s({ width: '38%', ...(view.bank.length ? { backgroundColor: BANK_BG, paddingLeft: mm(12), paddingRight: mm(4), paddingVertical: mm(3) } : {}) }) },
+      // The bank panel is never split, even when a long closing text lets this section break; only bank details too
+      // long for a page (not real ones) are allowed to run on.
+      { wrap: !short(...view.bank.map((row) => row.value)), style: s({ width: '38%', ...(view.bank.length ? { backgroundColor: BANK_BG, paddingLeft: mm(12), paddingRight: mm(4), paddingVertical: mm(3) } : {}) }) },
       ...(view.bank.length
         ? [
             h(Text, { style: s({ fontSize: 8, letterSpacing: 2 }) }, upper('Bank details')),
