@@ -1157,3 +1157,31 @@ or could not prove.
   this checkout, so lint has never been run on this slice.
 - **The download routes ship all of `public/` (about 14 MB)** because the image loader joins a computed path; the page
   routes ship `public/brand` (9 MB). Both are far below the function size limits; narrowing is an optimisation.
+
+## From the payments, Overdue and forecast slice (2026-10-11)
+
+- **Not exercised signed in.** The payment form, Void, Cancel invoice and the forecast were checked by unit and source
+  tests, database tests against fixture organisations for every rule, and a fixture preview in the browser pane (the form's
+  error and kept input, the struck-through voided row, the forecast figures); they were not run in a signed-in session
+  against real records. The nightly job's schedule has been registered and run once by hand; its first real run is the first
+  night after deploy.
+- **A zero-total invoice stays Issued with balance 0.** Lines may have a price of 0, and `issue_invoice` does not apply the
+  payment rule, so such an invoice never becomes Paid; the form says there is no balance to pay. Applying the rule in
+  `issue_invoice` is a later migration.
+- **The forecast can count one deal twice:** an open opportunity whose accepted quote has become an invoice appears in
+  Pipeline and in Due, because nothing moves an opportunity to Won automatically. Archived invoices are not filtered (no
+  archive action exists). Past months show 0.00 for Due and Pipeline, not a dash. Each currency is shown on its own.
+- **Payments and voids that make an invoice Overdue write no `invoice.overdue` entry** (only the nightly job does); a part
+  payment on an Overdue invoice keeps it Overdue (untested).
+- **Payments cascade-delete with their invoice;** only the missing delete policy on invoices stops a member deleting one.
+- **No refunds, credit notes, overpayment credits, reminders or receipts.** One payment is capped at 9,999,999.99. A payment
+  from the opening-balance step (none exist today) reads "Former member".
+- **The record form has no native fallback:** a click before the page has finished loading does a plain GET and loses the
+  input. The date field's latest day is set when the page loads, so a page left open past midnight offers yesterday as the
+  latest date (the server re-checks).
+- **The old typed forecast records, their code and their data-portability export stay in place, unreachable** from the
+  Forecast page. Payments are not in the data-portability export.
+- **The database tests run `mark_overdue_invoices()` across every organisation** in the production database; harmless while
+  there are no invoices, but note it once real invoices exist.
+- **Tests:** the new screens are covered by source-text guards, not behavioural tests; `eslint` is not installed in this
+  checkout, so lint has never run on this slice.

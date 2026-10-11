@@ -209,3 +209,29 @@ error, never blank totals.
 - No real address, bank, VAT or phone value in code or tests. Secrets live in `.env.local` only.
 - Never `git add -A`; stage explicit paths. Do not touch `public/` or
   `features/commercial-finance/components/record-collection-workspace.tsx`. Commit and push only when the user asks.
+
+## Amendments made while planning and building
+
+Small, deliberate departures from the text above, each decided with a reason and recorded in the plan and its ledger.
+
+1. **The job function is `public.mark_overdue_invoices()`, executable by the service role only** (not a `private`
+   function), so the database test can run it; the cron job runs as the database owner. The helper
+   `private.refresh_invoice_payment_state` stays private. The job writes an `invoice.overdue` entry and counts an invoice
+   only when the rule actually leaves it Overdue, so a stale stored balance can never produce a false entry.
+2. **The forecast has a "Later" line** for invoices and opportunities due or closing after the ten-month window, so totals
+   are never silently short. Collected money older than the window is not shown.
+3. **Members cannot delete an invoice because no delete policy exists** (the `authenticated` role holds the table delete
+   privilege, but row level security gives it no row to delete, so a delete removes nothing and raises no error). The
+   earlier wording, "no delete privilege", was wrong. Payments cascade with their invoice, so any future policy that lets
+   members delete a draft invoice must exclude issued invoices.
+4. **The "more than the balance still owing" message does not repeat the amount;** the form shows the balance beside the
+   field as the maximum.
+5. **The guard is its own trigger** (`invoices_payment_state_guard`), not an edit of `invoices_documents_before`, so the
+   existing `INVOICE_CANCELLED` and `INVOICE_CANNOT_REOPEN` tokens still win. A second migration widened it to inserts and
+   drafts: a paid date typed on a draft or on insert is dropped (like a typed balance), and the one-off clean-up cleared any
+   stray paid date on a non-paid invoice.
+6. **The old typed-forecast code is left in place, unreachable** (the `forecast` kind in the commercial-finance actions,
+   queries, form and register); only its routes were removed. Removing it is a follow-up.
+7. **The invoice page shows the paid date as a South African date.** The rule stores it as midnight South African time, so a
+   UTC rendering would show the day before.
+8. **The Record payment form is hidden when there is no balance to pay** (a zero-total invoice).
