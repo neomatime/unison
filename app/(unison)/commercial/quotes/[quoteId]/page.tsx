@@ -2,7 +2,9 @@ import { PhaseSixDetail } from '@/features/commercial-finance/components/phase-s
 import { RecordWorkspaceSections } from '@/features/crm-workspace/components/record-workspace'
 import { getRecordWorkspace } from '@/features/crm-workspace/queries/get-record-workspace'
 import { DocumentActions } from '@/features/documents/components/document-actions'
+import { EmailSection } from '@/features/documents/components/email-section'
 import { LineEditor } from '@/features/documents/components/line-editor'
+import { QuoteInvoices } from '@/features/documents/components/quote-invoices'
 import { getDocument } from '@/features/documents/queries/get-document'
 import { listPriceItems } from '@/features/documents/queries/list-price-items'
 import { isDraftStatus } from '@/features/documents/vocabulary'
@@ -11,7 +13,7 @@ import { isDraftStatus } from '@/features/documents/vocabulary'
 // getRecordWorkspace returns empty facts for an id that does not exist rather than failing.
 async function QuoteHeaderActions({ quoteId }: { quoteId: string }) {
   const bundle = await getDocument('quote', quoteId)
-  return bundle ? <DocumentActions kind="quote" id={quoteId} status={String(bundle.record.status)} /> : null
+  return bundle ? <DocumentActions kind="quote" id={quoteId} status={String(bundle.record.status)} archived={Boolean(bundle.record.archived_at)} /> : null
 }
 
 async function QuoteLines({ quoteId }: { quoteId: string }) {
@@ -38,6 +40,8 @@ async function QuoteWorkspace({ quoteId }: { quoteId: string }) {
   return (
     <>
       <QuoteLines quoteId={quoteId} />
+      <EmailSection kind="quote" id={quoteId} />
+      <QuoteInvoices quoteId={quoteId} />
       <RecordWorkspaceSections workspace={workspace} sections={['timeline']} />
     </>
   )

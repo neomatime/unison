@@ -23,6 +23,13 @@ const MESSAGES: ReadonlyArray<readonly [token: string, message: string]> = [
   ['INVOICE_FROZEN', 'This invoice has already been issued and can no longer be edited. To correct it, cancel it and raise a new one.'],
   ['DOCUMENT_NUMBER_GENERATED', 'Numbers are generated automatically when a document is sent or issued.'],
   ['DOCUMENT_SNAPSHOT_GENERATED', 'The client and company details on a document are copied automatically when it is sent or issued.'],
+  ['DOCUMENT_IS_DRAFT', 'Send or issue this document before emailing it.'],
+  ['EMAIL_ADDRESS_INVALID', 'Enter one valid email address.'],
+  ['EMAIL_SUBJECT_INVALID', 'Enter a subject of up to 300 characters, on one line.'],
+  ['EMAIL_BODY_TOO_LONG', 'The message is too long (10,000 characters at most).'],
+  ['EMAIL_RECORD_INVALID', 'The email record was incomplete, so it was not saved.'],
+  ['QUOTE_NOT_ACCEPTED', 'Only an accepted quote can be invoiced.'],
+  ['QUOTE_ARCHIVED', 'An archived quote cannot be invoiced.'],
 ]
 
 export const DOCUMENT_ERROR_TOKENS: readonly string[] = MESSAGES.map(([token]) => token)

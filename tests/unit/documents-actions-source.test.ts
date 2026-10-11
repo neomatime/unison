@@ -89,3 +89,80 @@ test('getDocument is wrapped in cache() so one page loads a document once', () =
   assert.match(source, /import \{ cache \} from 'react'/)
   assert.match(source, /export const getDocument = cache\(/)
 })
+
+test('the email action checks everything cheap first, sends once, and records only after the mail server accepts', () => {
+  const source = read('actions', 'email.ts')
+  assert.match(source, /^'use server'/)
+  const order = [
+    'isDocumentKind(kind)',
+    'readEmailFields(',
+    'getDocument(',
+    'isDraftStatus(',
+    "status === 'Cancelled'",
+    '>= HOURLY_EMAIL_CAP',
+    'makeDocumentPdf(',
+    '> MAX_EMAIL_PDF_BYTES',
+    'await sendEmail(',
+    '!delivered',
+    "rpc('record_document_email'",
+  ].map((marker) => {
+    const at = source.indexOf(marker)
+    assert.ok(at > -1, `${marker} must appear in the email action`)
+    return at
+  })
+  assert.deepEqual([...order].sort((a, b) => a - b), order, 'the steps must run in this order')
+  assert.equal(source.split('await sendEmail(').length - 1, 1, 'exactly one send')
+  assert.equal(source.split("rpc('record_document_email'").length - 1, 1, 'exactly one record')
+  assert.match(source, /catch \(error\)[\s\S]*?did not accept the message\. It may not have been sent; check Emails sent and your mailbox before trying again\./, 'a failure of the mail server is reported honestly')
+  // Everything between the send and the record: a send failure and log mode both return before the RPC.
+  const afterSend = source.slice(source.indexOf('await sendEmail('), source.indexOf("rpc('record_document_email'"))
+  assert.doesNotMatch(afterSend, /record_document_email/, 'a send failure records nothing')
+  assert.match(afterSend, /return \{ error: 'The mail server did not accept/, 'a failed send returns before the record')
+  assert.match(afterSend, /if \(!delivered\) return \{ error: 'Email is in log mode \(EMAIL_TRANSPORT=log\): the message was logged, not sent, and nothing was recorded\.' \}/, 'log mode returns before the record')
+  assert.doesNotMatch(source, /process\.env|GRAPH_|MAIL_FROM|createClient\(|SUPABASE_SECRET/, 'no secrets and no service client in the action')
+})
+
+test('a failed record after a successful send says only that it was not recorded, with no database token', () => {
+  const source = read('actions', 'email.ts')
+  assert.match(source, /if \(recorded\.error\) \{\s+console\.error\('\[documents:email:record\]', recorded\.error\)\s+(?:\/\/[^\n]*\s+)?return \{ error: "Sent, but we couldn't record it\." \}\s+\}/)
+  assert.doesNotMatch(source, /failureState|documentErrorMessage/, 'a database message could say the address is invalid for an email that already went out')
+})
+
+test('a cancelled invoice is not emailed, the PDF stays', () => {
+  const source = read('actions', 'email.ts')
+  assert.match(source, /if \(kind === 'invoice' && bundle\.record\.status === 'Cancelled'\) return \{ error: 'A cancelled invoice cannot be emailed\.' \}/)
+})
+
+test('the too-large message does not suggest a remedy a frozen document cannot use', () => {
+  const source = read('actions', 'email.ts')
+  assert.match(source, /which is too large to email\. Download it and send it yourself\. For future documents, a lighter header image under Settings, Company details keeps the PDF small enough to email\./)
+  assert.doesNotMatch(source, /or use a lighter header image/)
+})
+
+test('sendEmail reports whether the message was delivered, and log mode says it was not', () => {
+  const source = readFileSync(join(process.cwd(), 'lib', 'email', 'send-email.ts'), 'utf8')
+  assert.match(source, /Promise<\{ delivered: boolean \}>/)
+  assert.match(source, /return \{ delivered: false \}/)
+  assert.match(source, /return \{ delivered: true \}/)
+  assert.ok(source.indexOf('return { delivered: false }') < source.indexOf('await sendMimeViaGraph('), 'log mode returns before anything is sent')
+  assert.ok(source.indexOf('await sendMimeViaGraph(') < source.indexOf('return { delivered: true }'), 'delivered is true only after the mail server accepts')
+})
+
+test('the shared email module is loadable by tests', () => {
+  for (const name of ['email.ts', 'action-failure.ts']) {
+    const source = read(name)
+    assert.ok(!isClient(source), name)
+    assert.doesNotMatch(source, /server-only/, name)
+    assert.doesNotMatch(source, /from\s+['"]@\//, name)
+  }
+})
+
+test('create-invoice-from-quote checks the id, lets the database decide, and opens the new draft', () => {
+  const source = read('actions', 'invoice-from-quote.ts')
+  assert.match(source, /^'use server'/)
+  assert.match(source, /isUuid\(/)
+  assert.match(source, /rpc\('create_invoice_from_quote'/)
+  assert.match(source, /failureState\(/)
+  assert.match(source, /redirect\(`\$\{DOCUMENTS\.invoice\.base\}\//)
+  assert.doesNotMatch(source, /from\('invoices'\)\s*\.insert|from\('invoice_lines'\)\s*\.insert/, 'the copy is made by the database function, not by the action')
+})

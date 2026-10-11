@@ -30,7 +30,7 @@ export const getDocument = cache(async (kind: DocumentKind, id: string): Promise
   const [lines, client, settings] = await Promise.all([
     db.from(info.lines).select('*').eq(info.parentColumn, id).eq('organization_id', organization.id).order('position').order('created_at'),
     record.client_id
-      ? db.from('clients').select('name,address_line1,address_line2,city,postal_code,country,vat_number').eq('id', record.client_id).eq('organization_id', organization.id).maybeSingle()
+      ? db.from('clients').select('name,address_line1,address_line2,city,postal_code,country,vat_number,billing_email').eq('id', record.client_id).eq('organization_id', organization.id).maybeSingle()
       : Promise.resolve({ data: null, error: null }),
     db.from('organization_settings').select('*').eq('organization_id', organization.id).maybeSingle(),
   ])

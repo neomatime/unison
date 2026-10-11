@@ -81,3 +81,63 @@ test('extractAddress pulls the address out of a display-name form', () => {
   assert.equal(extractAddress('HIMARK <info@himark.co.za>'), 'info@himark.co.za')
   assert.equal(extractAddress('info@himark.co.za'), 'info@himark.co.za')
 })
+
+// ---- attachments and Reply-To ----
+const pdfBytes = Buffer.from('%PDF-1.4\n% fake pdf bytes é\u0000\u0001\n', 'latin1')
+const withPdf = { ...base, replyTo: 'sender@example.com', attachments: [{ filename: 'TST-Q-2026-00001.pdf', contentType: 'application/pdf', content: pdfBytes }] }
+
+function attachmentPart(message: string) {
+  const section = message.split('--FIXED-BOUNDARY-mixed').find((part) => part.includes('application/pdf'))
+  assert.ok(section, 'no pdf part')
+  return section!
+}
+
+test('without attachments or a reply-to the message is exactly the old multipart/alternative', () => {
+  const message = buildMimeMessage(base)
+  assert.match(message, /Content-Type: multipart\/alternative; boundary="FIXED-BOUNDARY"/)
+  assert.ok(!/multipart\/mixed/.test(message))
+  assert.ok(!/^Reply-To:/m.test(message))
+})
+
+test('an attachment makes the message multipart/mixed around the same alternatives', () => {
+  const message = buildMimeMessage(withPdf)
+  assert.match(message, /Content-Type: multipart\/mixed; boundary="FIXED-BOUNDARY-mixed"/)
+  assert.match(message, /Reply-To: sender@example\.com\r\n/)
+  assert.equal(decodePart(message, 'text/plain'), 'Plain text body')
+  assert.equal(decodePart(message, 'text/html'), '<p>HTML body</p>')
+  assert.ok(message.indexOf('multipart/alternative') < message.indexOf('application/pdf'), 'the text comes before the attachment')
+  assert.match(message, /--FIXED-BOUNDARY-mixed--\r\n$/)
+})
+
+test('the attachment carries its exact bytes, base64 wrapped at 76 characters, with a file name', () => {
+  const message = buildMimeMessage(withPdf)
+  const part = attachmentPart(message)
+  assert.match(part, /Content-Type: application\/pdf; name="TST-Q-2026-00001\.pdf"/)
+  assert.match(part, /Content-Disposition: attachment; filename="TST-Q-2026-00001\.pdf"/)
+  assert.match(part, /Content-Transfer-Encoding: base64/)
+  const body = part.split('\r\n\r\n').slice(1).join('\r\n\r\n').trim()
+  assert.ok(body.split('\r\n').every((encodedLine) => encodedLine.length <= 76))
+  assert.deepEqual(Buffer.from(body.replace(/\r\n/g, ''), 'base64'), pdfBytes)
+})
+
+test('a large attachment survives the round trip', () => {
+  const big = Buffer.alloc(300_000, 7)
+  const message = buildMimeMessage({ ...withPdf, attachments: [{ filename: 'big.pdf', contentType: 'application/pdf', content: big }] })
+  const body = attachmentPart(message).split('\r\n\r\n').slice(1).join('\r\n\r\n').trim().replace(/\r\n/g, '')
+  assert.equal(Buffer.from(body, 'base64').length, big.length)
+})
+
+test('an injected header through the reply-to, the file name or the content type cannot become a header', () => {
+  const message = buildMimeMessage({
+    ...withPdf,
+    replyTo: 'a@b.com\r\nBcc: attacker@evil.example',
+    attachments: [{ filename: 'x"\r\nBcc: attacker@evil.example;.pdf', contentType: 'application/pdf\r\nBcc: attacker@evil.example', content: pdfBytes }],
+  })
+  assert.ok(!/^Bcc:/m.test(message), 'Bcc was injected as a real header')
+  assert.ok(!/filename="[^"]*"[^\r\n]*"/.test(message), 'the file name cannot close its own quotes')
+})
+
+test('every line of a message with an attachment ends with CRLF', () => {
+  const bare = buildMimeMessage(withPdf).split('\n').filter((line, index, all) => index < all.length - 1 && !line.endsWith('\r'))
+  assert.deepEqual(bare, [])
+})

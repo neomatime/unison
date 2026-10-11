@@ -1,4 +1,4 @@
-// Builds an RFC 5322 multipart/alternative message.
+// Builds an RFC 5322 multipart/alternative message, optionally with attachments (multipart/mixed) and a Reply-To.
 //
 // Graph's JSON sendMail carries exactly one body contentType, so using it would
 // mean dropping either the HTML or the plain-text alternative. The text part is
@@ -42,10 +42,25 @@ export function extractAddress(value: string): string {
   return (match ? match[1] : value).trim()
 }
 
+export type MimeAttachment = { filename: string; contentType: string; content: Uint8Array }
+
+/** A file name that is safe inside quotes in a header: printable ASCII, no quotes, backslashes, semicolons or line breaks. */
+function attachmentName(value: string): string {
+  // eslint-disable-next-line no-control-regex
+  return sanitizeHeaderValue(value).replace(/[^\x20-\x7E]/g, '_').replace(/["\\;]/g, '_') || 'attachment'
+}
+
+function attachmentType(value: string): string {
+  const cleaned = sanitizeHeaderValue(value)
+  return /^[A-Za-z0-9.+-]+\/[A-Za-z0-9.+-]+$/.test(cleaned) ? cleaned : 'application/octet-stream'
+}
+
+// Wrapped at 76 characters: RFC 2045 caps encoded lines, and some servers
+// reject or mangle longer ones.
+const wrap76 = (encoded: string) => (encoded.match(/.{1,76}/g) ?? []).join(CRLF)
+
 function base64Body(value: string): string {
-  // Wrapped at 76 characters: RFC 2045 caps encoded lines, and some servers
-  // reject or mangle longer ones.
-  return (Buffer.from(value, 'utf8').toString('base64').match(/.{1,76}/g) ?? []).join(CRLF)
+  return wrap76(Buffer.from(value, 'utf8').toString('base64'))
 }
 
 export function buildMimeMessage(input: {
@@ -55,16 +70,20 @@ export function buildMimeMessage(input: {
   text: string
   html: string
   boundary?: string
+  replyTo?: string
+  attachments?: MimeAttachment[]
 }): string {
   const boundary = input.boundary ?? `unison-${crypto.randomUUID()}`
+  const attachments = input.attachments ?? []
 
-  return [
+  const headers = [
     `From: ${sanitizeHeaderValue(input.from)}`,
     `To: ${sanitizeHeaderValue(input.to)}`,
+    ...(input.replyTo ? [`Reply-To: ${sanitizeHeaderValue(input.replyTo)}`] : []),
     `Subject: ${encodeHeaderValue(input.subject)}`,
     'MIME-Version: 1.0',
-    `Content-Type: multipart/alternative; boundary="${boundary}"`,
-    '',
+  ]
+  const alternatives = [
     // Least-preferred alternative first, most-preferred last: clients render
     // the last part they understand.
     `--${boundary}`,
@@ -78,6 +97,33 @@ export function buildMimeMessage(input: {
     '',
     base64Body(input.html),
     `--${boundary}--`,
+  ]
+
+  if (attachments.length === 0) {
+    return [...headers, `Content-Type: multipart/alternative; boundary="${boundary}"`, '', ...alternatives, ''].join(CRLF)
+  }
+
+  const outer = `${boundary}-mixed`
+  return [
+    ...headers,
+    `Content-Type: multipart/mixed; boundary="${outer}"`,
+    '',
+    `--${outer}`,
+    `Content-Type: multipart/alternative; boundary="${boundary}"`,
+    '',
+    ...alternatives,
+    ...attachments.flatMap((attachment) => {
+      const name = attachmentName(attachment.filename)
+      return [
+        `--${outer}`,
+        `Content-Type: ${attachmentType(attachment.contentType)}; name="${name}"`,
+        'Content-Transfer-Encoding: base64',
+        `Content-Disposition: attachment; filename="${name}"`,
+        '',
+        wrap76(Buffer.from(attachment.content).toString('base64')),
+      ]
+    }),
+    `--${outer}--`,
     '',
   ].join(CRLF)
 }
