@@ -42,13 +42,13 @@ test('a document kind is only quote or invoice, never an inherited key', () => {
 })
 
 test('every database error token the app maps is raised by the send and issue migration', () => {
-  const sendIssue = migration('20261011110000_documents_send_issue.sql') + migration('20261011120000_documents_hardening.sql') + migration('20261011130000_documents_delivery.sql') + migration('20261011140000_payments_overdue.sql')
+  const sendIssue = migration('20261011110000_documents_send_issue.sql') + migration('20261011120000_documents_hardening.sql') + migration('20261011130000_documents_delivery.sql') + migration('20261011140000_payments_overdue.sql') + migration('20261011160000_register_summary.sql')
   for (const token of DOCUMENT_ERROR_TOKENS) assert.ok(sendIssue.includes(`'${token}'`), `${token} must be raised by the migration`)
 })
 
 test('every token the send and issue migrations raise is either mapped or knowingly left unmapped', () => {
   const unmapped = ['DOCUMENT_KIND_UNKNOWN'] // a programming error, never shown to a person
-  const sendIssue = migration('20261011110000_documents_send_issue.sql') + migration('20261011120000_documents_hardening.sql') + migration('20261011130000_documents_delivery.sql') + migration('20261011140000_payments_overdue.sql')
+  const sendIssue = migration('20261011110000_documents_send_issue.sql') + migration('20261011120000_documents_hardening.sql') + migration('20261011130000_documents_delivery.sql') + migration('20261011140000_payments_overdue.sql') + migration('20261011160000_register_summary.sql')
   const raised = new Set([...sendIssue.matchAll(/raise exception '([A-Z_]+)'/g)].map((match) => match[1]))
   assert.ok(raised.size >= 20, `expected to find the raised tokens, found ${raised.size}`)
   for (const token of raised) {
@@ -67,6 +67,7 @@ test('database tokens become plain messages, and anything else is left to the ca
   assert.match(documentErrorMessage('EMAIL_ADDRESS_INVALID')!, /valid email/i)
   assert.match(documentErrorMessage('PAYMENT_EXCEEDS_BALANCE')!, /more than the balance/i)
   assert.match(documentErrorMessage('INVOICE_HAS_PAYMENTS')!, /void the payments/i)
+  assert.match(documentErrorMessage('REGISTER_KIND_UNKNOWN')!, /register/i)
   assert.equal(documentErrorMessage('permission denied for table quotes'), null)
   assert.equal(documentErrorMessage(null), null)
   assert.equal(documentErrorMessage(undefined), null)
