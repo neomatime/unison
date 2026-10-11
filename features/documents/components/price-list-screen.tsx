@@ -28,7 +28,9 @@ export async function PriceListScreen({ editId, saved }: { editId?: string; save
         description="The products and services you pick from when building a quote or invoice. Changing an item never changes a document that already used it, and prices are in the currency of the document they are added to."
       />
       {saved ? <p role="status" className="mb-4 border border-success/25 bg-success-soft/45 px-4 py-3 text-sm text-success">Saved.</p> : null}
-      {!canManageRates ? <p className="mb-4 text-sm text-[var(--briefing-muted)]">Rate card items can only be changed by an owner or admin.</p> : null}
+      <p className="mb-4 text-sm text-[var(--briefing-muted)]">
+        {canManageRates ? 'A rate card item can be edited here but not archived.' : 'Rate card items can only be changed by an owner or admin, and cannot be archived here.'}
+      </p>
       <div className="space-y-5">
         <WorkspaceSection title="Items">
           {items.length ? (
@@ -55,13 +57,15 @@ export async function PriceListScreen({ editId, saved }: { editId?: string; save
                   {!item.rate_key || canManageRates ? (
                     <div className="flex flex-wrap gap-2">
                       <Link href={`/settings/price-list?edit=${item.id}`} aria-label={`Edit: ${item.title}`} className="border border-border px-3 py-1.5 text-xs font-semibold text-foreground">Edit</Link>
-                      <ActionButton
-                        action={archivePriceItemAction.bind(null, item.id)}
-                        label="Archive"
-                        ariaLabel={`Archive: ${item.title}`}
-                        confirmText="Archive this item? It stops appearing in the picker; documents that used it keep their lines."
-                        tone="danger"
-                      />
+                      {!item.rate_key ? (
+                        <ActionButton
+                          action={archivePriceItemAction.bind(null, item.id)}
+                          label="Archive"
+                          ariaLabel={`Archive: ${item.title}`}
+                          confirmText="Archive this item? It stops appearing in the picker; documents that used it keep their lines."
+                          tone="danger"
+                        />
+                      ) : null}
                     </div>
                   ) : null}
                 </li>

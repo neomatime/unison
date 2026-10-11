@@ -1,45 +1,177 @@
 import assert from 'node:assert/strict'
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import test from 'node:test'
 
-const read = (...parts: string[]) => readFileSync(join(process.cwd(), ...parts), 'utf8')
+import { documentErrorMessage } from '../../features/documents/errors.ts'
+
+// Source tests: the UI cannot be rendered here, so each one reads the real source and asserts the gate by its structure
+// (what is inside which condition), not merely that a word appears. Line endings are normalised so a regex means the same everywhere.
+const read = (...parts: string[]) => readFileSync(join(process.cwd(), ...parts), 'utf8').replace(/\r\n/g, '\n')
+
+const detail = () => read('features', 'clients', 'components', 'client-detail.tsx')
+const section = () => read('features', 'billing', 'components', 'billing-package-section.tsx')
+const forms = () => read('features', 'billing', 'components', 'billing-forms.tsx')
+const screen = () => read('features', 'documents', 'components', 'price-list-screen.tsx')
+const editor = () => read('features', 'documents', 'components', 'line-editor.tsx')
+const query = () => read('features', 'documents', 'queries', 'list-price-items.ts')
+
+/** The number of arguments each billing action takes before useActionState's (previous, form), from its real signature. */
+function boundArgumentCounts(): Record<string, number> {
+  const counts: Record<string, number> = {}
+  for (const match of read('features', 'billing', 'actions', 'billing.ts').matchAll(/export async function (\w+Action)\(([^)]*)\)/g)) {
+    const params = match[2].split(',').map((part) => part.trim())
+    counts[match[1]] = params.indexOf(params.find((part) => part.startsWith('_previous'))!)
+  }
+  return counts
+}
 
 test('the dead client setup file with the old prices is gone', () => {
   assert.equal(existsSync(join(process.cwd(), 'features', 'clients', 'components', 'client-setup-workflow.tsx')), false)
   assert.doesNotMatch(read('config', 'partner-levels.ts'), /185,?000|75,?000/, 'the old prices are not used anywhere')
 })
 
-test('the client page mounts the Billing package section for an active client', () => {
-  const detail = read('features', 'clients', 'components', 'client-detail.tsx')
-  assert.match(detail, /import \{ BillingPackageSection \} from '@\/features\/billing\/components\/billing-package-section'/)
-  assert.match(detail, /<BillingPackageSection clientId=\{client\.id\} \/>/)
-  assert.match(detail, /!archived/)
+test('the client page mounts the Billing package section only for a client that is not archived, after the workspace and before the documents', () => {
+  const source = detail()
+  assert.match(source, /import \{ BillingPackageSection \} from '@\/features\/billing\/components\/billing-package-section'/)
+  assert.match(source, /\{!archived \? <BillingPackageSection clientId=\{client\.id\} \/> : null\}/)
+  const order = [source.indexOf('<RecordWorkspaceSections'), source.indexOf('<BillingPackageSection'), source.indexOf('<ClientDocuments />')]
+  assert.ok(order[0] >= 0 && order[0] < order[1] && order[1] < order[2], 'workspace sections, then the billing package, then the documents')
 })
 
-test('the section offers exactly the built things: package, first invoice or quote, monthly invoice, top-up, change tier, support, end', () => {
-  const section = read('features', 'billing', 'components', 'billing-package-section.tsx')
-  const forms = read('features', 'billing', 'components', 'billing-forms.tsx')
-  for (const action of ['setPackageAction', 'changeTierAction', 'endEngagementAction', 'addSupportAction', 'endSupportAction', 'createFirstDocumentAction', 'createMonthlyInvoiceAction', 'createTopUpAction']) {
-    assert.ok(section.includes(action) || forms.includes(action), `${action} is wired`)
+test('every billing control binds exactly the arguments its action takes', () => {
+  const counts = boundArgumentCounts()
+  assert.deepEqual(Object.keys(counts).sort(), [
+    'addSupportAction', 'changeTierAction', 'createFirstDocumentAction', 'createMonthlyInvoiceAction', 'createTopUpAction',
+    'endEngagementAction', 'endSupportAction', 'setPackageAction',
+  ], 'the action file exports exactly the built actions')
+  const expectedBinds: Record<string, string> = {
+    createFirstDocumentAction: "createFirstDocumentAction.bind(null, pkg.id, 'invoice')",
+    endEngagementAction: 'endEngagementAction.bind(null, pkg.id)',
+    endSupportAction: 'endSupportAction.bind(null, s.id)',
+    createMonthlyInvoiceAction: 'createMonthlyInvoiceAction.bind(null, clientId)',
+    setPackageAction: 'setPackageAction.bind(null, clientId)',
+    changeTierAction: 'changeTierAction.bind(null, engagementId)',
+    addSupportAction: 'addSupportAction.bind(null, engagementId)',
+    createTopUpAction: 'createTopUpAction.bind(null, engagementId)',
   }
-  assert.doesNotMatch(section + forms, /credit balance|remaining credits|expires/i, 'no control for credit balances, which are not built')
-  assert.match(section, /Active projects/)
-  assert.match(section, /no limit/i)
+  const source = section() + forms()
+  for (const [action, bind] of Object.entries(expectedBinds)) {
+    assert.ok(source.includes(bind), `${bind} is wired`)
+    // Every use of the action binds as many arguments as its signature has before (previous, form).
+    for (const use of source.matchAll(new RegExp(`${action}\\.bind\\(null((?:, [^,)]+)*)\\)`, 'g'))) {
+      assert.equal(use[1].split(', ').filter(Boolean).length, counts[action], `${action} binds ${counts[action]} argument(s)`)
+    }
+  }
+  assert.match(section(), /createFirstDocumentAction\.bind\(null, pkg\.id, 'quote'\)/, 'the first quote button binds the quote kind')
 })
 
-test('the price list marks rate card items, hides Edit and Archive from members, and the picker lists custom items only', () => {
-  const screen = read('features', 'documents', 'components', 'price-list-screen.tsx')
-  assert.match(screen, /Rate card/)
-  assert.match(screen, /Proposed rate/)
-  assert.match(screen, /canManageRates/)
-  const query = read('features', 'documents', 'queries', 'list-price-items.ts')
-  assert.match(query, /includeRateCard/)
-  assert.match(query, /\.is\('rate_key', null\)/)
+test('the first invoice and quote buttons sit inside the canBuildFirst condition and nowhere else', () => {
+  const source = section()
+  assert.match(
+    source,
+    /\{pkg\.canBuildFirst \? \(\s*<>\s*<ActionButton action=\{createFirstDocumentAction\.bind\(null, pkg\.id, 'invoice'\)\}[^\n]*\n\s*<ActionButton action=\{createFirstDocumentAction\.bind\(null, pkg\.id, 'quote'\)\}[^\n]*\n\s*<\/>\s*\) : null\}/,
+  )
+  assert.equal(source.match(/createFirstDocumentAction\.bind/g)?.length, 2, 'only the two gated buttons build a first document')
 })
 
-test('a locked line shows no edit control and says it is a rate card price', () => {
-  const editor = read('features', 'documents', 'components', 'line-editor.tsx')
-  assert.match(editor, /line\.rate_locked/)
-  assert.match(editor, /Rate card price/)
+test('the monthly invoice button is inside the canBuildMonthly condition', () => {
+  assert.match(
+    section(),
+    /\{view\.canBuildMonthly \? \(\s*<div[^\n]*>\s*<p[^\n]*<\/p>\s*<ActionButton action=\{createMonthlyInvoiceAction\.bind\(null, clientId\)\} label="Create this month's invoice" \/>\s*<\/div>\s*\) : null\}/,
+  )
+})
+
+test('Change tier is only for retainers, and the support services only for projects', () => {
+  const source = section()
+  const start = source.indexOf("{pkg.kind === 'project' ? (")
+  const middle = source.indexOf(') : (', start)
+  const end = source.indexOf('<TopUpForm', middle)
+  assert.ok(start >= 0 && middle > start && end > middle, 'the package card branches on its kind')
+  const project = source.slice(start, middle)
+  const retainer = source.slice(middle, end)
+  for (const part of ['AddSupportForm', 'endSupportAction', 'availableSupport']) assert.ok(project.includes(part), `${part} is in the project branch`)
+  assert.ok(!project.includes('ChangeTierForm'), 'a project has no Change tier')
+  assert.match(retainer, /<ChangeTierForm engagementId=\{pkg\.id\} tiers=\{pkg\.otherTiers/)
+  for (const part of ['AddSupportForm', 'endSupportAction']) assert.ok(!retainer.includes(part), `a retainer has no ${part}`)
+  assert.match(source, /\{pkg\.kind === 'retainer' \? \(\s*<p[^\n]*>\s*Active projects: \{pkg\.activeProjects\}\{pkg\.initiativeLimit \? ` of \$\{pkg\.initiativeLimit\} allowed` : ' \(no limit set for this tier\)'\}/)
+})
+
+test('the section builds no credit balance, expiry or automatic invoicing, and keeps the retainer options disabled with a hint when one is active', () => {
+  assert.doesNotMatch(section() + forms(), /credit balance|remaining credits|expires|automatic/i, 'no control for things that are not built')
+  assert.match(forms(), /<option key=\{o\.key\} value=\{o\.key\} disabled=\{hasActiveRetainer\}>/, 'retainer options are disabled while one is active')
+  assert.match(
+    forms(),
+    /\{hasActiveRetainer \? <p[^\n]*>This client already has an active retainer\. Use Change tier to move them to another tier\.<\/p> : null\}/,
+    'the hint is shown only while a retainer is active',
+  )
+})
+
+test('the price list: rate card items are tagged, Edit is for custom items or an owner or admin, and Archive is never offered for a rate card item', () => {
+  const source = screen()
+  assert.match(source, /const canManageRates = role === 'owner' \|\| role === 'admin'/)
+  assert.match(source, /\{item\.rate_key \? <span[^>]*>Rate card<\/span> : null\}/)
+  assert.match(source, /\{item\.rate_status === 'proposed' \? <span[^>]*>Proposed rate<\/span> : null\}/)
+  // The Edit link sits inside the gate; the Archive button sits inside it too, behind its own !item.rate_key condition.
+  assert.match(
+    source,
+    /\{!item\.rate_key \|\| canManageRates \? \(\s*<div[^>]*>\s*<Link href=\{`\/settings\/price-list\?edit=\$\{item\.id\}`\}[^>]*>Edit<\/Link>\s*\{!item\.rate_key \? \(\s*<ActionButton\s+action=\{archivePriceItemAction\.bind\(null, item\.id\)\}[\s\S]*?\/>\s*\) : null\}\s*<\/div>\s*\) : null\}/,
+  )
+  assert.equal(source.match(/archivePriceItemAction/g)?.length, 2, 'one import and one gated button: no other way to archive from the screen')
+  assert.match(source, /A rate card item can be edited here but not archived\./, 'an owner or admin is told why there is no Archive')
+  assert.match(source, /Rate card items can only be changed by an owner or admin, and cannot be archived here\./, 'a member is told too')
+})
+
+test('a rate card item opened for editing by hand is not offered to a member', () => {
+  const source = screen()
+  assert.match(source, /const editing = requested && requested\.rate_key && !canManageRates \? null : requested/)
+  assert.match(source, /<PriceItemForm key=\{`\$\{editing\?\.id \?\? 'new'\}-\$\{saved \?\? ''\}`\} item=\{editing\} \/>/, 'the form gets the guarded item')
+})
+
+test('saving a price item says why a rate card change was refused, and keeps the old wording for anything else', () => {
+  const source = read('features', 'documents', 'actions', 'price-list.ts')
+  assert.match(source, /import \{ documentErrorMessage \} from '\.\.\/errors'/)
+  assert.match(source, /documentErrorMessage\(saved\.error\?\.message\) \?\? \(id \? 'That item no longer exists\.' : 'The item could not be saved\. Check the values and try again\.'\)/)
+  assert.match(documentErrorMessage('new row violates RATE_CARD_ADMIN_ONLY')!, /Only an owner or admin can change a rate card price\./)
+  assert.match(documentErrorMessage('RATE_CARD_FIXED')!, /cannot be changed/)
+  assert.equal(documentErrorMessage('some other failure'), null, 'an unknown error falls back to the old text')
+})
+
+test('the picker lists custom items only: the default excludes the rate card and only the price list screen asks for it', () => {
+  const source = query()
+  assert.match(source, /listPriceItems\(options: \{ includeRateCard\?: boolean \} = \{\}\)/)
+  assert.match(source, /if \(!options\.includeRateCard\) query = query\.is\('rate_key', null\)/)
+  assert.match(source, /\.select\(COLUMNS\)\.eq\('organization_id', organization\.id\)\.is\('archived_at', null\)/)
+  assert.match(screen(), /listPriceItems\(\{ includeRateCard: true \}\)/)
+
+  const callers: string[] = []
+  const withFlag: string[] = []
+  for (const root of ['app', 'features']) {
+    for (const file of readdirSync(join(process.cwd(), root), { recursive: true }) as string[]) {
+      if (!/\.(ts|tsx)$/.test(file)) continue
+      const text = read(root, file)
+      const path = `${root}/${file.replace(/\\/g, '/')}`
+      if (/includeRateCard/.test(text)) withFlag.push(path)
+      for (const call of text.matchAll(/listPriceItems\(([^)]*)\)/g)) {
+        if (!path.endsWith('queries/list-price-items.ts')) callers.push(`${path}: ${call[1]}`)
+      }
+    }
+  }
+  assert.deepEqual(withFlag.sort(), ['features/documents/components/price-list-screen.tsx', 'features/documents/queries/list-price-items.ts'], 'includeRateCard appears only in the query and the price list screen')
+  const others = callers.filter((entry) => !entry.startsWith('features/documents/components/price-list-screen.tsx'))
+  assert.ok(others.length >= 2, 'the quote and invoice pages still load the picker')
+  for (const entry of others) assert.ok(entry.endsWith(': '), `${entry} asks for the default (custom items only)`)
+})
+
+test('a rate-locked line has no Edit control and no edit form, keeps Up, Down and Remove, and says it is a rate card price', () => {
+  const source = editor()
+  assert.match(source, /if \(editing && !locked && !line\.rate_locked\) \{/, 'the edit form never opens for a locked line')
+  assert.equal(source.match(/setEditing\(true\)/g)?.length, 1, 'one way into the edit form')
+  const gate = source.match(/\{line\.rate_locked \? null : \(\s*<button type="button" onClick=\{\(\) => setEditing\(true\)\}[^>]*>\s*Edit\s*<\/button>\s*\)\}/)
+  assert.ok(gate, 'the Edit button is the only thing inside the rate_locked condition')
+  const after = source.slice(source.indexOf(gate[0]) + gate[0].length, source.indexOf('function VatSelect'))
+  assert.match(after, /moveLineAction\.bind\(null, kind, documentId, line\.id, 'up'\)/, 'Up stays outside the condition')
+  assert.match(after, /moveLineAction\.bind\(null, kind, documentId, line\.id, 'down'\)/, 'Down stays outside the condition')
+  assert.match(after, /removeLineAction\.bind\(null, kind, line\.id\)/, 'Remove stays outside the condition')
+  assert.match(source, /\{line\.rate_locked \? <p[^>]*>Rate card price\. It cannot be changed here\.<\/p> : null\}/)
 })

@@ -33,6 +33,7 @@ export function SetPackageForm({ clientId, retainers, projects, hasActiveRetaine
       </select>
       <input name="startDate" type="date" aria-label="Start date (leave empty for today)" className={field} />
       <button disabled={pending} className={button}>{pending ? 'Saving…' : 'Record package'}</button>
+      {hasActiveRetainer ? <p className="text-xs text-[var(--briefing-muted)] md:col-span-3">This client already has an active retainer. Use Change tier to move them to another tier.</p> : null}
       <div className="md:col-span-3"><Feedback state={state} /></div>
     </form>
   )

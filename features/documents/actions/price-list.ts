@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 
 import { isUuid } from '@/lib/utils'
+import { documentErrorMessage } from '../errors'
 import { readPriceItemFields } from '../fields'
 import { documentContext } from '../server-context'
 import type { ActionState } from '../types'
@@ -16,7 +17,10 @@ export async function savePriceItemAction(id: string | undefined, _previous: Act
   const saved = id
     ? await db.from('price_list_items').update(fields).eq('id', id).eq('organization_id', organization.id).select('id').maybeSingle()
     : await db.from('price_list_items').insert({ organization_id: organization.id, ...fields }).select('id').single()
-  if (saved.error || !saved.data) return { error: id ? 'That item no longer exists.' : 'The item could not be saved. Check the values and try again.' }
+  if (saved.error || !saved.data) {
+    // A known database refusal (a rate card change by a member, a fixed rate column) says why; anything else keeps the old text.
+    return { error: documentErrorMessage(saved.error?.message) ?? (id ? 'That item no longer exists.' : 'The item could not be saved. Check the values and try again.') }
+  }
   revalidatePath('/settings/price-list')
   redirect(`/settings/price-list?saved=${Date.now()}`)
 }
