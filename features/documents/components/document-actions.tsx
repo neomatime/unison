@@ -1,6 +1,7 @@
 import Link from 'next/link'
 
 import { ActionButton } from '@/features/crm-workspace/components/action-button'
+import { cancelInvoiceAction } from '../../payments/actions/payments'
 import { createInvoiceFromQuoteAction } from '../actions/invoice-from-quote'
 import { duplicateQuoteAction, issueInvoiceAction, sendQuoteAction } from '../actions/send'
 import { DOCUMENTS, isDraftStatus, type DocumentKind } from '../vocabulary'
@@ -10,8 +11,9 @@ const LINK = 'border border-border px-4 py-2 text-sm font-medium text-foreground
 /**
  * The buttons in a quote or invoice page header: view the document, and send, issue, download, email, invoice or duplicate it.
  * A cancelled invoice keeps its PDF but is not offered for emailing; an archived quote is not offered for invoicing.
+ * An issued invoice can be cancelled only while it has no unvoided payment (the database checks it too).
  */
-export function DocumentActions({ kind, id, status, archived = false }: { kind: DocumentKind; id: string; status: string; archived?: boolean }) {
+export function DocumentActions({ kind, id, status, archived = false, hasPayments = false }: { kind: DocumentKind; id: string; status: string; archived?: boolean; hasPayments?: boolean }) {
   const draft = isDraftStatus(kind, status)
   const cancelled = kind === 'invoice' && status === 'Cancelled'
   return (
@@ -43,6 +45,9 @@ export function DocumentActions({ kind, id, status, archived = false }: { kind: 
       ) : null}
       {kind === 'invoice' && draft ? (
         <ActionButton action={issueInvoiceAction.bind(null, id)} label="Issue invoice" confirmText="Issue this invoice? It gets its number now and can no longer be edited." />
+      ) : null}
+      {kind === 'invoice' && !draft && !cancelled && !hasPayments ? (
+        <ActionButton action={cancelInvoiceAction.bind(null, id)} label="Cancel invoice" tone="danger" confirmText="Cancel this invoice? It can't be reopened; raise a new invoice instead." />
       ) : null}
     </>
   )

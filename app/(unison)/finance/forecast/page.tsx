@@ -1,5 +1,5 @@
-import { PhaseSixRegister } from '@/features/commercial-finance/components/phase-six-register'
+import { ForecastScreen } from '@/features/forecast/components/forecast-screen'
 
 export default function Page() {
-  return <PhaseSixRegister kind="forecast" />
+  return <ForecastScreen />
 }

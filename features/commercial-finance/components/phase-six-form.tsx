@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useActionState, type ReactNode } from "react";
 
 import { WorkspaceHeader } from "@/components/shared/workspace-header";
-import { INVOICE_ISSUED_STATUSES, QUOTE_SENT_STATUSES, isDraftStatus } from "@/features/documents/vocabulary";
+import { QUOTE_SENT_STATUSES, isDraftStatus } from "@/features/documents/vocabulary";
 import { savePhaseSixRecordAction } from "../actions/phase-six";
 import type {
   PhaseSixKind,
@@ -154,10 +154,8 @@ function Fields({
       return (
         <>
           <Notice>
-            This invoice has been issued, so its lines, prices and details are frozen. You can still change its payment status, the outstanding balance and the notes. To correct it, cancel it and raise a new one.
+            This invoice has been issued, so its lines, prices and details are frozen. Its status and balance are worked out from the payments you record on the invoice page. You can still change the notes. To correct it, cancel it and raise a new one.
           </Notice>
-          <Select name="status" label="Payment status" options={[...INVOICE_ISSUED_STATUSES]} value={value("status", "Issued")} />
-          <Field name="balanceAmount" label="Outstanding balance" type="number" min={0} step="0.01" value={value("balanceAmount")} />
           <TextArea name="notes" label="Payment notes" value={value("notes")} />
         </>
       );

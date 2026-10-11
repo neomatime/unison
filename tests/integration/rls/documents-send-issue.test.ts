@@ -256,8 +256,8 @@ test('issuing an invoice numbers it, sets its dates, balance and terms, and free
   refused((await memberClient.from('invoice_lines').delete().eq('invoice_id', id)).error, 'INVOICE_FROZEN')
   refused((await memberClient.from('invoices').update({ status: 'Draft' }).eq('id', id)).error, 'INVOICE_CANNOT_REOPEN')
   assert.equal((await memberClient.from('invoices').update({ notes: 'chased' }).eq('id', id)).error, null)
-  assert.equal((await memberClient.from('invoices').update({ status: 'Partially Paid', balance_amount: 100 }).eq('id', id)).error, null)
-  assert.equal((await memberClient.from('invoices').update({ status: 'Cancelled' }).eq('id', id)).error, null)
+  refused((await memberClient.from('invoices').update({ status: 'Partially Paid', balance_amount: 100 }).eq('id', id)).error, 'INVOICE_STATUS_AUTOMATIC')
+  assert.equal((await memberClient.rpc('cancel_invoice', { p_invoice: id })).error, null)
 })
 
 test('duplicating a quote makes a new draft with the same lines and project details', async () => {
@@ -372,7 +372,7 @@ test('the VAT rate is taken from the company details at the moment of sending or
 test('a cancelled invoice stays cancelled', async () => {
   const id = await draftInvoice()
   assert.equal((await issue(id)).error, null)
-  assert.equal((await memberClient.from('invoices').update({ status: 'Cancelled' }).eq('id', id)).error, null)
+  assert.equal((await memberClient.rpc('cancel_invoice', { p_invoice: id })).error, null)
   refused((await memberClient.from('invoices').update({ status: 'Issued' }).eq('id', id)).error, 'INVOICE_CANCELLED')
   refused((await memberClient.from('invoices').update({ status: 'Paid' }).eq('id', id)).error, 'INVOICE_CANCELLED')
   refused((await memberClient.from('invoices').update({ status: 'Draft' }).eq('id', id)).error, 'INVOICE_CANNOT_REOPEN')

@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { WorkPage } from "@/components/shared/work-page";
 import { formatCurrency } from "@/lib/utils/format-money";
 import { isDraftReference } from "@/features/documents/vocabulary";
+import { formatSouthAfricanDate } from "@/features/payments/fields";
 import {
   getPhaseSixRecord,
   type PhaseSixKind,
@@ -155,6 +156,8 @@ function formatValue(key: string, value: unknown, record: PhaseSixRecord) {
   }
   if (key === "vatRate") return `${Number(value)}%`;
   if (key === "probabilityPercent" || key === "confidencePercent") return `${value}%`;
+  // The paid date is midnight South African time; shown in UTC it would read as the day before.
+  if (key === "paidAt") return formatSouthAfricanDate(String(value));
   if (key.endsWith("At")) return new Date(String(value)).toLocaleString("en-ZA");
   if (
     key.endsWith("Date") ||

@@ -16,6 +16,9 @@ export const SYSTEM_ACTIVITY_KINDS = [
   'quote.emailed',
   'invoice.emailed',
   'quote.invoiced',
+  'payment.recorded',
+  'payment.voided',
+  'invoice.overdue',
 ] as const
 
 /** Matches sales_opportunities_stage_check. */
@@ -38,4 +41,7 @@ export const ACTIVITY_LABELS: Record<string, string> = {
   'quote.emailed': 'Quote emailed',
   'invoice.emailed': 'Invoice emailed',
   'quote.invoiced': 'Invoice created',
+  'payment.recorded': 'Payment recorded',
+  'payment.voided': 'Payment voided',
+  'invoice.overdue': 'Invoice overdue',
 }

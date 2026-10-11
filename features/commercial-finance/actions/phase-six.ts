@@ -10,8 +10,6 @@ import type { PhaseSixKind } from "../queries/phase-six";
 import { documentErrorMessage } from "@/features/documents/errors";
 import { readDocumentExtras } from "@/features/documents/fields";
 import {
-  INVOICE_DRAFT_STATUSES,
-  INVOICE_ISSUED_STATUSES,
   QUOTE_DRAFT_STATUSES,
   QUOTE_SENT_STATUSES,
   isDraftStatus,
@@ -183,24 +181,15 @@ export async function savePhaseSixRecordAction(
     if ("error" in extras) return { error: extras.error };
     const state = id && isUuid(id) ? await readDocumentState(db, "invoices", organization.id, id) : null;
     if (id && isUuid(id) && !state) return { error: "That invoice could not be loaded." };
-    const status = text(form, "status");
     table = "invoices";
     if (state && !isDraftStatus("invoice", state.status)) {
-      // Issued: only the status, the balance and the notes can change (payments arrive in a later release).
-      // An old edit form posted after the invoice was issued carries no status or a draft one: say it is frozen.
-      if (!status || isOneOf(INVOICE_DRAFT_STATUSES, status)) {
+      // Issued: only the notes can change; the balance and the payment state come from the payments (record_payment,
+      // void_payment) and cancelling is cancel_invoice. An old draft form posted after the invoice was issued carries
+      // the draft's fields: say it is frozen.
+      if (form.has("dueDate") || form.has("clientId")) {
         return { error: documentErrorMessage("INVOICE_FROZEN") ?? "This invoice has already been issued and can no longer be edited." };
       }
-      if (!isOneOf(INVOICE_ISSUED_STATUSES, status)) {
-        return { error: "Choose Issued, Partially Paid, Paid, Overdue or Cancelled." };
-      }
-      const balance = status === "Paid" || status === "Cancelled" ? 0 : Math.min(state.total, Math.max(0, number(form, "balanceAmount", state.total)));
-      values = {
-        status,
-        balance_amount: balance,
-        paid_at: status === "Paid" ? new Date().toISOString() : null,
-        notes: optional(form, "notes"),
-      };
+      values = { notes: optional(form, "notes") };
     } else {
       const resolvedClient = await clientName(db, organization.id, form);
       if (resolvedClient.invalid) return { error: "The selected client could not be verified." };

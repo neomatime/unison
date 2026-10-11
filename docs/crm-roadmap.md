@@ -23,7 +23,7 @@ them through Stage 2 before starting anything else.
 - [x] Tests for each of the above, including the database rules (RLS suite) and a fixture preview at three widths
 - [ ] **Walked in a signed-in session against real records** (not done yet: the user does this; Stage 1 is not finished until it is)
 
-## Stage 2: make quotes and invoices real documents (slices A and B built 2026-10-11; waiting for the signed-in walk-through)
+## Stage 2: make quotes and invoices real documents (slices A, B and C built 2026-10-11; waiting for the signed-in walk-through)
 
 - [x] Quote line items and a products/services price list (invoices too)
 - [x] Generated quote and invoice numbers (no more typing them)
@@ -33,9 +33,10 @@ them through Stage 2 before starting anything else.
 - [x] Send a quote or invoice by email, and record that it was sent (slice B; shared company mailbox, every send recorded)
 - [x] Quote → invoice in one step (slice B; from an Accepted quote, every line copied)
 - [ ] **Slice B walked in a signed-in session, including one real email** (not done yet: the user does this)
-- [ ] Payments table; the invoice balance and "Paid" / "Partially paid" come from it
-- [ ] "Overdue" set automatically, not by hand
-- [ ] Forecast worked out from the pipeline instead of typed in
+- [x] Payments table; the invoice balance and "Paid" / "Partially paid" come from it (slice C; payments are voided, never edited or deleted)
+- [x] "Overdue" set automatically, not by hand (slice C; a nightly database job at 00:05 South African time)
+- [x] Forecast worked out from the pipeline instead of typed in (slice C; a read-only month-by-month view from payments, unpaid invoices and the pipeline)
+- [ ] **Slice C walked in a signed-in session** (not done yet: the user does this, and the first real nightly run is on the first night after deploy)
 
 ## Stage 3: make the registers scale
 
