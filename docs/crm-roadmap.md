@@ -40,10 +40,10 @@ them through Stage 2 before starting anything else.
 
 ## Stage 3: make the registers scale
 
-- [ ] Search, filter, sort and paging on Leads, Quotes, Sales, Invoices and Expenses
+- [x] Search, filter, sort and paging on Leads, Quotes, Sales, Invoices and Expenses (built 2026-10-11, waiting for the signed-in walk-through)
       (they currently load every row; Supabase silently stops at 1,000)
-- [ ] Detail pages load one record, not the whole table
-- [ ] Export from each register
+- [x] Detail pages load one record, not the whole table (built 2026-10-11)
+- [x] Export from each register (everything matching the filters, up to 5,000 rows; built 2026-10-11)
 - [ ] Sales targets and a reports page beyond the dashboard
 
 ## Stage 4: permissions and notifications

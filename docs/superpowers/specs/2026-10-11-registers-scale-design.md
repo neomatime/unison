@@ -195,3 +195,31 @@ archived.", "This record is not archived." A failed read shows an error, never b
 - Never `git add -A`; stage explicit paths. Do not touch `public/` or
   `features/product-ui/components/record-collection-workspace.tsx` or
   `features/commercial-finance/components/record-collection-workspace.tsx`. Commit and push only when the user asks.
+
+## Amendments made while planning and building
+
+Small, deliberate departures from the text above, each decided with a reason and recorded in the plan and its ledger.
+
+1. **"Show archived" shows only archived records** (as the shared register does today), not archived and active together.
+2. **The page address names a sortable column by its screen column id** (`sort=due`); the register rules map each id to its
+   database column, and the default order (for example `created_at`) is used when `sort` is absent.
+3. **The Sales "Weighted forecast" card counts open opportunities only.** The old card multiplied every row, Won and Lost
+   included, which inflated it.
+4. **Row actions are inline links and buttons** (View, Edit, Archive or Restore), not a menu, so they work without scripts.
+5. **The Import button links to the existing import page** with the slug the shared register derives, and appears only for
+   registers that have import columns (leads, sales, expenses).
+6. **The toolbar is a small client component; the table, headings, paging and row actions are server rendered links and
+   forms.** A "Clear filters" link sits in the toolbar whenever a filter is set (and in the empty state).
+7. **A page past the end is handled by the query layer:** PostgREST answers such a range with an error (PGRST103), so the
+   layer reads page 1 for the total and then the last page.
+8. **Names (owner, project, vendor, client, quote, lead, opportunity) are looked up only for the ids on the page** and now
+   resolve even for archived or inactive owners, vendors and projects (the old lists left those as "Unassigned" or "—").
+9. **The owner filter accepts any well-formed uuid** (lower-cased); one that is not in the active list shows as "Former member"
+   in the list and simply matches nothing.
+10. **The export cap applies to every collection that uses the route,** not only the five registers: more than 5,000 matching
+    rows is a 413 with a message instead of a silent cut-off.
+11. **The test cleanup helper pages past PostgREST's 1,000-row cap, and the 1,100-invoice test removes exactly its own audit
+    rows by id.** The shared helper cannot reach the 2,200 audit rows that many fixture invoices write.
+12. **The export first counts the matching rows (a count-only query, so the 1,000-row server limit does not apply), refuses
+    with the message above 5,000, and then reads the rows in ranges of 1,000.** The first version asked for 5,001 rows in one
+    request, which the server cut to 1,000 without saying so; the final review caught it.
