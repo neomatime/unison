@@ -19,6 +19,10 @@ export const SYSTEM_ACTIVITY_KINDS = [
   'payment.recorded',
   'payment.voided',
   'invoice.overdue',
+  'billing.package_set',
+  'billing.tier_changed',
+  'billing.support_added',
+  'billing.document_built',
 ] as const
 
 /** Matches sales_opportunities_stage_check. */
@@ -44,4 +48,8 @@ export const ACTIVITY_LABELS: Record<string, string> = {
   'payment.recorded': 'Payment recorded',
   'payment.voided': 'Payment voided',
   'invoice.overdue': 'Invoice overdue',
+  'billing.package_set': 'Package recorded',
+  'billing.tier_changed': 'Tier changed',
+  'billing.support_added': 'Support service recorded',
+  'billing.document_built': 'Billing document built',
 }
