@@ -83,6 +83,9 @@ export async function savePhaseSixRecordAction(
   const db = (await createServerSupabase()) as any;
   let table: string;
   let values: Record<string, unknown>;
+  // A new quote or invoice can start from a package: its lines are added at the rate card prices after it is saved.
+  const packageKey = !id && (kind === "quote" || kind === "invoice") ? optional(form, "packageKey") : null;
+  if (packageKey !== null && !/^[a-z0-9_]{1,60}$/.test(packageKey)) return { error: "Choose a package from the list." };
 
   if (kind === "lead") {
     const companyName = text(form, "companyName");
@@ -264,6 +267,9 @@ export async function savePhaseSixRecordAction(
     };
   }
 
+  // The rate card is in rand: a document started from a package is in rand.
+  if (packageKey) values.currency = "ZAR";
+
   const result = id && isUuid(id)
     ? await db
         .from(table)
@@ -292,6 +298,15 @@ export async function savePhaseSixRecordAction(
                 ? "Say why this opportunity was lost."
                 : "The record could not be saved. Check related records, dates and amounts."),
     };
+  }
+
+  if (packageKey && (kind === "quote" || kind === "invoice")) {
+    const filled = await db.rpc("fill_document_from_package", { p_kind: kind, p_document: result.data.id, p_package_key: packageKey });
+    if (filled.error) {
+      // The draft exists (blank): land on it, where Add from the rate card works, instead of keeping the form open (a second save would make a second draft).
+      revalidatePath(routes[kind]);
+      redirect(`${routes[kind]}/${result.data.id}?notice=package_failed`);
+    }
   }
 
   const base = routes[kind];

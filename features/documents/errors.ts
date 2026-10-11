@@ -77,6 +77,9 @@ const MESSAGES: ReadonlyArray<readonly [token: string, message: string]> = [
   ['MONTH_ALREADY_BILLED', 'That month has already been invoiced for this client. Discard the draft, or cancel the issued invoice, first.'],
   ['BILLING_MONTH_INVALID', 'Choose this month or an earlier one.'],
   ['TOP_UP_CREDITS_INVALID', 'Enter a whole number of credits from 1 to 10,000.'],
+  ['RATE_CARD_CURRENCY', "The rate card is in rand. Set this document's currency to ZAR to use it."],
+  ['DOCUMENT_NOT_EMPTY', 'This document already has lines. Remove them first, or add items from the rate card one at a time.'],
+  ['RATE_QUANTITY_INVALID', 'Top-up credits must be a whole number from 1 to 10,000; every other rate card item is added once.'],
   ['BILLING_DRAFT_ONLY', 'Only a draft built from a client package can be discarded.'],
 ]
 

@@ -31,7 +31,7 @@ export default async function Page({ params }: { params: Promise<{ invoiceId: st
             </>
           ) : null}
         </p>
-        <PrintButton />
+        <PrintButton href={`/print/invoice/${invoiceId}`} />
       </div>
       <div className="overflow-x-auto"><DocumentSheet view={view} /></div>
     </WorkPage>

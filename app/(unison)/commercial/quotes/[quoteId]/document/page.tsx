@@ -31,7 +31,7 @@ export default async function Page({ params }: { params: Promise<{ quoteId: stri
             </>
           ) : null}
         </p>
-        <PrintButton />
+        <PrintButton href={`/print/quote/${quoteId}`} />
       </div>
       <div className="overflow-x-auto"><DocumentSheet view={view} /></div>
     </WorkPage>

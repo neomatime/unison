@@ -3,6 +3,8 @@ import "server-only";
 import { getSessionContext } from "@/lib/auth/get-session-context";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { isUuid } from "@/lib/utils";
+import { formatCurrency } from "@/lib/utils/format-money";
+import { packageName } from "@/features/billing/rate-card";
 import {
   collectNameIds,
   documentName,
@@ -28,6 +30,8 @@ export type PhaseSixOptions = {
   leads: SelectOption[];
   opportunities: SelectOption[];
   quotes: SelectOption[];
+  /** The packages a new quote or invoice can start from (id = the package key), priced from the rate card rows. */
+  packages: { retainers: SelectOption[]; projects: SelectOption[] };
   defaults: { quoteTerms: string | null; paymentTerms: string | null };
 };
 export type PhaseSixRecord = Record<string, unknown> & {
@@ -49,10 +53,32 @@ const makeMap = (options: SelectOption[]) =>
 const nameFor = (map: Map<string, string>, id: unknown, fallback = "Unassigned") =>
   typeof id === "string" ? map.get(id) ?? fallback : fallback;
 
+const rand = (amount: unknown) => formatCurrency(Number(amount), "ZAR");
+
+/** "Growth Partner: R150 000 a month + R150 000 one-time implementation" and "Digital Presence: R45 000", from the rate card rows. */
+function packageOptions(rows: Array<{ item_kind: string; package_key: string | null; unit_price: number | string }>): PhaseSixOptions["packages"] {
+  const price = (kind: string, key: string | null) => rows.find((row) => row.item_kind === kind && row.package_key === key)?.unit_price;
+  const retainers: SelectOption[] = [];
+  const projects: SelectOption[] = [];
+  for (const row of rows) {
+    if (!row.package_key) continue;
+    const name = packageName(row.package_key);
+    if (row.item_kind === "retainer_monthly") {
+      const implementation = price("retainer_implementation", row.package_key);
+      // Without its implementation fee a retainer cannot be filled (the database refuses), so it is not offered.
+      if (implementation === undefined) continue;
+      retainers.push({ id: row.package_key, label: `${name}: ${rand(row.unit_price)} a month + ${rand(implementation)} one-time implementation` });
+    } else if (row.item_kind === "project") {
+      projects.push({ id: row.package_key, label: `${name}: ${rand(row.unit_price)}` });
+    }
+  }
+  return { retainers, projects };
+}
+
 export async function getPhaseSixOptions(): Promise<PhaseSixOptions> {
   const { organization, db } = await context();
   const organizationId = organization.id;
-  const [members, clients, projects, vendors, leads, opportunities, quotes, settings] = await Promise.all([
+  const [members, clients, projects, vendors, leads, opportunities, quotes, settings, rateRows] = await Promise.all([
     db.from("team_members").select("id,full_name").eq("organization_id", organizationId).eq("status", "Active").is("archived_at", null).order("full_name"),
     db.from("clients").select("id,name").eq("organization_id", organizationId).is("archived_at", null).order("name"),
     db.from("projects").select("id,name").eq("organization_id", organizationId).is("archived_at", null).order("name"),
@@ -61,6 +87,7 @@ export async function getPhaseSixOptions(): Promise<PhaseSixOptions> {
     db.from("sales_opportunities").select("id,name").eq("organization_id", organizationId).is("archived_at", null).order("name"),
     db.from("quotes").select("id,quote_number,client_name").eq("organization_id", organizationId).is("archived_at", null).order("quote_number"),
     db.from("organization_settings").select("default_quote_terms,default_payment_terms").eq("organization_id", organizationId).maybeSingle(),
+    db.from("price_list_items").select("item_kind,package_key,unit_price").eq("organization_id", organizationId).in("item_kind", ["retainer_monthly", "retainer_implementation", "project"]).not("rate_key", "is", null).is("archived_at", null).order("unit_price"),
   ]);
   for (const result of [members, clients, projects, vendors, leads, opportunities, quotes, settings]) {
     if (result.error) throw result.error;
@@ -73,6 +100,8 @@ export async function getPhaseSixOptions(): Promise<PhaseSixOptions> {
     leads: (leads.data ?? []).map((row: any) => ({ id: row.id, label: row.company_name })),
     opportunities: (opportunities.data ?? []).map((row: any) => ({ id: row.id, label: row.name })),
     quotes: (quotes.data ?? []).map((row: any) => ({ id: row.id, label: documentName(row.quote_number, row.client_name, "quote") })),
+    // A failed rate card read only means no package choices; it must not break the lead, expense or forecast forms.
+    packages: packageOptions(rateRows.error ? [] : rateRows.data ?? []),
     defaults: {
       quoteTerms: settings.data?.default_quote_terms ?? null,
       paymentTerms: settings.data?.default_payment_terms ?? null,
