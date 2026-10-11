@@ -107,13 +107,17 @@ test('a part payment makes the invoice Partially Paid with the right balance and
 
 test('paying the rest makes it Paid with the date of the last payment, and nothing more can be paid', async () => {
   const invoice = await issuedInvoice()
-  assert.equal((await pay(invoice, { p_amount: 100 })).error, null)
-  const earlier = addDays(sast(), 0)
-  assert.equal((await pay(invoice, { p_amount: 130, p_received_on: earlier })).error, null)
+  must(await admin.from('invoices').update({ issue_date: addDays(sast(), -5) }).eq('id', invoice).select('id'))
+  const firstDate = addDays(sast(), -3)
+  const lastDate = addDays(sast(), -1)
+  assert.equal((await pay(invoice, { p_amount: 100, p_received_on: firstDate })).error, null)
+  assert.equal((await pay(invoice, { p_amount: 130, p_received_on: lastDate })).error, null)
   const paid = await row('invoices', invoice)
   assert.equal(paid.status, 'Paid')
   assert.equal(Number(paid.balance_amount), 0)
-  assert.equal(String(paid.paid_at).slice(0, 10) === earlier || String(paid.paid_at).slice(0, 10) === addDays(earlier, -1), true, 'paid_at is the payment date at South African midnight')
+  const southAfricanDate = new Date(new Date(paid.paid_at).getTime() + 2 * 3_600_000).toISOString().slice(0, 10)
+  assert.equal(southAfricanDate, lastDate, 'paid_at is the date of the last payment, at South African midnight')
+  assert.notEqual(southAfricanDate, firstDate)
   refused((await pay(invoice, { p_amount: 1 })).error, 'INVOICE_NOT_PAYABLE')
 })
 
@@ -246,6 +250,19 @@ test('a member cannot type a status, a balance or a paid date on an issued invoi
   assert.equal((await row('invoices', invoice)).status, 'Issued')
 })
 
+test('a typed paid date on a draft is dropped, so an invoice never comes out of issuing with one', async () => {
+  const id = must(await memberClient.from('invoices').insert({ organization_id: orgA, client_id: clientA, client_name: 'Pay Client A', paid_at: new Date().toISOString() }).select('id').single()).id as string
+  assert.equal((await row('invoices', id)).paid_at, null, 'a paid date typed on insert is dropped')
+  assert.equal((await memberClient.from('invoices').update({ paid_at: new Date().toISOString() }).eq('id', id)).error, null)
+  assert.equal((await row('invoices', id)).paid_at, null, 'a paid date typed on a draft is dropped')
+  assert.equal((await memberClient.from('invoice_lines').insert({ organization_id: orgA, invoice_id: id, position: 1, title: 'Advisory', quantity: 2, unit_price: 100 })).error, null)
+  assert.equal((await memberClient.rpc('issue_invoice', { p_id: id })).error, null)
+  const issued = await row('invoices', id)
+  assert.equal(issued.status, 'Issued')
+  assert.equal(issued.paid_at, null)
+  assert.equal(Number(issued.balance_amount), 230)
+})
+
 // ---------------------------------------------------------------------------
 // The nightly job
 // ---------------------------------------------------------------------------
@@ -277,6 +294,7 @@ test('the nightly function sets Overdue once, writes one entry, and leaves every
   assert.equal((await entries(late)).length, 1)
   assert.equal((await entries(lateButPartlyPaid)).length, 1)
   assert.equal((await entries(notYetDue)).length, 0)
+  for (const untouched of [draft, paid, cancelled]) assert.equal((await entries(untouched)).length, 0)
 
   const second = await admin.rpc('mark_overdue_invoices')
   assert.equal(second.error, null)
@@ -284,6 +302,22 @@ test('the nightly function sets Overdue once, writes one entry, and leaves every
 
   assert.equal((await pay(lateButPartlyPaid, { p_amount: 130 })).error, null)
   assert.equal((await row('invoices', lateButPartlyPaid)).status, 'Paid', 'paying an overdue invoice in full makes it Paid')
+})
+
+test('the nightly function writes no overdue entry for an invoice whose stored status and balance are stale', async () => {
+  const invoice = await issuedInvoice()
+  assert.equal((await pay(invoice, { p_amount: 230 })).error, null)
+  assert.equal((await row('invoices', invoice)).status, 'Paid')
+  must(await admin.from('invoices').update({
+    status: 'Issued', balance_amount: 230, issue_date: addDays(sast(), -60), due_date: addDays(sast(), -10),
+  }).eq('id', invoice).select('id'))
+
+  const run = await admin.rpc('mark_overdue_invoices')
+  assert.equal(run.error, null)
+  const after = await row('invoices', invoice)
+  assert.equal(after.status, 'Paid', 'the rule corrected the stale row')
+  assert.equal(Number(after.balance_amount), 0)
+  assert.equal((await timeline('invoice.overdue')).filter((entry) => entry.details.invoice_id === invoice).length, 0)
 })
 
 test('only the service role can run the nightly function', async () => {
