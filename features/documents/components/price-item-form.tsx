@@ -36,6 +36,12 @@ export function PriceItemForm({ item }: { item: PriceItem | null }) {
           {VAT_CODES.map((code) => <option key={code} value={code}>{VAT_LABELS[code]}</option>)}
         </select>
       </label>
+      {item?.item_kind === 'retainer_monthly' ? (
+        <label className="text-sm font-medium">
+          Active projects allowed (leave empty for no limit)
+          <input name="initiativeLimit" inputMode="numeric" aria-label="Active projects allowed" defaultValue={item.initiative_limit ?? ''} className={`${field} mt-1.5`} />
+        </label>
+      ) : null}
       <label className="text-sm font-medium md:col-span-2">
         Description (shown under the title on a quote or invoice)
         <textarea name="description" rows={3} aria-label="Description" defaultValue={item?.description ?? ''} className="mt-1.5 w-full rounded-none border border-border bg-background px-3 py-2 text-sm" />

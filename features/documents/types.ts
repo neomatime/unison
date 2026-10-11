@@ -40,6 +40,11 @@ export type PriceItem = {
   unit_price: number | string
   vat_code: string
   archived_at: string | null
+  rate_key: string | null
+  item_kind: string | null
+  credits: number | string | null
+  initiative_limit: number | null
+  rate_status: string | null
 }
 
 export type DocumentLine = {
@@ -52,4 +57,5 @@ export type DocumentLine = {
   vat_code: string
   line_amount: number | string
   price_list_item_id: string | null
+  rate_locked: boolean
 }

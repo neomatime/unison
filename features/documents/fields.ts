@@ -67,7 +67,7 @@ export function readLineFields(form: FormData): LineFields | Failure {
   return { title, description, quantity: quantity.value, unit_price: price, vat_code: vat, price_list_item_id: itemId }
 }
 
-export type PriceItemFields = { title: string; description: string | null; unit_price: number; vat_code: VatCode }
+export type PriceItemFields = { title: string; description: string | null; unit_price: number; vat_code: VatCode; initiative_limit?: number | null }
 
 export function readPriceItemFields(form: FormData): PriceItemFields | Failure {
   const title = value(form, 'title')
@@ -79,7 +79,15 @@ export function readPriceItemFields(form: FormData): PriceItemFields | Failure {
   if (typeof price !== 'number') return price
   const vat = readVatCode(form)
   if (typeof vat !== 'string') return vat
-  return { title, description, unit_price: price, vat_code: vat }
+  const fields: PriceItemFields = { title, description, unit_price: price, vat_code: vat }
+  // Only the form of a monthly retainer tier sends this: how many active projects the tier allows. Empty means no limit.
+  if (form.has('initiativeLimit')) {
+    const raw = value(form, 'initiativeLimit')
+    if (raw === '') fields.initiative_limit = null
+    else if (/^\d{1,2}$/.test(raw) && Number(raw) >= 1 && Number(raw) <= 50) fields.initiative_limit = Number(raw)
+    else return { error: 'Enter the active projects allowed as a whole number from 1 to 50, or leave it empty for no limit.' }
+  }
+  return fields
 }
 
 export type CompanyFields = {
