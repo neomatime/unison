@@ -65,6 +65,22 @@ test('the payments section tells a draft, a paid and a cancelled invoice apart, 
   assert.match(source, /todayInJohannesburg\(/)
 })
 
+test('an invoice with nothing owing is not offered the record payment form', () => {
+  const source = payments('components', 'payments-section.tsx')
+  assert.match(source, /canPay = open && Number\(bundle\.record\.balance_amount\) > 0/)
+  assert.match(source, /There is no balance to pay\./)
+})
+
+test('the invoice detail shows the paid date as a South African date, whatever the server time zone', () => {
+  const source = read('features', 'commercial-finance', 'components', 'phase-six-detail.tsx')
+  assert.match(source, /key === "paidAt"\) return formatSouthAfricanDate\(/)
+  assert.match(payments('fields.ts'), /timeZone: 'Africa\/Johannesburg'[^)]*day: 'numeric'/)
+  assert.doesNotMatch(payments('fields.ts').match(/const SA_DATE[^\n]*/)![0], /hour|minute/, 'a date, no time')
+  const paidAt = source.indexOf('key === "paidAt"')
+  const generic = source.indexOf('key.endsWith("At")')
+  assert.ok(paidAt > -1 && paidAt < generic, 'the paid date is handled before the generic *At formatting')
+})
+
 test('the payments list is read for one organisation and fails loudly', () => {
   const source = payments('queries', 'list-payments.ts')
   assert.match(source, /^import 'server-only'/)

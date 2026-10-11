@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { readPaymentFields, readVoidReason, todayInJohannesburg } from '../../features/payments/fields.ts'
+import { formatSouthAfricanDate, readPaymentFields, readVoidReason, todayInJohannesburg } from '../../features/payments/fields.ts'
 import { PAYMENT_METHODS, isPaymentMethod } from '../../features/payments/vocabulary.ts'
 
 const form = (values: Record<string, string>) => {
@@ -23,6 +23,15 @@ test('todayInJohannesburg is the South African date, not the UTC date', () => {
   assert.equal(todayInJohannesburg(new Date('2026-10-10T21:59:00Z')), '2026-10-10')
   assert.equal(todayInJohannesburg(new Date('2026-10-10T22:01:00Z')), '2026-10-11', 'after 22:00 UTC it is already tomorrow in South Africa')
   assert.equal(todayInJohannesburg(new Date('2026-12-31T22:30:00Z')), '2027-01-01')
+})
+
+test('a paid date stored as South African midnight shows as that South African day, not the UTC day before', () => {
+  const day = (iso: string) => formatSouthAfricanDate(iso)
+  assert.equal(day('2026-10-10T22:00:00Z'), day('2026-10-11T12:00:00Z'), 'midnight on the 11th in South Africa is the 11th')
+  assert.equal(day('2026-10-10T21:59:00Z'), day('2026-10-10T12:00:00Z'), 'one minute earlier is still the 10th')
+  assert.notEqual(day('2026-10-10T22:00:00Z'), day('2026-10-10T21:59:00Z'))
+  assert.match(day('2026-10-10T22:00:00Z'), /2026/)
+  assert.doesNotMatch(day('2026-10-10T22:00:00Z'), /:/, 'a date only, no time')
 })
 
 test('a valid payment is read as numbers and trimmed text', () => {

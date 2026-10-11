@@ -13,14 +13,16 @@ export async function PaymentsSection({ invoiceId }: { invoiceId: string }) {
   const status = String(bundle.record.status)
   const currency = String(bundle.record.currency ?? 'ZAR')
   const payments = status === 'Draft' ? [] : await listPayments(invoiceId)
-  const canPay = status === 'Issued' || status === 'Partially Paid' || status === 'Overdue'
+  const open = status === 'Issued' || status === 'Partially Paid' || status === 'Overdue'
+  // A zero-total invoice stays Issued with nothing owing: every payment would be refused, so the form is not offered.
+  const canPay = open && Number(bundle.record.balance_amount) > 0
   const note = status === 'Draft'
     ? 'Issue this invoice before recording payments.'
     : status === 'Paid'
       ? 'This invoice is paid in full.'
       : status === 'Cancelled'
         ? 'A cancelled invoice takes no payments.'
-        : null
+        : 'There is no balance to pay.'
   return (
     <div id="payments" className="scroll-mt-24">
       <WorkspaceSection title="Payments" description="The balance and the status are worked out from these. A wrong payment is voided, never deleted.">

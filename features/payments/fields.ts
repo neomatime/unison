@@ -8,6 +8,13 @@ export function todayInJohannesburg(now: Date = new Date()): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Johannesburg', year: 'numeric', month: '2-digit', day: '2-digit' }).format(now)
 }
 
+const SA_DATE = new Intl.DateTimeFormat('en-ZA', { timeZone: 'Africa/Johannesburg', year: 'numeric', month: 'short', day: 'numeric' })
+
+/** An instant shown as its South African calendar date, no time ("11 Oct 2026"). A paid date is stored as midnight there, which is the previous day in UTC. */
+export function formatSouthAfricanDate(iso: string): string {
+  return SA_DATE.format(new Date(iso))
+}
+
 function isRealDate(value: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
   const date = new Date(`${value}T00:00:00Z`)
