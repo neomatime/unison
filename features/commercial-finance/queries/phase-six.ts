@@ -65,7 +65,9 @@ function packageOptions(rows: Array<{ item_kind: string; package_key: string | n
     const name = packageName(row.package_key);
     if (row.item_kind === "retainer_monthly") {
       const implementation = price("retainer_implementation", row.package_key);
-      retainers.push({ id: row.package_key, label: `${name}: ${rand(row.unit_price)} a month${implementation === undefined ? "" : ` + ${rand(implementation)} one-time implementation`}` });
+      // Without its implementation fee a retainer cannot be filled (the database refuses), so it is not offered.
+      if (implementation === undefined) continue;
+      retainers.push({ id: row.package_key, label: `${name}: ${rand(row.unit_price)} a month + ${rand(implementation)} one-time implementation` });
     } else if (row.item_kind === "project") {
       projects.push({ id: row.package_key, label: `${name}: ${rand(row.unit_price)}` });
     }
@@ -87,7 +89,7 @@ export async function getPhaseSixOptions(): Promise<PhaseSixOptions> {
     db.from("organization_settings").select("default_quote_terms,default_payment_terms").eq("organization_id", organizationId).maybeSingle(),
     db.from("price_list_items").select("item_kind,package_key,unit_price").eq("organization_id", organizationId).in("item_kind", ["retainer_monthly", "retainer_implementation", "project"]).not("rate_key", "is", null).is("archived_at", null).order("unit_price"),
   ]);
-  for (const result of [members, clients, projects, vendors, leads, opportunities, quotes, settings, rateRows]) {
+  for (const result of [members, clients, projects, vendors, leads, opportunities, quotes, settings]) {
     if (result.error) throw result.error;
   }
   return {
@@ -98,7 +100,8 @@ export async function getPhaseSixOptions(): Promise<PhaseSixOptions> {
     leads: (leads.data ?? []).map((row: any) => ({ id: row.id, label: row.company_name })),
     opportunities: (opportunities.data ?? []).map((row: any) => ({ id: row.id, label: row.name })),
     quotes: (quotes.data ?? []).map((row: any) => ({ id: row.id, label: documentName(row.quote_number, row.client_name, "quote") })),
-    packages: packageOptions(rateRows.data ?? []),
+    // A failed rate card read only means no package choices; it must not break the lead, expense or forecast forms.
+    packages: packageOptions(rateRows.error ? [] : rateRows.data ?? []),
     defaults: {
       quoteTerms: settings.data?.default_quote_terms ?? null,
       paymentTerms: settings.data?.default_payment_terms ?? null,

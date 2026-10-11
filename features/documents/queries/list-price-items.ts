@@ -36,7 +36,8 @@ export async function listRateCardItems(): Promise<RateCardItem[]> {
     .eq('organization_id', organization.id)
     .not('rate_key', 'is', null)
     .is('archived_at', null)
-    .order('rate_key')
+    .order('item_kind')
+    .order('unit_price')
   if (result.error) throw result.error
   return (result.data ?? []) as RateCardItem[]
 }

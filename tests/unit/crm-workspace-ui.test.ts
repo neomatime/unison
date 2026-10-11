@@ -98,7 +98,7 @@ test('each record page passes the workspace into the page, not just defines it',
     assert.ok(source.includes(`getRecordWorkspace('${kind}', ${idName})`), `${kind} page loads its workspace`)
     assert.ok(source.includes(`sections={${sections}}`), `${kind} page lists its sections`)
     // Other props (the lead page's Convert button in `actions`) may sit between id and after.
-    const mounted = new RegExp(`<PhaseSixDetail\\s+kind="${kind}"\\s+id=\\{${idName}\\}(\\s+actions=\\{[\\s\\S]*?\\})?\\s+after=\\{<${component} ${idName}=\\{${idName}\\} />\\}\\s*/>`)
+    const mounted = new RegExp(`<PhaseSixDetail\\s+kind="${kind}"\\s+id=\\{${idName}\\}(\\s+actions=\\{[\\s\\S]*?\\})?\\s+after=\\{<${component} ${idName}=\\{${idName}\\}( notice=\\{notice\\})? />\\}\\s*/>`)
     assert.match(source, mounted, `${kind} page must pass <${component}> as PhaseSixDetail's after prop`)
   }
   const client = page('operations', 'clients', '[clientId]')

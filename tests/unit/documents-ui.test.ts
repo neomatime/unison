@@ -206,7 +206,7 @@ test('the quote and invoice pages mount the document actions and the line editor
     assert.match(source, /<DocumentActions\s/, `${kind} page mounts the document actions`)
     assert.match(source, /<LineEditor\s/, `${kind} page mounts the line editor`)
     assert.match(source, new RegExp(`getDocument\\('${kind}', ${id}\\)`))
-    const mounted = new RegExp(`<PhaseSixDetail\\s+kind="${kind}"\\s+id=\\{${id}\\}\\s+actions=\\{[\\s\\S]*?\\}\\s+after=\\{<${component} ${id}=\\{${id}\\} />\\}\\s*/>`)
+    const mounted = new RegExp(`<PhaseSixDetail\\s+kind="${kind}"\\s+id=\\{${id}\\}\\s+actions=\\{[\\s\\S]*?\\}\\s+after=\\{<${component} ${id}=\\{${id}\\}( notice=\\{notice\\})? />\\}\\s*/>`)
     assert.match(source, mounted, `${kind} page keeps its detail wiring`)
   }
 })

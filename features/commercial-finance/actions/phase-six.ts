@@ -267,6 +267,9 @@ export async function savePhaseSixRecordAction(
     };
   }
 
+  // The rate card is in rand: a document started from a package is in rand.
+  if (packageKey) values.currency = "ZAR";
+
   const result = id && isUuid(id)
     ? await db
         .from(table)
@@ -300,10 +303,9 @@ export async function savePhaseSixRecordAction(
   if (packageKey && (kind === "quote" || kind === "invoice")) {
     const filled = await db.rpc("fill_document_from_package", { p_kind: kind, p_document: result.data.id, p_package_key: packageKey });
     if (filled.error) {
-      // The draft exists (blank): do not ask for it to be saved again, which would make a second one.
-      return {
-        error: `The ${kind} was saved as a blank draft, but its package lines could not be added: ${documentErrorMessage(String(filled.error.message)) ?? "please try again from the page."} Find it in the ${kind === "quote" ? "Quotes" : "Invoices"} list.`,
-      };
+      // The draft exists (blank): land on it, where Add from the rate card works, instead of keeping the form open (a second save would make a second draft).
+      revalidatePath(routes[kind]);
+      redirect(`${routes[kind]}/${result.data.id}?notice=package_failed`);
     }
   }
 

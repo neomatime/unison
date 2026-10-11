@@ -198,3 +198,22 @@ test('a support-only client can build the monthly invoice, and a client whose pa
   })
   assert.equal(allEnded.canBuildMonthly, false)
 })
+
+test('a new package that starts later can already build its first quote or invoice, but a tier-change successor that has not started cannot', () => {
+  const view = buildBillingPackageView({
+    engagements: [
+      engagement({ id: 'new', package_key: 'growth', start_date: '2026-12-01', root_id: 'new' }),
+      engagement({ id: 'root', package_key: 'signature', start_date: '2026-06-01', ended_on: '2026-11-30', root_id: 'root' }),
+      engagement({ id: 'next', package_key: 'private', start_date: '2026-12-01', replaces_id: 'root', root_id: 'root' }),
+    ],
+    support: [], rateRows: RATES, firstInvoiceEngagementIds: [], documents: [], today: '2026-10-12',
+  } as BillingPackageInput)
+  const byId = (id: string) => view.active.find((p) => p.id === id)!
+  assert.equal(byId('new').state, 'scheduled')
+  assert.equal(byId('new').canBuildFirst, true, 'a new package can be quoted before it starts')
+  assert.equal(byId('new').canTopUp, false, 'but it cannot take top-ups yet')
+  assert.equal(byId('next').state, 'scheduled')
+  assert.equal(byId('next').canBuildFirst, false, 'a successor builds nothing before it starts')
+  assert.equal(byId('root').state, 'in_force')
+  assert.equal(byId('root').canBuildFirst, true, 'the retainer in force builds the chain\'s first invoice')
+})

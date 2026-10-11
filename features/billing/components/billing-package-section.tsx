@@ -52,7 +52,7 @@ function PackageCard({ pkg }: { pkg: PackageView }) {
         </div>
       </div>
       {pkg.firstBuilt ? <p className="text-xs text-[var(--briefing-muted)]">The first invoice has been built{pkg.kind === 'retainer' ? '; the implementation fee is billed once' : ''}.</p> : null}
-      {pkg.state === 'scheduled' ? <p className="text-xs text-[var(--briefing-muted)]">This package has not started yet. Its documents can be built from {pkg.startDate}.</p> : null}
+      {pkg.state === 'scheduled' ? <p className="text-xs text-[var(--briefing-muted)]">{pkg.canBuildFirst ? `This package has not started yet. You can build its first quote or invoice now; top-ups and the monthly invoice follow from ${pkg.startDate}.` : `This package has not started yet. Its documents can be built from ${pkg.startDate}.`}</p> : null}
 
       {pkg.kind === 'project' ? (
         <div className="space-y-2">

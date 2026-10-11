@@ -210,9 +210,9 @@ function AddLineForm({ kind, documentId, priceItems }: { kind: DocumentKind; doc
 }
 
 const RATE_GROUPS: ReadonlyArray<readonly [kinds: readonly string[], label: string]> = [
-  [['retainer_monthly'], 'Retainers (monthly fee, credits included)'],
+  [['retainer_monthly'], 'Retainers (monthly fee)'],
   [['retainer_implementation'], 'Retainer implementation fees (one-time)'],
-  [['project'], 'Projects (fixed fee, credits included)'],
+  [['project'], 'Projects (fixed fee)'],
   [['support'], 'Support services (monthly)'],
   [['retainer_top_up', 'project_top_up'], 'Top-up credits (per credit)'],
 ]
@@ -233,6 +233,9 @@ function RateCardPicker({ kind, documentId, rateItems, currency }: { kind: Docum
     }
   }, [state])
   if (rateItems.length === 0) return null
+  if (currency !== 'ZAR') {
+    return <p className="border-t border-border px-5 py-4 text-xs text-[var(--briefing-muted)]">The rate card is in rand. Set this document's currency to ZAR to add rate card items.</p>
+  }
   return (
     <form
       onSubmit={(event) => {
@@ -263,6 +266,7 @@ function RateCardPicker({ kind, documentId, rateItems, currency }: { kind: Docum
           })}
         </select>
       </label>
+      <p className="text-xs text-[var(--briefing-muted)] md:col-span-3">This adds a priced line only. Credits are described in the line text; no client package or credit balance is set up.</p>
       {chosen?.description ? <p className="text-xs text-[var(--briefing-muted)] md:col-span-3">{chosen.description}</p> : null}
       {isTopUp ? (
         <input aria-label="Credits" inputMode="numeric" pattern="[0-9]*" required placeholder="Credits" value={quantity} onChange={(event) => setQuantity(event.target.value)} className={field} />

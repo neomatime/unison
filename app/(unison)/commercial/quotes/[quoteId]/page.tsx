@@ -37,10 +37,15 @@ async function QuoteLines({ quoteId }: { quoteId: string }) {
   )
 }
 
-async function QuoteWorkspace({ quoteId }: { quoteId: string }) {
+async function QuoteWorkspace({ quoteId, notice }: { quoteId: string; notice?: string | string[] }) {
   const workspace = await getRecordWorkspace('quote', quoteId)
   return (
     <>
+      {notice === 'package_failed' ? (
+        <p role="alert" className="mb-4 border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+          The quote was saved without its package lines. Use "Add from the rate card" below to add them.
+        </p>
+      ) : null}
       <QuoteLines quoteId={quoteId} />
       <EmailSection kind="quote" id={quoteId} />
       <QuoteInvoices quoteId={quoteId} />
@@ -49,14 +54,15 @@ async function QuoteWorkspace({ quoteId }: { quoteId: string }) {
   )
 }
 
-export default async function Page({ params }: { params: Promise<{ quoteId: string }> }) {
+export default async function Page({ params, searchParams }: { params: Promise<{ quoteId: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const { quoteId } = await params
+  const { notice } = await searchParams
   return (
     <PhaseSixDetail
       kind="quote"
       id={quoteId}
       actions={<QuoteHeaderActions quoteId={quoteId} />}
-      after={<QuoteWorkspace quoteId={quoteId} />}
+      after={<QuoteWorkspace quoteId={quoteId} notice={notice} />}
     />
   )
 }

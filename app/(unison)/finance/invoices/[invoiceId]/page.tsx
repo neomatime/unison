@@ -37,9 +37,14 @@ async function InvoiceLines({ invoiceId }: { invoiceId: string }) {
   )
 }
 
-async function InvoiceWorkspace({ invoiceId }: { invoiceId: string }) {
+async function InvoiceWorkspace({ invoiceId, notice }: { invoiceId: string; notice?: string | string[] }) {
   return (
     <>
+      {notice === 'package_failed' ? (
+        <p role="alert" className="mb-4 border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+          The invoice was saved without its package lines. Use "Add from the rate card" below to add them.
+        </p>
+      ) : null}
       <InvoiceLines invoiceId={invoiceId} />
       <PaymentsSection invoiceId={invoiceId} />
       <EmailSection kind="invoice" id={invoiceId} />
@@ -47,14 +52,15 @@ async function InvoiceWorkspace({ invoiceId }: { invoiceId: string }) {
   )
 }
 
-export default async function Page({ params }: { params: Promise<{ invoiceId: string }> }) {
+export default async function Page({ params, searchParams }: { params: Promise<{ invoiceId: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const { invoiceId } = await params
+  const { notice } = await searchParams
   return (
     <PhaseSixDetail
       kind="invoice"
       id={invoiceId}
       actions={<InvoiceHeaderActions invoiceId={invoiceId} />}
-      after={<InvoiceWorkspace invoiceId={invoiceId} />}
+      after={<InvoiceWorkspace invoiceId={invoiceId} notice={notice} />}
     />
   )
 }

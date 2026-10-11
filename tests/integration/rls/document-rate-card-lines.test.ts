@@ -164,3 +164,20 @@ test('lines added from the rate card cannot be edited by a member, can be remove
   assert.equal(custom.error, null)
   assert.equal((await addLine('quote', id, 'support.website_care')).error, null, 'adding from the rate card still works after other edits')
 })
+
+test('the rate card is in rand: a document in another currency is refused until it is set to ZAR', async () => {
+  const id = must(await admin.from('quotes').insert({ organization_id: orgA, client_name: 'Dollar Client', currency: 'USD', status: 'Draft' }).select('id').single()).id
+  refused((await fill('quote', id, 'growth')).error, 'RATE_CARD_CURRENCY')
+  refused((await addLine('quote', id, 'support.website_care')).error, 'RATE_CARD_CURRENCY')
+  assert.equal((await linesOf('quote', id)).length, 0)
+  assert.equal((await admin.from('quotes').update({ currency: 'ZAR' }).eq('id', id)).error, null)
+  assert.equal((await fill('quote', id, 'growth')).error, null)
+  assert.equal((await linesOf('quote', id)).length, 2)
+})
+
+test('a quote in Internal Review can still be filled', async () => {
+  const id = await draft('quote')
+  assert.equal((await admin.from('quotes').update({ status: 'Internal Review' }).eq('id', id)).error, null)
+  assert.equal((await fill('quote', id, 'private')).error, null)
+  assert.equal((await linesOf('quote', id)).length, 2)
+})

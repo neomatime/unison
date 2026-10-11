@@ -44,7 +44,8 @@ test('the save action fills a NEW draft from the package through the database fu
   assert.match(action, /const packageKey = !id && \(kind === "quote" \|\| kind === "invoice"\) \? optional\(form, "packageKey"\) : null;/, 'read only when creating a quote or invoice')
   assert.match(action, /\/\^\[a-z0-9_\]\{1,60\}\$\/\.test\(packageKey\)/, 'the key is validated')
   assert.match(action, /rpc\("fill_document_from_package", \{ p_kind: kind, p_document: result\.data\.id, p_package_key: packageKey \}\)/)
-  assert.match(action, /saved as a blank draft/, 'a failed fill says the draft exists, so it is not saved twice')
+  assert.match(action, /redirect\(`\$\{routes\[kind\]\}\/\$\{result\.data\.id\}\?notice=package_failed`\)/, 'a failed fill lands on the saved draft instead of keeping the form open, so it is not saved twice')
+  assert.match(action, /if \(packageKey\) values\.currency = "ZAR"/, 'a package makes the document a rand document')
   assert.ok(action.indexOf('fill_document_from_package') > action.indexOf('.insert(values)'), 'filling happens after the draft is saved')
 })
 
@@ -52,8 +53,8 @@ test('the package labels come from the rate card rows, with the implementation f
   const query = read('features', 'commercial-finance', 'queries', 'phase-six.ts')
   assert.match(query, /\.in\("item_kind", \["retainer_monthly", "retainer_implementation", "project"\]\)/)
   assert.match(query, /\.not\("rate_key", "is", null\)/)
-  assert.match(query, /a month\$\{implementation === undefined/)
-  assert.match(query, /packages: packageOptions\(rateRows\.data \?\? \[\]\)/)
+  assert.match(query, /if \(implementation === undefined\) continue;/, 'a retainer without its implementation fee is not offered')
+  assert.match(query, /packages: packageOptions\(rateRows\.error \? \[\] : rateRows\.data \?\? \[\]\)/, 'a failed rate read only removes the choices')
 })
 
 test('the line editor offers the rate card on a draft only, and its action sends a key and a whole credit count, never a price', () => {

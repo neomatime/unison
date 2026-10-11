@@ -371,9 +371,10 @@ function TextArea({
 function PackageSelect({ packages }: { packages: PhaseSixOptions["packages"] }) {
   if (packages.retainers.length === 0 && packages.projects.length === 0) return null;
   return (
-    <label className="block md:col-span-2">
+    <div className="md:col-span-2">
+    <label className="block">
       <span className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Package</span>
-      <select name="packageKey" defaultValue="" className={inputClass}>
+      <select name="packageKey" defaultValue="" aria-describedby="package-hint" className={inputClass}>
         <option value="">Blank (add the lines yourself on the next page)</option>
         {packages.retainers.length ? (
           <optgroup label="Retainer (monthly fee plus one-time implementation fee)">
@@ -386,7 +387,8 @@ function PackageSelect({ packages }: { packages: PhaseSixOptions["packages"] }) 
           </optgroup>
         ) : null}
       </select>
-      <span className="mt-1 block text-xs text-muted-foreground">The prices come from the rate card and cannot be changed on the document. You can still remove a line or add others.</span>
     </label>
+    <p id="package-hint" className="mt-1 text-xs text-muted-foreground">Prices are in rand and come from the rate card; they cannot be changed on the document. You can still remove a line or add others. This does not set up a client package or a credit balance.</p>
+    </div>
   );
 }

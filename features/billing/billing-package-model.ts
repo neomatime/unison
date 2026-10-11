@@ -45,7 +45,7 @@ export type PackageView = {
   credits: number | null
   /** Built and not cancelled: true for the whole chain of a replaced retainer. */
   firstBuilt: boolean
-  /** In force today and the chain has no first invoice yet. A retainer that replaced another can build it too: the invoice is stored against the chain's root. */
+  /** The chain has no first invoice yet and the package is in force (or is a new package that starts later). A retainer that replaced another can build it too once it is in force: the invoice is stored against the chain's root. */
   canBuildFirst: boolean
   /** In force today, as the database's top-up function requires. */
   canTopUp: boolean
@@ -130,7 +130,8 @@ export function buildBillingPackageView(input: BillingPackageInput): BillingPack
       fee: row ? Number(row.unit_price) : null,
       credits: row ? num(row.credits) : null,
       firstBuilt: built,
-      canBuildFirst: inForce && !built,
+      // A new package that starts in the future can already build its first quote or invoice (quotes are often sent before the start); a tier-change successor builds nothing before it starts, its chain's first invoice is built through the retainer in force.
+      canBuildFirst: (inForce || (state === 'scheduled' && e.replaces_id === null)) && !built,
       canTopUp: inForce,
       canChangeTier: e.kind === 'retainer' && inForce && e.ended_on === null,
       canManageSupport,
