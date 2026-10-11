@@ -70,7 +70,7 @@ test('approval and onboarding workflows expose create and detail experiences', (
 })
 
 test('commercial and finance registers use the shared production register', () => {
-  for (const route of ['commercial/leads', 'commercial/quotes', 'commercial/sales', 'finance/invoices', 'finance/expenses', 'finance/forecast']) {
+  for (const route of ['commercial/leads', 'commercial/quotes', 'commercial/sales', 'finance/invoices', 'finance/expenses']) {
     const source = readFileSync(join(unisonRoot, ...route.split('/'), 'page.tsx'), 'utf8')
     assert.match(source, /PhaseSixRegister/, `${route} is not using the persistent commercial-finance register`)
   }

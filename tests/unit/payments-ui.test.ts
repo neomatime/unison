@@ -97,3 +97,21 @@ test('an issued invoice saves only its notes: the edit form and the action no lo
   assert.doesNotMatch(issuedForm, /name="status"|name="balanceAmount"/)
   assert.match(issuedForm, /name="notes"/)
 })
+
+test('the forecast page is the calculated screen, the old typed-record routes are gone, and the screen explains how each column is worked out', () => {
+  const page = read('app', '(unison)', 'finance', 'forecast', 'page.tsx')
+  assert.match(page, /ForecastScreen/)
+  assert.doesNotMatch(page, /PhaseSixRegister/)
+  for (const gone of [['new', 'page.tsx'], ['[scenarioId]', 'page.tsx'], ['[scenarioId]', 'edit', 'page.tsx']]) {
+    assert.throws(() => read('app', '(unison)', 'finance', 'forecast', ...gone), /ENOENT/, gone.join('/'))
+  }
+  const screen = read('features', 'forecast', 'components', 'forecast-screen.tsx')
+  for (const text of ['Collected', 'Due from invoices', 'Pipeline (weighted)', 'No date', 'Later', 'How this is worked out', 'never added to another', 'Nothing to forecast yet']) {
+    assert.match(screen, new RegExp(text.replace(/[()]/g, '\\$&')), text)
+  }
+  const query = read('features', 'forecast', 'queries', 'get-forecast.ts')
+  assert.match(query, /^import 'server-only'/)
+  assert.match(query, /if \(result\.error\) throw result\.error/)
+  const build = read('features', 'forecast', 'build-forecast.ts')
+  assert.doesNotMatch(build, /server-only|from\s+['"]@\//)
+})

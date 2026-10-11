@@ -17,7 +17,6 @@ const routes = [
   "app/(unison)/commercial/sales/page.tsx",
   "app/(unison)/finance/invoices/page.tsx",
   "app/(unison)/finance/expenses/page.tsx",
-  "app/(unison)/finance/forecast/page.tsx",
 ].map(read).join("\n");
 
 const tables = [
