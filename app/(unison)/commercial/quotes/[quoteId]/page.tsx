@@ -13,7 +13,7 @@ import { isDraftStatus } from '@/features/documents/vocabulary'
 // getRecordWorkspace returns empty facts for an id that does not exist rather than failing.
 async function QuoteHeaderActions({ quoteId }: { quoteId: string }) {
   const bundle = await getDocument('quote', quoteId)
-  return bundle ? <DocumentActions kind="quote" id={quoteId} status={String(bundle.record.status)} /> : null
+  return bundle ? <DocumentActions kind="quote" id={quoteId} status={String(bundle.record.status)} archived={Boolean(bundle.record.archived_at)} /> : null
 }
 
 async function QuoteLines({ quoteId }: { quoteId: string }) {

@@ -14,7 +14,7 @@ export async function sendEmail(input: {
   template: EmailTemplate
   replyTo?: string
   attachments?: MimeAttachment[]
-}): Promise<void> {
+}): Promise<{ delivered: boolean }> {
   // Local work and tests run without credentials: render the message and log it
   // rather than sending. Checked before readGraphEnv so the log path needs no
   // Azure configuration at all.
@@ -26,7 +26,7 @@ export async function sendEmail(input: {
       text: input.template.text,
       attachments: (input.attachments ?? []).map((attachment) => ({ filename: attachment.filename, contentType: attachment.contentType, bytes: attachment.content.byteLength })),
     }, null, 2))
-    return
+    return { delivered: false }
   }
 
   const env = readGraphEnv(process.env)
@@ -41,4 +41,5 @@ export async function sendEmail(input: {
   })
 
   await sendMimeViaGraph(mime)
+  return { delivered: true }
 }

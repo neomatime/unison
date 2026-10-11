@@ -287,6 +287,28 @@ test('a sent or issued document offers the PDF and email; a draft offers neither
   assert.ok(source.lastIndexOf('!draft', pdf) > -1, 'the PDF link sits behind the not-a-draft check')
 })
 
+test('a cancelled invoice keeps its PDF but offers no email link; an archived quote offers no Create invoice', () => {
+  const source = read('features', 'documents', 'components', 'document-actions.tsx')
+  assert.match(source, /archived\?: boolean/)
+  assert.match(source, /const cancelled = kind === 'invoice' && status === 'Cancelled'/)
+  assert.match(source, /\{!cancelled \? \(\s*<a href="#email-client"/, 'the email link is hidden for a cancelled invoice')
+  assert.ok(source.indexOf('Download PDF') < source.indexOf('{!cancelled'), 'the PDF link is not behind the cancelled check')
+  assert.match(source, /status === 'Accepted' && !archived/, 'Create invoice needs a quote that is not archived')
+  const quotePage = read('app', '(unison)', 'commercial', 'quotes', '[quoteId]', 'page.tsx')
+  assert.match(quotePage, /archived=\{Boolean\(bundle\.record\.archived_at\)\}/)
+})
+
+test('the email section shows a note instead of the form for a cancelled invoice, and keeps the history', () => {
+  const source = read('features', 'documents', 'components', 'email-section.tsx')
+  assert.match(source, /const cancelled = kind === 'invoice' && bundle\.record\.status === 'Cancelled'/)
+  assert.match(source, /A cancelled invoice cannot be emailed\. You can still download its PDF\./)
+  assert.match(source, /\) : cancelled \? \(/, 'a cancelled invoice gets the note branch, not the form')
+  assert.match(source, /cancelled \? Promise\.resolve\(null\) : getEmailDefaults\(/, 'no email defaults are built for a cancelled invoice')
+  assert.match(source, /sent\.length \? history : null/, 'the history stays visible only when it has rows')
+  assert.match(source, /Emails sent/)
+  assert.ok(source.indexOf('A cancelled invoice cannot be emailed.') < source.indexOf('<EmailDocumentForm'), 'the note sits before the form branch')
+})
+
 test('the email form keeps what was typed, cannot be double-submitted, and sends nothing but the three fields', () => {
   const source = read('features', 'documents', 'components', 'email-document-form.tsx')
   assert.match(source, /^'use client'/)

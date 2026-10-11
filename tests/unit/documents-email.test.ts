@@ -51,6 +51,25 @@ test('readEmailFields refuses a bad address, an empty or long subject and a long
   assert.deepEqual(readEmailFields(new FormData()), { error: 'Enter one valid email address.' })
 })
 
+test('readEmailFields drops control characters other than newline and tab, and repairs lone surrogates', () => {
+  const fields = readEmailFields(form({ to: 'a@example.com', subject: 'Quote\u0000 12\u0007\u001b3\ttab', body: 'Hi\u0000 there\u0008\tindented\nsecond\u000b line\r\nthird\rfourth' })) as { subject: string; body: string }
+  assert.equal(fields.subject, 'Quote 123\ttab')
+  assert.equal(fields.body, 'Hi there\tindented\nsecond line\nthirdfourth')
+  assert.ok(!/[\u0000-\u0008\u000b-\u001f]/.test(fields.subject + fields.body.replace(/\n/g, '')))
+
+  const broken = readEmailFields(form({ to: 'a@example.com', subject: 'Lone \ud800 surrogate', body: 'Also \udc00 here' })) as { subject: string; body: string }
+  assert.equal(broken.subject, 'Lone � surrogate')
+  assert.equal(broken.body, 'Also � here')
+  assert.equal(broken.subject.isWellFormed(), true)
+  assert.equal(broken.body.isWellFormed(), true)
+  const valid = readEmailFields(form({ to: 'a@example.com', subject: 'Fine é 😀', body: '' })) as { subject: string }
+  assert.equal(valid.subject, 'Fine é 😀', 'valid characters and pairs are untouched')
+})
+
+test('a subject that is only control characters counts as empty', () => {
+  assert.deepEqual(readEmailFields(form({ to: 'a@example.com', subject: '\u0000\u0001 ', body: '' })), { error: 'Enter a subject.' })
+})
+
 test('the default subject names the document and the company', () => {
   assert.equal(defaultEmailSubject(sentQuote()), 'Quote TST-Q-2026-00001 from Test Co (Pty) Ltd')
   assert.equal(defaultEmailSubject(sentQuote(null)), 'Quote TST-Q-2026-00001')

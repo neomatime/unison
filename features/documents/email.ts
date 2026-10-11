@@ -19,13 +19,20 @@ export function isValidEmailAddress(raw: unknown): boolean {
 
 export type EmailFields = { to: string; subject: string; body: string }
 
+// C0 control characters other than tab and newline. A NUL in particular can make a send succeed and its record fail.
+// eslint-disable-next-line no-control-regex
+const CONTROL = /[\u0000-\u0008\u000b-\u001f]/g
+
+/** Well-formed text without control characters: lone surrogates become U+FFFD, so the database accepts what the mail server did. */
+const clean = (value: string) => value.replace(CONTROL, '').toWellFormed()
+
 export function readEmailFields(form: FormData): EmailFields | { error: string } {
   const to = String(form.get('to') ?? '').trim()
   if (!isValidEmailAddress(to)) return { error: 'Enter one valid email address.' }
-  const subject = String(form.get('subject') ?? '').replace(/[\r\n]+/g, ' ').trim()
+  const subject = clean(String(form.get('subject') ?? '').replace(/[\r\n]+/g, ' ')).trim()
   if (!subject) return { error: 'Enter a subject.' }
   if (subject.length > SUBJECT_MAX) return { error: `The subject is too long (${SUBJECT_MAX} characters at most).` }
-  const body = String(form.get('body') ?? '').replace(/\r\n/g, '\n').trim()
+  const body = clean(String(form.get('body') ?? '').replace(/\r\n/g, '\n')).trim()
   if (body.length > BODY_MAX) return { error: `The message is too long (${BODY_MAX.toLocaleString('en-GB')} characters at most).` }
   return { to, subject, body }
 }
