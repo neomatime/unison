@@ -108,7 +108,10 @@ A new "Billing package" section on the client page.
   with no retainer (a standalone project client) has no limit. The limit comes from the rate card item of the retainer tier, so it is
   adjustable by an owner or admin; empty means no limit.
 - **Projects under a retainer are billed their own implementation fee,** the project's fee from the rate card (section 2), through
-  "Create first invoice" on that project, once each. The retainer itself has no second implementation fee.
+  "Create first invoice" on that project, once each. The retainer itself has no second implementation fee. **A project added to a
+  retainer is charged exactly the same as a standalone one (user, 2026-10-11): its implementation fee once, and its monthly support
+  service at the rate card price from the month it is recorded, only if signed. There is no retainer discount and no price
+  difference.**
 - **Support services** (`engagement_support`: engagement, service key, start date, optional end date) attach to a **project**
   engagement, and only a service belonging to that project can be added. A service is billed in each month from the month it starts
   until the month it ends. There is no proration.
@@ -228,7 +231,8 @@ The workbook lists these as undecided; this slice does not decide them.
 ## 11. Assumptions made in this design (change any of them)
 
 - One active retainer per client; projects any number, up to the tier's initiative limit when the client has a retainer.
-- A project under a retainer is billed the rate card project fee as its implementation fee.
+- A project under a retainer is billed the rate card project fee as its implementation fee, and its monthly support service (if
+  signed) at the rate card price. No retainer discount (confirmed by the user).
 - Only active projects count towards the limit; ended ones do not, and support services never do.
 - Support requires the project engagement it belongs to.
 - The monthly invoice is one per client per month, covering the retainer and all that client's active support.
