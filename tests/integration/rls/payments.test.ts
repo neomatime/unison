@@ -240,7 +240,9 @@ test('a member cannot type a status, a balance or a paid date on an issued invoi
 
   const draft = must(await memberClient.from('invoices').insert({ organization_id: orgA, client_id: clientA, client_name: 'Pay Client A' }).select('id').single()).id
   assert.equal((await memberClient.from('invoices').update({ notes: 'draft note' }).eq('id', draft)).error, null, 'a draft is untouched by the guard')
-  assert.equal((await memberClient.from('invoices').delete().eq('id', invoice)).error?.code, '42501', 'no delete privilege on invoices')
+  const removed = await memberClient.from('invoices').delete().eq('id', invoice).select('id')
+  assert.equal(removed.error, null, "no delete policy on invoices: a member's delete removes nothing")
+  assert.deepEqual(removed.data, [], "no delete policy on invoices: a member's delete removes nothing")
   assert.equal((await row('invoices', invoice)).status, 'Issued')
 })
 
