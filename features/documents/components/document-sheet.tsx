@@ -10,6 +10,7 @@ import type { DocumentView } from '../document-view'
 // The remaining rules stop the shell's table, heading and button styling from leaking onto the sheet, on screen too.
 const PRINT_CSS = `
   @page { size: A4; margin: 0; }
+  @media print { html, body { margin: 0 !important; padding: 0 !important; background: #fff !important; } }
   .document-print { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .document-print :is(h1, h2, h3) { font-family: inherit; color: inherit; }
   .document-print thead { font-family: inherit; }
@@ -24,7 +25,7 @@ const PRINT_CSS = `
       transform: none !important; animation: none !important; transition: none !important;
     }
     *:has(.document-print) > *:not(:has(.document-print)):not(.document-print) { display: none !important; }
-    .document-print { position: relative !important; width: 210mm !important; max-width: none !important; min-height: 296mm; margin: 0 !important; overflow: visible !important; box-shadow: none !important; }
+    .document-print { position: relative !important; width: 100% !important; max-width: none !important; min-height: 296mm; margin: 0 !important; overflow: visible !important; box-shadow: none !important; }
   }
 `
 
@@ -41,7 +42,7 @@ export function DocumentSheet({ view }: { view: DocumentView }) {
       <style>{PRINT_CSS}</style>
       <article
         aria-label={label}
-        className={`document-print relative mx-auto min-h-[296mm] w-full max-w-[210mm] overflow-hidden bg-white text-[10pt] leading-snug shadow-sm ${INK}`}
+        className={`document-print relative mx-auto flex min-h-[296mm] w-full max-w-[210mm] flex-col overflow-hidden bg-white text-[10pt] leading-snug shadow-sm ${INK}`}
       >
         {view.draft ? (
           <p aria-hidden="true" className="pointer-events-none absolute right-[12mm] top-[30mm] z-10 -rotate-6 border-2 border-[#c0392b]/60 bg-white/70 px-4 py-1 text-[16pt] font-bold tracking-[0.3em] text-[#c0392b]/60">
@@ -169,7 +170,7 @@ export function DocumentSheet({ view }: { view: DocumentView }) {
           </dl>
         </section>
 
-        <section className="mt-[5mm] grid grid-cols-[38%_34%_28%]">
+        <section className="mt-[5mm] grid flex-1 grid-cols-[38%_34%_28%]">
           <div className={view.bank.length ? 'break-inside-avoid bg-[#e3ebf5] px-[12mm] py-[3mm]' : ''}>
             {view.bank.length ? (
               <>
@@ -200,7 +201,7 @@ export function DocumentSheet({ view }: { view: DocumentView }) {
           </div>
         </section>
 
-        <footer className="mx-[12mm] mt-[4mm] flex flex-wrap items-center justify-between gap-3 border-t border-[#c9d4e3] py-[3mm] text-[8.5pt]">
+        <footer className="flex flex-wrap items-center justify-between gap-3 bg-[#bcd9f5] px-[12mm] py-[4mm] text-[8.5pt]">
           <div className="flex flex-wrap gap-x-6 gap-y-1">
             {view.footer.email ? <span className="break-all">{view.footer.email}</span> : null}
             {view.footer.phone ? <span>{view.footer.phone}</span> : null}

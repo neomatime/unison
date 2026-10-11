@@ -199,7 +199,7 @@ function termsAndTotals(view: DocumentView) {
 function bankAndClosing(view: DocumentView) {
   return h(
     View,
-    { wrap: !short(view.from.name, ...view.bank.map((row) => row.value), ...(view.closing?.paragraphs ?? [])), style: s({ flexDirection: 'row', marginTop: mm(5), minHeight: mm(28) }) },
+    { wrap: !short(view.from.name, ...view.bank.map((row) => row.value), ...(view.closing?.paragraphs ?? [])), style: s({ flexDirection: 'row', marginTop: mm(5), minHeight: mm(28), flexGrow: 1 }) },
     h(
       View,
       // The bank panel is never split, even when a long closing text lets this section break; only bank details too
@@ -241,7 +241,7 @@ function footer(view: DocumentView) {
   const contact = [view.footer.email, view.footer.phone, view.footer.website].filter((item): item is string => Boolean(item))
   return h(
     View,
-    { wrap: false, style: s({ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginHorizontal: mm(12), marginTop: mm(4), paddingVertical: mm(3), borderTopWidth: 0.75, borderTopColor: RULE }) },
+    { wrap: false, style: s({ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: mm(12), paddingVertical: mm(4), backgroundColor: BAND }) },
     h(Text, { style: s({ flexShrink: 1, fontSize: 8.5 }) }, t(contact.join('      '))),
     view.tagline ? h(Text, { style: s({ fontSize: 8.5, letterSpacing: 2.5, color: MUTED }) }, upper(view.tagline)) : null,
   )
@@ -253,7 +253,7 @@ export function buildDocumentPdfElement(view: DocumentView, images: PdfImages) {
     { title: t(`${view.title} ${view.number ?? ''}`.trim()), author: t(view.from.name), creator: 'UNISON', producer: 'UNISON' },
     h(
       Page,
-      { size: 'A4', style: s({ fontFamily: 'Helvetica', fontSize: 10, color: INK, paddingTop: mm(10), paddingBottom: mm(12) }) },
+      { size: 'A4', style: s({ fontFamily: 'Helvetica', fontSize: 10, color: INK, paddingTop: mm(10), paddingBottom: 0 }) },
       band(view, images),
       titleBlock(view),
       parties(view),

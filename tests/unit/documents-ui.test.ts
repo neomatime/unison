@@ -259,7 +259,7 @@ test('printing neutralises every shell ancestor of the sheet, so it flows from t
   ]) assert.ok(shell.includes(needle), `the rule for the sheet's ancestors must contain: ${needle}`)
   for (const needle of [
     '*:has(.document-print) > *:not(:has(.document-print)):not(.document-print) { display: none !important; }',
-    '.document-print { position: relative !important; width: 210mm !important',
+    '.document-print { position: relative !important; width: 100% !important',
   ]) assert.ok(print.includes(needle), `the print block must contain: ${needle}`)
   assert.doesNotMatch(print, /visibility:\s*hidden/, 'the old hide-everything approach would still clip and anchor to the shell')
 })
@@ -336,4 +336,17 @@ test('the quote and invoice pages show the email section, and the quote page lis
   assert.match(quote, /QuoteInvoices quoteId=/)
   const invoice = read('app', '(unison)', 'finance', 'invoices', '[invoiceId]', 'page.tsx')
   assert.match(invoice, /EmailSection kind="invoice"/)
+})
+
+test('the sheet and the PDF cover the whole page: the bottom section stretches to the bottom edge and the footer is a full-width band', () => {
+  const sheet = component('document-sheet')
+  assert.match(sheet, /className=\{`document-print relative mx-auto flex min-h-\[296mm\] w-full max-w-\[210mm\] flex-col /, 'the sheet is a column at least a page high')
+  assert.match(sheet, /<section className="mt-\[5mm\] grid flex-1 grid-cols-\[38%_34%_28%\]">/, 'the bank / closing / picture row takes the remaining height')
+  assert.match(sheet, /<footer className="[^"]*bg-\[#bcd9f5\] px-\[12mm\][^"]*">/, 'the footer is a full-width band, not an inset rule')
+  assert.doesNotMatch(sheet, /<footer className="[^"]*mx-\[12mm\]/, 'the footer has no side margin')
+  assert.match(sheet, /@page \{ size: A4; margin: 0; \}/, 'the printed page has no margin')
+  const pdf = readFileSync(join(process.cwd(), 'features', 'documents', 'pdf', 'render-document-pdf.ts'), 'utf8')
+  assert.match(pdf, /minHeight: mm\(28\), flexGrow: 1 \}/, 'the PDF bottom row grows to the bottom of the page')
+  assert.match(pdf, /paddingHorizontal: mm\(12\), paddingVertical: mm\(4\), backgroundColor: BAND \}/, 'the PDF footer is a full-width band')
+  assert.match(pdf, /paddingTop: mm\(10\), paddingBottom: 0 \}/, 'the PDF page has no bottom padding')
 })
