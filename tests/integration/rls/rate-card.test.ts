@@ -11,9 +11,11 @@ let orgA: string
 let orgB: string
 let owner: U
 let member: U
+let admins: U
 let outsider: U
 let ownerClient: SupabaseClient
 let memberClient: SupabaseClient
+let adminClient: SupabaseClient
 let outsiderClient: SupabaseClient
 
 const must = <T>(result: { data: T; error: { message: string } | null }): NonNullable<T> => {
@@ -31,15 +33,17 @@ before(async () => {
   orgB = await createFixtureOrg('rate-b')
   owner = await createFixtureUser(orgA, 'owner')
   member = await createFixtureUser(orgA, 'member')
+  admins = await createFixtureUser(orgA, 'admin')
   outsider = await createFixtureUser(orgB, 'owner')
   ownerClient = await signedInClient(owner.email, owner.password)
   memberClient = await signedInClient(member.email, member.password)
+  adminClient = await signedInClient(admins.email, admins.password)
   outsiderClient = await signedInClient(outsider.email, outsider.password)
   await seedRateCard(orgA)
 })
 
 after(async () => {
-  await cleanup([orgA, orgB].filter(Boolean), [owner?.id, member?.id, outsider?.id].filter(Boolean))
+  await cleanup([orgA, orgB].filter(Boolean), [owner?.id, member?.id, admins?.id, outsider?.id].filter(Boolean))
 })
 
 test('the rate card is readable by members of the organisation and nobody else', async () => {
@@ -131,4 +135,66 @@ test('the same lock holds on quote lines', async () => {
   }).select('id').single())
   refused((await memberClient.from('quote_lines').update({ unit_price: 1 }).eq('id', lock.id).select('id')).error, 'RATE_LINE_LOCKED')
   refused((await memberClient.from('quote_lines').insert({ organization_id: orgA, quote_id: quote.id, position: 2, title: 'x', quantity: 1, unit_price: 1, rate_locked: true })).error, 'RATE_LINE_LOCKED')
+})
+
+test('an admin can change a rate card price and description, an owner can change a description, a member cannot', async () => {
+  const care = await rateItem('support.website_care')
+  const byAdmin = await adminClient.from('price_list_items').update({ unit_price: 5001, description: 'Admin wording' }).eq('id', care.id).select('unit_price, description').single()
+  assert.equal(byAdmin.error, null)
+  assert.equal(Number(byAdmin.data!.unit_price), 5001)
+  assert.equal(byAdmin.data!.description, 'Admin wording')
+  const byOwner = await ownerClient.from('price_list_items').update({ description: 'Owner wording' }).eq('id', care.id).select('description').single()
+  assert.equal(byOwner.error, null)
+  assert.equal(byOwner.data!.description, 'Owner wording')
+  refused((await memberClient.from('price_list_items').update({ description: 'Member wording' }).eq('id', care.id).select('id')).error, 'RATE_CARD_ADMIN_ONLY')
+})
+
+test('a rate card item cannot be moved to another organisation, even by someone who belongs to both', async () => {
+  const { error } = await admin.from('memberships').insert({ organization_id: orgB, user_id: owner.id, role_id: 'member', status: 'active' })
+  assert.equal(error, null)
+  const item = await rateItem('support.social_media_content')
+  refused((await ownerClient.from('price_list_items').update({ organization_id: orgB }).eq('id', item.id).select('id')).error, 'RATE_CARD_FIXED')
+  const stays = await rateItem('support.social_media_content')
+  assert.equal(stays.organization_id, orgA)
+})
+
+test('a locked line cannot be moved to another document, on invoices or quotes', async () => {
+  const item = await rateItem('retainer.growth.monthly')
+  const first = must(await admin.from('invoices').insert({ organization_id: orgA, client_name: 'Move Client', status: 'Draft' }).select('id').single())
+  const other = must(await admin.from('invoices').insert({ organization_id: orgA, client_name: 'Move Client', status: 'Draft' }).select('id').single())
+  const lockedInvoiceLine = must(await admin.from('invoice_lines').insert({
+    organization_id: orgA, invoice_id: first.id, position: 1, title: item.title, quantity: 1, unit_price: 150000, vat_code: 'standard', price_list_item_id: item.id, rate_locked: true,
+  }).select('id').single())
+  const plainInvoiceLine = must(await admin.from('invoice_lines').insert({
+    organization_id: orgA, invoice_id: first.id, position: 2, title: 'Plain', quantity: 1, unit_price: 5, vat_code: 'standard',
+  }).select('id').single())
+  refused((await memberClient.from('invoice_lines').update({ invoice_id: other.id }).eq('id', lockedInvoiceLine.id).select('id')).error, 'RATE_LINE_LOCKED')
+  const stillThere = must(await admin.from('invoice_lines').select('invoice_id').eq('id', lockedInvoiceLine.id).single())
+  assert.equal(stillThere.invoice_id, first.id)
+  // A line that is not locked can still be moved between drafts.
+  const movedPlain = await memberClient.from('invoice_lines').update({ invoice_id: other.id }).eq('id', plainInvoiceLine.id).select('invoice_id').single()
+  assert.equal(movedPlain.error, null)
+  assert.equal(movedPlain.data!.invoice_id, other.id)
+
+  const quoteOne = must(await admin.from('quotes').insert({ organization_id: orgA, client_name: 'Move Client', status: 'Draft' }).select('id').single())
+  const quoteTwo = must(await admin.from('quotes').insert({ organization_id: orgA, client_name: 'Move Client', status: 'Draft' }).select('id').single())
+  const lockedQuoteLine = must(await admin.from('quote_lines').insert({
+    organization_id: orgA, quote_id: quoteOne.id, position: 1, title: item.title, quantity: 1, unit_price: 150000, vat_code: 'standard', price_list_item_id: item.id, rate_locked: true,
+  }).select('id').single())
+  refused((await memberClient.from('quote_lines').update({ quote_id: quoteTwo.id }).eq('id', lockedQuoteLine.id).select('id')).error, 'RATE_LINE_LOCKED')
+})
+
+test('quote lines: a locked line can be moved within its quote but not unlocked or edited', async () => {
+  const item = await rateItem('project.visual_communication')
+  const quote = must(await admin.from('quotes').insert({ organization_id: orgA, client_name: 'Quote Lock Client', status: 'Draft' }).select('id').single())
+  const lock = must(await admin.from('quote_lines').insert({
+    organization_id: orgA, quote_id: quote.id, position: 1, title: item.title, description: item.description, quantity: 1, unit_price: 35000, vat_code: 'standard', price_list_item_id: item.id, rate_locked: true,
+  }).select('id').single())
+  const moved = await memberClient.from('quote_lines').update({ position: 4 }).eq('id', lock.id).select('position').single()
+  assert.equal(moved.error, null)
+  assert.equal(moved.data!.position, 4)
+  refused((await memberClient.from('quote_lines').update({ rate_locked: false }).eq('id', lock.id).select('id')).error, 'RATE_LINE_LOCKED')
+  for (const change of [{ unit_price: 1 }, { quantity: 2 }, { title: 'Cheaper' }, { description: 'x' }, { vat_code: 'zero' }, { price_list_item_id: null }]) {
+    refused((await memberClient.from('quote_lines').update(change).eq('id', lock.id).select('id')).error, 'RATE_LINE_LOCKED')
+  }
 })
