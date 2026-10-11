@@ -32,6 +32,11 @@ const monthOffset = (offset: number) => {
   const now = new Date()
   return iso(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + offset, 1)))
 }
+/** The first day of the month `offset` months from this one by the South African date, which is what the functions use. */
+const saMonthOffset = (offset: number) => {
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Johannesburg' }).format(new Date())
+  return iso(new Date(Date.UTC(Number(today.slice(0, 4)), Number(today.slice(5, 7)) - 1 + offset, 1)))
+}
 const monthEnd = (start: string) => iso(new Date(Date.UTC(Number(start.slice(0, 4)), Number(start.slice(5, 7)), 0)))
 
 let counter = 0
@@ -200,8 +205,9 @@ test('the monthly invoice: needs the first invoice, one per month, no future mon
   assert.equal(Number(row.total_amount), 172500)
   assert.equal((await invoiceLines(row.id)).length, 1)
   refused((await monthly(client, monthOffset(0))).error, 'MONTH_ALREADY_BILLED')
-  // Two months ahead, not one: in the last two hours of a month the South African date is already in the next month.
-  refused((await monthly(client, monthOffset(2))).error, 'BILLING_MONTH_INVALID')
+  // The month is derived the way the function does it (South African date), so the boundary hours cannot make this flaky.
+  refused((await monthly(client, saMonthOffset(1))).error, 'BILLING_MONTH_INVALID')
+  refused((await monthly(client, saMonthOffset(2))).error, 'BILLING_MONTH_INVALID')
   refused((await monthly(client, '2019-05-01')).error, 'BILLING_MONTH_INVALID')
   await cancel(built.data as string)
   assert.equal((await monthly(client, monthOffset(0))).error, null, 'a cancelled monthly invoice frees the month')
@@ -277,14 +283,15 @@ test('a top-up is credits times the tier rate, or the project rate, locked, and 
   assert.equal((await topUp(retainer, 1)).error, null)
   assert.equal((await topUp(retainer, 10000)).error, null)
 
-  const project = await packageFor(client, 'digital_experience')
+  const project = await packageFor(client, 'digital_experience', day(-10))
   const projectBuilt = await topUp(project, 2)
   assert.equal(projectBuilt.error, null)
   assert.equal(Number((await invoice(projectBuilt.data as string)).total_amount), 6900)
 
   for (const bad of [0, -1, 1.5, 10001, null, 'x']) refused((await topUp(retainer, bad)).error, bad === 'x' ? 'invalid input syntax|TOP_UP_CREDITS_INVALID' : 'TOP_UP_CREDITS_INVALID')
   refused((await topUp(retainer, 3, outsiderClient)).error, 'ENGAGEMENT_NOT_FOUND')
-  assert.equal((await memberClient.rpc('end_engagement', { p_engagement: project, p_ended_on: null })).error, null)
+  // Ended before today. (One that ends today is still in force today and can still be topped up.)
+  assert.equal((await memberClient.rpc('end_engagement', { p_engagement: project, p_ended_on: day(-3) })).error, null)
   refused((await topUp(project, 2)).error, 'ENGAGEMENT_ENDED')
 })
 
@@ -339,4 +346,132 @@ test('nothing crosses organisations', async () => {
   assert.equal(must(await outsiderClient.from('invoices').select('id').eq('id', built.data as string)).length, 0)
   refused((await firstDoc(engagementId, 'invoice', outsiderClient)).error, 'ENGAGEMENT_NOT_FOUND')
   refused((await outsiderClient.rpc('create_invoice_from_quote', { p_quote_id: (await firstDoc(engagementId, 'quote')).data as string })).error, 'QUOTE_NOT_FOUND')
+})
+
+test('a tier change before any first invoice: the successor builds the chain\'s first invoice at the new tier, linked to the root', async () => {
+  const client = await newClient()
+  const root = await packageFor(client, 'growth', day(-100))
+  const changed = await memberClient.rpc('change_retainer_tier', { p_engagement: root, p_new_package_key: 'private', p_start_date: day(-5) })
+  assert.equal(changed.error, null)
+  const successor = changed.data as string
+  const built = await firstDoc(successor)
+  assert.equal(built.error, null)
+  const row = await invoice(built.data as string)
+  assert.equal(row.billing_kind, 'first')
+  assert.equal(row.engagement_id, root, 'the link is the chain\'s root')
+  assert.equal(Number(row.total_amount), 460000)
+  const l = await invoiceLines(row.id)
+  assert.equal(l.length, 2)
+  assert.match(l[0].title, /Private Partner: monthly retainer/)
+  assert.match(l[1].title, /Private Partner: one-time implementation/)
+  assert.deepEqual(l.map((x) => Number(x.unit_price)), [200000, 200000])
+  assert.deepEqual(l.map((x) => x.rate_locked), [true, true])
+
+  refused((await firstDoc(root)).error, 'FIRST_INVOICE_EXISTS')
+  refused((await firstDoc(successor)).error, 'IMPLEMENTATION_ALREADY_BILLED')
+
+  const month = await monthly(client, monthOffset(0))
+  assert.equal(month.error, null, 'the monthly invoice finds the first invoice through the root')
+  const monthRow = await invoice(month.data as string)
+  assert.equal(Number(monthRow.total_amount), 230000)
+  assert.match((await invoiceLines(monthRow.id))[0].title, /Private Partner/)
+})
+
+test('a scheduled tier change: the retainer in force still builds the first invoice and takes top-ups, the one not yet started does not', async () => {
+  const client = await newClient()
+  const root = await packageFor(client, 'growth', day(-100))
+  const changed = await memberClient.rpc('change_retainer_tier', { p_engagement: root, p_new_package_key: 'private', p_start_date: day(10) })
+  assert.equal(changed.error, null)
+  const successor = changed.data as string
+
+  const built = await firstDoc(root)
+  assert.equal(built.error, null, 'the root has a future end date but is still in force')
+  const row = await invoice(built.data as string)
+  assert.equal(row.engagement_id, root)
+  assert.equal(Number(row.total_amount), 345000)
+
+  const topped = await topUp(root, 10)
+  assert.equal(topped.error, null)
+  const toppedRow = await invoice(topped.data as string)
+  assert.equal(Number((await invoiceLines(toppedRow.id))[0].unit_price), 2000, 'the Growth rate, the tier in force today')
+  assert.equal(Number(toppedRow.total_amount), 23000)
+  refused((await topUp(successor, 10)).error, 'ENGAGEMENT_NOT_STARTED')
+})
+
+test('a first quote built through a successor is linked to the root and converts once', async () => {
+  const client = await newClient()
+  const root = await packageFor(client, 'growth', day(-100))
+  const changed = await memberClient.rpc('change_retainer_tier', { p_engagement: root, p_new_package_key: 'private', p_start_date: day(-5) })
+  assert.equal(changed.error, null)
+  const successor = changed.data as string
+  const q1 = await firstDoc(successor, 'quote')
+  const q2 = await firstDoc(successor, 'quote')
+  assert.equal(q1.error, null)
+  assert.equal(q2.error, null)
+  const qrow = await quote(q1.data as string)
+  assert.equal(qrow.engagement_id, root)
+  assert.equal(qrow.billing_kind, 'first')
+  assert.equal(Number(qrow.total_amount), 460000)
+
+  for (const id of [q1.data as string, q2.data as string]) {
+    numberSeed += 1
+    assert.equal((await admin.from('quotes').update({ quote_number: `T-Q-${Date.now()}-${numberSeed}`, status: 'Accepted' }).eq('id', id)).error, null)
+  }
+  const converted = await memberClient.rpc('create_invoice_from_quote', { p_quote_id: q1.data as string })
+  assert.equal(converted.error, null)
+  const inv = await invoice(converted.data as string)
+  assert.equal(inv.engagement_id, root)
+  assert.equal(inv.billing_kind, 'first')
+  refused((await memberClient.rpc('create_invoice_from_quote', { p_quote_id: q2.data as string })).error, 'FIRST_INVOICE_EXISTS')
+  refused((await firstDoc(successor)).error, 'IMPLEMENTATION_ALREADY_BILLED')
+})
+
+test('cancelling the chain\'s first invoice frees the slot for either engagement of the chain', async () => {
+  const client = await newClient()
+  const root = await packageFor(client, 'growth', day(-100))
+  const changed = await memberClient.rpc('change_retainer_tier', { p_engagement: root, p_new_package_key: 'private', p_start_date: day(10) })
+  assert.equal(changed.error, null)
+  const successor = changed.data as string
+
+  const first = await firstDoc(root)
+  assert.equal(first.error, null)
+  refused((await firstDoc(successor)).error, 'IMPLEMENTATION_ALREADY_BILLED')
+  refused((await firstDoc(root)).error, 'FIRST_INVOICE_EXISTS')
+  await cancel(first.data as string)
+
+  const throughSuccessor = await firstDoc(successor)
+  assert.equal(throughSuccessor.error, null)
+  assert.equal((await invoice(throughSuccessor.data as string)).engagement_id, root)
+  await cancel(throughSuccessor.data as string)
+
+  const throughRoot = await firstDoc(root)
+  assert.equal(throughRoot.error, null)
+  assert.equal((await invoice(throughRoot.data as string)).engagement_id, root)
+})
+
+test('an archived client gets no first document, top-up or monthly invoice', async () => {
+  const client = await newClient()
+  const retainer = await packageFor(client, 'growth', day(-100))
+  assert.equal((await firstDoc(retainer)).error, null)
+  assert.equal((await admin.from('clients').update({ archived_at: new Date().toISOString() }).eq('id', client)).error, null)
+  refused((await firstDoc(retainer)).error, 'CLIENT_NOT_FOUND')
+  refused((await firstDoc(retainer, 'quote')).error, 'CLIENT_NOT_FOUND')
+  refused((await topUp(retainer, 5)).error, 'CLIENT_NOT_FOUND')
+  refused((await monthly(client, monthOffset(0))).error, 'CLIENT_NOT_FOUND')
+  assert.equal(must(await admin.from('invoices').select('id').eq('client_id', client)).length, 1, 'only the invoice built before the client was archived')
+})
+
+test('a built document cannot be moved to another client, but a hand-made draft can', async () => {
+  const client = await newClient()
+  const elsewhere = await newClient()
+  const engagementId = await packageFor(client, 'signature')
+  const built = await firstDoc(engagementId)
+  const builtQuote = await firstDoc(engagementId, 'quote')
+  refused((await memberClient.from('invoices').update({ client_id: elsewhere }).eq('id', built.data as string).select('id')).error, 'BILLING_COLUMNS_GENERATED')
+  refused((await memberClient.from('quotes').update({ client_id: elsewhere }).eq('id', builtQuote.data as string).select('id')).error, 'BILLING_COLUMNS_GENERATED')
+  assert.equal((await invoice(built.data as string)).client_id, client)
+  assert.equal((await quote(builtQuote.data as string)).client_id, client)
+
+  const hand = must(await memberClient.from('invoices').insert({ organization_id: orgA, client_id: client, client_name: 'Hand made' }).select('id').single())
+  assert.equal((await memberClient.from('invoices').update({ client_id: elsewhere }).eq('id', hand.id)).error, null)
 })
