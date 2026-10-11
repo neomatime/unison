@@ -13,6 +13,9 @@ export const SYSTEM_ACTIVITY_KINDS = [
   'opportunity.stage_changed',
   'quote.sent',
   'quote.accepted',
+  'quote.emailed',
+  'invoice.emailed',
+  'quote.invoiced',
 ] as const
 
 /** Matches sales_opportunities_stage_check. */
@@ -32,4 +35,7 @@ export const ACTIVITY_LABELS: Record<string, string> = {
   'opportunity.stage_changed': 'Stage changed',
   'quote.sent': 'Quote sent',
   'quote.accepted': 'Quote accepted',
+  'quote.emailed': 'Quote emailed',
+  'invoice.emailed': 'Invoice emailed',
+  'quote.invoiced': 'Invoice created',
 }

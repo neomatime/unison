@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import test from 'node:test'
 
@@ -13,11 +13,20 @@ import {
 const migration = (name: string) => readFileSync(join(process.cwd(), 'supabase', 'migrations', name), 'utf8')
 const list = (raw: string) => raw.split(',').map((value) => value.trim().replace(/^'|'$/g, ''))
 
+/** The kinds in the newest definition of activities_kind_check, in the order the database lists them. */
+function currentKindList(): string[] {
+  const directory = join(process.cwd(), 'supabase', 'migrations')
+  let found: string[] | null = null
+  for (const name of readdirSync(directory).filter((file) => file.endsWith('.sql')).sort()) {
+    const match = readFileSync(join(directory, name), 'utf8').match(/activities_kind_check\s+check \(kind in \(([^)]*)\)\)/)
+    if (match) found = list(match[1])
+  }
+  assert.ok(found, 'the activities kind check must be found')
+  return found!
+}
+
 test('the activity kinds in the code are exactly the ones the database allows', () => {
-  const sql = migration('20261010100000_crm_contacts_activities.sql')
-  const match = sql.match(/kind text not null constraint activities_kind_check check \(kind in \(([^)]*)\)\)/)
-  assert.ok(match, 'the activities kind check must be found')
-  assert.deepEqual([...LOGGED_ACTIVITY_KINDS, ...SYSTEM_ACTIVITY_KINDS], list(match![1]))
+  assert.deepEqual([...LOGGED_ACTIVITY_KINDS, ...SYSTEM_ACTIVITY_KINDS], currentKindList())
 })
 
 test('the logged kinds are the ones the insert policy allows, so the form cannot offer a refused kind', () => {

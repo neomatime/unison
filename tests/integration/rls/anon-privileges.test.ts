@@ -43,6 +43,8 @@ const TABLES = [
   'approval_decisions',
   'governance_artefacts',
   'governance_gates',
+  // Quote and invoice emails: members read, only record_document_email writes.
+  'document_emails',
 ] as const
 
 for (const table of TABLES) {
