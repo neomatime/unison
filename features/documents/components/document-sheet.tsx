@@ -50,7 +50,7 @@ export function DocumentSheet({ view }: { view: DocumentView }) {
           </p>
         ) : null}
 
-        <header className="relative h-[34mm] bg-[#bcd9f5]">
+        <header className="relative h-[30mm] bg-[#bcd9f5]">
           {view.headerImage ? <img src={view.headerImage} alt="" className="absolute inset-0 h-full w-full object-cover object-right-bottom" /> : null}
           <div className="relative flex h-full flex-col justify-center px-[12mm]">
             {view.logo ? (
@@ -61,7 +61,7 @@ export function DocumentSheet({ view }: { view: DocumentView }) {
           </div>
         </header>
 
-        <section className="grid grid-cols-[1fr_auto] gap-[8mm] px-[12mm] pt-[6mm]">
+        <section className="grid grid-cols-[1fr_auto] gap-[8mm] px-[12mm] pt-[4mm]">
           <div className="min-w-0">
             <h2 className="text-[34pt] font-light tracking-[0.22em]">{view.title}</h2>
             {view.tagline ? <p className={`mt-2 text-[8pt] uppercase tracking-[0.35em] ${MUTED}`}>{view.tagline}</p> : null}
@@ -77,7 +77,7 @@ export function DocumentSheet({ view }: { view: DocumentView }) {
           </dl>
         </section>
 
-        <section className="mt-[7mm] grid grid-cols-3 gap-[6mm] px-[12mm]">
+        <section className="mt-[5mm] grid grid-cols-3 gap-[6mm] px-[12mm]">
           <div className={`min-w-0 ${hasProject || hasFrom ? 'border-r border-[#d8e0ec] pr-[5mm]' : ''}`}>
             <p className={`text-[7.5pt] uppercase tracking-[0.25em] ${MUTED}`}>{view.billToHeading}</p>
             {view.billTo.map((line, index) => (
@@ -105,7 +105,7 @@ export function DocumentSheet({ view }: { view: DocumentView }) {
           </div>
         </section>
 
-        <section className="mt-[6mm] px-[12mm]">
+        <section className="mt-[4mm] px-[12mm]">
           <table className="w-full table-fixed border-collapse">
             <colgroup>
               <col />
@@ -142,7 +142,7 @@ export function DocumentSheet({ view }: { view: DocumentView }) {
           </table>
         </section>
 
-        <section className="mt-[5mm] grid grid-cols-[1fr_78mm] gap-[8mm] px-[12mm]">
+        <section className="mt-[4mm] grid grid-cols-[1fr_78mm] gap-[8mm] px-[12mm]">
           <div className="min-w-0">
             {view.terms.length ? (
               <>
@@ -170,7 +170,7 @@ export function DocumentSheet({ view }: { view: DocumentView }) {
           </dl>
         </section>
 
-        <section className="mt-[5mm] grid flex-1 grid-cols-[38%_34%_28%]">
+        <section className="mt-[4mm] grid flex-1 grid-cols-[38%_34%_28%]">
           <div className={view.bank.length ? 'break-inside-avoid bg-[#e3ebf5] px-[12mm] py-[3mm]' : ''}>
             {view.bank.length ? (
               <>
@@ -201,7 +201,7 @@ export function DocumentSheet({ view }: { view: DocumentView }) {
           </div>
         </section>
 
-        <footer className="flex flex-wrap items-center justify-between gap-3 bg-[#bcd9f5] px-[12mm] py-[4mm] text-[8.5pt]">
+        <footer className="flex flex-wrap items-center justify-between gap-3 bg-[#bcd9f5] px-[12mm] py-[3mm] text-[8.5pt]">
           <div className="flex flex-wrap gap-x-6 gap-y-1">
             {view.footer.email ? <span className="break-all">{view.footer.email}</span> : null}
             {view.footer.phone ? <span>{view.footer.phone}</span> : null}

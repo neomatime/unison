@@ -350,7 +350,8 @@ test('the quote and invoice pages show the email section, and the quote page lis
 test('the sheet and the PDF cover the whole page: the bottom section stretches to the bottom edge and the footer is a full-width band', () => {
   const sheet = component('document-sheet')
   assert.match(sheet, /className=\{`document-print relative mx-auto flex min-h-\[296mm\] w-full max-w-\[210mm\] flex-col /, 'the sheet is a column at least a page high')
-  assert.match(sheet, /<section className="mt-\[5mm\] grid flex-1 grid-cols-\[38%_34%_28%\]">/, 'the bank / closing / picture row takes the remaining height')
+  assert.match(sheet, /<section className="mt-\[4mm\] grid flex-1 grid-cols-\[38%_34%_28%\]">/, 'the bank / closing / picture row takes the remaining height')
+  assert.match(sheet, /<header className="relative h-\[30mm\] bg-\[#bcd9f5\]">/, 'the header is short enough that a typical quote, with its closing text, fits one A4 page with its footer')
   assert.match(sheet, /<footer className="[^"]*bg-\[#bcd9f5\] px-\[12mm\][^"]*">/, 'the footer is a full-width band, not an inset rule')
   assert.doesNotMatch(sheet, /<footer className="[^"]*mx-\[12mm\]/, 'the footer has no side margin')
   assert.match(sheet, /@page \{ size: A4; margin: 0; \}/, 'the printed page has no margin')
