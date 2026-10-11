@@ -124,3 +124,13 @@ test('the shared email module is loadable by tests', () => {
     assert.doesNotMatch(source, /from\s+['"]@\//, name)
   }
 })
+
+test('create-invoice-from-quote checks the id, lets the database decide, and opens the new draft', () => {
+  const source = read('actions', 'invoice-from-quote.ts')
+  assert.match(source, /^'use server'/)
+  assert.match(source, /isUuid\(/)
+  assert.match(source, /rpc\('create_invoice_from_quote'/)
+  assert.match(source, /failureState\(/)
+  assert.match(source, /redirect\(`\$\{DOCUMENTS\.invoice\.base\}\//)
+  assert.doesNotMatch(source, /from\('invoices'\)\s*\.insert|from\('invoice_lines'\)\s*\.insert/, 'the copy is made by the database function, not by the action')
+})

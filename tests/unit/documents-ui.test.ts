@@ -201,7 +201,7 @@ test('the quote and invoice pages mount the document actions and the line editor
   const page = (...parts: string[]) => read('app', '(unison)', ...parts, 'page.tsx')
   for (const [source, kind, id, component] of [
     [page('commercial', 'quotes', '[quoteId]'), 'quote', 'quoteId', 'QuoteWorkspace'],
-    [page('finance', 'invoices', '[invoiceId]'), 'invoice', 'invoiceId', 'InvoiceLines'],
+    [page('finance', 'invoices', '[invoiceId]'), 'invoice', 'invoiceId', 'InvoiceWorkspace'],
   ] as const) {
     assert.match(source, /<DocumentActions\s/, `${kind} page mounts the document actions`)
     assert.match(source, /<LineEditor\s/, `${kind} page mounts the line editor`)
@@ -274,4 +274,44 @@ test('the company details form shows its success banner beside the save button a
   assert.match(source, /placeholder="\/brand\/logo\.png"/)
   assert.match(source, /placeholder="\/brand\/header\.png"/)
   assert.doesNotMatch(source, /placeholder="[^"]*(himark|banner)/i, 'the placeholders carry no company-specific file')
+})
+
+test('a sent or issued document offers the PDF and email; a draft offers neither; only an accepted quote offers Create invoice', () => {
+  const source = read('features', 'documents', 'components', 'document-actions.tsx')
+  assert.match(source, /Download PDF/)
+  assert.match(source, /document\/pdf/, 'the download link points at the PDF route')
+  assert.match(source, /#email-client/, 'Email to client jumps to the email section')
+  assert.match(source, /createInvoiceFromQuoteAction/)
+  assert.match(source, /status === 'Accepted'/, 'Create invoice only for an accepted quote')
+  const pdf = source.indexOf('Download PDF')
+  assert.ok(source.lastIndexOf('!draft', pdf) > -1, 'the PDF link sits behind the not-a-draft check')
+})
+
+test('the email form keeps what was typed, cannot be double-submitted, and sends nothing but the three fields', () => {
+  const source = read('features', 'documents', 'components', 'email-document-form.tsx')
+  assert.match(source, /^'use client'/)
+  assert.match(source, /disabled=\{pending\}/, 'the Send button is disabled while a send is pending')
+  assert.match(source, /name="to"/)
+  assert.match(source, /name="subject"/)
+  assert.match(source, /name="body"/)
+  assert.match(source, /event\.preventDefault\(\)/, 'the action is called by hand so a failed send does not reset the form')
+  assert.match(source, /startTransition\(/)
+  assert.doesNotMatch(source, /server-only|pdf\/|lib\/email/, 'a client component imports no server code')
+})
+
+test('the email section explains that a draft must be sent first, and shows the history', () => {
+  const source = read('features', 'documents', 'components', 'email-section.tsx')
+  assert.match(source, /Send or issue this document before emailing it/)
+  assert.match(source, /id="email-client"/)
+  assert.match(source, /listDocumentEmails\(/)
+  assert.match(source, /getEmailDefaults\(/)
+  assert.match(source, /Emails sent/)
+})
+
+test('the quote and invoice pages show the email section, and the quote page lists the invoices made from it', () => {
+  const quote = read('app', '(unison)', 'commercial', 'quotes', '[quoteId]', 'page.tsx')
+  assert.match(quote, /EmailSection kind="quote"/)
+  assert.match(quote, /QuoteInvoices quoteId=/)
+  const invoice = read('app', '(unison)', 'finance', 'invoices', '[invoiceId]', 'page.tsx')
+  assert.match(invoice, /EmailSection kind="invoice"/)
 })

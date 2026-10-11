@@ -1,5 +1,6 @@
 import { PhaseSixDetail } from '@/features/commercial-finance/components/phase-six-detail'
 import { DocumentActions } from '@/features/documents/components/document-actions'
+import { EmailSection } from '@/features/documents/components/email-section'
 import { LineEditor } from '@/features/documents/components/line-editor'
 import { getDocument } from '@/features/documents/queries/get-document'
 import { listPriceItems } from '@/features/documents/queries/list-price-items'
@@ -30,6 +31,15 @@ async function InvoiceLines({ invoiceId }: { invoiceId: string }) {
   )
 }
 
+async function InvoiceWorkspace({ invoiceId }: { invoiceId: string }) {
+  return (
+    <>
+      <InvoiceLines invoiceId={invoiceId} />
+      <EmailSection kind="invoice" id={invoiceId} />
+    </>
+  )
+}
+
 export default async function Page({ params }: { params: Promise<{ invoiceId: string }> }) {
   const { invoiceId } = await params
   return (
@@ -37,7 +47,7 @@ export default async function Page({ params }: { params: Promise<{ invoiceId: st
       kind="invoice"
       id={invoiceId}
       actions={<InvoiceHeaderActions invoiceId={invoiceId} />}
-      after={<InvoiceLines invoiceId={invoiceId} />}
+      after={<InvoiceWorkspace invoiceId={invoiceId} />}
     />
   )
 }
