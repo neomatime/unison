@@ -70,7 +70,7 @@ function LineRow({
   money: (amount: number | string) => string
 }) {
   const [editing, setEditing] = useState(false)
-  if (editing && !locked) {
+  if (editing && !locked && !line.rate_locked) {
     return (
       <li className="px-5 py-4">
         <EditLineForm kind={kind} line={line} onDone={() => setEditing(false)} />
@@ -82,6 +82,7 @@ function LineRow({
       <div className="min-w-0">
         <p className="break-words text-sm font-medium text-foreground">{line.title}</p>
         {line.description ? <p className="whitespace-pre-line break-words text-xs text-[var(--briefing-muted)]">{line.description}</p> : null}
+        {line.rate_locked ? <p className="mt-1 text-xs font-medium text-[var(--briefing-muted)]">Rate card price. It cannot be changed here.</p> : null}
         <p className="mt-1 text-xs text-[var(--briefing-muted)]">
           {formatQuantity(line.quantity)} × {money(line.unit_price)} · {VAT_LABELS[line.vat_code as VatCode] ?? line.vat_code} ={' '}
           <span className="font-semibold text-foreground">{money(line.line_amount)}</span>
@@ -89,9 +90,11 @@ function LineRow({
       </div>
       {locked ? null : (
         <div className="flex flex-wrap gap-2">
-          <button type="button" onClick={() => setEditing(true)} aria-label={`Edit line: ${line.title}`} className="border border-border px-3 py-1.5 text-xs font-semibold text-foreground">
-            Edit
-          </button>
+          {line.rate_locked ? null : (
+            <button type="button" onClick={() => setEditing(true)} aria-label={`Edit line: ${line.title}`} className="border border-border px-3 py-1.5 text-xs font-semibold text-foreground">
+              Edit
+            </button>
+          )}
           {index > 0 ? <ActionButton action={moveLineAction.bind(null, kind, documentId, line.id, 'up')} label="Up" ariaLabel={`Up: ${line.title}`} /> : null}
           {index < count - 1 ? <ActionButton action={moveLineAction.bind(null, kind, documentId, line.id, 'down')} label="Down" ariaLabel={`Down: ${line.title}`} /> : null}
           <ActionButton action={removeLineAction.bind(null, kind, line.id)} label="Remove" ariaLabel={`Remove: ${line.title}`} confirmText="Remove this line?" tone="danger" />

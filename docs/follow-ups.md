@@ -1219,3 +1219,33 @@ or could not prove.
 - **A large export is read in several requests, not one snapshot.** If someone adds or removes a record while a multi-thousand-row
   export is paging, the file can repeat or miss one row. The export of selected ids sends up to 5,000 ids in the address
   (about 190 KB) for each request; ids beyond 5,000 are dropped before the cap is checked.
+
+## From the pricing and credit model (2026-10-12)
+
+Not built, on purpose: credit balances and usage tracking, credit expiry and rollover, automatic monthly invoices, proration, the
+"Strategic Consulting" service (no price in the workbook). The workbook's open decisions (expiry and rollover, top-up rate
+multipliers, minimum purchase and validity, scope and acceptance per project, support start timing, cost per credit, revenue
+recognition) are still open; top-up rates are marked "proposed" on the rate card. Nothing here has been walked signed in.
+
+- **Rulings taken while building (reverse any you disagree with):** a retainer is billed for a month if it was in force at any
+  time in it, with no proration (a client who leaves on the 10th is billed that month); a retainer chain's first invoice always
+  uses the first retainer's tier and is stored against the first retainer, so an upgrade before it is built changes nothing;
+  rate card items cannot be archived in the app (only edited, by an owner or admin) because there is no restore; a billing
+  draft is rebuilt by discarding it (new Discard draft button); end dates cannot be in the future and a new retainer cannot
+  start on or before an earlier retainer's end date.
+- **The four retainer prices live in two places:** the rate card (database) and `config/partner-levels.ts` (provisioning
+  wizard); a unit test keeps them equal. Consider reading one from the other.
+- **The rate card is seeded only for the HIMARK organisation;** a new organisation has no rate card (the builders refuse).
+- **A retainer with a scheduled tier change** shows its end date and cannot be changed again; a scheduled change cannot be
+  cancelled; End package is shown only when no end date is set.
+- **Small screen issues from the final review:** the "active retainer" hint and the Change tier button disagree for a retainer
+  ended today; the "tier change scheduled" note also shows for a retainer simply ended today; End package on a scheduled package
+  is offered but always refused; forms may clear typed values after a refused submit (check in the walk-through).
+- **A new package that starts in the future cannot build its first quote or invoice before its start date** (quotes are often
+  sent before); confirm whether that is wanted.
+- **A back-dated project end can delete support that already ran** (and was invoiced); only the audit log keeps it.
+- **A scheduled upgrade raises the project limit early:** the limit follows the newest retainer as soon as it is recorded.
+- **Quote paths skip the ended check:** converting or duplicating an old first quote for an ended project still works.
+- **Smaller:** the unique-violation mapping in the builders is broad (any unique violation reads as "already billed"); the top-up
+  read is not locked; `getBillingPackage` returns an empty view, not null, for an unknown client id (the client page 404s
+  first); the first quote is not listed under "Built from the package"; the RATE_CARD_FIXED message does not mention VAT.

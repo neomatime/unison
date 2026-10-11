@@ -75,6 +75,17 @@ test('a price list item reads title, description, price and VAT code', () => {
   assert.match(error(readPriceItemFields(form({ title: 'x', unitPrice: '-5', vatCode: 'standard' })))!, /unit price/i)
 })
 
+test('a monthly retainer tier item reads the active projects it allows: empty is no limit, a whole number from 1 to 50 is a limit', () => {
+  const base = { title: 'Tier', unitPrice: '10000', vatCode: 'standard' }
+  assert.equal('initiative_limit' in (readPriceItemFields(form(base)) as object), false, 'an ordinary item sends no limit')
+  assert.equal((readPriceItemFields(form({ ...base, initiativeLimit: '' })) as { initiative_limit: number | null }).initiative_limit, null)
+  assert.equal((readPriceItemFields(form({ ...base, initiativeLimit: ' 3 ' })) as { initiative_limit: number | null }).initiative_limit, 3)
+  assert.equal((readPriceItemFields(form({ ...base, initiativeLimit: '50' })) as { initiative_limit: number | null }).initiative_limit, 50)
+  for (const typed of ['0', '-1', '1.5', 'x', '51']) {
+    assert.match(error(readPriceItemFields(form({ ...base, initiativeLimit: typed })))!, /active projects allowed/i, `limit ${typed}`)
+  }
+})
+
 const company = {
   legalName: 'Test Co (Pty) Ltd', tagline: 'Do good', addressLine1: '1 Test Road', addressLine2: '', city: 'Testville', postalCode: '1234', country: 'Testland',
   vatNumber: 'V1', email: 'hello@test.example', phone: '011 000 0000', website: 'test.example',

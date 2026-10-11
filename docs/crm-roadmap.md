@@ -38,6 +38,8 @@ them through Stage 2 before starting anything else.
 - [x] Forecast worked out from the pipeline instead of typed in (slice C; a read-only month-by-month view from payments, unpaid invoices and the pipeline)
 - [ ] **Slice C walked in a signed-in session** (not done yet: the user does this, and the first real nightly run is on the first night after deploy)
 
+- [x] Pricing and credit model: the HIMARK rate card (28 items), packages recorded on the client, first, monthly and top-up invoices built from it as drafts with locked prices, per-tier limits on active projects, tier changes without a new implementation fee (built 2026-10-12, waiting for the signed-in walk-through; credit balances, expiry and rollover are not built)
+
 ## Stage 3: make the registers scale
 
 - [x] Search, filter, sort and paging on Leads, Quotes, Sales, Invoices and Expenses (built 2026-10-11, waiting for the signed-in walk-through)
