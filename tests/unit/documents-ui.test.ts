@@ -60,23 +60,30 @@ test('a sent quote saves only its status and notes; an issued invoice only its n
 })
 
 test('the invoices register counts only collectible invoices as outstanding', () => {
-  const register = read('features', 'commercial-finance', 'components', 'phase-six-register.tsx')
-  assert.match(register, /INVOICE_ISSUED_STATUSES\.filter\(\s*\(status\) => status !== "Paid" && status !== "Cancelled"/, 'collectible = issued statuses minus Paid and Cancelled')
-  const invoice = between(register, 'if (kind === "invoice") {', 'const overdue', 'invoice register')
-  assert.match(invoice, /COLLECTIBLE_INVOICE_STATUSES\.includes\(String\(row\.status\)\)/, 'a draft, paid or cancelled invoice is not outstanding')
-  assert.match(invoice, /balanceAmount/, 'the balance is still checked')
+  // The rule moved into the database function that computes the cards (Stage 3 part 1); the guard reads it there.
+  const migration = read('supabase', 'migrations', '20261011160000_register_summary.sql')
+  const invoice = between(migration, "elsif p_kind = 'invoice' then", "elsif p_kind = 'expense' then", 'invoice summary')
+  const outstanding = between(invoice, "'outstanding'", "'overdue'", 'outstanding branch')
+  assert.match(outstanding, /status in \('Issued', 'Partially Paid', 'Overdue'\)/, 'a draft, paid or cancelled invoice is not outstanding')
+  assert.match(outstanding, /balance_amount > 0/, 'the balance is still checked')
+  assert.match(outstanding, /archived_at is null/, 'an archived invoice is not outstanding')
+  const overdue = invoice.slice(invoice.indexOf("'overdue'"))
+  assert.match(overdue, /status = 'Overdue'/)
+  assert.match(overdue, /archived_at is null/)
 })
 
 test('the register and detail queries show a draft as a draft, not as a reference code', () => {
+  // The row mapping moved to the pure mapper module (Stage 3 part 1); the guard reads it there.
   const queries = read('features', 'commercial-finance', 'queries', 'phase-six.ts')
-  assert.match(queries, /isDraftReference\(/)
-  assert.match(queries, /Draft quote/)
-  assert.match(queries, /Draft invoice/)
-  const quotes = between(queries, 'export async function listQuotes', 'export async function listInvoices', 'listQuotes')
-  const invoices = between(queries, 'export async function listInvoices', 'export async function listExpenses', 'listInvoices')
-  assert.match(quotes, /name: documentName\(row\.quote_number, row\.client_name, "quote"\)/)
-  assert.match(invoices, /name: documentName\(row\.invoice_number, row\.client_name, "invoice"\)/)
-  for (const [name, block] of [['listQuotes', quotes], ['listInvoices', invoices]] as const) {
+  const mappers = read('features', 'commercial-finance', 'phase-six-mappers.ts')
+  assert.match(mappers, /isDraftReference\(/)
+  assert.match(mappers, /Draft quote/)
+  assert.match(mappers, /Draft invoice/)
+  const quotes = between(mappers, "case 'quote':", "case 'opportunity':", 'mapper quote case')
+  const invoices = between(mappers, "case 'invoice':", "case 'expense':", 'mapper invoice case')
+  assert.match(quotes, /name: documentName\(row\.quote_number, row\.client_name, 'quote'\)/)
+  assert.match(invoices, /name: documentName\(row\.invoice_number, row\.client_name, 'invoice'\)/)
+  for (const [name, block] of [['quote', quotes], ['invoice', invoices]] as const) {
     for (const key of ['projectName', 'projectDescription', 'projectRef', 'clientRef', 'vatRate']) {
       assert.match(block, new RegExp(`\\b${key}: row\\.`), `${name} maps ${key}`)
     }
@@ -89,9 +96,12 @@ test('the register and detail queries show a draft as a draft, not as a referenc
 })
 
 test('the register offers import only for a collection that has import columns', () => {
-  const register = read('features', 'commercial-finance', 'components', 'phase-six-register.tsx')
-  assert.doesNotMatch(register, /allowImport:\s*true/, 'a fixed allowImport: true would show a dead Import button on quotes and invoices')
-  assert.match(register, /allowImport:\s*Boolean\(portableDefinitions\[portableCollectionByKind\[kind\]\]\.importColumns\)/)
+  // The screen decides the Import link from the collection's import columns (Stage 3 part 1).
+  const screen = read('features', 'registers', 'components', 'register-screen.tsx')
+  assert.doesNotMatch(screen, /importHref=\{`/, 'a fixed Import link would show a dead Import button on quotes and invoices')
+  assert.match(screen, /portableDefinitions\[spec\.collection as PortableCollection\]\.importColumns/)
+  assert.match(screen, /const importHref = importColumns\s*\?/, 'the link exists only when the collection has import columns')
+  assert.match(screen, /importHref=\{importHref\}/)
 })
 
 test('quotes and invoices can no longer be imported, but can still be exported', () => {

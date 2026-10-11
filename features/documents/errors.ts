@@ -46,6 +46,7 @@ const MESSAGES: ReadonlyArray<readonly [token: string, message: string]> = [
   ['INVOICE_ALREADY_CANCELLED', 'This invoice is already cancelled.'],
   ['INVOICE_HAS_PAYMENTS', 'Void the payments first, then cancel the invoice.'],
   ['INVOICE_STATUS_AUTOMATIC', 'Status and balance are worked out from the payments.'],
+  ['REGISTER_KIND_UNKNOWN', 'That register was not found.'],
 ]
 
 export const DOCUMENT_ERROR_TOKENS: readonly string[] = MESSAGES.map(([token]) => token)

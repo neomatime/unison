@@ -75,6 +75,23 @@ export async function signedInClient(email: string, password: string): Promise<S
   return client
 }
 
+// Audit-event ids are deleted in chunks of this size so a large fixture cannot overflow the request URL.
+const ID_CHUNK = 200
+
+/**
+ * Every row a query matches, not just the first 1,000 PostgREST returns per request: pages through the result in id
+ * order until a page comes back empty. Same { data, error } shape as the query it wraps.
+ */
+async function allRows(build: () => any): Promise<{ data: Array<{ id: string }>; error: unknown }> {
+  const rows: Array<{ id: string }> = []
+  for (;;) {
+    const { data, error } = await build().order('id').range(rows.length, rows.length + 999)
+    if (error) return { data: rows, error }
+    if (!data || data.length === 0) return { data: rows, error: null }
+    rows.push(...data)
+  }
+}
+
 // GUARANTEE: cleanup() must remove every row a fixture caused, in every
 // table, with no exceptions -- including audit_events rows that
 // delete_organization() deliberately leaves behind. That survival is correct
@@ -184,23 +201,23 @@ export async function cleanup(organizationIds: string[], userIds: string[]) {
     const { error: deleteOrgError } = await admin.rpc('delete_organization', { target_org: id })
     if (deleteOrgError) errors.push(deleteOrgError)
 
-    const { data: orgEvent, error: orgEventError } = await admin
+    const { data: orgEvent, error: orgEventError } = await allRows(() => admin
       .from('audit_events')
       .select('id')
       .is('organization_id', null)
       .eq('resource', 'organizations')
-      .eq('resource_id', id)
+      .eq('resource_id', id))
     if (orgEventError) errors.push(orgEventError)
 
-    const { data: clientEvents, error: clientEventsError } = await admin
+    const { data: clientEvents, error: clientEventsError } = await allRows(() => admin
       .from('audit_events')
       .select('id')
       .is('organization_id', null)
       .eq('resource', 'clients')
-      .or(`old_value->>organization_id.eq.${id},new_value->>organization_id.eq.${id}`)
+      .or(`old_value->>organization_id.eq.${id},new_value->>organization_id.eq.${id}`))
     if (clientEventsError) errors.push(clientEventsError)
 
-    const { data: deliveryEvents, error: deliveryEventsError } = await admin
+    const { data: deliveryEvents, error: deliveryEventsError } = await allRows(() => admin
       .from('audit_events')
       .select('id')
       .is('organization_id', null)
@@ -247,28 +264,30 @@ export async function cleanup(organizationIds: string[], userIds: string[]) {
         'quote_lines',
         'invoice_lines',
       ])
-      .or(`old_value->>organization_id.eq.${id},new_value->>organization_id.eq.${id}`)
+      .or(`old_value->>organization_id.eq.${id},new_value->>organization_id.eq.${id}`))
     if (deliveryEventsError) errors.push(deliveryEventsError)
 
     const auditIds = [...(orgEvent ?? []), ...(clientEvents ?? []), ...(deliveryEvents ?? [])].map((row) => row.id as string)
-    if (auditIds.length > 0) {
-      const { error: auditDeleteError } = await admin.from('audit_events').delete().in('id', auditIds)
+    // In chunks: a large fixture produces thousands of audit events, and one .in('id', [...]) with that many uuids
+    // makes the request URL too long ("Bad Request").
+    for (let start = 0; start < auditIds.length; start += ID_CHUNK) {
+      const { error: auditDeleteError } = await admin.from('audit_events').delete().in('id', auditIds.slice(start, start + ID_CHUNK))
       if (auditDeleteError) errors.push(auditDeleteError)
     }
   }
 
   if (userIds.length > 0) {
-    const { data: membershipEvents, error: membershipEventsError } = await admin
+    const { data: membershipEvents, error: membershipEventsError } = await allRows(() => admin
       .from('audit_events')
       .select('id')
       .is('organization_id', null)
       .eq('resource', 'memberships')
-      .in('actor_id', userIds)
+      .in('actor_id', userIds))
     if (membershipEventsError) errors.push(membershipEventsError)
 
     const membershipAuditIds = (membershipEvents ?? []).map((row) => row.id as string)
-    if (membershipAuditIds.length > 0) {
-      const { error: membershipAuditDeleteError } = await admin.from('audit_events').delete().in('id', membershipAuditIds)
+    for (let start = 0; start < membershipAuditIds.length; start += ID_CHUNK) {
+      const { error: membershipAuditDeleteError } = await admin.from('audit_events').delete().in('id', membershipAuditIds.slice(start, start + ID_CHUNK))
       if (membershipAuditDeleteError) errors.push(membershipAuditDeleteError)
     }
   }

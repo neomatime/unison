@@ -1185,3 +1185,37 @@ or could not prove.
   there are no invoices, but note it once real invoices exist.
 - **Tests:** the new screens are covered by source-text guards, not behavioural tests; `eslint` is not installed in this
   checkout, so lint has never run on this slice.
+
+## From Stage 3, part 1 (registers that scale; 2026-10-11)
+
+- **Not exercised signed in.** The register screen, toolbar, Archive and Restore, the one-record detail reads and the filtered
+  export were checked by unit and source tests, database tests for the summary function and a 1,100-row paging proof, query
+  timings on 3,000 fixture rows, and a fixture preview of the toolbar; they were not run in a signed-in session against
+  real records. The register table itself has not been looked at in a browser with data.
+- **Search and the date sorts scan the table.** At 3,000 invoices the main filters ran in 1 to 8 ms (status uses an index);
+  the search is a text match and the sorts have no index of their own, so at tens of thousands of rows per organisation a
+  text-search index on the searched columns and indexes for the sortable columns should be added. Not measured on real
+  data.
+- **The New and Edit forms still load every client, project, member, vendor, lead, opportunity and quote for their select
+  lists** (`getPhaseSixOptions`); they will be slow and eventually cut off at 1,000 for a large organisation.
+- **The other registers (clients, projects, tasks, approvals, vendors and the rest) still use the shared client-side
+  register** with its client-only Archive, Restore and Duplicate that do not save; the old typed-forecast code and its
+  data-portability export stay unreachable.
+- **No date or amount filters, saved views, column choice or page-size choice;** Duplicate and bulk archive are gone from the
+  five registers; export of only ticked rows is gone.
+- **Cards show one currency** (ZAR when present) and say when others are left out; the note is register-wide, not per card.
+- **Smaller notes:** the archive action reads then writes (two simultaneous archivers both succeed; harmless); the archive
+  does not revalidate the quote and invoice print pages or client pages; the export download name drops the date; the
+  export buttons have no group label; the summary and screen tests are mostly source guards; `eslint` is not installed in
+  this checkout.
+- **Archived invoices still go Overdue.** The nightly job (`mark_overdue_invoices`) still flips archived invoices to Overdue and
+  posts the timeline entry, while the forecast and the cards now ignore them. Add `archived_at is null` to the job in a new
+  migration.
+- **Expense search and sort use the typed vendor name only.** When an expense has a linked vendor but no typed name, the Vendor
+  column shows the linked vendor's name, but search and sort cannot see it.
+- **Detail pages do not say a record is archived,** and Restore exists only in the register.
+- **Archive and Restore were only tested with the admin client.** Walk-through item: archive and restore a sent quote and an
+  issued invoice signed in, to exercise the quote and invoice triggers.
+- **A large export is read in several requests, not one snapshot.** If someone adds or removes a record while a multi-thousand-row
+  export is paging, the file can repeat or miss one row. The export of selected ids sends up to 5,000 ids in the address
+  (about 190 KB) for each request; ids beyond 5,000 are dropped before the cap is checked.

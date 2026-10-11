@@ -3,7 +3,13 @@ import "server-only";
 import { getSessionContext } from "@/lib/auth/get-session-context";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { isUuid } from "@/lib/utils";
-import { isDraftReference } from "@/features/documents/vocabulary";
+import {
+  collectNameIds,
+  documentName,
+  emptyNameMaps,
+  mapPhaseSixRow,
+  type NameMaps,
+} from "../phase-six-mappers";
 
 export type PhaseSixKind =
   | "lead"
@@ -42,13 +48,6 @@ const makeMap = (options: SelectOption[]) =>
 
 const nameFor = (map: Map<string, string>, id: unknown, fallback = "Unassigned") =>
   typeof id === "string" ? map.get(id) ?? fallback : fallback;
-
-/** A draft carries a generated reference; the registers show it as a draft for the client, not as a code. */
-const documentName = (reference: unknown, clientName: unknown, kind: "quote" | "invoice") => {
-  if (!isDraftReference(reference)) return String(reference);
-  const label = kind === "quote" ? "Draft quote" : "Draft invoice";
-  return clientName ? `${label} · ${String(clientName)}` : label;
-};
 
 export async function getPhaseSixOptions(): Promise<PhaseSixOptions> {
   const { organization, db } = await context();
@@ -91,186 +90,32 @@ async function records(table: string, orderColumn: string, ascending = true) {
   return { rows: result.data ?? [], options };
 }
 
-export async function listLeads(): Promise<PhaseSixRecord[]> {
-  const { rows, options } = await records("leads", "created_at", false);
-  const members = makeMap(options.members);
-  return rows.map((row: any) => ({
-    id: row.id,
-    name: row.company_name,
-    companyName: row.company_name,
-    contactName: row.contact_name,
-    contactEmail: row.contact_email,
-    contactPhone: row.contact_phone,
-    contactRole: row.contact_role,
-    organizationSize: row.organization_size,
-    industry: row.industry,
-    areasOfInterest: row.areas_of_interest,
-    primaryChallenge: row.primary_challenge,
-    businessImpact: row.business_impact,
-    impactSeverity: row.impact_severity,
-    urgency: row.urgency,
-    buyingStage: row.buying_stage,
-    engagementType: row.engagement_type,
-    qualificationOutcome: row.qualification_outcome,
-    qualificationScore: row.qualification_score,
-    qualificationSignals: row.qualification_signals,
-    manualReviewRequired: row.manual_review_required,
-    reviewOverride: row.review_override,
-    websiteSubmittedAt: row.website_submitted_at,
-    source: row.source,
-    ownerId: row.owner_id,
-    owner: nameFor(members, row.owner_id),
-    estimatedValue: row.estimated_value,
-    currency: row.currency,
-    lastActivityAt: row.last_activity_at,
-    notes: row.notes,
-    status: row.status,
-    archivedAt: row.archived_at,
-    updatedAt: row.updated_at,
-  }));
+/** The names a set of rows shows, looked up only for the ids those rows hold (not by loading every member, client and project). */
+export async function loadNameMaps(db: any, organizationId: string, kind: Exclude<PhaseSixKind, "forecast">, rows: Array<Record<string, unknown>>): Promise<NameMaps> {
+  const ids = collectNameIds(kind, rows);
+  const names = emptyNameMaps();
+  const lookup = async (map: keyof NameMaps, table: string, columns: string, label: (row: any) => string) => {
+    if (ids[map].length === 0) return;
+    const result = await db.from(table).select(columns).eq("organization_id", organizationId).in("id", ids[map]);
+    if (result.error) throw result.error;
+    for (const row of result.data ?? []) names[map].set(row.id, label(row));
+  };
+  await Promise.all([
+    lookup("members", "team_members", "id,full_name", (row) => row.full_name),
+    lookup("leads", "leads", "id,company_name", (row) => row.company_name),
+    lookup("opportunities", "sales_opportunities", "id,name", (row) => row.name),
+    lookup("projects", "projects", "id,name", (row) => row.name),
+    lookup("quotes", "quotes", "id,quote_number,client_name", (row) => documentName(row.quote_number, row.client_name, "quote")),
+    lookup("vendors", "vendors", "id,name", (row) => row.name),
+    lookup("clients", "clients", "id,name", (row) => row.name),
+  ]);
+  return names;
 }
 
-export async function listQuotes(): Promise<PhaseSixRecord[]> {
-  const { rows, options } = await records("quotes", "created_at", false);
-  const members = makeMap(options.members);
-  const leads = makeMap(options.leads);
-  const opportunities = makeMap(options.opportunities);
-  return rows.map((row: any) => ({
-    id: row.id,
-    name: documentName(row.quote_number, row.client_name, "quote"),
-    quoteNumber: row.quote_number,
-    clientId: row.client_id,
-    clientName: row.client_name,
-    contactName: row.contact_name,
-    leadId: row.lead_id,
-    lead: nameFor(leads, row.lead_id, "—"),
-    opportunityId: row.opportunity_id,
-    opportunity: nameFor(opportunities, row.opportunity_id, "—"),
-    ownerId: row.owner_id,
-    owner: nameFor(members, row.owner_id),
-    validUntil: row.valid_until,
-    issueDate: row.issue_date,
-    projectName: row.project_name,
-    projectDescription: row.project_description,
-    projectRef: row.project_ref,
-    clientRef: row.client_ref,
-    vatRate: row.vat_rate,
-    subtotal: row.subtotal,
-    taxAmount: row.tax_amount,
-    totalAmount: row.total_amount,
-    currency: row.currency,
-    sentAt: row.sent_at,
-    acceptedAt: row.accepted_at,
-    terms: row.terms,
-    notes: row.notes,
-    status: row.status,
-    archivedAt: row.archived_at,
-    updatedAt: row.updated_at,
-  }));
-}
-
-export async function listOpportunities(): Promise<PhaseSixRecord[]> {
-  const { rows, options } = await records("sales_opportunities", "created_at", false);
-  const members = makeMap(options.members);
-  const leads = makeMap(options.leads);
-  return rows.map((row: any) => ({
-    id: row.id,
-    name: row.name,
-    clientId: row.client_id,
-    clientName: row.client_name,
-    leadId: row.lead_id,
-    lead: nameFor(leads, row.lead_id, "—"),
-    ownerId: row.owner_id,
-    owner: nameFor(members, row.owner_id),
-    stage: row.stage,
-    expectedValue: row.expected_value,
-    currency: row.currency,
-    probabilityPercent: row.probability_percent,
-    expectedClose: row.expected_close,
-    nextStep: row.next_step,
-    lostReason: row.lost_reason,
-    wonAt: row.won_at,
-    notes: row.notes,
-    status: row.stage,
-    archivedAt: row.archived_at,
-    updatedAt: row.updated_at,
-  }));
-}
-
-export async function listInvoices(): Promise<PhaseSixRecord[]> {
-  const { rows, options } = await records("invoices", "created_at", false);
-  const members = makeMap(options.members);
-  const projects = makeMap(options.projects);
-  const quotes = makeMap(options.quotes);
-  const opportunities = makeMap(options.opportunities);
-  return rows.map((row: any) => ({
-    id: row.id,
-    name: documentName(row.invoice_number, row.client_name, "invoice"),
-    invoiceNumber: row.invoice_number,
-    clientId: row.client_id,
-    clientName: row.client_name,
-    projectId: row.project_id,
-    project: nameFor(projects, row.project_id, "—"),
-    quoteId: row.quote_id,
-    quote: nameFor(quotes, row.quote_id, "—"),
-    opportunityId: row.opportunity_id,
-    opportunity: nameFor(opportunities, row.opportunity_id, "—"),
-    ownerId: row.owner_id,
-    owner: nameFor(members, row.owner_id),
-    issueDate: row.issue_date,
-    dueDate: row.due_date,
-    projectName: row.project_name,
-    projectDescription: row.project_description,
-    projectRef: row.project_ref,
-    clientRef: row.client_ref,
-    vatRate: row.vat_rate,
-    subtotal: row.subtotal,
-    taxAmount: row.tax_amount,
-    totalAmount: row.total_amount,
-    balanceAmount: row.balance_amount,
-    currency: row.currency,
-    paidAt: row.paid_at,
-    paymentTerms: row.payment_terms,
-    notes: row.notes,
-    status: row.status,
-    archivedAt: row.archived_at,
-    updatedAt: row.updated_at,
-  }));
-}
-
-export async function listExpenses(): Promise<PhaseSixRecord[]> {
-  const { rows, options } = await records("expenses", "expense_date", false);
-  const members = makeMap(options.members);
-  const vendors = makeMap(options.vendors);
-  const projects = makeMap(options.projects);
-  const clients = makeMap(options.clients);
-  return rows.map((row: any) => ({
-    id: row.id,
-    name: row.description,
-    description: row.description,
-    category: row.category,
-    vendorId: row.vendor_id,
-    vendor: nameFor(vendors, row.vendor_id, row.vendor_name ?? "—"),
-    vendorName: row.vendor_name,
-    projectId: row.project_id,
-    project: nameFor(projects, row.project_id, "—"),
-    clientId: row.client_id,
-    client: nameFor(clients, row.client_id, "—"),
-    submittedBy: row.submitted_by,
-    submitter: nameFor(members, row.submitted_by),
-    approvedBy: row.approved_by,
-    approver: nameFor(members, row.approved_by, "—"),
-    amount: row.amount,
-    currency: row.currency,
-    expenseDate: row.expense_date,
-    receiptReference: row.receipt_reference,
-    notes: row.notes,
-    submittedAt: row.submitted_at,
-    approvedAt: row.approved_at,
-    status: row.status,
-    archivedAt: row.archived_at,
-    updatedAt: row.updated_at,
-  }));
+export async function mapRows(kind: Exclude<PhaseSixKind, "forecast">, rows: any[]): Promise<PhaseSixRecord[]> {
+  const { organization, db } = await context();
+  const names = await loadNameMaps(db, organization.id, kind, rows);
+  return rows.map((row) => mapPhaseSixRow(kind, row, names));
 }
 
 export async function listForecasts(): Promise<PhaseSixRecord[]> {
@@ -301,16 +146,20 @@ export async function listForecasts(): Promise<PhaseSixRecord[]> {
   });
 }
 
-const loaders: Record<PhaseSixKind, () => Promise<PhaseSixRecord[]>> = {
-  lead: listLeads,
-  quote: listQuotes,
-  opportunity: listOpportunities,
-  invoice: listInvoices,
-  expense: listExpenses,
-  forecast: listForecasts,
-};
+const TABLES = {
+  lead: "leads",
+  quote: "quotes",
+  opportunity: "sales_opportunities",
+  invoice: "invoices",
+  expense: "expenses",
+} as const;
 
 export async function getPhaseSixRecord(kind: PhaseSixKind, id: string) {
   if (!isUuid(id)) return null;
-  return (await loaders[kind]()).find((record) => record.id === id) ?? null;
+  if (kind === "forecast") return (await listForecasts()).find((record) => record.id === id) ?? null;
+  const { organization, db } = await context();
+  const found = await db.from(TABLES[kind]).select("*").eq("id", id).eq("organization_id", organization.id).maybeSingle();
+  if (found.error) throw found.error;
+  if (!found.data) return null;
+  return (await mapRows(kind, [found.data]))[0] ?? null;
 }
