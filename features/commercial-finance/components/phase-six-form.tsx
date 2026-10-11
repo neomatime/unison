@@ -130,7 +130,8 @@ function Fields({
     }
     return (
       <>
-        <Notice>The quote number is assigned when the quote is sent. Save the draft, then add its lines on the quote page.</Notice>
+        <Notice>The quote number is assigned when the quote is sent. {record ? "Add or change its lines on the quote page." : "Choose a package to fill the lines at the rate card prices, or leave it Blank and add lines on the quote page."}</Notice>
+        {record ? null : <PackageSelect packages={options.packages} />}
         <ClientFields options={options.clients} clientId={value("clientId")} clientName={value("clientName")} />
         <Field name="contactName" label="Client contact" value={value("contactName")} />
         <OptionSelect name="leadId" label="Related lead" options={options.leads} value={value("leadId")} optional />
@@ -162,7 +163,8 @@ function Fields({
     }
     return (
       <>
-        <Notice>The invoice number is assigned when the invoice is issued. Save the draft, then add its lines on the invoice page.</Notice>
+        <Notice>The invoice number is assigned when the invoice is issued. {record ? "Add or change its lines on the invoice page." : "Choose a package to fill the lines at the rate card prices, or leave it Blank and add lines on the invoice page."}</Notice>
+        {record ? null : <PackageSelect packages={options.packages} />}
         <ClientFields options={options.clients} clientId={value("clientId")} clientName={value("clientName")} />
         <OptionSelect name="projectId" label="Delivery project (optional)" options={options.projects} value={value("projectId")} optional />
         <OptionSelect name="quoteId" label="Source quote" options={options.quotes} value={value("quoteId")} optional />
@@ -361,6 +363,30 @@ function TextArea({
         defaultValue={value ?? ""}
         className={`${inputClass} h-auto py-3`}
       />
+    </label>
+  );
+}
+
+/** Starts a new quote or invoice from a retainer tier or a project: the draft is created with its lines at the rate card prices. */
+function PackageSelect({ packages }: { packages: PhaseSixOptions["packages"] }) {
+  if (packages.retainers.length === 0 && packages.projects.length === 0) return null;
+  return (
+    <label className="block md:col-span-2">
+      <span className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Package</span>
+      <select name="packageKey" defaultValue="" className={inputClass}>
+        <option value="">Blank (add the lines yourself on the next page)</option>
+        {packages.retainers.length ? (
+          <optgroup label="Retainer (monthly fee plus one-time implementation fee)">
+            {packages.retainers.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
+          </optgroup>
+        ) : null}
+        {packages.projects.length ? (
+          <optgroup label="Project (fixed fee)">
+            {packages.projects.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
+          </optgroup>
+        ) : null}
+      </select>
+      <span className="mt-1 block text-xs text-muted-foreground">The prices come from the rate card and cannot be changed on the document. You can still remove a line or add others.</span>
     </label>
   );
 }

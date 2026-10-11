@@ -83,6 +83,9 @@ export async function savePhaseSixRecordAction(
   const db = (await createServerSupabase()) as any;
   let table: string;
   let values: Record<string, unknown>;
+  // A new quote or invoice can start from a package: its lines are added at the rate card prices after it is saved.
+  const packageKey = !id && (kind === "quote" || kind === "invoice") ? optional(form, "packageKey") : null;
+  if (packageKey !== null && !/^[a-z0-9_]{1,60}$/.test(packageKey)) return { error: "Choose a package from the list." };
 
   if (kind === "lead") {
     const companyName = text(form, "companyName");
@@ -292,6 +295,16 @@ export async function savePhaseSixRecordAction(
                 ? "Say why this opportunity was lost."
                 : "The record could not be saved. Check related records, dates and amounts."),
     };
+  }
+
+  if (packageKey && (kind === "quote" || kind === "invoice")) {
+    const filled = await db.rpc("fill_document_from_package", { p_kind: kind, p_document: result.data.id, p_package_key: packageKey });
+    if (filled.error) {
+      // The draft exists (blank): do not ask for it to be saved again, which would make a second one.
+      return {
+        error: `The ${kind} was saved as a blank draft, but its package lines could not be added: ${documentErrorMessage(String(filled.error.message)) ?? "please try again from the page."} Find it in the ${kind === "quote" ? "Quotes" : "Invoices"} list.`,
+      };
+    }
   }
 
   const base = routes[kind];

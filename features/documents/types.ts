@@ -59,3 +59,14 @@ export type DocumentLine = {
   price_list_item_id: string | null
   rate_locked: boolean
 }
+
+/** One item of the rate card, as the "Add from rate card" picker needs it. */
+export type RateCardItem = {
+  rate_key: string
+  item_kind: string
+  title: string
+  description: string | null
+  unit_price: number | string
+  credits: number | string | null
+  rate_status: string
+}
