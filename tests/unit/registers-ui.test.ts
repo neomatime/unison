@@ -110,3 +110,12 @@ test('the register rules are the only place a column name for the page comes fro
     assert.doesNotMatch(registers('components', name), /\.order\(|\.ilike\(|\.range\(/, `${name} does not build queries`)
   }
 })
+
+test('a filtered register can be cleared in one click from the toolbar, and a former owner is not hidden', () => {
+  const toolbar = registers('components', 'register-toolbar.tsx')
+  assert.match(toolbar, /filtered \? <Link href=\{clearHref\}[^>]*>Clear filters<\/Link>/, 'the toolbar itself offers Clear filters when a filter is set')
+  assert.match(toolbar, /Former member/, 'an owner who is no longer in the list is still shown')
+  const screen = registers('components', 'register-screen.tsx')
+  assert.match(screen, /filtered=\{filtered\}/)
+  assert.match(screen, /clearHref=\{frame\.base\}/)
+})

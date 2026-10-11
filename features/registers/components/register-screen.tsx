@@ -16,7 +16,8 @@ import { buildCards } from '../summary'
 import { RegisterToolbar } from './register-toolbar'
 
 const STATUS_COLUMNS = new Set(['status', 'stage'])
-const rowLink = 'unison-action-control text-xs font-semibold text-brand hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand'
+const rowButtons = '[&_button]:min-h-10 [&_button]:focus-visible:outline-2 [&_button]:focus-visible:outline-offset-2 [&_button]:focus-visible:outline-brand'
+const rowLink = 'unison-action-control inline-flex min-h-10 items-center text-xs font-semibold text-brand hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand'
 
 /**
  * One register: the cards, the search and filters, one page of rows and the footer. It reads the page address, asks the
@@ -62,6 +63,8 @@ export async function RegisterScreen({ kind, searchParams }: { kind: RegisterKin
           statuses={spec.statuses}
           owners={owners}
           importHref={importHref}
+          filtered={filtered}
+          clearHref={frame.base}
           exportSlot={null}
         />
         {params.searchTooShort ? <p role="status" className="border-b border-border px-5 py-2 text-xs text-muted-foreground">Enter at least 2 characters to search.</p> : null}
@@ -123,7 +126,7 @@ export async function RegisterScreen({ kind, searchParams }: { kind: RegisterKin
                       </td>
                     ))}
                     <td className="px-4 py-3.5">
-                      <div className="flex flex-wrap items-center gap-3">
+                      <div className={`flex flex-wrap items-center gap-3 ${rowButtons}`}>
                         <Link href={`${frame.base}/${row.id}`} className={rowLink} aria-label={`View ${row.name}`}>View</Link>
                         <Link href={`${frame.base}/${row.id}/edit`} className={rowLink} aria-label={`Edit ${row.name}`}>Edit</Link>
                         {row.archived ? (
@@ -146,13 +149,13 @@ export async function RegisterScreen({ kind, searchParams }: { kind: RegisterKin
               {window.page > 1 ? (
                 <Link href={registerHref(frame.base, params, { page: window.page - 1 })} rel="prev" className="unison-action-control border border-border px-3 py-1.5 font-medium text-foreground hover:bg-muted">Previous</Link>
               ) : (
-                <span aria-disabled="true" className="border border-border px-3 py-1.5 font-medium opacity-50">Previous</span>
+                <span role="link" aria-disabled="true" className="border border-border px-3 py-1.5 font-medium opacity-50">Previous</span>
               )}
               <span>Page {window.page} of {window.pageCount}</span>
               {window.page < window.pageCount ? (
                 <Link href={registerHref(frame.base, params, { page: window.page + 1 })} rel="next" className="unison-action-control border border-border px-3 py-1.5 font-medium text-foreground hover:bg-muted">Next</Link>
               ) : (
-                <span aria-disabled="true" className="border border-border px-3 py-1.5 font-medium opacity-50">Next</span>
+                <span role="link" aria-disabled="true" className="border border-border px-3 py-1.5 font-medium opacity-50">Next</span>
               )}
             </nav>
           </footer>

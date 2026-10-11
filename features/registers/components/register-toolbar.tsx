@@ -21,6 +21,8 @@ export function RegisterToolbar({
   owners,
   exportSlot,
   importHref,
+  filtered,
+  clearHref,
 }: {
   base: string
   q: string
@@ -33,6 +35,10 @@ export function RegisterToolbar({
   owners: Array<{ id: string; label: string }>
   exportSlot?: ReactNode
   importHref?: string
+  /** True when a search, status, owner or the archived switch is set. */
+  filtered: boolean
+  /** The register without any parameter: clearing also resets the sort and the page. */
+  clearHref: string
 }) {
   const router = useRouter()
   const [text, setText] = useState(q)
@@ -55,6 +61,8 @@ export function RegisterToolbar({
     router.push(address ? `${base}?${address}` : base)
   }
 
+  const focus = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand'
+  const ownerMissing = owner !== null && !owners.some((value) => value.id === owner)
   const field = 'unison-field min-h-10 rounded-none border border-border bg-card px-3 text-sm'
   return (
     <form
@@ -80,6 +88,7 @@ export function RegisterToolbar({
         <span className="text-xs font-medium text-muted-foreground">Owner</span>
         <select name="owner" value={owner ?? ''} onChange={(event) => go({ owner: event.target.value })} className={`${field} mt-1 block`}>
           <option value="">Everyone</option>
+          {ownerMissing ? <option value={owner ?? ''}>Former member</option> : null}
           {owners.map((value) => <option key={value.id} value={value.id}>{value.label}</option>)}
         </select>
       </label>
@@ -87,9 +96,10 @@ export function RegisterToolbar({
         <input type="checkbox" name="archived" checked={archived} onChange={(event) => go({ archived: event.target.checked })} />
         Show archived
       </label>
-      <button type="submit" className="min-h-10 border border-border px-4 text-sm font-medium">Search</button>
+      <button type="submit" className={`min-h-10 border border-border px-4 text-sm font-medium ${focus}`}>Search</button>
+      {filtered ? <Link href={clearHref} className={`inline-flex min-h-10 items-center px-2 text-sm font-medium text-brand hover:underline ${focus}`}>Clear filters</Link> : null}
       <div className="ml-auto flex items-center gap-2">
-        {importHref ? <Link href={importHref} className="inline-flex min-h-10 items-center border border-border px-4 text-sm font-medium">Import</Link> : null}
+        {importHref ? <Link href={importHref} className={`inline-flex min-h-10 items-center border border-border px-4 text-sm font-medium ${focus}`}>Import</Link> : null}
         {exportSlot}
       </div>
     </form>
