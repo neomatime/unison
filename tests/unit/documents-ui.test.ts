@@ -27,7 +27,7 @@ test('the quote and invoice forms no longer ask for a number or any total', () =
   assert.doesNotMatch(form, /name="issueDate"/, 'an invoice is dated the day it is issued; the draft form has no issue date to type')
   assert.match(form, /isDraftStatus\(/, 'the form behaves differently for a sent or issued document')
   assert.match(form, /QUOTE_SENT_STATUSES/)
-  assert.match(form, /INVOICE_ISSUED_STATUSES/)
+  assert.doesNotMatch(form, /INVOICE_ISSUED_STATUSES/, 'an issued invoice has no status to pick: it comes from the payments')
 })
 
 test('the save action never writes a number, a total or a milestone for a quote or an invoice', () => {
@@ -44,7 +44,7 @@ test('the save action never writes a number, a total or a milestone for a quote 
   assert.match(invoice, /documentErrorMessage\("INVOICE_FROZEN"\)/, 'a stale form posted to an issued invoice is told it is frozen')
 })
 
-test('a sent quote saves only its status and notes; an issued invoice only its status, balance, paid date and notes', () => {
+test('a sent quote saves only its status and notes; an issued invoice only its notes', () => {
   const action = read('features', 'commercial-finance', 'actions', 'phase-six.ts')
   const quote = between(action, QUOTE_OPENER, INVOICE_OPENER, 'quote branch')
   const invoice = between(action, INVOICE_OPENER, EXPENSE_OPENER, 'invoice branch')
@@ -52,10 +52,11 @@ test('a sent quote saves only its status and notes; an issued invoice only its s
 
   // The issued branch runs from its comment to the "} else {" of the draft branch.
   const issued = between(invoice, '// Issued:', '} else {', 'issued invoice branch')
-  const literal = issued.match(/values = \{([\s\S]*?)\n\s*\};/)
+  // The literal may be one line or several: it ends at the first "};".
+  const literal = issued.match(/values = \{([\s\S]*?)\};/)
   assert.ok(literal, 'the issued-invoice branch assigns an object literal to values')
-  const keys = [...literal[1].matchAll(/^\s*([a-z_]+)\s*[:,]/gm)].map((match) => match[1]).sort()
-  assert.deepEqual(keys, ['balance_amount', 'notes', 'paid_at', 'status'])
+  const keys = [...literal[1].matchAll(/(?:^|[{,])\s*([a-z_]+)\s*:/g)].map((match) => match[1]).sort()
+  assert.deepEqual(keys, ['notes'])
 })
 
 test('the invoices register counts only collectible invoices as outstanding', () => {
@@ -64,17 +65,6 @@ test('the invoices register counts only collectible invoices as outstanding', ()
   const invoice = between(register, 'if (kind === "invoice") {', 'const overdue', 'invoice register')
   assert.match(invoice, /COLLECTIBLE_INVOICE_STATUSES\.includes\(String\(row\.status\)\)/, 'a draft, paid or cancelled invoice is not outstanding')
   assert.match(invoice, /balanceAmount/, 'the balance is still checked')
-})
-
-test('cancelling an issued invoice zeroes its balance, so a cancel-and-reissue is not counted twice', () => {
-  const action = read('features', 'commercial-finance', 'actions', 'phase-six.ts')
-  const invoice = between(action, INVOICE_OPENER, EXPENSE_OPENER, 'invoice branch')
-  const issued = between(invoice, '// Issued:', '} else {', 'issued invoice branch')
-  assert.match(issued, /const balance = status === "Paid" \|\| status === "Cancelled" \? 0 :/, 'Paid and Cancelled both leave nothing collectible')
-  const literal = issued.match(/values = \{([\s\S]*?)\n\s*\};/)
-  assert.ok(literal, 'the issued-invoice branch assigns an object literal to values')
-  const keys = [...literal[1].matchAll(/^\s*([a-z_]+)\s*[:,]/gm)].map((match) => match[1]).sort()
-  assert.deepEqual(keys, ['balance_amount', 'notes', 'paid_at', 'status'])
 })
 
 test('the register and detail queries show a draft as a draft, not as a reference code', () => {
