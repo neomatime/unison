@@ -30,6 +30,22 @@ const MESSAGES: ReadonlyArray<readonly [token: string, message: string]> = [
   ['EMAIL_RECORD_INVALID', 'The email record was incomplete, so it was not saved.'],
   ['QUOTE_NOT_ACCEPTED', 'Only an accepted quote can be invoiced.'],
   ['QUOTE_ARCHIVED', 'An archived quote cannot be invoiced.'],
+  ['INVOICE_NOT_PAYABLE', 'Only an issued invoice that still has a balance can be paid.'],
+  ['PAYMENT_AMOUNT_INVALID', 'Enter an amount above zero, with at most two decimals.'],
+  ['PAYMENT_EXCEEDS_BALANCE', 'The payment is more than the balance still owing.'],
+  ['PAYMENT_DATE_FUTURE', "The payment date can't be in the future."],
+  ['PAYMENT_DATE_BEFORE_ISSUE', "The payment date can't be before the invoice date."],
+  ['PAYMENT_METHOD_INVALID', 'Choose Bank transfer, Card, Cash or Other.'],
+  ['PAYMENT_REFERENCE_TOO_LONG', 'The reference is too long (120 characters at most).'],
+  ['PAYMENT_NOT_FOUND', 'That payment was not found.'],
+  ['PAYMENT_ALREADY_VOIDED', 'That payment has already been voided.'],
+  ['PAYMENT_VOID_REASON_REQUIRED', 'A reason is required to void a payment.'],
+  ['PAYMENT_VOID_REASON_TOO_LONG', 'The reason is too long (500 characters at most).'],
+  ['PAYMENT_IMMUTABLE', "A recorded payment can't be changed. Void it and record it again."],
+  ['INVOICE_NOT_ISSUED', 'Only an issued invoice can be cancelled.'],
+  ['INVOICE_ALREADY_CANCELLED', 'This invoice is already cancelled.'],
+  ['INVOICE_HAS_PAYMENTS', 'Void the payments first, then cancel the invoice.'],
+  ['INVOICE_STATUS_AUTOMATIC', 'Status and balance are worked out from the payments.'],
 ]
 
 export const DOCUMENT_ERROR_TOKENS: readonly string[] = MESSAGES.map(([token]) => token)
