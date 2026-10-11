@@ -68,15 +68,17 @@ test('the invoices register counts only collectible invoices as outstanding', ()
 })
 
 test('the register and detail queries show a draft as a draft, not as a reference code', () => {
+  // The row mapping moved to the pure mapper module (Stage 3 part 1); the guard reads it there.
   const queries = read('features', 'commercial-finance', 'queries', 'phase-six.ts')
-  assert.match(queries, /isDraftReference\(/)
-  assert.match(queries, /Draft quote/)
-  assert.match(queries, /Draft invoice/)
-  const quotes = between(queries, 'export async function listQuotes', 'export async function listInvoices', 'listQuotes')
-  const invoices = between(queries, 'export async function listInvoices', 'export async function listExpenses', 'listInvoices')
-  assert.match(quotes, /name: documentName\(row\.quote_number, row\.client_name, "quote"\)/)
-  assert.match(invoices, /name: documentName\(row\.invoice_number, row\.client_name, "invoice"\)/)
-  for (const [name, block] of [['listQuotes', quotes], ['listInvoices', invoices]] as const) {
+  const mappers = read('features', 'commercial-finance', 'phase-six-mappers.ts')
+  assert.match(mappers, /isDraftReference\(/)
+  assert.match(mappers, /Draft quote/)
+  assert.match(mappers, /Draft invoice/)
+  const quotes = between(mappers, "case 'quote':", "case 'opportunity':", 'mapper quote case')
+  const invoices = between(mappers, "case 'invoice':", "case 'expense':", 'mapper invoice case')
+  assert.match(quotes, /name: documentName\(row\.quote_number, row\.client_name, 'quote'\)/)
+  assert.match(invoices, /name: documentName\(row\.invoice_number, row\.client_name, 'invoice'\)/)
+  for (const [name, block] of [['quote', quotes], ['invoice', invoices]] as const) {
     for (const key of ['projectName', 'projectDescription', 'projectRef', 'clientRef', 'vatRate']) {
       assert.match(block, new RegExp(`\\b${key}: row\\.`), `${name} maps ${key}`)
     }
