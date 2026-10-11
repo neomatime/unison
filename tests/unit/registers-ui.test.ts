@@ -119,3 +119,15 @@ test('a filtered register can be cleared in one click from the toolbar, and a fo
   assert.match(screen, /filtered=\{filtered\}/)
   assert.match(screen, /clearHref=\{frame\.base\}/)
 })
+
+test('the export control posts the current filters, shows the route\'s message, and the screen offers it', () => {
+  const source = registers('components', 'register-export.tsx')
+  assert.match(source, /^'use client'/)
+  assert.match(source, /\/api\/records\/export/)
+  assert.match(source, /message/)
+  assert.match(source, /role="alert"/)
+  assert.match(source, /CSV/)
+  assert.match(source, /XLSX/)
+  assert.match(source, /PDF/)
+  assert.match(registers('components', 'register-screen.tsx'), /RegisterExport/)
+})

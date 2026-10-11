@@ -13,6 +13,7 @@ import { queryRegister } from '../queries/query-register'
 import { REGISTER_FRAMES, toRegisterRow } from '../register-view'
 import { REGISTERS, type RegisterKind } from '../register-spec'
 import { buildCards } from '../summary'
+import { RegisterExport } from './register-export'
 import { RegisterToolbar } from './register-toolbar'
 
 const STATUS_COLUMNS = new Set(['status', 'stage'])
@@ -65,7 +66,7 @@ export async function RegisterScreen({ kind, searchParams }: { kind: RegisterKin
           importHref={importHref}
           filtered={filtered}
           clearHref={frame.base}
-          exportSlot={null}
+          exportSlot={<RegisterExport collection={spec.collection} kind={kind} query={registerHref('', params).replace(/^\?/, '')} />}
         />
         {params.searchTooShort ? <p role="status" className="border-b border-border px-5 py-2 text-xs text-muted-foreground">Enter at least 2 characters to search.</p> : null}
         {rows.length === 0 ? (
