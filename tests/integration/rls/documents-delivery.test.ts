@@ -38,7 +38,7 @@ async function draftQuote(clientId: string | null = clientA, clientName = 'Doc C
     project_name: 'Project X', project_description: 'Scope text', project_ref: 'PX-1', client_ref: 'PO-77', notes: 'Internal only',
   }).select('id').single())
   assert.equal((await memberClient.from('quote_lines').insert([
-    { organization_id: orgA, quote_id: quote.id, position: 1, title: 'Advisory', description: 'A day', quantity: 2, unit_price: 100, price_list_item_id: priceItem },
+    { organization_id: orgA, quote_id: quote.id, position: 1, title: 'Advisory', description: 'A day', quantity: 2, unit_price: 100, vat_code: 'standard', price_list_item_id: priceItem },
     { organization_id: orgA, quote_id: quote.id, position: 2, title: 'Licence', quantity: 1, unit_price: 50.5, vat_code: 'zero' },
   ])).error, null)
   return quote.id as string
