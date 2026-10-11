@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { existsSync, readFileSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import test from 'node:test'
 
@@ -120,7 +120,7 @@ test('every item states its credits in the line text where it has any', () => {
   }
 })
 
-test('the migration seed rows equal the data file', { skip: !existsSync(join(process.cwd(), 'supabase', 'migrations', '20261012100000_rate_card.sql')) && 'the rate card migration arrives in Task 2' }, () => {
+test('the migration seed rows equal the data file', () => {
   const sql = readFileSync(join(process.cwd(), 'supabase', 'migrations', '20261012100000_rate_card.sql'), 'utf8')
   const rows = [...sql.matchAll(/^\s*\(('retainer\.[^\n]*|'project\.[^\n]*|'support\.[^\n]*)\),?\s*$/gm)].map((m) => m[1])
   assert.equal(rows.length, 28, 'the seed lists 28 rows')
