@@ -307,6 +307,10 @@ export function OrganisationSettingsLink() {
               <Link href="/settings/price-list" className="font-semibold text-brand hover:underline">Price list</Link>
               <span className="block text-xs text-muted-foreground">Products and services to pick from.</span>
             </li>
+            <li>
+              <Link href="/settings/terms" className="font-semibold text-brand hover:underline">Commercial terms</Link>
+              <span className="block text-xs text-muted-foreground">Standard terms for each offering.</span>
+            </li>
           </ul>
           <p className="mt-3 text-xs leading-5 text-muted-foreground">Additional defaults, permissions and policies are not available in this release.</p>
         </div>

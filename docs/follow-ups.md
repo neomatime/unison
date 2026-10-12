@@ -1249,3 +1249,36 @@ recognition) are still open; top-up rates are marked "proposed" on the rate card
 - **Smaller:** the unique-violation mapping in the builders is broad (any unique violation reads as "already billed"); the top-up
   read is not locked; `getBillingPackage` returns an empty view, not null, for an unknown client id (the client page 404s
   first); the first quote is not listed under "Built from the package"; the RATE_CARD_FIXED message does not mention VAT.
+
+## From the commercial terms foundation (2026-10-12)
+
+Build 1 of 3. The terms tables, the approval functions and the Settings > Commercial terms screens exist; the quote and invoice
+forms do not use them yet (build 2), and credit allocations are build 3. The screens have not been walked signed in.
+
+- **(a) The company-wide templates are a copy of the company settings.** The company quote terms and payment terms templates were
+  copied from the two default text boxes in company settings. Until build 2 switches documents over, those text boxes remain the
+  source for new documents.
+- **(b) Strategic Consulting has terms but no rate card row.** Decision for build 2: how it is offered on a quote.
+- **(c) Name clash:** the brief's "AI & Automation Operations" is "Operations Improvement Support" on the rate card. Decision needed
+  in build 2.
+- **(d) "Proposed" prices:** the brief's Project Care, Managed and Content prices equal the rate card's agreed support prices, but the
+  brief calls them "proposed". Decision needed before they are shown on a quote.
+- **(e) Commercial policies HIMARK has not approved, so nothing is written for them:** late-payment penalty, termination period,
+  intellectual-property transfer, credit expiry or rollover, and any quote validity wording beyond the existing company setting.
+- **(f) The support-service templates are empty** and need wording before they offer any terms.
+- **(g) An organisation other than HIMARK gets no templates** until `seed_commercial_terms` is called for it (same as the rate card).
+
+Deferred from the reviews, none blocking:
+
+- **Triple braces pass the placeholder check.** `{{{monthly_fee}}}` is accepted by the check in both the database and TypeScript,
+  and `resolveTerms` prints malformed placeholders untouched. Consider skipping lines where `placeholderProblems` is non-empty.
+- **The service role can null `created_by` and `approved_by` on approved versions.** Accepted: the service role is trusted and
+  signed-in roles cannot.
+- **Discarded draft numbers are reused.** Discarding a draft and saving a new one gives the new draft the same version number.
+- **Draft editor resync edge cases:** approving with no draft, with only the date or note typed, leaves them in the inputs; a stale
+  success line stays after Discard or Restore; another admin's change resets an unsaved edit that had failed to save.
+- **The user-delete database test leaks a temporary user** if an assertion fails before `deleteUser` runs.
+- **`selection.ts` assumes date-only effective dates.** A timestamp in `effective_from` would compare wrongly.
+- **The settings text boxes stay the source for new documents** until build 2 switches documents over to the company-wide templates
+  (see (a)).
+- **Two provisioning database tests fail, and did before this build.** In `tests/integration/rls/provision-organization.test.ts`, "a HIMARK admin lists the tenants their own RLS hides from them" and "a HIMARK admin cannot reissue into a foreign existing organisation" assume a HIMARK admin cannot select another organisation directly. The policy `organizations_internal_select` (`is_himark_admin()`, migration `20260911154613_phase_seven_eight_platform_automation.sql`, 2026-09-11) lets them, so the premise assertions fail. The other 461 of the 463 database tests passed on 2026-10-12. Decide whether the policy or the tests are right, then fix the one that is wrong.

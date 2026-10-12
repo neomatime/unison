@@ -81,6 +81,18 @@ const MESSAGES: ReadonlyArray<readonly [token: string, message: string]> = [
   ['DOCUMENT_NOT_EMPTY', 'This document already has lines. Remove them first, or add items from the rate card one at a time.'],
   ['RATE_QUANTITY_INVALID', 'Top-up credits must be a whole number from 1 to 10,000; every other rate card item is added once.'],
   ['BILLING_DRAFT_ONLY', 'Only a draft built from a client package can be discarded.'],
+  ['TERMS_TEMPLATE_EXISTS', 'There is already a template for that target and document type.'],
+  ['TERMS_TARGET_INVALID', 'Choose what the template is for. A key uses lowercase letters, numbers and underscores only, and the title cannot be empty.'],
+  ['TERMS_NOT_FOUND', 'That terms template was not found.'],
+  ['TERMS_NOT_DRAFT', 'Only a draft can be approved or discarded, and there is no draft here.'],
+  ['TERMS_NOT_APPROVED', 'That version cannot be archived or restored in its current state.'],
+  ['TERMS_DRAFT_EXISTS', 'This template already has a draft. Approve or discard it first.'],
+  ['TERMS_EMPTY', 'Write the terms before approving them.'],
+  ['TERMS_EFFECTIVE_REQUIRED', 'Choose the date the terms take effect before approving.'],
+  ['TERMS_PLACEHOLDER_UNKNOWN', 'The text contains a placeholder UNISON does not know. Use only {{monthly_fee}}, {{monthly_credits}}, {{initiative_limit}}, {{valid_days}} and {{payment_days}}, typed exactly like that, with no spaces.'],
+  ['TERMS_TOO_LONG', 'The text is too long (terms 20,000 characters at most, inclusions 10,000, change note 500).'],
+  ['TERMS_FORBIDDEN', 'Only an owner or admin can change commercial terms.'],
+  ['TERMS_VERSION_IMMUTABLE', 'An approved version cannot be edited. Write a new version instead.'],
 ]
 
 export const DOCUMENT_ERROR_TOKENS: readonly string[] = MESSAGES.map(([token]) => token)
