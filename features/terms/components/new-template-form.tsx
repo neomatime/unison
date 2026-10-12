@@ -22,7 +22,7 @@ export function NewTemplateForm() {
       <h2 className="unison-section-title text-xs text-foreground md:col-span-2">New template</h2>
       <label className="text-sm font-medium">
         For
-        <select name="targetKind" required defaultValue="" aria-label="What the template is for" className={`${field} mt-1.5`}>
+        <select name="targetKind" required defaultValue="" aria-label="For" className={`${field} mt-1.5`}>
           <option value="" disabled>Choose…</option>
           <option value="retainer">A retainer tier</option>
           <option value="project">A project category</option>

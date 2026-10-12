@@ -9,7 +9,7 @@ export function TermsPreview({ preview, label }: { preview: ResolvedTerms; label
         <div role="status" className="border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">
           <p className="font-semibold">Left out of this preview because a value is not available: {preview.missing.map((name) => `{{${name}}}`).join(', ')}</p>
           <ul className="mt-1 list-disc pl-4">
-            {preview.skipped.map((line) => <li key={line} className="break-words">{line}</li>)}
+            {preview.skipped.map((line, index) => <li key={`${index}-${line}`} className="break-words">{line}</li>)}
           </ul>
         </div>
       ) : null}
@@ -17,7 +17,7 @@ export function TermsPreview({ preview, label }: { preview: ResolvedTerms; label
         <section>
           <h3 className="unison-section-title text-xs text-foreground">Service inclusions</h3>
           <ul className="mt-2 list-disc space-y-1 pl-5 text-sm">
-            {preview.inclusions.map((line) => <li key={line} className="break-words">{line}</li>)}
+            {preview.inclusions.map((line, index) => <li key={`${index}-${line}`} className="break-words">{line}</li>)}
           </ul>
         </section>
       ) : null}
@@ -25,7 +25,7 @@ export function TermsPreview({ preview, label }: { preview: ResolvedTerms; label
         <h3 className="unison-section-title text-xs text-foreground">Terms and conditions</h3>
         {preview.lines.length > 0 ? (
           <ol className="mt-2 list-decimal space-y-1.5 pl-5 text-sm">
-            {preview.lines.map((line) => <li key={line} className="break-words">{line}</li>)}
+            {preview.lines.map((line, index) => <li key={`${index}-${line}`} className="break-words">{line}</li>)}
           </ol>
         ) : (
           <p className="mt-2 text-sm text-[var(--briefing-muted)]">There is no wording yet.</p>

@@ -9,7 +9,7 @@ import { listTermsTemplates } from '../queries/list-terms-templates'
 import { NewTemplateForm } from './new-template-form'
 
 const APPLIES: Record<string, string> = { quote: 'Quotes', invoice: 'Invoices', both: 'Quotes and invoices' }
-const badge = 'ml-2 border px-1.5 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wide'
+const badge = 'mr-2 mt-1.5 inline-block border px-1.5 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wide'
 
 export async function TermsListScreen() {
   const [{ role }, templates] = await Promise.all([documentContext(), listTermsTemplates()])
@@ -41,8 +41,8 @@ export async function TermsListScreen() {
                         {status.kind === 'current' ? ` · Approved version ${status.version}, effective ${formatDocumentDate(status.effectiveFrom)}` : null}
                         {status.kind === 'upcoming' ? ` · Approved version ${status.version}, effective ${formatDocumentDate(status.effectiveFrom)} (not yet in force)` : null}
                       </p>
-                      {status.kind === 'none' ? <span className={`${badge} ml-0 border-amber-300 text-amber-800`}>No approved terms</span> : null}
-                      {template.hasDraft ? <span className={`${badge} ml-0 border-border text-[var(--briefing-muted)]`}>Draft pending</span> : null}
+                      {status.kind === 'none' ? <span className={`${badge} border-amber-300 text-amber-800`}>No approved terms</span> : null}
+                      {template.hasDraft ? <span className={`${badge} border-border text-[var(--briefing-muted)]`}>Draft pending</span> : null}
                     </div>
                     <Link href={`/settings/terms/${template.id}`} aria-label={`${canManage ? 'Open' : 'View'}: ${template.title}`} className="border border-border px-3 py-1.5 text-xs font-semibold text-foreground">
                       {canManage ? 'Open' : 'View'}

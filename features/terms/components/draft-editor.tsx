@@ -20,6 +20,18 @@ export function DraftEditor({ templateId, start, hasDraft, savedAt }: { template
   const [, startTransition] = useTransition()
   const [body, setBody] = useState(start.body)
   const [inclusions, setInclusions] = useState(start.inclusions)
+  // This component is not re-keyed when the page re-renders after a save or approve, so the outcome message that useActionState
+  // holds stays visible. When the starting text really changes (a draft was saved, discarded or restored, or another version
+  // became the start), the fields are reset to it: the controlled ones through state, the uncontrolled ones through fieldsKey.
+  const startKey = JSON.stringify([start.body, start.inclusions, start.effectiveFrom, start.changeNote])
+  const [seenStart, setSeenStart] = useState(startKey)
+  const [fieldsKey, setFieldsKey] = useState(0)
+  if (seenStart !== startKey) {
+    setSeenStart(startKey)
+    setBody(start.body)
+    setInclusions(start.inclusions)
+    setFieldsKey((value) => value + 1)
+  }
   const problems = [...new Set([...placeholderProblems(body), ...placeholderProblems(inclusions)])]
   return (
     <form
@@ -48,11 +60,11 @@ export function DraftEditor({ templateId, start, hasDraft, savedAt }: { template
           Not a placeholder UNISON knows: {problems.join(', ')}. Use only {'{{monthly_fee}}'}, {'{{monthly_credits}}'}, {'{{initiative_limit}}'}, {'{{valid_days}}'} and {'{{payment_days}}'}, with no spaces. The draft can be saved, but not approved.
         </p>
       ) : null}
-      <label className="text-sm font-medium">
+      <label key={`effective-${fieldsKey}`} className="text-sm font-medium">
         Effective from
         <input name="effectiveFrom" type="date" defaultValue={start.effectiveFrom ?? ''} aria-label="Effective from" className={`${field} mt-1.5`} />
       </label>
-      <label className="text-sm font-medium">
+      <label key={`note-${fieldsKey}`} className="text-sm font-medium">
         Change note
         <input name="changeNote" maxLength={500} defaultValue={start.changeNote ?? ''} aria-label="Change note" className={`${field} mt-1.5`} />
       </label>

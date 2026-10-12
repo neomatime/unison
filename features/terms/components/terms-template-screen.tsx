@@ -18,6 +18,10 @@ const STATUS: Record<string, string> = { draft: 'Draft', approved: 'Approved', a
 /** The time a draft was last saved, in South African time. */
 const savedTime = new Intl.DateTimeFormat('en-ZA', { timeZone: 'Africa/Johannesburg', dateStyle: 'medium', timeStyle: 'short' })
 
+/** A timestamp as the South African calendar date (YYYY-MM-DD), so a late-evening UTC time does not show the previous day. */
+const savedDay = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Johannesburg' })
+const dayOf = (timestamp: string) => savedDay.format(new Date(timestamp))
+
 export async function TermsTemplateScreen({ templateId, versionId }: { templateId: string; versionId?: string }) {
   const [{ role }, detail] = await Promise.all([documentContext(), getTermsTemplate(templateId, versionId)])
   if (!detail) notFound()
@@ -50,9 +54,9 @@ export async function TermsTemplateScreen({ templateId, versionId }: { templateI
                     </p>
                     <p className="mt-1 text-xs text-[var(--briefing-muted)]">
                       {item.effectiveFrom ? `Effective ${formatDocumentDate(item.effectiveFrom)}` : 'No effective date yet'}
-                      {` · Written by ${who(item.createdBy)} on ${formatDocumentDate(item.createdAt.slice(0, 10))}`}
-                      {item.approvedAt ? ` · Approved by ${who(item.approvedBy)} on ${formatDocumentDate(item.approvedAt.slice(0, 10))}` : ''}
-                      {item.archivedAt ? ` · Archived ${formatDocumentDate(item.archivedAt.slice(0, 10))}` : ''}
+                      {` · Written by ${who(item.createdBy)} on ${formatDocumentDate(dayOf(item.createdAt))}`}
+                      {item.approvedAt ? ` · Approved by ${who(item.approvedBy)} on ${formatDocumentDate(dayOf(item.approvedAt))}` : ''}
+                      {item.archivedAt ? ` · Archived ${formatDocumentDate(dayOf(item.archivedAt))}` : ''}
                     </p>
                     {item.changeNote ? <p className="mt-1 break-words text-xs text-[var(--briefing-muted)]">{item.changeNote}</p> : null}
                   </div>
@@ -79,7 +83,7 @@ export async function TermsTemplateScreen({ templateId, versionId }: { templateI
             action={draft ? <ActionButton action={discardTermsDraftAction.bind(null, template.id)} label="Discard draft" ariaLabel="Discard the draft" tone="danger" confirmText="Discard this draft? The text is deleted." /> : undefined}
           >
             <DraftEditor
-              key={`${draft?.id ?? 'new'}-${draft?.version ?? current?.version ?? 0}`}
+              key={template.id}
               templateId={template.id}
               hasDraft={Boolean(draft)}
               savedAt={savedAt}
