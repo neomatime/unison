@@ -1,7 +1,7 @@
 # Commercial terms foundation
 
 **Date:** 2026-10-12
-**Status:** Draft, waiting for the user's review
+**Status:** Approved, built (build 1)
 **Build:** 1 of 3 of the "Dynamic Quotation & Invoice Terms Engine" brief.
 Build 2 (offerings on documents, auto-populate, frozen wording on each document, invoice terms from the accepted
 quote) and Build 3 (credit allocations) each get their own spec after this one is built.
@@ -129,7 +129,7 @@ All are `security definer set search_path = ''`, check `public.is_member_of` bef
 
 | Function | Who | What it does |
 |---|---|---|
-| `create_terms_template(p_target_kind, p_target_key, p_applies_to, p_title)` | owner, admin | Creates the template. Token `TERMS_TEMPLATE_EXISTS` if the same target and scope already exist. |
+| `create_terms_template(p_org uuid, p_target_kind, p_target_key, p_applies_to, p_title)` | owner, admin | Creates the template. Token `TERMS_TEMPLATE_EXISTS` if the same target and scope already exist. |
 | `save_terms_draft(p_template, p_body, p_inclusions, p_effective_from, p_change_note)` | owner, admin | Creates the draft (version = highest + 1) or updates the existing one. |
 | `discard_terms_draft(p_template)` | owner, admin | Deletes the draft. |
 | `approve_terms_version(p_version)` | owner, admin | Draft to approved; sets approver and time; validates placeholders and `effective_from`. |
@@ -277,6 +277,24 @@ environment) with fixture organisations deleted afterwards, including their audi
 - tests under `tests/unit/` and `tests/integration/rls/`, and the cleanup sweep in
   `tests/integration/rls/helpers.ts` extended with the two new tables
 - `docs/crm-roadmap.md` and `docs/follow-ups.md` updated
+
+## Rulings made while planning and building
+
+These differ from or add to the text above, and the built code follows them.
+
+1. **`terms_templates.archived_at` is omitted.** No function or screen archives a whole template (versions are archived), so the
+   column would claim something the product does not do.
+2. **`create_terms_template` takes `p_org` first**, and a new error token `TERMS_TARGET_INVALID` exists for a target kind and key
+   that do not fit together.
+3. **Placeholders are validated at approval only, not at draft save.** The editor warns as you type; the database refuses at
+   approval.
+4. **A line with a missing placeholder value is left out** and returned in `skipped`. The result shape is
+   `{ lines, inclusions, sources, missing, skipped }`.
+5. **Deleting approved or archived versions is blocked for signed-in roles by revoked privileges, not by a row trigger,** because a
+   row trigger would break the organisation-delete cascade. The update trigger applies to every role.
+6. **A restored draft starts with no effective date.** It must be set before the draft can be approved.
+7. **`terms_template_versions` has an `updated_at` column** so the page can show the draft's last saved time.
+8. **The approve and discard functions take the template row lock first,** so a save cannot interleave with them.
 
 ## Open points carried to Build 2 (not blockers here)
 
