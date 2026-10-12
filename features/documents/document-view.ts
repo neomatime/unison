@@ -133,7 +133,7 @@ export function buildDocumentView(input: { kind: DocumentKind; record: Row; line
     tagline: text(issuer.tagline),
     details,
     billToHeading: quote ? 'Prepared for' : 'Billed to',
-    billTo: [text(billSource.name), ...addressLines(billSource), text(billSource.vat_number) ? `VAT No: ${text(billSource.vat_number)}` : null].filter((line): line is string => Boolean(line)),
+    billTo: [text(billSource.name), text(record.contact_name) ? `Attention: ${text(record.contact_name)}` : null, ...addressLines(billSource), text(billSource.vat_number) ? `VAT No: ${text(billSource.vat_number)}` : null].filter((line): line is string => Boolean(line)),
     project,
     fromHeading: quote ? 'Prepared by' : 'From',
     from: { name: text(issuer.legal_name), lines: addressLines(issuer), vatNumber: text(issuer.vat_number) },

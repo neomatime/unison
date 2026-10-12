@@ -91,7 +91,7 @@ test('the register and detail queries show a draft as a draft, not as a referenc
   assert.match(quotes, /issueDate: row\.issue_date/)
   // The invoice form's "Source quote" list must not show a draft as DRAFT-xxxx.
   const options = between(queries, 'export async function getPhaseSixOptions', 'async function records', 'getPhaseSixOptions')
-  assert.match(options, /select\("id,quote_number,client_name"\)/)
+  assert.match(options, /select\("id,quote_number,client_name,contact_name,project_name,project_ref,client_ref"\)/)
   assert.match(options, /label: documentName\(row\.quote_number, row\.client_name, "quote"\)/)
 })
 

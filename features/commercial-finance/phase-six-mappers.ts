@@ -150,6 +150,7 @@ export function mapPhaseSixRow(kind: Kind, row: any, names: NameMaps): PhaseSixR
         id: row.id,
         name: documentName(row.invoice_number, row.client_name, 'invoice'),
         invoiceNumber: row.invoice_number,
+        contactName: row.contact_name,
         clientId: row.client_id,
         clientName: row.client_name,
         projectId: row.project_id,

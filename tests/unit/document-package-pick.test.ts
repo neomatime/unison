@@ -32,8 +32,8 @@ test('both database functions create locked lines only on a draft in the caller\
 
 test('a NEW quote or invoice offers the Package dropdown, an existing one does not', () => {
   const form = read('features', 'commercial-finance', 'components', 'phase-six-form.tsx')
-  assert.equal([...form.matchAll(/\{record \? null : <PackageSelect packages=\{options\.packages\} \/>\}/g)].length, 2, 'once for quotes and once for invoices, only when there is no record')
-  assert.match(form, /<select name="packageKey" defaultValue=""/)
+  assert.equal([...form.matchAll(/\{record \? null : <PackageSelect packages=\{options\.packages\} value=\{identity\.packageKey\} onChange=\{identity\.onPackage\} \/>\}/g)].length, 2, 'once for quotes and once for invoices, only when there is no record')
+  assert.match(form, /<select name="packageKey" value=\{value\} onChange=/)
   assert.match(form, /Blank \(add the lines yourself on the next page\)/)
   assert.match(form, /label="Retainer \(monthly fee plus one-time implementation fee\)"/)
   assert.match(form, /label="Project \(fixed fee\)"/)

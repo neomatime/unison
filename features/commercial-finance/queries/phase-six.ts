@@ -5,6 +5,7 @@ import { createServerSupabase } from "@/lib/supabase/server";
 import { isUuid } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/format-money";
 import { packageName } from "@/features/billing/rate-card";
+import { referenceYear } from "../document-references";
 import {
   collectNameIds,
   documentName,
@@ -32,6 +33,12 @@ export type PhaseSixOptions = {
   quotes: SelectOption[];
   /** The packages a new quote or invoice can start from (id = the package key), priced from the rate card rows. */
   packages: { retainers: SelectOption[]; projects: SelectOption[] };
+  /** Project and client references already used on quotes and invoices this year, so the next suggested number is free. */
+  references: { projectRefs: string[]; clientRefs: string[] };
+  /** What each quote prints, so an invoice raised from it can carry the same project name and references. */
+  quoteDetails: Record<string, { projectName: string; projectRef: string; clientRef: string; contactName: string }>;
+  /** Each client's contacts from the CRM (the primary contact first), for the Client contact list. Keyed by client id. */
+  contactsByClient: Record<string, string[]>;
   defaults: { quoteTerms: string | null; paymentTerms: string | null };
 };
 export type PhaseSixRecord = Record<string, unknown> & {
@@ -75,19 +82,40 @@ function packageOptions(rows: Array<{ item_kind: string; package_key: string | n
   return { retainers, projects };
 }
 
+function referenceLists(rows: Array<{ project_ref: string | null; client_ref: string | null }>): PhaseSixOptions["references"] {
+  return {
+    projectRefs: rows.map((row) => row.project_ref).filter((ref): ref is string => Boolean(ref)),
+    clientRefs: rows.map((row) => row.client_ref).filter((ref): ref is string => Boolean(ref)),
+  };
+}
+
+function contactLists(rows: Array<{ client_id: string; full_name: string }>): PhaseSixOptions["contactsByClient"] {
+  const byClient: Record<string, string[]> = {};
+  for (const row of rows) {
+    const names = (byClient[row.client_id] ??= []);
+    if (!names.includes(row.full_name)) names.push(row.full_name);
+  }
+  return byClient;
+}
+
 export async function getPhaseSixOptions(): Promise<PhaseSixOptions> {
   const { organization, db } = await context();
   const organizationId = organization.id;
-  const [members, clients, projects, vendors, leads, opportunities, quotes, settings, rateRows] = await Promise.all([
+  const year = referenceYear();
+  const usedThisYear = `project_ref.like.*-${year}-*,client_ref.like.*-${year}-*`;
+  const [members, clients, projects, vendors, leads, opportunities, quotes, settings, rateRows, quoteRefs, invoiceRefs, contacts] = await Promise.all([
     db.from("team_members").select("id,full_name").eq("organization_id", organizationId).eq("status", "Active").is("archived_at", null).order("full_name"),
     db.from("clients").select("id,name").eq("organization_id", organizationId).is("archived_at", null).order("name"),
     db.from("projects").select("id,name").eq("organization_id", organizationId).is("archived_at", null).order("name"),
     db.from("vendors").select("id,name").eq("organization_id", organizationId).is("archived_at", null).order("name"),
     db.from("leads").select("id,company_name").eq("organization_id", organizationId).is("archived_at", null).order("company_name"),
     db.from("sales_opportunities").select("id,name").eq("organization_id", organizationId).is("archived_at", null).order("name"),
-    db.from("quotes").select("id,quote_number,client_name").eq("organization_id", organizationId).is("archived_at", null).order("quote_number"),
+    db.from("quotes").select("id,quote_number,client_name,contact_name,project_name,project_ref,client_ref").eq("organization_id", organizationId).is("archived_at", null).order("quote_number"),
     db.from("organization_settings").select("default_quote_terms,default_payment_terms").eq("organization_id", organizationId).maybeSingle(),
     db.from("price_list_items").select("item_kind,package_key,unit_price").eq("organization_id", organizationId).in("item_kind", ["retainer_monthly", "retainer_implementation", "project"]).not("rate_key", "is", null).is("archived_at", null).order("unit_price"),
+    db.from("quotes").select("project_ref,client_ref").eq("organization_id", organizationId).or(usedThisYear).limit(1000),
+    db.from("invoices").select("project_ref,client_ref").eq("organization_id", organizationId).or(usedThisYear).limit(1000),
+    db.from("contacts").select("client_id,full_name").eq("organization_id", organizationId).not("client_id", "is", null).is("archived_at", null).order("is_primary", { ascending: false }).order("full_name").limit(1000),
   ]);
   for (const result of [members, clients, projects, vendors, leads, opportunities, quotes, settings]) {
     if (result.error) throw result.error;
@@ -100,6 +128,11 @@ export async function getPhaseSixOptions(): Promise<PhaseSixOptions> {
     leads: (leads.data ?? []).map((row: any) => ({ id: row.id, label: row.company_name })),
     opportunities: (opportunities.data ?? []).map((row: any) => ({ id: row.id, label: row.name })),
     quotes: (quotes.data ?? []).map((row: any) => ({ id: row.id, label: documentName(row.quote_number, row.client_name, "quote") })),
+    // A failed read of the used references only means the suggested number starts at 001; it must not break the other forms.
+    references: referenceLists([...(quoteRefs.error ? [] : quoteRefs.data ?? []), ...(invoiceRefs.error ? [] : invoiceRefs.data ?? [])]),
+    quoteDetails: Object.fromEntries((quotes.data ?? []).map((row: any) => [row.id, { projectName: row.project_name ?? "", projectRef: row.project_ref ?? "", clientRef: row.client_ref ?? "", contactName: row.contact_name ?? "" }])),
+    // A failed contacts read only means an empty contact list; the name can still be typed.
+    contactsByClient: contactLists(contacts.error ? [] : contacts.data ?? []),
     // A failed rate card read only means no package choices; it must not break the lead, expense or forecast forms.
     packages: packageOptions(rateRows.error ? [] : rateRows.data ?? []),
     defaults: {

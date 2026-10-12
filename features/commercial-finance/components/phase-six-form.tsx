@@ -1,11 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, type ReactNode } from "react";
+import { useActionState, useState, type ChangeEvent, type ReactNode } from "react";
 
 import { WorkspaceHeader } from "@/components/shared/workspace-header";
 import { QUOTE_SENT_STATUSES, isDraftStatus } from "@/features/documents/vocabulary";
+import { packageName } from "@/features/billing/rate-card";
 import { savePhaseSixRecordAction } from "../actions/phase-six";
+import { NameCombobox } from "./name-combobox";
+import { PACKAGE_NAMES, packageKeyForName, referenceYear, suggestClientRef, suggestProjectRef } from "../document-references";
 import type {
   PhaseSixKind,
   PhaseSixOptions,
@@ -85,6 +88,7 @@ function Fields({
 }) {
   const value = (key: string, fallback = "") =>
     String(record?.[key] ?? fallback);
+  const identity = useDocumentIdentity(record, options);
 
   if (kind === "lead") return (
     <>
@@ -131,17 +135,15 @@ function Fields({
     return (
       <>
         <Notice>The quote number is assigned when the quote is sent. {record ? "Add or change its lines on the quote page." : "Choose a package to fill the lines at the rate card prices, or leave it Blank and add lines on the quote page."}</Notice>
-        {record ? null : <PackageSelect packages={options.packages} />}
-        <ClientFields options={options.clients} clientId={value("clientId")} clientName={value("clientName")} />
-        <Field name="contactName" label="Client contact" value={value("contactName")} />
+        {record ? null : <PackageSelect packages={options.packages} value={identity.packageKey} onChange={identity.onPackage} />}
+        <ClientFields options={options.clients} clientId={identity.clientId} clientName={identity.clientName} onClientId={identity.onClient} onClientName={identity.onClientName} />
+        <ClientContactField kind="quote" identity={identity} />
         <OptionSelect name="leadId" label="Related lead" options={options.leads} value={value("leadId")} optional />
         <OptionSelect name="opportunityId" label="Related opportunity" options={options.opportunities} value={value("opportunityId")} optional />
         <OptionSelect name="ownerId" label="Quote owner" options={options.members} value={value("ownerId")} optional />
         <Field name="validUntil" label="Valid until (default 30 days after it is sent)" type="date" value={value("validUntil")} />
         <Currency value={value("currency", "ZAR")} />
-        <Field name="projectName" label="Project name (printed on the quote)" value={value("projectName")} />
-        <Field name="projectRef" label="Project reference" value={value("projectRef")} />
-        <Field name="clientRef" label="Client reference (their PO number)" value={value("clientRef")} />
+        <ProjectIdentityFields kind="quote" identity={identity} />
         <Select name="status" label="Status" options={["Draft", "Internal Review"]} value={value("status", "Draft")} />
         <TextArea name="projectDescription" label="Project description" value={value("projectDescription")} />
         <TextArea name="terms" label="Terms and conditions (one per line)" value={value("terms", record ? "" : (options.defaults.quoteTerms ?? ""))} />
@@ -164,17 +166,16 @@ function Fields({
     return (
       <>
         <Notice>The invoice number is assigned when the invoice is issued. {record ? "Add or change its lines on the invoice page." : "Choose a package to fill the lines at the rate card prices, or leave it Blank and add lines on the invoice page."}</Notice>
-        {record ? null : <PackageSelect packages={options.packages} />}
-        <ClientFields options={options.clients} clientId={value("clientId")} clientName={value("clientName")} />
+        {record ? null : <PackageSelect packages={options.packages} value={identity.packageKey} onChange={identity.onPackage} />}
+        <ClientFields options={options.clients} clientId={identity.clientId} clientName={identity.clientName} onClientId={identity.onClient} onClientName={identity.onClientName} />
+        <ClientContactField kind="invoice" identity={identity} />
         <OptionSelect name="projectId" label="Delivery project (optional)" options={options.projects} value={value("projectId")} optional />
-        <OptionSelect name="quoteId" label="Source quote" options={options.quotes} value={value("quoteId")} optional />
+        <OptionSelect name="quoteId" label="Source quote" options={options.quotes} value={identity.quoteId} onValueChange={identity.onQuote} optional />
         <OptionSelect name="opportunityId" label="Opportunity" options={options.opportunities} value={value("opportunityId")} optional />
         <OptionSelect name="ownerId" label="Finance owner" options={options.members} value={value("ownerId")} optional />
         <Field name="dueDate" label="Due date (default 30 days after it is issued)" type="date" value={value("dueDate")} />
         <Currency value={value("currency", "ZAR")} />
-        <Field name="projectName" label="Project name (printed on the invoice)" value={value("projectName")} />
-        <Field name="projectRef" label="Project reference" value={value("projectRef")} />
-        <Field name="clientRef" label="Client reference (their PO number)" value={value("clientRef")} />
+        <ProjectIdentityFields kind="invoice" identity={identity} />
         <TextArea name="projectDescription" label="Project description" value={value("projectDescription")} />
         <TextArea name="paymentTerms" label="Payment terms" value={value("paymentTerms", record ? "" : (options.defaults.paymentTerms ?? ""))} />
         <TextArea name="notes" label="Payment notes (internal)" value={value("notes")} />
@@ -222,15 +223,19 @@ function ClientFields({
   options,
   clientId,
   clientName,
+  onClientId,
+  onClientName,
 }: {
   options: SelectOption[];
   clientId: string;
   clientName: string;
+  onClientId?: (id: string) => void;
+  onClientName?: (name: string) => void;
 }) {
   return (
     <>
-      <OptionSelect name="clientId" label="Existing client" options={options} value={clientId} optional />
-      <Field name="clientName" label="Client / prospect name (if not listed)" value={clientName} />
+      <OptionSelect name="clientId" label="Existing client" options={options} value={clientId} onValueChange={onClientId} optional />
+      <Field name="clientName" label="Client / prospect name (if not listed)" value={clientName} onValueChange={onClientName} />
     </>
   );
 }
@@ -273,6 +278,8 @@ function Field({
   min,
   max,
   step,
+  onValueChange,
+  hint,
 }: {
   name: string;
   label: string;
@@ -282,6 +289,9 @@ function Field({
   min?: number;
   max?: number;
   step?: string;
+  /** Given, the field is controlled by its parent (value is then the current text); otherwise value is only the starting text. */
+  onValueChange?: (value: string) => void;
+  hint?: string;
 }) {
   return (
     <label className="text-sm font-medium">
@@ -293,9 +303,12 @@ function Field({
         min={min}
         max={max}
         step={step}
-        defaultValue={value ?? ""}
+        {...(onValueChange
+          ? { value: value ?? "", onChange: (event: ChangeEvent<HTMLInputElement>) => onValueChange(event.target.value) }
+          : { defaultValue: value ?? "" })}
         className={inputClass}
       />
+      {hint ? <span className="mt-1 block text-xs font-normal text-muted-foreground">{hint}</span> : null}
     </label>
   );
 }
@@ -327,17 +340,26 @@ function OptionSelect({
   value,
   options,
   optional,
+  onValueChange,
 }: {
   name: string;
   label: string;
   value?: string;
   options: SelectOption[];
   optional?: boolean;
+  /** Given, the select is controlled by its parent (value is then the current choice); otherwise value is only the starting choice. */
+  onValueChange?: (value: string) => void;
 }) {
   return (
     <label className="text-sm font-medium">
       {label}
-      <select name={name} defaultValue={value ?? ""} className={inputClass}>
+      <select
+        name={name}
+        {...(onValueChange
+          ? { value: value ?? "", onChange: (event: ChangeEvent<HTMLSelectElement>) => onValueChange(event.target.value) }
+          : { defaultValue: value ?? "" })}
+        className={inputClass}
+      >
         <option value="">{optional ? "Unassigned" : "Select…"}</option>
         {options.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
       </select>
@@ -368,13 +390,13 @@ function TextArea({
 }
 
 /** Starts a new quote or invoice from a retainer tier or a project: the draft is created with its lines at the rate card prices. */
-function PackageSelect({ packages }: { packages: PhaseSixOptions["packages"] }) {
+function PackageSelect({ packages, value, onChange }: { packages: PhaseSixOptions["packages"]; value: string; onChange: (key: string) => void }) {
   if (packages.retainers.length === 0 && packages.projects.length === 0) return null;
   return (
     <div className="md:col-span-2">
     <label className="block">
       <span className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Package</span>
-      <select name="packageKey" defaultValue="" aria-describedby="package-hint" className={inputClass}>
+      <select name="packageKey" value={value} onChange={(event) => onChange(event.target.value)} aria-describedby="package-hint" className={inputClass}>
         <option value="">Blank (add the lines yourself on the next page)</option>
         {packages.retainers.length ? (
           <optgroup label="Retainer (monthly fee plus one-time implementation fee)">
@@ -390,5 +412,143 @@ function PackageSelect({ packages }: { packages: PhaseSixOptions["packages"] }) 
     </label>
     <p id="package-hint" className="mt-1 text-xs text-muted-foreground">Prices are in rand and come from the rate card; they cannot be changed on the document. You can still remove a line or add others. This does not set up a client package or a credit balance.</p>
     </div>
+  );
+}
+
+type DocumentIdentity = ReturnType<typeof useDocumentIdentity>;
+
+/**
+ * The state behind a quote or invoice form's package, client, project name and references. On a NEW document picking a
+ * package or a listed name fills the project name and a suggested project reference, picking a client fills a suggested
+ * client reference, and an invoice raised from a quote takes the quote's name and references. A field the person has
+ * typed in is never overwritten. On an existing document nothing is filled in.
+ */
+function useDocumentIdentity(record: PhaseSixRecord | null | undefined, options: PhaseSixOptions) {
+  const initial = (key: string) => String(record?.[key] ?? "");
+  const fresh = !record;
+  const [packageKey, setPackageKey] = useState("");
+  const [projectName, setProjectName] = useState(initial("projectName"));
+  const [projectRef, setProjectRef] = useState(initial("projectRef"));
+  const [clientRef, setClientRef] = useState(initial("clientRef"));
+  const [clientId, setClientId] = useState(initial("clientId"));
+  const [clientName, setClientName] = useState(initial("clientName"));
+  const [quoteId, setQuoteId] = useState(initial("quoteId"));
+  const [contactName, setContactName] = useState(initial("contactName"));
+  const [typed, setTyped] = useState({ projectName: false, projectRef: false, clientRef: false, contactName: false });
+  const markTyped = (field: keyof typeof typed, isTyped: boolean) => setTyped((current) => ({ ...current, [field]: isTyped }));
+
+  const fillProjectRef = (key: string | null) => {
+    if (fresh && !typed.projectRef) setProjectRef(suggestProjectRef(key, referenceYear(), options.references.projectRefs));
+  };
+  const fillClientRef = (id: string, name: string) => {
+    if (!fresh || typed.clientRef) return;
+    const label = options.clients.find((client) => client.id === id)?.label ?? name;
+    setClientRef(suggestClientRef(label, referenceYear(), options.references.clientRefs));
+  };
+
+  return {
+    fresh,
+    packageKey,
+    projectName,
+    projectRef,
+    clientRef,
+    clientId,
+    clientName,
+    quoteId,
+    contactName,
+    /** The chosen client's CRM contacts, primary first; empty when no client is chosen or it has none. */
+    contactSuggestions: options.contactsByClient[clientId] ?? [],
+    onContact(text: string) {
+      setContactName(text);
+      markTyped("contactName", text.trim() !== "");
+    },
+    onPackage(key: string) {
+      setPackageKey(key);
+      if (!key) return;
+      if (!typed.projectName) setProjectName(packageName(key));
+      fillProjectRef(key);
+    },
+    onProjectName(text: string) {
+      setProjectName(text);
+      const key = packageKeyForName(text);
+      markTyped("projectName", text.trim() !== "" && key === null);
+      if (!fresh) return;
+      if (key) setPackageKey(key);
+      fillProjectRef(key ?? (packageKey || null));
+    },
+    onProjectRef(text: string) {
+      setProjectRef(text);
+      markTyped("projectRef", text.trim() !== "");
+    },
+    onClientRef(text: string) {
+      setClientRef(text);
+      markTyped("clientRef", text.trim() !== "");
+    },
+    onClient(id: string) {
+      setClientId(id);
+      if (fresh && !typed.contactName) setContactName(options.contactsByClient[id]?.[0] ?? "");
+      fillClientRef(id, clientName);
+    },
+    onClientName(text: string) {
+      setClientName(text);
+      fillClientRef(clientId, text);
+    },
+    onQuote(id: string) {
+      setQuoteId(id);
+      const details = options.quoteDetails[id];
+      if (!fresh || !details) return;
+      if (details.projectName && !typed.projectName) {
+        setProjectName(details.projectName);
+        const key = packageKeyForName(details.projectName);
+        if (key) setPackageKey(key);
+      }
+      if (details.projectRef && !typed.projectRef) setProjectRef(details.projectRef);
+      if (details.clientRef && !typed.clientRef) setClientRef(details.clientRef);
+      if (details.contactName && !typed.contactName) setContactName(details.contactName);
+    },
+  };
+}
+
+/** The person at the client the document is addressed to: pick one of the client's CRM contacts or type a name. It is printed under the client's name. */
+function ClientContactField({ kind, identity }: { kind: "quote" | "invoice"; identity: DocumentIdentity }) {
+  return (
+    <NameCombobox
+      name="contactName"
+      label="Client contact"
+      value={identity.contactName}
+      onValueChange={identity.onContact}
+      suggestions={identity.contactSuggestions}
+      hint={`Printed on the ${kind} under the client's name. Pick one of the client's contacts or type a name.`}
+    />
+  );
+}
+
+/** The project name (picked from the rate card names or typed) and the two references of a quote or invoice. */
+function ProjectIdentityFields({ kind, identity }: { kind: "quote" | "invoice"; identity: DocumentIdentity }) {
+  return (
+    <>
+      <NameCombobox
+        name="projectName"
+        label={`Project name (printed on the ${kind})`}
+        value={identity.projectName}
+        onValueChange={identity.onProjectName}
+        suggestions={PACKAGE_NAMES.map((entry) => entry.name)}
+        hint="Pick a retainer or project from the list, or type your own."
+      />
+      <Field
+        name="projectRef"
+        label="Project reference"
+        value={identity.projectRef}
+        onValueChange={identity.onProjectRef}
+        hint={identity.fresh ? "Filled in from the project name. Change it if you need to." : undefined}
+      />
+      <Field
+        name="clientRef"
+        label="Client reference"
+        value={identity.clientRef}
+        onValueChange={identity.onClientRef}
+        hint={identity.fresh ? "Filled in from the client. Type over it to use their own reference, such as a PO number." : undefined}
+      />
+    </>
   );
 }
