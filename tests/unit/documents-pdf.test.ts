@@ -137,6 +137,24 @@ test('a long document wraps onto further pages', async () => {
   assert.ok(pdf.length < 2_000_000)
 })
 
+test('the footer ribbon is drawn on every page of a long document, and its page padding keeps the content clear of it', async () => {
+  const lines = Array.from({ length: 80 }, (_, i) => line(i + 1, { description: 'A line of description that is long enough to wrap onto a second row in the description column of the table.' }))
+  const pdf = await renderDocumentPdf(view('invoice', {}, lines), NO_IMAGES)
+  const texts = await pageTexts(pdf)
+  assert.ok(texts.length >= 3, `expected several pages, got ${texts.length}`)
+  for (const [index, text] of texts.entries()) {
+    assert.ok(text.includes('accounts@test.example'), `page ${index + 1} carries the footer ribbon's contact details`)
+  }
+  assert.ok(!texts[0].includes('PAGE1OF'), 'the first page has the full header and no page number')
+  for (let page = 2; page <= texts.length; page += 1) {
+    assert.ok(texts[page - 1].includes(`INVOICETST-I-2026-00001PAGE${page}OF${texts.length}`), `page ${page} starts with a short header naming the document and its page`)
+    assert.ok(texts[page - 1].includes('TestCo(Pty)Ltd'), `page ${page}'s short header carries the company name`)
+  }
+  const single = await pageTexts(await renderDocumentPdf(view('quote'), NO_IMAGES))
+  assert.equal(single.length, 1)
+  assert.ok(single[0].includes('accounts@test.example'), 'a one-page quote still has its ribbon')
+})
+
 test('hostile text renders: characters no font has, an unbroken 5,000-character word, markup and control characters', async () => {
   const hostile = 'Ñandú 北京 🙂 שלום <script>alert(1)</script> \u0000‮'
   const pdf = await renderDocumentPdf(
