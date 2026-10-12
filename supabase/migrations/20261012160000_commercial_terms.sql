@@ -34,6 +34,7 @@ create table public.terms_template_versions (
   change_note text check (change_note is null or char_length(change_note) <= 500),
   created_by uuid references auth.users(id) on delete set null,
   created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
   approved_by uuid references auth.users(id) on delete set null,
   approved_at timestamptz,
   archived_at timestamptz,
@@ -49,6 +50,8 @@ create unique index terms_versions_one_draft on public.terms_template_versions (
 create index terms_versions_org_idx on public.terms_template_versions (organization_id, template_id, status);
 
 create trigger terms_templates_set_updated_at before update on public.terms_templates
+  for each row execute function public.set_updated_at();
+create trigger terms_template_versions_set_updated_at before update on public.terms_template_versions
   for each row execute function public.set_updated_at();
 create trigger terms_templates_audit after insert or update or delete on public.terms_templates
   for each row execute function public.record_audit_event();
@@ -104,6 +107,8 @@ begin
   end if;
   return new;
 end $$;
+
+revoke all on function public.terms_versions_guard() from public, anon, authenticated;
 
 create trigger terms_versions_guard before update on public.terms_template_versions
   for each row execute function public.terms_versions_guard();
@@ -185,6 +190,7 @@ begin
        set body = v_body, inclusions = v_inc, effective_from = p_effective_from, change_note = v_note
      where id = v_id;
   else
+    -- A discarded draft's number is reused by the next draft; that is safe because drafts are never referenced.
     select coalesce(max(v.version), 0) + 1 into v_next from public.terms_template_versions v where v.template_id = p_template;
     insert into public.terms_template_versions (organization_id, template_id, version, status, body, inclusions, effective_from, change_note, created_by)
     values (v_org, p_template, v_next, 'draft', v_body, v_inc, p_effective_from, v_note, auth.uid())
@@ -201,6 +207,8 @@ declare
 begin
   select t.organization_id into v_org from public.terms_templates t where t.id = p_template;
   perform private.terms_admin(v_org);
+  -- Lock the template first (the order save_terms_draft and restore_terms_version use), so a save cannot interleave.
+  perform 1 from public.terms_templates t where t.id = p_template for update;
   delete from public.terms_template_versions v where v.template_id = p_template and v.status = 'draft';
   get diagnostics v_deleted = row_count;
   if v_deleted = 0 then
@@ -215,7 +223,12 @@ declare
 begin
   select * into v_row from public.terms_template_versions v where v.id = p_version;
   perform private.terms_admin(v_row.organization_id);
+  -- Lock the template first (the order save_terms_draft and restore_terms_version use), then the version.
+  perform 1 from public.terms_templates t where t.id = v_row.template_id for update;
   select * into v_row from public.terms_template_versions v where v.id = p_version for update;
+  if not found then
+    raise exception 'TERMS_NOT_FOUND' using errcode = '42501';
+  end if;
   if v_row.status <> 'draft' then
     raise exception 'TERMS_NOT_DRAFT' using errcode = '23514';
   end if;
@@ -241,6 +254,9 @@ begin
   select * into v_row from public.terms_template_versions v where v.id = p_version;
   perform private.terms_admin(v_row.organization_id);
   select * into v_row from public.terms_template_versions v where v.id = p_version for update;
+  if not found then
+    raise exception 'TERMS_NOT_FOUND' using errcode = '42501';
+  end if;
   if v_row.status <> 'approved' then
     raise exception 'TERMS_NOT_APPROVED' using errcode = '23514';
   end if;
@@ -263,6 +279,7 @@ begin
   if exists (select 1 from public.terms_template_versions v where v.template_id = v_row.template_id and v.status = 'draft') then
     raise exception 'TERMS_DRAFT_EXISTS' using errcode = '23514';
   end if;
+  -- A discarded draft's number is reused by the next draft; that is safe because drafts are never referenced.
   select coalesce(max(v.version), 0) + 1 into v_next from public.terms_template_versions v where v.template_id = v_row.template_id;
   insert into public.terms_template_versions (organization_id, template_id, version, status, body, inclusions, effective_from, change_note, created_by)
   values (v_row.organization_id, v_row.template_id, v_next, 'draft', v_row.body, v_row.inclusions, null, 'Restored from version ' || v_row.version, auth.uid())

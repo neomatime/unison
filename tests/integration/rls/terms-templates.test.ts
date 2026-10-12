@@ -93,6 +93,7 @@ test('saving a draft creates version 1, then updates the same draft; Windows lin
   assert.equal(rows[0].inclusions, 'Lead\nRoadmap')
   assert.equal(rows[0].effective_from, '2026-11-01')
   assert.equal(rows[0].created_by, adminUser.id)
+  assert.ok(rows[0].updated_at, 'a draft records when it was last saved')
 })
 
 test('a member cannot read a draft but an admin can; a member cannot write one', async () => {
@@ -132,13 +133,13 @@ test('an approved version cannot be edited or deleted by a signed-in role, and t
   const id = await approved(template)
   for (const client of [adminClient, ownerClient, memberClient]) {
     const edit = await client.from('terms_template_versions').update({ body: 'changed' }).eq('id', id)
-    assert.ok(edit.error, 'no direct update privilege')
+    assert.match(edit.error?.message ?? '', /permission denied/i, 'no direct update privilege')
     const del = await client.from('terms_template_versions').delete().eq('id', id)
-    assert.ok(del.error, 'no direct delete privilege')
+    assert.match(del.error?.message ?? '', /permission denied/i, 'no direct delete privilege')
   }
   refused((await admin.from('terms_template_versions').update({ body: 'changed' }).eq('id', id)).error, 'TERMS_VERSION_IMMUTABLE')
   refused((await admin.from('terms_template_versions').update({ effective_from: '2030-01-01' }).eq('id', id)).error, 'TERMS_VERSION_IMMUTABLE')
-  refused((await admin.from('terms_template_versions').update({ approved_by: adminUser.id }).eq('id', id)).error, 'TERMS_VERSION_IMMUTABLE')
+  refused((await admin.from('terms_template_versions').update({ approved_by: owner.id }).eq('id', id)).error, 'TERMS_VERSION_IMMUTABLE')
   assert.equal((await admin.from('terms_template_versions').update({ status: 'archived', archived_at: new Date().toISOString() }).eq('id', id)).error, null)
   refused((await admin.from('terms_template_versions').update({ status: 'approved', archived_at: null }).eq('id', id)).error, 'TERMS_VERSION_IMMUTABLE')
   refused((await admin.from('terms_template_versions').update({ body: 'changed again' }).eq('id', id)).error, 'TERMS_VERSION_IMMUTABLE')
@@ -155,7 +156,8 @@ test('version numbers rise, a new draft sits beside the approved version, and a 
   assert.equal((await versionsOf(template)).length, 1)
   refused((await adminClient.rpc('discard_terms_draft', { p_template: template })).error, 'TERMS_NOT_DRAFT')
   refused((await memberClient.rpc('discard_terms_draft', { p_template: template })).error, 'TERMS_FORBIDDEN')
-  assert.ok(draft)
+  assert.equal(rows[1].id, draft)
+  assert.equal(rows[1].version, 2)
 })
 
 test('restore copies an approved or archived version into a new draft with no effective date, and refuses when a draft exists', async () => {
@@ -211,4 +213,21 @@ test('the size limits are enforced', async () => {
   const note = await adminClient.rpc('save_terms_draft', { p_template: template, p_body: 'ok', p_inclusions: '', p_effective_from: '2026-10-12', p_change_note: 'n'.repeat(501) })
   refused(note.error, 'TERMS_TOO_LONG')
   assert.equal((await save(template, 'x'.repeat(20000))).error, null, '20,000 characters is allowed')
+})
+
+test('deleting a user who created and approved a version leaves the version in place with those references cleared', async () => {
+  const temp = await createFixtureUser(orgA, 'admin')
+  const tempClient = await signedInClient(temp.email, temp.password)
+  const template = await newTemplate(tempClient)
+  const id = must(await save(template, 'Clause one.', '2026-10-12', tempClient)) as string
+  assert.equal((await tempClient.rpc('approve_terms_version', { p_version: id })).error, null)
+  const before = (await versionsOf(template))[0]
+  assert.equal(before.created_by, temp.id)
+  assert.equal(before.approved_by, temp.id)
+  const deleted = await admin.auth.admin.deleteUser(temp.id)
+  assert.equal(deleted.error, null)
+  const after = (await versionsOf(template))[0]
+  assert.equal(after.status, 'approved')
+  assert.equal(after.created_by, null)
+  assert.equal(after.approved_by, null)
 })
