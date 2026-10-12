@@ -217,17 +217,27 @@ test('the size limits are enforced', async () => {
 
 test('deleting a user who created and approved a version leaves the version in place with those references cleared', async () => {
   const temp = await createFixtureUser(orgA, 'admin')
-  const tempClient = await signedInClient(temp.email, temp.password)
-  const template = await newTemplate(tempClient)
-  const id = must(await save(template, 'Clause one.', '2026-10-12', tempClient)) as string
-  assert.equal((await tempClient.rpc('approve_terms_version', { p_version: id })).error, null)
-  const before = (await versionsOf(template))[0]
-  assert.equal(before.created_by, temp.id)
-  assert.equal(before.approved_by, temp.id)
-  const deleted = await admin.auth.admin.deleteUser(temp.id)
-  assert.equal(deleted.error, null)
-  const after = (await versionsOf(template))[0]
-  assert.equal(after.status, 'approved')
-  assert.equal(after.created_by, null)
-  assert.equal(after.approved_by, null)
+  // The temp user is not in the fixture list that cleanup() removes, so it is deleted here even if an assertion fails.
+  let removed = false
+  try {
+    const tempClient = await signedInClient(temp.email, temp.password)
+    const template = await newTemplate(tempClient)
+    const id = must(await save(template, 'Clause one.', '2026-10-12', tempClient)) as string
+    assert.equal((await tempClient.rpc('approve_terms_version', { p_version: id })).error, null)
+    const before = (await versionsOf(template))[0]
+    assert.equal(before.created_by, temp.id)
+    assert.equal(before.approved_by, temp.id)
+    const deleted = await admin.auth.admin.deleteUser(temp.id)
+    assert.equal(deleted.error, null)
+    removed = true
+    const after = (await versionsOf(template))[0]
+    assert.equal(after.status, 'approved')
+    assert.equal(after.created_by, null)
+    assert.equal(after.approved_by, null)
+  } finally {
+    if (!removed) {
+      const { error } = await admin.auth.admin.deleteUser(temp.id)
+      if (error && !/not.?found/i.test(error.message)) console.error('could not remove the temporary user:', error.message)
+    }
+  }
 })

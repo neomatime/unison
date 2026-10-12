@@ -34,8 +34,20 @@ export function groupTemplates(rows: TemplateSummary[]): Array<{ label: string; 
     .filter((group) => group.rows.length > 0)
 }
 
-export function templateStatus(row: TemplateSummary): { kind: 'current' | 'upcoming' | 'none'; version?: number; effectiveFrom?: string } {
-  if (row.current) return { kind: 'current', version: row.current.version, effectiveFrom: row.current.effectiveFrom }
+export type TemplateStatus = {
+  kind: 'current' | 'upcoming' | 'none'
+  version?: number
+  effectiveFrom?: string
+  /** Set only when a version is in force AND a later approved version is waiting for its date. */
+  upcoming?: { version: number; effectiveFrom: string }
+}
+
+export function templateStatus(row: TemplateSummary): TemplateStatus {
+  if (row.current) {
+    const status: TemplateStatus = { kind: 'current', version: row.current.version, effectiveFrom: row.current.effectiveFrom }
+    if (row.upcoming) status.upcoming = { version: row.upcoming.version, effectiveFrom: row.upcoming.effectiveFrom }
+    return status
+  }
   if (row.upcoming) return { kind: 'upcoming', version: row.upcoming.version, effectiveFrom: row.upcoming.effectiveFrom }
   return { kind: 'none' }
 }

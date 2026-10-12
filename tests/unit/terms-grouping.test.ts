@@ -34,5 +34,7 @@ test('the status says which version is in force, which is coming, or that there 
   assert.deepEqual(templateStatus(row({ targetKind: 'project', title: 'x', current: { version: 2, effectiveFrom: '2026-10-12' } })), { kind: 'current', version: 2, effectiveFrom: '2026-10-12' })
   assert.deepEqual(templateStatus(row({ targetKind: 'project', title: 'x', upcoming: { version: 3, effectiveFrom: '2027-01-01' } })), { kind: 'upcoming', version: 3, effectiveFrom: '2027-01-01' })
   assert.deepEqual(templateStatus(row({ targetKind: 'project', title: 'x' })), { kind: 'none' })
-  assert.equal(templateStatus(row({ targetKind: 'project', title: 'x', current: { version: 1, effectiveFrom: '2026-01-01' }, upcoming: { version: 2, effectiveFrom: '2027-01-01' } })).kind, 'current', 'a current version wins over an upcoming one')
+  const both = templateStatus(row({ targetKind: 'project', title: 'x', current: { version: 1, effectiveFrom: '2026-01-01' }, upcoming: { version: 2, effectiveFrom: '2027-01-01' } }))
+  assert.equal(both.kind, 'current', 'a current version wins over an upcoming one')
+  assert.deepEqual(both, { kind: 'current', version: 1, effectiveFrom: '2026-01-01', upcoming: { version: 2, effectiveFrom: '2027-01-01' } }, 'the pending version is still reported')
 })

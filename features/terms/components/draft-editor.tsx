@@ -2,10 +2,13 @@
 
 import { useActionState, useState, useTransition } from 'react'
 
-import { placeholderProblems } from '../placeholders'
+import { formatDocumentDate } from '@/features/documents/document-view'
+import { placeholderProblems, placeholdersIn } from '../placeholders'
 import { saveTermsDraftAction } from '../actions/terms'
 
 const field = 'h-10 w-full rounded-none border border-border bg-background px-3 text-sm'
+/** Only a retainer template has these values (the rate card tier); anywhere else the line is left out of the document. */
+const RETAINER_ONLY = ['monthly_fee', 'monthly_credits', 'initiative_limit']
 const area = 'mt-1.5 w-full rounded-none border border-border bg-background px-3 py-2 text-sm font-mono'
 
 type Start = { body: string; inclusions: string; effectiveFrom: string | null; changeNote: string | null }
@@ -15,11 +18,20 @@ type Start = { body: string; inclusions: string; effectiveFrom: string | null; c
  * "Save draft" keeps it; "Save and approve" fixes it as a new approved version.
  * A failed save keeps what was typed (the action is called by hand, as in the price list form).
  */
-export function DraftEditor({ templateId, start, hasDraft, savedAt }: { templateId: string; start: Start; hasDraft: boolean; savedAt: string | null }) {
+export function DraftEditor({ templateId, start, hasDraft, savedAt, targetKind, currentEffectiveFrom }: {
+  templateId: string
+  start: Start
+  hasDraft: boolean
+  savedAt: string | null
+  targetKind: 'company' | 'retainer' | 'project' | 'support'
+  /** The effective date of the version in force, if any. */
+  currentEffectiveFrom: string | null
+}) {
   const [state, run, pending] = useActionState(saveTermsDraftAction.bind(null, templateId), undefined)
   const [, startTransition] = useTransition()
   const [body, setBody] = useState(start.body)
   const [inclusions, setInclusions] = useState(start.inclusions)
+  const [effective, setEffective] = useState(start.effectiveFrom ?? '')
   // This component is not re-keyed when the page re-renders after a save or approve, so the outcome message that useActionState
   // holds stays visible. When the starting text really changes (a draft was saved, discarded or restored, or another version
   // became the start), the fields are reset to it: the controlled ones through state, the uncontrolled ones through fieldsKey.
@@ -30,8 +42,11 @@ export function DraftEditor({ templateId, start, hasDraft, savedAt }: { template
     setSeenStart(startKey)
     setBody(start.body)
     setInclusions(start.inclusions)
+    setEffective(start.effectiveFrom ?? '')
     setFieldsKey((value) => value + 1)
   }
+  const retainerOnly = targetKind === 'retainer' ? [] : placeholdersIn(body + '\n' + inclusions).filter((name) => RETAINER_ONLY.includes(name))
+  const backDated = effective !== '' && currentEffectiveFrom !== null && effective <= currentEffectiveFrom
   const problems = [...new Set([...placeholderProblems(body), ...placeholderProblems(inclusions)])]
   return (
     <form
@@ -60,14 +75,24 @@ export function DraftEditor({ templateId, start, hasDraft, savedAt }: { template
           Not a placeholder UNISON knows: {problems.join(', ')}. Use only {'{{monthly_fee}}'}, {'{{monthly_credits}}'}, {'{{initiative_limit}}'}, {'{{valid_days}}'} and {'{{payment_days}}'}, with no spaces. The draft can be saved, but not approved.
         </p>
       ) : null}
-      <label key={`effective-${fieldsKey}`} className="text-sm font-medium">
+      {retainerOnly.length > 0 ? (
+        <p role="status" className="text-xs text-amber-800 md:col-span-2">
+          {retainerOnly.map((name) => `{{${name}}}`).join(', ')} {retainerOnly.length === 1 ? 'is' : 'are'} only available to retainer templates, so any line using {retainerOnly.length === 1 ? 'it' : 'them'} will be left out of documents for this template. The draft can still be saved and approved.
+        </p>
+      ) : null}
+      <label className="text-sm font-medium">
         Effective from
-        <input name="effectiveFrom" type="date" defaultValue={start.effectiveFrom ?? ''} aria-label="Effective from" className={`${field} mt-1.5`} />
+        <input name="effectiveFrom" type="date" value={effective} onChange={(event) => setEffective(event.target.value)} aria-label="Effective from" className={`${field} mt-1.5`} />
       </label>
       <label key={`note-${fieldsKey}`} className="text-sm font-medium">
         Change note
         <input name="changeNote" maxLength={500} defaultValue={start.changeNote ?? ''} aria-label="Change note" className={`${field} mt-1.5`} />
       </label>
+      {backDated && currentEffectiveFrom ? (
+        <p role="status" className="text-xs text-amber-800 md:col-span-2">
+          This date is not later than the version in force (effective {formatDocumentDate(currentEffectiveFrom)}), so this version will not replace it.
+        </p>
+      ) : null}
       {state?.error ? <p role="alert" className="text-sm text-destructive md:col-span-2">{state.error}</p> : null}
       {state?.success ? <p role="status" className="text-sm text-success md:col-span-2">{state.success}</p> : null}
       <div className="flex flex-wrap gap-2 md:col-span-2">

@@ -301,5 +301,6 @@ These differ from or add to the text above, and the built code follows them.
 - Strategic Consulting has terms but no rate card row; Build 2 decides how it is offered on a quote.
 - The brief names "AI & Automation Operations" (from R35,000); the rate card calls the same R35,000 service
   "Operations Improvement Support". Build 2 needs the user's decision on the name.
-- The brief's Project Care / Managed / Content "from" prices equal the rate card's proposed rates; Build 2 must show
-  them as proposed, never as approved fixed charges.
+- The brief's Project Care, Managed and Content "from" prices equal the rate card's agreed support prices (in
+  features/billing/rate-card.ts every support service has status 'agreed'; only the top-up rates are 'proposed'), but
+  the brief calls them proposed starting prices, so Build 2 must decide how to show them.

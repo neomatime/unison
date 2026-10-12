@@ -62,7 +62,7 @@ export async function TermsTemplateScreen({ templateId, versionId }: { templateI
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <Link href={`/settings/terms/${template.id}?version=${item.id}`} aria-label={`Preview version ${item.version}`} className="border border-border px-3 py-1.5 text-xs font-semibold text-foreground">Preview</Link>
-                    {canManage && item.status !== 'draft' ? (
+                    {canManage && item.status !== 'draft' && !draft ? (
                       <ActionButton action={restoreTermsVersionAction.bind(null, item.id)} label="Restore" ariaLabel={`Restore version ${item.version} into a new draft`} confirmText="Copy this version into a new draft? The version itself is not changed." />
                     ) : null}
                     {canManage && item.status === 'approved' ? (
@@ -87,6 +87,8 @@ export async function TermsTemplateScreen({ templateId, versionId }: { templateI
               templateId={template.id}
               hasDraft={Boolean(draft)}
               savedAt={savedAt}
+              targetKind={template.targetKind}
+              currentEffectiveFrom={current?.effectiveFrom ?? null}
               start={{
                 body: startFrom?.body ?? '', inclusions: startFrom?.inclusions ?? '',
                 effectiveFrom: draft?.effectiveFrom ?? null, changeNote: draft?.changeNote ?? null,

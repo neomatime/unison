@@ -98,7 +98,11 @@ const read = (...parts: string[]) => readFileSync(join(process.cwd(), ...parts),
 
 test('the placeholder list in the database function equals the one in TypeScript', () => {
   const sql = read('supabase', 'migrations', '20261012160000_commercial_terms.sql')
-  assert.ok(sql.includes(`(${TERMS_PLACEHOLDERS.join('|')})`))
+  const line = sql.split('\n').find((entry) => entry.includes('regexp_replace(') && entry.includes('\\{\\{('))
+  assert.ok(line, 'terms_text_valid strips the known placeholders with a regexp_replace')
+  const group = /\\\{\\\{\(([^)]*)\)\\\}\\\}/.exec(line)
+  assert.ok(group, 'the alternation group sits between {{( and )}}')
+  assert.deepEqual(group[1].split('|'), [...TERMS_PLACEHOLDERS])
 })
 
 test('the seed migration carries exactly the wording in features/terms/seed-wording.ts', () => {
