@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import test from 'node:test'
 
 import { RATE_CARD } from '../../features/billing/rate-card.ts'
-import { placeholderProblems, placeholdersIn } from '../../features/terms/placeholders.ts'
+import { TERMS_PLACEHOLDERS, placeholderProblems, placeholdersIn } from '../../features/terms/placeholders.ts'
 import { resolveTerms } from '../../features/terms/resolve-terms.ts'
 import { COMPANY_SEED, SEED_EFFECTIVE_FROM, SEED_TEMPLATES } from '../../features/terms/seed-wording.ts'
 import { buildPlaceholderValues } from '../../features/terms/values.ts'
@@ -90,4 +92,27 @@ test('every project category has its own terms and none of them adds a monthly m
     assert.ok(item.body.split('\n').length >= 4, `${item.title} has its clauses`)
     assert.doesNotMatch(item.body, /Do not automatically add/i, 'the builder instruction is not client wording')
   }
+})
+
+const read = (...parts: string[]) => readFileSync(join(process.cwd(), ...parts), 'utf8').replace(/\r\n/g, '\n')
+
+test('the placeholder list in the database function equals the one in TypeScript', () => {
+  const sql = read('supabase', 'migrations', '20261012160000_commercial_terms.sql')
+  assert.ok(sql.includes(`(${TERMS_PLACEHOLDERS.join('|')})`))
+})
+
+test('the seed migration carries exactly the wording in features/terms/seed-wording.ts', () => {
+  const sql = read('supabase', 'migrations', '20261012161000_commercial_terms_seed.sql')
+  const match = sql.match(/\$terms_seed\$(\[[\s\S]*?\])\$terms_seed\$/)
+  assert.ok(match, 'the seed JSON is present')
+  const seeded = JSON.parse(match[1]) as Array<Record<string, string>>
+  assert.deepEqual(
+    seeded,
+    SEED_TEMPLATES.map((item) => ({ target_kind: item.targetKind, target_key: item.targetKey, applies_to: item.appliesTo, title: item.title, body: item.body, inclusions: item.inclusions })),
+  )
+  assert.ok(sql.includes(`date '${SEED_EFFECTIVE_FROM}'`))
+  for (const company of COMPANY_SEED) assert.ok(sql.includes(company.title))
+  assert.match(sql, /grant execute on function public\.seed_commercial_terms\(uuid\) to service_role/)
+  assert.match(sql, /revoke all on function public\.seed_commercial_terms\(uuid\) from public, anon, authenticated/)
+  assert.match(sql, /00000000-0000-4000-8000-000000000001/, 'the HIMARK organisation is seeded')
 })
