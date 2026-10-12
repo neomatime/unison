@@ -8,14 +8,31 @@ import type { DocumentView } from '../document-view'
 // ancestors is removed from the page, and the sheet then flows from the top left of the first page and onto
 // further pages when it is long. The route view rule is listed by name as well, as the one known animated ancestor.
 // The remaining rules stop the shell's table, heading and button styling from leaking onto the sheet, on screen too.
+//
+// The footer ribbon belongs at the bottom of EVERY printed page. A browser repeats a table footer on each page and keeps
+// room for it, and repeats a fixed element on each page, so when printing the sheet's content sits in a one-cell frame
+// table whose footer is an empty spacer as tall as the ribbon, and the ribbon itself is fixed to the bottom of the page.
+// On screen the frame's elements are display: contents (they add no box, so the sheet is the same column as before),
+// the spacer is hidden and the ribbon is the last item of the column.
+//
+// Every page after the first also starts with a short header (the logo or name, and what the document is). It is the
+// frame's table header, which a browser repeats on every printed page, including the first. So the first page's full
+// header is pulled up over it (a negative top margin of the same height, above it in the stacking order); later pages show
+// the short header. The frame has two rows: everything down to the totals, and the bank / closing / picture row, which takes
+// the rest of the page (so a one-page quote still ends with its panel reaching the ribbon). They are real table rows, not a
+// flex column, because a browser does not repeat the table header on a page that holds only the spill-over of a flex item.
+const RIBBON_HEIGHT = '12mm'
+const RUNNER_HEIGHT = '14mm'
 const PRINT_CSS = `
   @page { size: A4; margin: 0; }
   @media print { html, body { margin: 0 !important; padding: 0 !important; background: #fff !important; } }
   .document-print { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .document-print :is(h1, h2, h3) { font-family: inherit; color: inherit; }
   .document-print thead { font-family: inherit; }
-  .document-print tbody tr, .document-print tbody tr:hover { background-color: transparent; box-shadow: none; transition: none; }
-  .document-print tbody tr:nth-child(odd), .document-print tbody tr:nth-child(odd):hover { background-color: #f2f5f9; }
+  .document-print .sheet-lines tbody tr, .document-print .sheet-lines tbody tr:hover { background-color: transparent; box-shadow: none; transition: none; }
+  .document-print .sheet-lines tbody tr:nth-child(odd), .document-print .sheet-lines tbody tr:nth-child(odd):hover { background-color: #f2f5f9; }
+  .document-print .sheet-frame, .document-print .sheet-frame > tbody, .document-print .sheet-top, .document-print .sheet-top > td { display: contents; }
+  .document-print .sheet-frame > tfoot, .document-print .sheet-frame > thead { display: none; }
   @media print {
     *:has(.document-print), .unison-route-view {
       position: static !important; display: block !important; float: none !important;
@@ -25,7 +42,25 @@ const PRINT_CSS = `
       transform: none !important; animation: none !important; transition: none !important;
     }
     *:has(.document-print) > *:not(:has(.document-print)):not(.document-print) { display: none !important; }
-    .document-print { position: relative !important; width: 100% !important; max-width: none !important; min-height: calc(100vh - 1mm); margin: 0 !important; overflow: visible !important; box-shadow: none !important; }
+    .document-print { position: relative !important; width: 100% !important; max-width: none !important; min-height: calc(100vh - 1mm); margin: 0 !important; overflow: visible !important; box-shadow: none !important; display: block !important; }
+    .document-print .sheet-frame { display: table; width: 100%; height: calc(100vh - 1mm); border-collapse: collapse; }
+    .document-print .sheet-frame > tbody { display: table-row-group; }
+    .document-print .sheet-top { display: table-row; height: 1px; }
+    .document-print .sheet-top > td { display: table-cell; padding: 0; vertical-align: top; }
+    .document-print .sheet-bottom { display: table-row; height: 100%; break-inside: avoid; }
+    .document-print .sheet-bottom > td { display: table-cell; vertical-align: top; border-top: 4mm solid transparent; background-clip: padding-box; }
+    .document-print .sheet-bank { width: 38%; }
+    .document-print .sheet-closing { width: 34%; }
+    .document-print .sheet-photo { width: 28%; height: 28mm; position: relative; }
+    .document-print .sheet-frame > thead { display: table-header-group; }
+    .document-print .sheet-frame > thead > tr { display: table-row; }
+    .document-print .sheet-frame > thead > tr > td { display: table-cell; height: ${RUNNER_HEIGHT}; padding: 0; }
+    .document-print .sheet-runner { box-sizing: border-box; height: ${RUNNER_HEIGHT}; display: flex; align-items: center; justify-content: space-between; gap: 6mm; padding: 0 12mm; background: #bcd9f5; }
+    .document-print .sheet-masthead { position: relative; z-index: 2; margin-top: -${RUNNER_HEIGHT}; }
+    .document-print .sheet-frame > tfoot { display: table-footer-group; }
+    .document-print .sheet-frame > tfoot > tr { display: table-row; }
+    .document-print .sheet-frame > tfoot > tr > td { display: table-cell; height: ${RIBBON_HEIGHT}; padding: 0; }
+    .document-print .sheet-ribbon { position: fixed; left: 0; right: 0; bottom: 0; box-sizing: border-box; height: ${RIBBON_HEIGHT}; padding-top: 0; padding-bottom: 0; }
   }
 `
 
@@ -50,7 +85,25 @@ export function DocumentSheet({ view }: { view: DocumentView }) {
           </p>
         ) : null}
 
-        <header className="relative h-[30mm] bg-[#bcd9f5]">
+        <table className="sheet-frame" role="presentation">
+          <thead aria-hidden="true">
+            <tr>
+              <td colSpan={3}>
+                <div className="sheet-runner">
+                  {view.logo ? (
+                    <img src={view.logo} alt="" className="h-[8mm] w-auto object-contain object-left" />
+                  ) : (
+                    <span className="min-w-0 break-words text-[11pt] tracking-[0.2em]">{view.from.name}</span>
+                  )}
+                  <span className="shrink-0 text-[8.5pt] uppercase tracking-[0.12em]">{view.number ? `${view.title} ${view.number}` : view.title}</span>
+                </div>
+              </td>
+            </tr>
+          </thead>
+          <tbody role="presentation">
+            <tr role="presentation" className="sheet-top">
+              <td role="presentation" colSpan={3}>
+        <header className="sheet-masthead relative h-[30mm] bg-[#bcd9f5]">
           {view.headerImage ? <img src={view.headerImage} alt="" className="absolute inset-0 h-full w-full object-cover object-right-bottom" /> : null}
           <div className="relative flex h-full flex-col justify-center px-[12mm]">
             {view.logo ? (
@@ -106,7 +159,7 @@ export function DocumentSheet({ view }: { view: DocumentView }) {
         </section>
 
         <section className="mt-[4mm] px-[12mm]">
-          <table className="w-full table-fixed border-collapse">
+          <table className="sheet-lines w-full table-fixed border-collapse">
             <colgroup>
               <col />
               <col className="w-[18mm]" />
@@ -160,7 +213,7 @@ export function DocumentSheet({ view }: { view: DocumentView }) {
               </>
             ) : null}
           </div>
-          <dl className="grid break-inside-avoid grid-cols-[1fr_auto] text-[9pt]">
+          <dl className="grid self-start break-inside-avoid grid-cols-[1fr_auto] text-[9pt]">
             <dt className="bg-[#e8eef6] px-[4mm] py-[2.5mm] uppercase tracking-[0.2em]">Subtotal</dt>
             <dd className="bg-[#e8eef6] px-[4mm] py-[2.5mm] text-right font-semibold">{view.totals.subtotal}</dd>
             <dt className="bg-[#e8eef6] px-[4mm] py-[2.5mm] uppercase tracking-[0.2em]">{view.totals.vatLabel}</dt>
@@ -170,38 +223,47 @@ export function DocumentSheet({ view }: { view: DocumentView }) {
           </dl>
         </section>
 
-        <section className="mt-[4mm] grid flex-1 grid-cols-[38%_34%_28%]">
-          <div className={view.bank.length ? 'break-inside-avoid bg-[#e3ebf5] px-[12mm] py-[3mm]' : ''}>
-            {view.bank.length ? (
-              <>
-                <h3 className="text-[8pt] uppercase tracking-[0.25em]">Bank details</h3>
-                <dl className="mt-3 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1 text-[8.5pt]">
-                  {view.bank.map((row) => (
-                    <Fragment key={row.label}>
-                      <dt className={MUTED}>{row.label}</dt>
-                      <dd className="[overflow-wrap:anywhere]">{row.value}</dd>
-                    </Fragment>
-                  ))}
-                </dl>
-              </>
-            ) : null}
-          </div>
-          <div className="min-w-0 break-inside-avoid px-[6mm] py-[3mm]">
-            {view.closing ? (
-              <>
-                <h3 className="text-[8pt] uppercase tracking-[0.25em]">{view.closing.heading}</h3>
-                {view.closing.paragraphs.map((paragraph, index) => <p key={index} className={`mt-2 break-words text-[9pt] ${MUTED}`}>{paragraph}</p>)}
-                <div className={`mt-3 ${RULE}`} />
-                {view.from.name ? <p className="mt-3 break-words text-[10pt] tracking-[0.12em]">{view.from.name}</p> : null}
-              </>
-            ) : null}
-          </div>
-          <div className="relative min-h-[28mm]">
-            {view.headerImage ? <img src={view.headerImage} alt="" className="absolute inset-0 h-full w-full object-cover object-right" /> : null}
-          </div>
-        </section>
+              </td>
+            </tr>
+            <tr role="presentation" className="sheet-bottom mt-[4mm] grid flex-1 grid-cols-[38%_34%_28%]">
+              <td role="presentation" className={`sheet-bank ${view.bank.length ? 'break-inside-avoid bg-[#e3ebf5] px-[12mm] py-[3mm]' : ''}`}>
+                {view.bank.length ? (
+                  <>
+                    <h3 className="text-[8pt] uppercase tracking-[0.25em]">Bank details</h3>
+                    <dl className="mt-3 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1 text-[8.5pt]">
+                      {view.bank.map((row) => (
+                        <Fragment key={row.label}>
+                          <dt className={MUTED}>{row.label}</dt>
+                          <dd className="[overflow-wrap:anywhere]">{row.value}</dd>
+                        </Fragment>
+                      ))}
+                    </dl>
+                  </>
+                ) : null}
+              </td>
+              <td role="presentation" className="sheet-closing min-w-0 break-inside-avoid px-[6mm] py-[3mm]">
+                {view.closing ? (
+                  <>
+                    <h3 className="text-[8pt] uppercase tracking-[0.25em]">{view.closing.heading}</h3>
+                    {view.closing.paragraphs.map((paragraph, index) => <p key={index} className={`mt-2 break-words text-[9pt] ${MUTED}`}>{paragraph}</p>)}
+                    <div className={`mt-3 ${RULE}`} />
+                    {view.from.name ? <p className="mt-3 break-words text-[10pt] tracking-[0.12em]">{view.from.name}</p> : null}
+                  </>
+                ) : null}
+              </td>
+              <td role="presentation" className="sheet-photo relative min-h-[28mm]">
+                {view.headerImage ? <img src={view.headerImage} alt="" className="absolute inset-0 h-full w-full object-cover object-right" /> : null}
+              </td>
+            </tr>
+          </tbody>
+          <tfoot aria-hidden="true">
+            <tr>
+              <td colSpan={3} />
+            </tr>
+          </tfoot>
+        </table>
 
-        <footer className="flex flex-wrap items-center justify-between gap-3 bg-[#bcd9f5] px-[12mm] py-[3mm] text-[8.5pt]">
+        <footer className="sheet-ribbon flex flex-wrap items-center justify-between gap-3 bg-[#bcd9f5] px-[12mm] py-[3mm] text-[8.5pt]">
           <div className="flex flex-wrap gap-x-6 gap-y-1">
             {view.footer.email ? <span className="break-all">{view.footer.email}</span> : null}
             {view.footer.phone ? <span>{view.footer.phone}</span> : null}

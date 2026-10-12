@@ -41,10 +41,15 @@ const upper = (raw: string | null | undefined) => t(raw).toUpperCase()
 
 const label = (text: string, extra: Style = {}) => h(Text, { style: s({ fontSize: 7.5, letterSpacing: 1.9, color: MUTED, ...extra }) }, upper(text))
 
+// Every page after the first starts with a short header (the logo or name, and what the document is), the way every
+// page ends with the footer ribbon. The page keeps the same height free at the top; the first page's full band is pulled
+// up over that space, so it still starts at the very top of the sheet.
+const RUNNER_HEIGHT = mm(14)
+
 function band(view: DocumentView, images: PdfImages) {
   return h(
     View,
-    { style: s({ height: mm(34), marginTop: -mm(10), backgroundColor: BAND }) },
+    { style: s({ height: mm(34), marginTop: -RUNNER_HEIGHT, backgroundColor: BAND }) },
     images.header
       ? h(Image, { src: images.header, style: s({ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', objectPositionX: '100%', objectPositionY: '100%' }) })
       : null,
@@ -237,11 +242,28 @@ function bankAndClosing(view: DocumentView) {
   )
 }
 
+function runner(view: DocumentView, images: PdfImages) {
+  const what = [view.title, view.number].filter((part): part is string => Boolean(part)).join(' ')
+  return h(
+    View,
+    // Drawn first, so on page 1 the full band (drawn after it, over the same top of the page) hides it; its texts are empty there.
+    { fixed: true, style: s({ position: 'absolute', top: 0, left: 0, right: 0, height: RUNNER_HEIGHT, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: mm(12), backgroundColor: BAND }) },
+    images.logo
+      ? h(Image, { src: images.logo, style: s({ height: mm(8), objectFit: 'contain', objectPositionX: 0 }) })
+      : h(Text, { style: s({ fontSize: 11, letterSpacing: 2.5 }), render: ({ pageNumber }: { pageNumber: number }) => (pageNumber === 1 ? '' : t(view.from.name)) }),
+    h(Text, { style: s({ fontSize: 8.5, letterSpacing: 1.6, color: INK }), render: ({ pageNumber, totalPages }: { pageNumber: number; totalPages: number }) => (pageNumber === 1 ? '' : upper(`${what}   Page ${pageNumber} of ${totalPages}`)) }),
+  )
+}
+
+// The ribbon is fixed to the bottom edge of every page, and the page keeps the same height free below its content so
+// nothing is drawn under it.
+const FOOTER_HEIGHT = mm(12)
+
 function footer(view: DocumentView) {
   const contact = [view.footer.email, view.footer.phone, view.footer.website].filter((item): item is string => Boolean(item))
   return h(
     View,
-    { wrap: false, style: s({ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: mm(12), paddingVertical: mm(4), backgroundColor: BAND }) },
+    { fixed: true, wrap: false, style: s({ position: 'absolute', bottom: 0, left: 0, right: 0, height: FOOTER_HEIGHT, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: mm(12), backgroundColor: BAND }) },
     h(Text, { style: s({ flexShrink: 1, fontSize: 8.5 }) }, t(contact.join('      '))),
     view.tagline ? h(Text, { style: s({ fontSize: 8.5, letterSpacing: 2.5, color: MUTED }) }, upper(view.tagline)) : null,
   )
@@ -253,7 +275,8 @@ export function buildDocumentPdfElement(view: DocumentView, images: PdfImages) {
     { title: t(`${view.title} ${view.number ?? ''}`.trim()), author: t(view.from.name), creator: 'UNISON', producer: 'UNISON' },
     h(
       Page,
-      { size: 'A4', style: s({ fontFamily: 'Helvetica', fontSize: 10, color: INK, paddingTop: mm(10), paddingBottom: 0 }) },
+      { size: 'A4', style: s({ fontFamily: 'Helvetica', fontSize: 10, color: INK, paddingTop: RUNNER_HEIGHT, paddingBottom: FOOTER_HEIGHT }) },
+      runner(view, images),
       band(view, images),
       titleBlock(view),
       parties(view),
