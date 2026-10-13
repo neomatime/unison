@@ -190,6 +190,9 @@ test('the totals and the bank details are never split across pages, even when lo
     assert.equal(pageOf(pages, 'SUBTOTAL'), pageOf(pages, 'TOTAL (ZAR)'), `the totals split ${where}`)
     assert.equal(pageOf(pages, 'SUBTOTAL'), pageOf(pages, '460.00'), `the total split ${where}`)
     assert.equal(pageOf(pages, 'BANK DETAILS'), pageOf(pages, 'Cheque'), `the bank details split ${where}`)
+    // The terms come right after the totals and before the bank details: never later than the bank details.
+    assert.ok(pageOf(pages, 'Condition 14:') <= pageOf(pages, 'BANK DETAILS'), `the terms come before the bank details ${where}`)
+    assert.ok(pageOf(pages, 'Condition 1:') >= pageOf(pages, 'SUBTOTAL'), `the terms come after the totals ${where}`)
     if (pageOf(pages, 'Condition 1:') !== pageOf(pages, 'Condition 14:')) termsSplit += 1
     if (pageOf(pages, 'Paragraph 1 of') !== pageOf(pages, 'Paragraph 30 of')) bankSectionSplit += 1
   }

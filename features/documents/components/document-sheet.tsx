@@ -206,21 +206,6 @@ export function DocumentSheet({ view }: { view: DocumentView }) {
                 </ul>
               </>
             ) : null}
-            {view.terms.length ? (
-              <>
-                <div className={RULE} />
-                <h3 className="mt-3 text-[8pt] uppercase tracking-[0.25em]">{view.termsHeading}</h3>
-                {view.termsNumbered ? (
-                  <ol className="mt-2 list-decimal space-y-1 pl-5 text-[8.5pt]">
-                    {view.terms.map((term, index) => <li key={index} className="break-words">{term}</li>)}
-                  </ol>
-                ) : (
-                  <div className="mt-2 space-y-1 text-[9pt]">
-                    {view.terms.map((term, index) => <p key={index} className="break-words">{term}</p>)}
-                  </div>
-                )}
-              </>
-            ) : null}
           </div>
           <dl className="grid self-start break-inside-avoid grid-cols-[1fr_auto] text-[9pt]">
             <dt className="bg-[#e8eef6] px-[4mm] py-[2.5mm] uppercase tracking-[0.2em]">Subtotal</dt>
@@ -231,6 +216,22 @@ export function DocumentSheet({ view }: { view: DocumentView }) {
             <dd className="bg-[#0c2a4d] px-[4mm] py-[3.5mm] text-right text-[13pt] font-bold text-white">{view.totals.total}</dd>
           </dl>
         </section>
+
+        {view.terms.length ? (
+          <section className="mt-[4mm] px-[12mm]">
+            <div className={RULE} />
+            <h3 className="mt-3 text-[8pt] uppercase tracking-[0.25em]">{view.termsHeading}</h3>
+            {view.termsNumbered ? (
+              <ol className="mt-2 list-decimal space-y-1 pl-5 text-[8.5pt]">
+                {view.terms.map((term, index) => <li key={index} className="break-words">{term}</li>)}
+              </ol>
+            ) : (
+              <div className="mt-2 space-y-1 text-[9pt]">
+                {view.terms.map((term, index) => <p key={index} className="break-words">{term}</p>)}
+              </div>
+            )}
+          </section>
+        ) : null}
 
               </td>
             </tr>

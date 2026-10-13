@@ -160,9 +160,11 @@ function table(view: DocumentView) {
   return h(View, { style: s({ marginTop: mm(6), marginHorizontal: mm(12) }) }, header, ...rows, ...empty)
 }
 
-function termsAndTotals(view: DocumentView) {
+function inclusionsAndTotals(view: DocumentView) {
   const inclusions = view.inclusions.length
-    ? [
+    ? h(
+        View,
+        { style: s({ flexGrow: 1, flexShrink: 1, flexBasis: 0, paddingRight: mm(8) }) },
         h(View, { style: s({ width: mm(14), height: mm(0.6), backgroundColor: INK }) }),
         h(Text, { style: s({ marginTop: 8, fontSize: 8, letterSpacing: 2 }) }, upper('Service inclusions')),
         ...view.inclusions.map((item) =>
@@ -172,24 +174,6 @@ function termsAndTotals(view: DocumentView) {
             h(Text, { style: s({ width: 12, flexShrink: 0, fontSize: 8.5 }) }, '•'),
             h(Text, { style: s({ flexGrow: 1, flexShrink: 1, flexBasis: 0, fontSize: 8.5 }) }, t(item)),
           ),
-        ),
-      ]
-    : []
-  const terms = view.terms.length || view.inclusions.length
-    ? h(
-        View,
-        { style: s({ flexGrow: 1, flexShrink: 1, flexBasis: 0, paddingRight: mm(8) }) },
-        ...inclusions,
-        ...(view.terms.length ? [h(View, { style: s({ width: mm(14), height: mm(0.6), backgroundColor: INK, marginTop: view.inclusions.length ? 8 : 0 }) }), h(Text, { style: s({ marginTop: 8, fontSize: 8, letterSpacing: 2 }) }, upper(view.termsHeading))] : []),
-        ...view.terms.map((term, index) =>
-          view.termsNumbered
-            ? h(
-                View,
-                { style: s({ flexDirection: 'row', marginTop: 4 }) },
-                h(Text, { style: s({ width: 16, flexShrink: 0, fontSize: 8.5 }) }, `${index + 1}.`),
-                h(Text, { style: s({ flexGrow: 1, flexShrink: 1, flexBasis: 0, fontSize: 8.5 }) }, t(term)),
-              )
-            : h(Text, { style: s({ marginTop: 4, fontSize: 9 }) }, t(term)),
         ),
       )
     : h(View, { style: s({ flexGrow: 1 }) })
@@ -202,15 +186,36 @@ function termsAndTotals(view: DocumentView) {
     )
   return h(
     View,
-    { wrap: !short(...view.terms, ...view.inclusions), style: s({ flexDirection: 'row', marginTop: mm(5), paddingHorizontal: mm(12) }) },
-    terms,
+    { wrap: !short(...view.inclusions), style: s({ flexDirection: 'row', marginTop: mm(5), paddingHorizontal: mm(12) }) },
+    inclusions,
     h(
       View,
-      // The totals are never split, even when long terms let this section break across pages.
+      // The totals are never split, even when long inclusions let this section break across pages.
       { wrap: false, style: s({ width: mm(78), flexShrink: 0 }) },
       totalRow('Subtotal', view.totals.subtotal, TOTAL_BG, INK, 9, 2.5),
       totalRow(view.totals.vatLabel, view.totals.vat, TOTAL_BG, INK, 9, 2.5),
       totalRow(`Total (${view.currency})`, view.totals.total, INK, WHITE, 13, 3.5),
+    ),
+  )
+}
+
+/** The terms run the full width of the page, right below the totals and above the bank details and next steps. */
+function termsBlock(view: DocumentView) {
+  if (!view.terms.length) return null
+  return h(
+    View,
+    { wrap: !short(...view.terms), style: s({ marginTop: mm(5), paddingHorizontal: mm(12) }) },
+    h(View, { style: s({ width: mm(14), height: mm(0.6), backgroundColor: INK }) }),
+    h(Text, { style: s({ marginTop: 8, fontSize: 8, letterSpacing: 2 }) }, upper(view.termsHeading)),
+    ...view.terms.map((term, index) =>
+      view.termsNumbered
+        ? h(
+            View,
+            { style: s({ flexDirection: 'row', marginTop: 4 }) },
+            h(Text, { style: s({ width: 16, flexShrink: 0, fontSize: 8.5 }) }, `${index + 1}.`),
+            h(Text, { style: s({ flexGrow: 1, flexShrink: 1, flexBasis: 0, fontSize: 8.5 }) }, t(term)),
+          )
+        : h(Text, { style: s({ marginTop: 4, fontSize: 9 }) }, t(term)),
     ),
   )
 }
@@ -295,7 +300,8 @@ export function buildDocumentPdfElement(view: DocumentView, images: PdfImages) {
       titleBlock(view),
       parties(view),
       table(view),
-      termsAndTotals(view),
+      inclusionsAndTotals(view),
+      termsBlock(view),
       bankAndClosing(view),
       footer(view),
     ),
