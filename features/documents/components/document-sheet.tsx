@@ -9,6 +9,9 @@ import type { DocumentView } from '../document-view'
 // further pages when it is long. The route view rule is listed by name as well, as the one known animated ancestor.
 // The remaining rules stop the shell's table, heading and button styling from leaking onto the sheet, on screen too.
 //
+// The terms are kept together: a list that does not fit on the rest of a page moves, whole, to the next page instead of
+// splitting in the middle (a list taller than a page cannot be kept together and flows on as before).
+//
 // The footer ribbon belongs at the bottom of EVERY printed page. A browser repeats a table footer on each page and keeps
 // room for it, and repeats a fixed element on each page, so when printing the sheet's content sits in a one-cell frame
 // table whose footer is an empty spacer as tall as the ribbon, and the ribbon itself is fixed to the bottom of the page.
@@ -48,6 +51,7 @@ const PRINT_CSS = `
     .document-print .sheet-top { display: table-row; height: 1px; }
     .document-print .sheet-top > td { display: table-cell; padding: 0; vertical-align: top; }
     .document-print .sheet-bottom { display: table-row; height: 100%; break-inside: avoid; }
+    .document-print .sheet-terms { break-inside: avoid; }
     .document-print .sheet-bottom > td { display: table-cell; vertical-align: top; border-top: 4mm solid transparent; background-clip: padding-box; }
     .document-print .sheet-bank { width: 38%; }
     .document-print .sheet-closing { width: 34%; }
@@ -218,7 +222,7 @@ export function DocumentSheet({ view }: { view: DocumentView }) {
         </section>
 
         {view.terms.length ? (
-          <section className="mt-[4mm] px-[12mm]">
+          <section className="sheet-terms mt-[4mm] px-[12mm]">
             <div className={RULE} />
             <h3 className="mt-3 text-[8pt] uppercase tracking-[0.25em]">{view.termsHeading}</h3>
             {view.termsNumbered ? (

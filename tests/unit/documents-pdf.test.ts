@@ -196,8 +196,16 @@ test('the totals and the bank details are never split across pages, even when lo
     if (pageOf(pages, 'Condition 1:') !== pageOf(pages, 'Condition 14:')) termsSplit += 1
     if (pageOf(pages, 'Paragraph 1 of') !== pageOf(pages, 'Paragraph 30 of')) bankSectionSplit += 1
   }
-  assert.ok(termsSplit > 0, 'the sweep includes documents whose terms run onto the next page')
+  assert.equal(termsSplit, 0, 'terms that fit on a page are never split across two pages: they move whole to the next page')
   assert.ok(bankSectionSplit > 0, 'the sweep includes documents whose closing text runs onto the next page')
+})
+
+test('terms longer than a page still flow on rather than being cut off', async () => {
+  const long = Array.from({ length: 70 }, (_, i) => `Condition ${i + 1}: the work is billed as agreed and any change to the scope is quoted again before it starts, in writing.`).join('\n')
+  const pdf = await renderDocumentPdf(view('quote', { terms: long }, [line(1)], null), NO_IMAGES)
+  const pages = await pageTexts(pdf)
+  assert.ok(pageOf(pages, 'Condition 1:') > -1 && pageOf(pages, 'Condition 70:') > -1, 'every condition is drawn')
+  assert.ok(pageOf(pages, 'Condition 70:') > pageOf(pages, 'Condition 1:'), 'a list longer than a page runs on to the next page')
 })
 
 test('images from the brand folder are drawn and the PDF stays valid', async () => {
