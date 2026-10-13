@@ -190,13 +190,10 @@ test('the totals and the bank details are never split across pages, even when lo
     assert.equal(pageOf(pages, 'SUBTOTAL'), pageOf(pages, 'TOTAL (ZAR)'), `the totals split ${where}`)
     assert.equal(pageOf(pages, 'SUBTOTAL'), pageOf(pages, '460.00'), `the total split ${where}`)
     assert.equal(pageOf(pages, 'BANK DETAILS'), pageOf(pages, 'Cheque'), `the bank details split ${where}`)
-    // The terms are the last thing on the document: never on an earlier page than the bank details or the closing text.
-    assert.ok(pageOf(pages, 'Condition 1:') >= pageOf(pages, 'BANK DETAILS'), `the terms come after the bank details ${where}`)
-    assert.ok(pageOf(pages, 'Condition 1:') >= pageOf(pages, 'Paragraph 30 of') || pageOf(pages, 'Condition 1:') >= pageOf(pages, 'Paragraph 1 of'), `the terms come after the closing text ${where}`)
     if (pageOf(pages, 'Condition 1:') !== pageOf(pages, 'Condition 14:')) termsSplit += 1
     if (pageOf(pages, 'Paragraph 1 of') !== pageOf(pages, 'Paragraph 30 of')) bankSectionSplit += 1
   }
-  void termsSplit // the terms flow on their own after the bank section, so a split depends on where the closing text ends
+  assert.ok(termsSplit > 0, 'the sweep includes documents whose terms run onto the next page')
   assert.ok(bankSectionSplit > 0, 'the sweep includes documents whose closing text runs onto the next page')
 })
 

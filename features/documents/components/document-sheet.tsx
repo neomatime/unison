@@ -18,8 +18,8 @@ import type { DocumentView } from '../document-view'
 // Every page after the first also starts with a short header (the logo or name, and what the document is). It is the
 // frame's table header, which a browser repeats on every printed page, including the first. So the first page's full
 // header is pulled up over it (a negative top margin of the same height, above it in the stacking order); later pages show
-// the short header. The frame has two rows: everything down to the totals, and the bank / closing / picture row, followed by the terms row, which takes
-// the rest of the page (so a one-page quote still ends with its terms reaching the ribbon; with no terms the bank row takes it). They are real table rows, not a
+// the short header. The frame has two rows: everything down to the totals, and the bank / closing / picture row, which takes
+// the rest of the page (so a one-page quote still ends with its panel reaching the ribbon). They are real table rows, not a
 // flex column, because a browser does not repeat the table header on a page that holds only the spill-over of a flex item.
 const RIBBON_HEIGHT = '12mm'
 const RUNNER_HEIGHT = '14mm'
@@ -47,10 +47,7 @@ const PRINT_CSS = `
     .document-print .sheet-frame > tbody { display: table-row-group; }
     .document-print .sheet-top { display: table-row; height: 1px; }
     .document-print .sheet-top > td { display: table-cell; padding: 0; vertical-align: top; }
-    .document-print .sheet-bottom { display: table-row; height: 1px; break-inside: avoid; }
-    .document-print .sheet-bottom.sheet-fill, .document-print .sheet-terms { height: 100%; }
-    .document-print .sheet-terms { display: table-row; }
-    .document-print .sheet-terms > td { display: table-cell; vertical-align: top; padding: 4mm 12mm 4mm; }
+    .document-print .sheet-bottom { display: table-row; height: 100%; break-inside: avoid; }
     .document-print .sheet-bottom > td { display: table-cell; vertical-align: top; border-top: 4mm solid transparent; background-clip: padding-box; }
     .document-print .sheet-bank { width: 38%; }
     .document-print .sheet-closing { width: 34%; }
@@ -209,6 +206,21 @@ export function DocumentSheet({ view }: { view: DocumentView }) {
                 </ul>
               </>
             ) : null}
+            {view.terms.length ? (
+              <>
+                <div className={RULE} />
+                <h3 className="mt-3 text-[8pt] uppercase tracking-[0.25em]">{view.termsHeading}</h3>
+                {view.termsNumbered ? (
+                  <ol className="mt-2 list-decimal space-y-1 pl-5 text-[8.5pt]">
+                    {view.terms.map((term, index) => <li key={index} className="break-words">{term}</li>)}
+                  </ol>
+                ) : (
+                  <div className="mt-2 space-y-1 text-[9pt]">
+                    {view.terms.map((term, index) => <p key={index} className="break-words">{term}</p>)}
+                  </div>
+                )}
+              </>
+            ) : null}
           </div>
           <dl className="grid self-start break-inside-avoid grid-cols-[1fr_auto] text-[9pt]">
             <dt className="bg-[#e8eef6] px-[4mm] py-[2.5mm] uppercase tracking-[0.2em]">Subtotal</dt>
@@ -222,7 +234,7 @@ export function DocumentSheet({ view }: { view: DocumentView }) {
 
               </td>
             </tr>
-            <tr role="presentation" className={`sheet-bottom mt-[4mm] grid grid-cols-[38%_34%_28%] ${view.terms.length ? '' : 'sheet-fill flex-1'}`}>
+            <tr role="presentation" className="sheet-bottom mt-[4mm] grid flex-1 grid-cols-[38%_34%_28%]">
               <td role="presentation" className={`sheet-bank ${view.bank.length ? 'break-inside-avoid bg-[#e3ebf5] px-[12mm] py-[3mm]' : ''}`}>
                 {view.bank.length ? (
                   <>
@@ -252,23 +264,6 @@ export function DocumentSheet({ view }: { view: DocumentView }) {
                 {view.headerImage ? <img src={view.headerImage} alt="" className="absolute inset-0 h-full w-full object-cover object-right" /> : null}
               </td>
             </tr>
-            {view.terms.length ? (
-              <tr role="presentation" className="sheet-terms block">
-                <td role="presentation" className="block px-[12mm] pb-[4mm]">
-                  <div className={RULE} />
-                  <h3 className="mt-3 text-[8pt] uppercase tracking-[0.25em]">{view.termsHeading}</h3>
-                  {view.termsNumbered ? (
-                    <ol className="mt-2 list-decimal space-y-1 pl-5 text-[8.5pt]">
-                      {view.terms.map((term, index) => <li key={index} className="break-words">{term}</li>)}
-                    </ol>
-                  ) : (
-                    <div className="mt-2 space-y-1 text-[9pt]">
-                      {view.terms.map((term, index) => <p key={index} className="break-words">{term}</p>)}
-                    </div>
-                  )}
-                </td>
-              </tr>
-            ) : null}
           </tbody>
           <tfoot aria-hidden="true">
             <tr>

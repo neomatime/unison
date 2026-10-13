@@ -160,11 +160,9 @@ function table(view: DocumentView) {
   return h(View, { style: s({ marginTop: mm(6), marginHorizontal: mm(12) }) }, header, ...rows, ...empty)
 }
 
-function inclusionsAndTotals(view: DocumentView) {
+function termsAndTotals(view: DocumentView) {
   const inclusions = view.inclusions.length
-    ? h(
-        View,
-        { style: s({ flexGrow: 1, flexShrink: 1, flexBasis: 0, paddingRight: mm(8) }) },
+    ? [
         h(View, { style: s({ width: mm(14), height: mm(0.6), backgroundColor: INK }) }),
         h(Text, { style: s({ marginTop: 8, fontSize: 8, letterSpacing: 2 }) }, upper('Service inclusions')),
         ...view.inclusions.map((item) =>
@@ -174,6 +172,24 @@ function inclusionsAndTotals(view: DocumentView) {
             h(Text, { style: s({ width: 12, flexShrink: 0, fontSize: 8.5 }) }, '•'),
             h(Text, { style: s({ flexGrow: 1, flexShrink: 1, flexBasis: 0, fontSize: 8.5 }) }, t(item)),
           ),
+        ),
+      ]
+    : []
+  const terms = view.terms.length || view.inclusions.length
+    ? h(
+        View,
+        { style: s({ flexGrow: 1, flexShrink: 1, flexBasis: 0, paddingRight: mm(8) }) },
+        ...inclusions,
+        ...(view.terms.length ? [h(View, { style: s({ width: mm(14), height: mm(0.6), backgroundColor: INK, marginTop: view.inclusions.length ? 8 : 0 }) }), h(Text, { style: s({ marginTop: 8, fontSize: 8, letterSpacing: 2 }) }, upper(view.termsHeading))] : []),
+        ...view.terms.map((term, index) =>
+          view.termsNumbered
+            ? h(
+                View,
+                { style: s({ flexDirection: 'row', marginTop: 4 }) },
+                h(Text, { style: s({ width: 16, flexShrink: 0, fontSize: 8.5 }) }, `${index + 1}.`),
+                h(Text, { style: s({ flexGrow: 1, flexShrink: 1, flexBasis: 0, fontSize: 8.5 }) }, t(term)),
+              )
+            : h(Text, { style: s({ marginTop: 4, fontSize: 9 }) }, t(term)),
         ),
       )
     : h(View, { style: s({ flexGrow: 1 }) })
@@ -186,11 +202,11 @@ function inclusionsAndTotals(view: DocumentView) {
     )
   return h(
     View,
-    { wrap: !short(...view.inclusions), style: s({ flexDirection: 'row', marginTop: mm(5), paddingHorizontal: mm(12) }) },
-    inclusions,
+    { wrap: !short(...view.terms, ...view.inclusions), style: s({ flexDirection: 'row', marginTop: mm(5), paddingHorizontal: mm(12) }) },
+    terms,
     h(
       View,
-      // The totals are never split, even when long inclusions let this section break across pages.
+      // The totals are never split, even when long terms let this section break across pages.
       { wrap: false, style: s({ width: mm(78), flexShrink: 0 }) },
       totalRow('Subtotal', view.totals.subtotal, TOTAL_BG, INK, 9, 2.5),
       totalRow(view.totals.vatLabel, view.totals.vat, TOTAL_BG, INK, 9, 2.5),
@@ -199,31 +215,10 @@ function inclusionsAndTotals(view: DocumentView) {
   )
 }
 
-/** The terms are the last thing on the document, below the bank details and next steps and above the footer ribbon. */
-function termsBlock(view: DocumentView) {
-  if (!view.terms.length) return null
-  return h(
-    View,
-    { wrap: !short(...view.terms), style: s({ flexGrow: 1, marginTop: mm(5), paddingHorizontal: mm(12) }) },
-    h(View, { style: s({ width: mm(14), height: mm(0.6), backgroundColor: INK }) }),
-    h(Text, { style: s({ marginTop: 8, fontSize: 8, letterSpacing: 2 }) }, upper(view.termsHeading)),
-    ...view.terms.map((term, index) =>
-      view.termsNumbered
-        ? h(
-            View,
-            { style: s({ flexDirection: 'row', marginTop: 4 }) },
-            h(Text, { style: s({ width: 16, flexShrink: 0, fontSize: 8.5 }) }, `${index + 1}.`),
-            h(Text, { style: s({ flexGrow: 1, flexShrink: 1, flexBasis: 0, fontSize: 8.5 }) }, t(term)),
-          )
-        : h(Text, { style: s({ marginTop: 4, fontSize: 9 }) }, t(term)),
-    ),
-  )
-}
-
 function bankAndClosing(view: DocumentView) {
   return h(
     View,
-    { wrap: !short(view.from.name, ...view.bank.map((row) => row.value), ...(view.closing?.paragraphs ?? [])), style: s({ flexDirection: 'row', marginTop: mm(5), minHeight: mm(28), flexGrow: view.terms.length ? 0 : 1 }) },
+    { wrap: !short(view.from.name, ...view.bank.map((row) => row.value), ...(view.closing?.paragraphs ?? [])), style: s({ flexDirection: 'row', marginTop: mm(5), minHeight: mm(28), flexGrow: 1 }) },
     h(
       View,
       // The bank panel is never split, even when a long closing text lets this section break; only bank details too
@@ -300,9 +295,8 @@ export function buildDocumentPdfElement(view: DocumentView, images: PdfImages) {
       titleBlock(view),
       parties(view),
       table(view),
-      inclusionsAndTotals(view),
+      termsAndTotals(view),
       bankAndClosing(view),
-      termsBlock(view),
       footer(view),
     ),
   )
