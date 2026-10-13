@@ -112,6 +112,5 @@ export function hiveOfferingToLine(offering: HiveOffering): LineFields | null {
     quantity: 1,
     unit_price: price,
     vat_code: 'standard',
-    price_list_item_id: null,
   }
 }

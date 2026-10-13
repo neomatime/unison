@@ -1,8 +1,35 @@
 // The terms loaded for the HIMARK organisation by supabase/migrations/20261012161000_commercial_terms_seed.sql, as
 // approved version 1 effective 2026-10-12. The wording is HIMARK's (from the terms brief). Fees, credits and the number
-// of active initiatives are placeholders filled from the rate card, so they cannot drift from it.
+// of active initiatives are placeholders, filled from HIVE Origin's retainer plans when the terms are previewed.
 // No imports from the framework: unit tests use it directly.
-import { RATE_CARD, PROJECTS, packageName } from '../billing/rate-card.ts'
+
+// The names and keys the seed used. They are fixed: the seed migration has already been applied with exactly these.
+const RETAINER_NAMES: Record<string, string> = {
+  signature: 'Signature Partner',
+  growth: 'Growth Partner',
+  private: 'Private Partner',
+  reserve: 'HIMARK Reserve',
+}
+const PROJECT_NAMES: Record<string, string> = {
+  operating_model: 'Operating Model & Operations Transformation',
+  intelligence_ai: 'Intelligence & AI Transformation',
+  digital_experience: 'Digital Experience',
+  digital_presence: 'Digital Presence',
+  visual_communication: 'Visual Communication & Operations',
+}
+const SUPPORT_SERVICES: ReadonlyArray<readonly [key: string, title: string]> = [
+  ['operations_improvement', 'Operations Improvement Support'],
+  ['ai_automation_care', 'AI & Automation Care'],
+  ['digital_experience_management', 'Digital Experience Management'],
+  ['application_interface_care', 'Application & Interface Care'],
+  ['digital_presence_management', 'Digital Presence Management'],
+  ['website_care', 'Website Care'],
+  ['communication_asset_care', 'Communication & Asset Care'],
+  ['podcast_content', 'Podcast Content'],
+  ['integrated_podcast_social', 'Integrated Podcast & Social Media Content'],
+  ['social_media_content', 'Social Media Content'],
+]
+const packageName = (key: string) => RETAINER_NAMES[key] ?? PROJECT_NAMES[key] ?? key
 
 export const SEED_EFFECTIVE_FROM = '2026-10-12'
 
@@ -145,8 +172,6 @@ const PROJECT_TERMS: Array<{ key: string; title: string; body: string }> = [
   },
 ]
 
-// Guards against a project category being added to the rate card without terms (or the reverse).
-const PROJECT_KEYS_WITH_RATE = PROJECTS.map((project) => project.key)
 
 export const SEED_TEMPLATES: readonly SeedTemplate[] = [
   ...RETAINERS.map((item): SeedTemplate => ({
@@ -155,11 +180,11 @@ export const SEED_TEMPLATES: readonly SeedTemplate[] = [
   ...PROJECT_TERMS.map((item): SeedTemplate => ({
     targetKind: 'project', targetKey: item.key, appliesTo: 'quote', title: item.title, body: item.body, inclusions: '',
   })),
-  ...RATE_CARD.filter((item) => item.kind === 'support').map((item): SeedTemplate => ({
-    targetKind: 'support', targetKey: item.key.replace('support.', ''), appliesTo: 'quote', title: item.title.replace(/: monthly$/, ''), body: '', inclusions: '',
+  ...SUPPORT_SERVICES.map(([key, title]): SeedTemplate => ({
+    targetKind: 'support', targetKey: key, appliesTo: 'quote', title, body: '', inclusions: '',
   })),
 ]
 
-if (!PROJECT_KEYS_WITH_RATE.every((key) => PROJECT_TERMS.some((item) => item.key === key))) {
-  throw new Error('Every rate card project needs seed terms.')
+if (!Object.keys(PROJECT_NAMES).every((key) => PROJECT_TERMS.some((item) => item.key === key))) {
+  throw new Error('Every project needs seed terms.')
 }

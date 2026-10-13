@@ -3,13 +3,26 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import test from 'node:test'
 
-import { RATE_CARD } from '../../features/billing/rate-card.ts'
+import { partnerLevels } from '../../config/partner-levels.ts'
 import { TERMS_PLACEHOLDERS, placeholderProblems, placeholdersIn } from '../../features/terms/placeholders.ts'
 import { resolveTerms } from '../../features/terms/resolve-terms.ts'
 import { COMPANY_SEED, SEED_EFFECTIVE_FROM, SEED_TEMPLATES } from '../../features/terms/seed-wording.ts'
 import { buildPlaceholderValues } from '../../features/terms/values.ts'
 
 const money = (amount: number) => `R${amount}`
+
+// What HIVE Origin's retainer plans hold for each tier (monthly fee, monthly credits, active projects allowed).
+const RETAINER_RATES: Record<string, { price: number; credits: number; initiativeLimit: number | null }> = {
+  signature: { price: 100000, credits: 40, initiativeLimit: 2 },
+  growth: { price: 150000, credits: 75, initiativeLimit: 4 },
+  private: { price: 200000, credits: 120, initiativeLimit: 6 },
+  reserve: { price: 300000, credits: 220, initiativeLimit: null },
+}
+const SUPPORT_KEYS = ['operations_improvement', 'ai_automation_care', 'digital_experience_management', 'application_interface_care', 'digital_presence_management', 'website_care', 'communication_asset_care', 'podcast_content', 'integrated_podcast_social', 'social_media_content']
+
+test('the four retainer prices agree with the partner levels the provisioning wizard uses', () => {
+  for (const level of partnerLevels) assert.equal(RETAINER_RATES[level.id].price, level.price, level.id)
+})
 
 test('buildPlaceholderValues turns numbers into text and leaves what is unknown as null', () => {
   assert.deepEqual(
@@ -26,16 +39,15 @@ test('buildPlaceholderValues turns numbers into text and leaves what is unknown 
   assert.equal(buildPlaceholderValues({ retainer: { monthlyFee: 1, credits: 12.5, initiativeLimit: null }, validDays: 1, paymentDays: 1, formatMoney: money }).monthly_credits, '12.5', 'a fractional credit count is not truncated')
 })
 
-test('the seed holds 4 retainer tiers, 6 project categories and the 10 rate card support services, each once', () => {
+test('the seed holds 4 retainer tiers, 6 project categories and the 10 support services, each once', () => {
   const count = (kind: string) => SEED_TEMPLATES.filter((item) => item.targetKind === kind).length
   assert.equal(count('retainer'), 4)
   assert.equal(count('project'), 6)
   assert.equal(count('support'), 10)
   assert.equal(new Set(SEED_TEMPLATES.map((item) => `${item.targetKind}:${item.targetKey}`)).size, SEED_TEMPLATES.length)
   assert.deepEqual(SEED_TEMPLATES.filter((item) => item.targetKind === 'retainer').map((item) => item.targetKey), ['signature', 'growth', 'private', 'reserve'])
-  assert.ok(SEED_TEMPLATES.some((item) => item.targetKind === 'project' && item.targetKey === 'strategic_consulting'), 'Strategic Consulting is terms-only: it has no rate card row')
-  const supportKeys = RATE_CARD.filter((item) => item.kind === 'support').map((item) => item.key.replace('support.', ''))
-  assert.deepEqual(SEED_TEMPLATES.filter((item) => item.targetKind === 'support').map((item) => item.targetKey).sort(), [...supportKeys].sort())
+  assert.ok(SEED_TEMPLATES.some((item) => item.targetKind === 'project' && item.targetKey === 'strategic_consulting'), 'Strategic Consulting is terms-only: it has no project fee')
+  assert.deepEqual(SEED_TEMPLATES.filter((item) => item.targetKind === 'support').map((item) => item.targetKey).sort(), [...SUPPORT_KEYS].sort())
   assert.equal(SEED_EFFECTIVE_FROM, '2026-10-12')
   assert.deepEqual(COMPANY_SEED.map((item) => item.appliesTo), ['quote', 'invoice'])
 })
@@ -54,9 +66,9 @@ test('support services are seeded empty: the brief gives no wording for them', (
   }
 })
 
-test('each retainer resolves against the rate card with nothing missing and nothing skipped', () => {
+test('each retainer resolves against the HIVE plan values with nothing missing and nothing skipped', () => {
   for (const tier of SEED_TEMPLATES.filter((entry) => entry.targetKind === 'retainer')) {
-    const monthly = RATE_CARD.find((item) => item.key === `retainer.${tier.targetKey}.monthly`)!
+    const monthly = RETAINER_RATES[tier.targetKey]
     const values = buildPlaceholderValues({
       retainer: { monthlyFee: monthly.price, credits: monthly.credits, initiativeLimit: monthly.initiativeLimit },
       validDays: 30, paymentDays: 30, formatMoney: money,
@@ -70,10 +82,10 @@ test('each retainer resolves against the rate card with nothing missing and noth
   }
 })
 
-test('the initiative limit comes from the rate card, so Signature, Growth and Private say 2, 4 and 6', () => {
+test('the initiative limit comes from the retainer plan, so Signature, Growth and Private say 2, 4 and 6', () => {
   const lineFor = (key: string) => {
     const tier = SEED_TEMPLATES.find((entry) => entry.targetKey === key)!
-    const monthly = RATE_CARD.find((item) => item.key === `retainer.${key}.monthly`)!
+    const monthly = RETAINER_RATES[key]
     const values = buildPlaceholderValues({ retainer: { monthlyFee: monthly.price, credits: monthly.credits, initiativeLimit: monthly.initiativeLimit }, validDays: 30, paymentDays: 30, formatMoney: money })
     return resolveTerms({ layers: [{ layer: 'offering', templateId: 't', versionId: 'v', version: 1, body: tier.body, inclusions: '' }], values }).lines[0]
   }

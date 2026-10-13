@@ -26,7 +26,7 @@ test('a priced retainer becomes a one-unit standard-VAT line at the HIVE price',
   assert.deepEqual(line, {
     title: 'Growth Partner: monthly retainer',
     description: 'Includes 75 credits a month.',
-    quantity: 1, unit_price: 150000, vat_code: 'standard', price_list_item_id: null,
+    quantity: 1, unit_price: 150000, vat_code: 'standard',
   })
 })
 
