@@ -199,12 +199,12 @@ function inclusionsAndTotals(view: DocumentView) {
   )
 }
 
-/** The terms are the last thing on the document, below the bank details and next steps and above the footer ribbon. */
+/** The terms run the full width of the page, right below the totals and above the bank details and next steps. */
 function termsBlock(view: DocumentView) {
   if (!view.terms.length) return null
   return h(
     View,
-    { wrap: !short(...view.terms), style: s({ flexGrow: 1, marginTop: mm(5), paddingHorizontal: mm(12) }) },
+    { wrap: !short(...view.terms), style: s({ marginTop: mm(5), paddingHorizontal: mm(12) }) },
     h(View, { style: s({ width: mm(14), height: mm(0.6), backgroundColor: INK }) }),
     h(Text, { style: s({ marginTop: 8, fontSize: 8, letterSpacing: 2 }) }, upper(view.termsHeading)),
     ...view.terms.map((term, index) =>
@@ -223,7 +223,7 @@ function termsBlock(view: DocumentView) {
 function bankAndClosing(view: DocumentView) {
   return h(
     View,
-    { wrap: !short(view.from.name, ...view.bank.map((row) => row.value), ...(view.closing?.paragraphs ?? [])), style: s({ flexDirection: 'row', marginTop: mm(5), minHeight: mm(28), flexGrow: view.terms.length ? 0 : 1 }) },
+    { wrap: !short(view.from.name, ...view.bank.map((row) => row.value), ...(view.closing?.paragraphs ?? [])), style: s({ flexDirection: 'row', marginTop: mm(5), minHeight: mm(28), flexGrow: 1 }) },
     h(
       View,
       // The bank panel is never split, even when a long closing text lets this section break; only bank details too
@@ -301,8 +301,8 @@ export function buildDocumentPdfElement(view: DocumentView, images: PdfImages) {
       parties(view),
       table(view),
       inclusionsAndTotals(view),
-      bankAndClosing(view),
       termsBlock(view),
+      bankAndClosing(view),
       footer(view),
     ),
   )
