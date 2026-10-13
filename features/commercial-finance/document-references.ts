@@ -1,31 +1,28 @@
-// Names and references offered on a NEW quote or invoice: the rate card names for the Project name list, and suggested
+// Names and references offered on a NEW quote or invoice: the HIVE retainer and project names for the Project name list, and suggested
 // "GP-2026-001" style references for the project and the client. Pure, so the form and the unit tests share it.
 // The suggestions only fill empty, untouched fields; the form never overwrites what a person has typed.
-import { PROJECTS, TIERS, packageName } from '../billing/rate-card.ts'
 
-/** Two letters per rate card package: the four retainers, then the five projects. */
+/** Two letters per HIVE retainer or project, keyed by its HIVE code (the part of the offering key after the colon). */
 const PACKAGE_CODES: Record<string, string> = {
   signature: 'SP',
   growth: 'GP',
   private: 'PP',
   reserve: 'HR',
-  operating_model: 'OM',
-  intelligence_ai: 'AI',
-  digital_experience: 'DX',
-  digital_presence: 'DP',
-  visual_communication: 'VC',
+  'strategic-consulting': 'SC',
+  'operations-transformation': 'OM',
+  'intelligence-ai': 'AI',
+  'digital-experience': 'DX',
+  'digital-presence': 'DP',
+  'visual-operations': 'VC',
 }
 
 export type PackageName = { key: string; name: string }
 
-/** Every retainer and project name, in rate card order: the choices in the Project name list. */
-export const PACKAGE_NAMES: PackageName[] = [...TIERS, ...PROJECTS].map((entry) => ({ key: entry.key, name: packageName(entry.key) }))
-
-/** The package a typed or picked project name stands for (case and spacing ignored), or null for a custom name. */
-export function packageKeyForName(name: string): string | null {
+/** The offering a typed or picked project name stands for (case and spacing ignored), or null for a custom name. */
+export function packageKeyForName(name: string, names: readonly PackageName[]): string | null {
   const wanted = name.trim().toLowerCase()
   if (!wanted) return null
-  return PACKAGE_NAMES.find((entry) => entry.name.toLowerCase() === wanted)?.key ?? null
+  return names.find((entry) => entry.name.toLowerCase() === wanted)?.key ?? null
 }
 
 const LEGAL_WORDS = new Set(['pty', 'ltd', 'limited', 'inc', 'incorporated', 'cc', 'llc', 'plc', 'npc', 'soc', 'rf', 'the', 'and', 'of'])
@@ -53,9 +50,9 @@ export function nextReference(prefix: string, year: number, existing: ReadonlyAr
   return `${prefix}-${year}-${String(highest + 1).padStart(3, '0')}`
 }
 
-/** The suggested project reference for a package, or '' when the package is unknown. */
+/** The suggested project reference for a HIVE offering key such as "retainer:growth", or '' when it is unknown. */
 export function suggestProjectRef(packageKey: string | null, year: number, existing: ReadonlyArray<string | null | undefined>): string {
-  const code = packageKey ? PACKAGE_CODES[packageKey] : undefined
+  const code = packageKey ? PACKAGE_CODES[packageKey.split(':').pop() ?? ''] : undefined
   return code ? nextReference(code, year, existing) : ''
 }
 

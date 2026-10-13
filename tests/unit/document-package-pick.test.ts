@@ -30,34 +30,20 @@ test('both database functions create locked lines only on a draft in the caller\
   assert.match(sql, /RATE_QUANTITY_INVALID/)
 })
 
-test('a NEW quote or invoice offers the Package dropdown, an existing one does not', () => {
+test('a new quote or invoice no longer starts from a package: no Package list, no database fill, project names come from HIVE', () => {
   const form = read('features', 'commercial-finance', 'components', 'phase-six-form.tsx')
-  assert.equal([...form.matchAll(/\{record \? null : <PackageSelect packages=\{options\.packages\} value=\{identity\.packageKey\} onChange=\{identity\.onPackage\} \/>\}/g)].length, 2, 'once for quotes and once for invoices, only when there is no record')
-  assert.match(form, /<select name="packageKey" value=\{value\} onChange=/)
-  assert.match(form, /Blank \(add the lines yourself on the next page\)/)
-  assert.match(form, /label="Retainer \(monthly fee plus one-time implementation fee\)"/)
-  assert.match(form, /label="Project \(fixed fee\)"/)
-})
-
-test('the save action fills a NEW draft from the package through the database function, with only a key from the browser', () => {
+  assert.doesNotMatch(form, /PackageSelect|name="packageKey"|rate-card/)
   const action = read('features', 'commercial-finance', 'actions', 'phase-six.ts')
-  assert.match(action, /const packageKey = !id && \(kind === "quote" \|\| kind === "invoice"\) \? optional\(form, "packageKey"\) : null;/, 'read only when creating a quote or invoice')
-  assert.match(action, /\/\^\[a-z0-9_\]\{1,60\}\$\/\.test\(packageKey\)/, 'the key is validated')
-  assert.match(action, /rpc\("fill_document_from_package", \{ p_kind: kind, p_document: result\.data\.id, p_package_key: packageKey \}\)/)
-  assert.match(action, /redirect\(`\$\{routes\[kind\]\}\/\$\{result\.data\.id\}\?notice=package_failed`\)/, 'a failed fill lands on the saved draft instead of keeping the form open, so it is not saved twice')
-  assert.match(action, /if \(packageKey\) values\.currency = "ZAR"/, 'a package makes the document a rand document')
-  assert.ok(action.indexOf('fill_document_from_package') > action.indexOf('.insert(values)'), 'filling happens after the draft is saved')
-})
-
-test('the package labels come from the rate card rows, with the implementation fee shown for a retainer', () => {
+  assert.doesNotMatch(action, /packageKey|fill_document_from_package|package_failed/)
   const query = read('features', 'commercial-finance', 'queries', 'phase-six.ts')
-  assert.match(query, /\.in\("item_kind", \["retainer_monthly", "retainer_implementation", "project"\]\)/)
-  assert.match(query, /\.not\("rate_key", "is", null\)/)
-  assert.match(query, /if \(implementation === undefined\) continue;/, 'a retainer without its implementation fee is not offered')
-  assert.match(query, /packages: packageOptions\(rateRows\.error \? \[\] : rateRows\.data \?\? \[\]\)/, 'a failed rate read only removes the choices')
+  assert.doesNotMatch(query, /price_list_items|packageOptions/)
+  assert.match(query, /fetchHiveOfferings\(\)/)
+  for (const page of [['app', '(unison)', 'commercial', 'quotes', '[quoteId]', 'page.tsx'], ['app', '(unison)', 'finance', 'invoices', '[invoiceId]', 'page.tsx']]) {
+    assert.doesNotMatch(read(...page), /package_failed|searchParams/)
+  }
 })
 
-test('the rate card picker is gone: lines are added from HIVE offerings, the price list or by hand', () => {
+test('the rate card picker is gone: lines are added from HIVE offerings or by hand', () => {
   const editor = read('features', 'documents', 'components', 'line-editor.tsx')
   assert.doesNotMatch(editor, /RateCardPicker|addRateCardLineAction|Add from the rate card/)
   assert.match(editor, /\{locked \? null : <HiveOfferingPicker /)
@@ -67,5 +53,5 @@ test('the rate card picker is gone: lines are added from HIVE offerings, the pri
     assert.match(source, /hiveOfferings=\{hiveOfferings\}/)
   }
   assert.doesNotMatch(read('features', 'documents', 'actions', 'lines.ts'), /add_rate_card_line/)
-  assert.doesNotMatch(read('features', 'documents', 'queries', 'list-price-items.ts'), /listRateCardItems/)
+  assert.doesNotMatch(read('features', 'documents', 'queries', 'list-hive-offerings.ts'), /listRateCardItems/)
 })

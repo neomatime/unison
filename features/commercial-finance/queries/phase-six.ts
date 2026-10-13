@@ -4,7 +4,8 @@ import { getSessionContext } from "@/lib/auth/get-session-context";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { isUuid } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/format-money";
-import { packageName } from "@/features/billing/rate-card";
+import { hiveOfferingDisplayName } from "@/features/documents/hive-offerings";
+import { fetchHiveOfferings } from "@/lib/integrations/hive-offerings";
 import { referenceYear } from "../document-references";
 import {
   collectNameIds,
@@ -31,8 +32,8 @@ export type PhaseSixOptions = {
   leads: SelectOption[];
   opportunities: SelectOption[];
   quotes: SelectOption[];
-  /** The packages a new quote or invoice can start from (id = the package key), priced from the rate card rows. */
-  packages: { retainers: SelectOption[]; projects: SelectOption[] };
+  /** HIVE's retainers and projects (key = the HIVE offering key), for the Project name list on a new quote or invoice. */
+  projectNames: Array<{ key: string; name: string }>;
   /** Project and client references already used on quotes and invoices this year, so the next suggested number is free. */
   references: { projectRefs: string[]; clientRefs: string[] };
   /** What each quote prints, so an invoice raised from it can carry the same project name and references. */
@@ -62,24 +63,17 @@ const nameFor = (map: Map<string, string>, id: unknown, fallback = "Unassigned")
 
 const rand = (amount: unknown) => formatCurrency(Number(amount), "ZAR");
 
-/** "Growth Partner: R150 000 a month + R150 000 one-time implementation" and "Digital Presence: R45 000", from the rate card rows. */
-function packageOptions(rows: Array<{ item_kind: string; package_key: string | null; unit_price: number | string }>): PhaseSixOptions["packages"] {
-  const price = (kind: string, key: string | null) => rows.find((row) => row.item_kind === kind && row.package_key === key)?.unit_price;
-  const retainers: SelectOption[] = [];
-  const projects: SelectOption[] = [];
-  for (const row of rows) {
-    if (!row.package_key) continue;
-    const name = packageName(row.package_key);
-    if (row.item_kind === "retainer_monthly") {
-      const implementation = price("retainer_implementation", row.package_key);
-      // Without its implementation fee a retainer cannot be filled (the database refuses), so it is not offered.
-      if (implementation === undefined) continue;
-      retainers.push({ id: row.package_key, label: `${name}: ${rand(row.unit_price)} a month + ${rand(implementation)} one-time implementation` });
-    } else if (row.item_kind === "project") {
-      projects.push({ id: row.package_key, label: `${name}: ${rand(row.unit_price)}` });
-    }
+/** The HIVE retainer and project names, in the feed's order. A HIVE outage only empties the suggestions; the name can still be typed. */
+async function projectNameChoices(): Promise<PhaseSixOptions["projectNames"]> {
+  try {
+    const feed = await fetchHiveOfferings();
+    return feed.offerings
+      .filter((offering) => offering.status === "active" && (offering.kind === "retainer" || offering.kind === "project"))
+      .map((offering) => ({ key: offering.key, name: hiveOfferingDisplayName(offering) }));
+  } catch {
+    console.error("[phase-six] HIVE offerings unavailable for the project name list");
+    return [];
   }
-  return { retainers, projects };
 }
 
 function referenceLists(rows: Array<{ project_ref: string | null; client_ref: string | null }>): PhaseSixOptions["references"] {
@@ -103,7 +97,7 @@ export async function getPhaseSixOptions(): Promise<PhaseSixOptions> {
   const organizationId = organization.id;
   const year = referenceYear();
   const usedThisYear = `project_ref.like.*-${year}-*,client_ref.like.*-${year}-*`;
-  const [members, clients, projects, vendors, leads, opportunities, quotes, settings, rateRows, quoteRefs, invoiceRefs, contacts] = await Promise.all([
+  const [members, clients, projects, vendors, leads, opportunities, quotes, settings, projectNames, quoteRefs, invoiceRefs, contacts] = await Promise.all([
     db.from("team_members").select("id,full_name").eq("organization_id", organizationId).eq("status", "Active").is("archived_at", null).order("full_name"),
     db.from("clients").select("id,name").eq("organization_id", organizationId).is("archived_at", null).order("name"),
     db.from("projects").select("id,name").eq("organization_id", organizationId).is("archived_at", null).order("name"),
@@ -112,7 +106,7 @@ export async function getPhaseSixOptions(): Promise<PhaseSixOptions> {
     db.from("sales_opportunities").select("id,name").eq("organization_id", organizationId).is("archived_at", null).order("name"),
     db.from("quotes").select("id,quote_number,client_name,contact_name,project_name,project_ref,client_ref").eq("organization_id", organizationId).is("archived_at", null).order("quote_number"),
     db.from("organization_settings").select("default_quote_terms,default_payment_terms").eq("organization_id", organizationId).maybeSingle(),
-    db.from("price_list_items").select("item_kind,package_key,unit_price").eq("organization_id", organizationId).in("item_kind", ["retainer_monthly", "retainer_implementation", "project"]).not("rate_key", "is", null).is("archived_at", null).order("unit_price"),
+    projectNameChoices(),
     db.from("quotes").select("project_ref,client_ref").eq("organization_id", organizationId).or(usedThisYear).limit(1000),
     db.from("invoices").select("project_ref,client_ref").eq("organization_id", organizationId).or(usedThisYear).limit(1000),
     db.from("contacts").select("client_id,full_name").eq("organization_id", organizationId).not("client_id", "is", null).is("archived_at", null).order("is_primary", { ascending: false }).order("full_name").limit(1000),
@@ -133,8 +127,7 @@ export async function getPhaseSixOptions(): Promise<PhaseSixOptions> {
     quoteDetails: Object.fromEntries((quotes.data ?? []).map((row: any) => [row.id, { projectName: row.project_name ?? "", projectRef: row.project_ref ?? "", clientRef: row.client_ref ?? "", contactName: row.contact_name ?? "" }])),
     // A failed contacts read only means an empty contact list; the name can still be typed.
     contactsByClient: contactLists(contacts.error ? [] : contacts.data ?? []),
-    // A failed rate card read only means no package choices; it must not break the lead, expense or forecast forms.
-    packages: packageOptions(rateRows.error ? [] : rateRows.data ?? []),
+    projectNames,
     defaults: {
       quoteTerms: settings.data?.default_quote_terms ?? null,
       paymentTerms: settings.data?.default_payment_terms ?? null,

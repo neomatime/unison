@@ -3,7 +3,7 @@ import { DocumentActions } from '@/features/documents/components/document-action
 import { EmailSection } from '@/features/documents/components/email-section'
 import { LineEditor } from '@/features/documents/components/line-editor'
 import { getDocument } from '@/features/documents/queries/get-document'
-import { listHiveOfferings, listPriceItems } from '@/features/documents/queries/list-price-items'
+import { listHiveOfferings } from '@/features/documents/queries/list-hive-offerings'
 import { isDraftStatus } from '@/features/documents/vocabulary'
 import { PaymentsSection } from '@/features/payments/components/payments-section'
 import { listPayments } from '@/features/payments/queries/list-payments'
@@ -20,7 +20,6 @@ async function InvoiceLines({ invoiceId }: { invoiceId: string }) {
   const bundle = await getDocument('invoice', invoiceId)
   if (!bundle) return null
   const locked = !isDraftStatus('invoice', bundle.record.status)
-  const priceItems = locked ? [] : await listPriceItems()
   const hiveOfferings = locked ? { offerings: [], error: null } : await listHiveOfferings()
   const { record } = bundle
   return (
@@ -28,7 +27,6 @@ async function InvoiceLines({ invoiceId }: { invoiceId: string }) {
       kind="invoice"
       documentId={invoiceId}
       lines={bundle.lines}
-      priceItems={priceItems}
       hiveOfferings={hiveOfferings}
       locked={locked}
       currency={String(record.currency ?? 'ZAR')}
@@ -37,14 +35,9 @@ async function InvoiceLines({ invoiceId }: { invoiceId: string }) {
   )
 }
 
-async function InvoiceWorkspace({ invoiceId, notice }: { invoiceId: string; notice?: string | string[] }) {
+async function InvoiceWorkspace({ invoiceId }: { invoiceId: string }) {
   return (
     <>
-      {notice === 'package_failed' ? (
-        <p role="alert" className="mb-4 border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-          The invoice was saved without its package lines. Use "Add from the rate card" below to add them.
-        </p>
-      ) : null}
       <InvoiceLines invoiceId={invoiceId} />
       <PaymentsSection invoiceId={invoiceId} />
       <EmailSection kind="invoice" id={invoiceId} />
@@ -52,15 +45,14 @@ async function InvoiceWorkspace({ invoiceId, notice }: { invoiceId: string; noti
   )
 }
 
-export default async function Page({ params, searchParams }: { params: Promise<{ invoiceId: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+export default async function Page({ params }: { params: Promise<{ invoiceId: string }> }) {
   const { invoiceId } = await params
-  const { notice } = await searchParams
   return (
     <PhaseSixDetail
       kind="invoice"
       id={invoiceId}
       actions={<InvoiceHeaderActions invoiceId={invoiceId} />}
-      after={<InvoiceWorkspace invoiceId={invoiceId} notice={notice} />}
+      after={<InvoiceWorkspace invoiceId={invoiceId} />}
     />
   )
 }

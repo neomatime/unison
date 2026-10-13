@@ -34,7 +34,7 @@ test('every write scopes by organisation and no action touches audit data or fix
     const source = read('actions', name)
     assert.doesNotMatch(source, /audit_events|fixtures?\/|mocks?\//, name)
   }
-  for (const name of ['company.ts', 'price-list.ts', 'lines.ts']) {
+  for (const name of ['company.ts', 'lines.ts']) {
     assert.match(read('actions', name), /\.eq\('organization_id', organization\.id\)|organization_id: organization\.id/, `${name} must scope by organisation`)
   }
 })
@@ -76,12 +76,6 @@ test('saving the company details also refreshes the document pages that print th
   const source = read('actions', 'company.ts')
   assert.match(source, /revalidatePath\('\/settings\/company'\)/)
   assert.match(source, /revalidateDocumentPages\(\)/, 'a draft document prints the live company details')
-})
-
-test('a price item that is archived cannot be opened for editing', () => {
-  const source = read('queries', 'list-price-items.ts')
-  const getter = source.slice(source.indexOf('export async function getPriceItem'))
-  assert.match(getter, /\.is\('archived_at', null\)/)
 })
 
 test('getDocument is wrapped in cache() so one page loads a document once', () => {

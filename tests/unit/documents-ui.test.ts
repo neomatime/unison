@@ -129,7 +129,7 @@ const component = (name: string) => read('features', 'documents', 'components', 
 const isClientModule = (source: string) => /^\s*['"]use client['"]/.test(source)
 
 test('the long forms call their action by hand so a failed save keeps what was typed', () => {
-  for (const name of ['company-details-form', 'price-item-form']) {
+  for (const name of ['company-details-form']) {
     const source = component(name)
     assert.ok(isClientModule(source), `${name} uses hooks`)
     assert.doesNotMatch(source, /<form\s+action=/, `${name}: React resets a <form action> after it runs`)
@@ -146,18 +146,10 @@ test('only an owner or admin sees editable company details, and the page is a se
   assert.doesNotMatch(page, /^\s*['"]use client['"]/)
 })
 
-test('the price list page reads only valid ids, and archives instead of deleting', () => {
-  const page = read('app', '(unison)', 'settings', 'price-list', 'page.tsx')
-  assert.match(page, /isUuid\(/)
-  const screen = component('price-list-screen')
-  assert.match(screen, /archivePriceItemAction/)
-  assert.doesNotMatch(screen, /delete/i)
-})
-
-test('the organisation profile links to the company details and the price list', () => {
+test('the organisation profile links to the company details, and the price list is gone', () => {
   const screen = read('features', 'organizations', 'components', 'organization-profile-screen.tsx')
   assert.match(screen, /href="\/settings\/company"/)
-  assert.match(screen, /href="\/settings\/price-list"/)
+  assert.doesNotMatch(screen, /price-list/)
   assert.match(screen, /Additional defaults, permissions and policies are not available in this release\./, 'the existing sentence stays')
 })
 
@@ -179,11 +171,11 @@ test('the line editor is a client module whose forms keep typed values and whose
   assert.match(source, /locked \? LOCKED_NOTE\[kind\]/, 'the note depends on the kind of document')
 })
 
-test('the line editor offers the price list and fills the line from it, but a free-text line stays possible', () => {
+test('the line editor adds lines from HIVE offerings or by hand, with no price list', () => {
   const source = component('line-editor')
-  assert.match(source, /Fill from the price list/)
-  assert.match(source, /priceListItemId/)
-  assert.match(source, /One-off line/)
+  assert.doesNotMatch(source, /Fill from the price list|priceItems/)
+  assert.match(source, /HiveOfferingPicker/)
+  assert.match(source, /aria-label="Unit price"/, 'a free-text line stays possible')
 })
 
 test('the Send, Issue and Duplicate buttons are server-rendered and confirm before they act', () => {

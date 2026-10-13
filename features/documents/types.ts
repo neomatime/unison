@@ -33,20 +33,6 @@ export type CompanySettings = {
   header_image_path: string | null
 }
 
-export type PriceItem = {
-  id: string
-  title: string
-  description: string | null
-  unit_price: number | string
-  vat_code: string
-  archived_at: string | null
-  rate_key: string | null
-  item_kind: string | null
-  credits: number | string | null
-  initiative_limit: number | null
-  rate_status: string | null
-}
-
 export type DocumentLine = {
   id: string
   position: number

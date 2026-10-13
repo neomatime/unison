@@ -8,7 +8,7 @@ import { formatCurrency } from '@/lib/utils/format-money'
 import { addLineAction, moveLineAction, removeLineAction, updateLineAction } from '../actions/lines'
 import { HiveOfferingPicker } from './hive-offering-picker'
 import { formatQuantity } from '../document-view'
-import type { DocumentLine, HiveOfferingsResult, PriceItem } from '../types'
+import type { DocumentLine, HiveOfferingsResult } from '../types'
 import { VAT_CODES, VAT_LABELS, type DocumentKind, type VatCode } from '../vocabulary'
 
 const field = 'h-10 w-full rounded-none border border-border bg-background px-3 text-sm'
@@ -21,12 +21,11 @@ const LOCKED_NOTE: Record<DocumentKind, string> = {
 type Totals = { subtotal: number | string; tax: number | string; total: number | string; vatRate: number | string }
 
 export function LineEditor({
-  kind, documentId, lines, priceItems, hiveOfferings, locked, currency, totals,
+  kind, documentId, lines, hiveOfferings, locked, currency, totals,
 }: {
   kind: DocumentKind
   documentId: string
   lines: DocumentLine[]
-  priceItems: PriceItem[]
   hiveOfferings: HiveOfferingsResult
   locked: boolean
   currency: string
@@ -56,7 +55,7 @@ export function LineEditor({
         <dd className="text-right font-semibold text-foreground">{money(totals.total)}</dd>
       </dl>
       {locked ? null : <HiveOfferingPicker kind={kind} documentId={documentId} result={hiveOfferings} currency={currency} />}
-      {locked ? null : <AddLineForm kind={kind} documentId={documentId} priceItems={priceItems} />}
+      {locked ? null : <AddLineForm kind={kind} documentId={documentId} />}
     </WorkspaceSection>
   )
 }
@@ -150,9 +149,9 @@ function EditLineForm({ kind, line, onDone }: { kind: DocumentKind; line: Docume
   )
 }
 
-const EMPTY = { title: '', description: '', quantity: '1', unitPrice: '', vatCode: 'standard', priceListItemId: '' }
+const EMPTY = { title: '', description: '', quantity: '1', unitPrice: '', vatCode: 'standard' }
 
-function AddLineForm({ kind, documentId, priceItems }: { kind: DocumentKind; documentId: string; priceItems: PriceItem[] }) {
+function AddLineForm({ kind, documentId }: { kind: DocumentKind; documentId: string }) {
   const [state, run, pending] = useActionState(addLineAction.bind(null, kind, documentId), undefined)
   const [, startTransition] = useTransition()
   const [fields, setFields] = useState(EMPTY)
@@ -162,22 +161,6 @@ function AddLineForm({ kind, documentId, priceItems }: { kind: DocumentKind; doc
   useEffect(() => {
     if (state?.success) setFields(EMPTY)
   }, [state])
-
-  function pick(id: string) {
-    const item = priceItems.find((candidate) => candidate.id === id)
-    if (!item) {
-      set('priceListItemId', '')
-      return
-    }
-    setFields((current) => ({
-      ...current,
-      priceListItemId: item.id,
-      title: item.title,
-      description: item.description ?? '',
-      unitPrice: String(item.unit_price),
-      vatCode: item.vat_code,
-    }))
-  }
 
   return (
     <form
@@ -189,13 +172,6 @@ function AddLineForm({ kind, documentId, priceItems }: { kind: DocumentKind; doc
       }}
       className="grid gap-3 border-t border-border p-5 md:grid-cols-[2fr_1fr_1fr_1fr]"
     >
-      <label className="md:col-span-4">
-        <span className="sr-only">Fill from the price list</span>
-        <select aria-label="Fill from the price list" value={fields.priceListItemId} onChange={(event) => pick(event.target.value)} className={field}>
-          <option value="">One-off line (type it below)</option>
-          {priceItems.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}
-        </select>
-      </label>
       <input aria-label="Title" placeholder="Title" required value={fields.title} onChange={(event) => set('title', event.target.value)} className={field} />
       <input aria-label="Quantity" placeholder="Quantity" required inputMode="decimal" value={fields.quantity} onChange={(event) => set('quantity', event.target.value)} className={field} />
       <input aria-label="Unit price" placeholder="Unit price" required inputMode="decimal" value={fields.unitPrice} onChange={(event) => set('unitPrice', event.target.value)} className={field} />

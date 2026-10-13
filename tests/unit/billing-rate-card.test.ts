@@ -4,7 +4,6 @@ import { join } from 'node:path'
 import test from 'node:test'
 
 import { partnerLevels } from '../../config/partner-levels.ts'
-import { firstInvoiceIncVat, monthlyIncVat, roundCents, withVat } from '../../features/billing/billing-math.ts'
 import { PROJECTS, RATE_CARD, TIERS, packageName, rateItem } from '../../features/billing/rate-card.ts'
 
 test('the rate card has the 28 items the workbook defines, with unique keys', () => {
@@ -80,26 +79,6 @@ test('support services: price, credits and the project each belongs to', () => {
     assert.equal(item.packageKey, project, key)
     assert.equal(item.kind, 'support')
   }
-})
-
-test('first invoice and month-2-onwards amounts including VAT match the workbook to the cent', () => {
-  assert.deepEqual(
-    TIERS.map((tier) => [tier.key, firstInvoiceIncVat(tier.key), monthlyIncVat(tier.key)]),
-    [
-      ['signature', 230000, 115000],
-      ['growth', 345000, 172500],
-      ['private', 460000, 230000],
-      ['reserve', 690000, 345000],
-    ],
-  )
-  assert.equal(firstInvoiceIncVat('nonsense'), null)
-  assert.equal(monthlyIncVat('nonsense'), null)
-})
-
-test('VAT arithmetic rounds to the cent', () => {
-  assert.equal(withVat(100000), 115000)
-  assert.equal(withVat(1666.67), 1916.67)
-  assert.equal(roundCents(459999.9999999999), 460000)
 })
 
 test('the four retainer prices agree with the partner levels the provisioning wizard uses', () => {
