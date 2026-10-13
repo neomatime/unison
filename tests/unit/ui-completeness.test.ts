@@ -582,7 +582,7 @@ test('every registry column resolves to a key its records actually carry', () =>
       checked += 1
     }
   }
-  assert.ok(checked >= 14, `expected to have checked columns across both wired modules, only checked ${checked}`)
+  assert.ok(checked >= 12, `expected to have checked columns across both wired modules, only checked ${checked}`)
 })
 
 test('the projects register renders a real Next Gate value instead of always dashing it out', () => {

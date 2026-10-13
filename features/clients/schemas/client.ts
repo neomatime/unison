@@ -9,7 +9,6 @@ export const clientInputSchema = z.object({
   contactName: optionalText,
   contactEmail: z.string().email('Enter a valid email address.').optional().or(z.literal('')).transform((v) => v || null),
   contactPhone: optionalText,
-  service: optionalText,
   billingEmail: z.string().email('Enter a valid billing email.').optional().or(z.literal('')).transform((v) => v || null),
   addressLine1: optionalText,
   addressLine2: optionalText,

@@ -7,13 +7,14 @@ import { WorkspaceHeader } from '@/components/shared/workspace-header'
 import { EntitySelectField, SelectField, TextAreaField, TextField } from '@/components/ui/form-fields'
 import { FormError, FormFooter, FormSection } from '@/components/ui/form-layout'
 import type { ClientRecord } from '../queries/get-client'
+import { ENGAGEMENT_LABELS } from '../engagement'
 
 type ActionState = { error?: string } | undefined
 type ClientFormAction = (prevState: ActionState, formData: FormData) => Promise<ActionState>
 
 const statusOptions = ['Onboarding', 'Active', 'Archived'] as const
 const healthOptions = ['New', 'Healthy', 'Watch', 'Stable', 'At Risk'] as const
-const engagementOptions = [{ id: 'Retainer', name: 'Retainer' }, { id: 'Project', name: 'Project' }]
+const engagementOptions = Object.entries(ENGAGEMENT_LABELS).map(([id, name]) => ({ id, name }))
 
 export function ClientForm({ mode, client, action }: { mode: 'create' | 'edit'; client?: ClientRecord; action: ClientFormAction }) {
   const [state, formAction, pending] = useActionState(action, undefined)
@@ -37,8 +38,7 @@ export function ClientForm({ mode, client, action }: { mode: 'create' | 'edit'; 
         <TextField name="name" label="Company name" required defaultValue={client?.name} />
         <TextField name="industry" label="Industry" defaultValue={client?.industry} />
         <TextField name="website" label="Website" defaultValue={client?.website} />
-        <TextField name="service" label="Primary engagement" defaultValue={client?.service} />
-        <EntitySelectField name="engagementType" label="Engagement type" options={engagementOptions} defaultValue={client?.engagement_type} emptyLabel="Not set" />
+        <EntitySelectField name="engagementType" label="Primary engagement" options={engagementOptions} defaultValue={client?.engagement_type} emptyLabel="Not set" />
       </FormSection>
 
       <FormSection title="Primary contact" description="The main relationship contact for this client.">

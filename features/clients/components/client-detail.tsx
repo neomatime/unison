@@ -10,6 +10,7 @@ import { RecordWorkspaceSections } from '@/features/crm-workspace/components/rec
 import type { RecordWorkspace } from '@/features/crm-workspace/types'
 import { formatDate } from '@/lib/utils'
 import { archiveClientAction } from '../actions/archive-client'
+import { engagementLabel } from '../engagement'
 import { ClientDocuments } from './client-documents'
 import type { ClientRecord } from '../queries/get-client'
 
@@ -58,8 +59,6 @@ export function ClientDetail({ client, workspace, confirmArchive, archiveError }
       <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <SummaryTile label="Status" value={client.status} />
         <SummaryTile label="Client health" value={client.health} />
-        {/* No projects table yet — an em dash, not a fabricated 0. */}
-        <SummaryTile label="Active projects" value={null} />
         <SummaryTile label="Last activity" value={formatDate(client.updated_at)} />
       </div>
       {!archived && confirmArchive ? (
@@ -83,7 +82,7 @@ export function ClientDetail({ client, workspace, confirmArchive, archiveError }
           <DetailTile label="Primary contact" value={client.contact_name} />
           <DetailTile label="Contact email" value={client.contact_email} />
           <DetailTile label="Contact phone" value={client.contact_phone} />
-          <DetailTile label="Primary engagement" value={client.service} />
+          <DetailTile label="Primary engagement" value={engagementLabel(client.engagement_type)} />
           <DetailTile label="Billing email" value={client.billing_email} />
         </div>
         {client.notes ? (
