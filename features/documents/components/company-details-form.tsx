@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useActionState, useState, useTransition } from 'react'
 
 import { WorkspaceHeader } from '@/components/shared/workspace-header'
@@ -8,7 +9,7 @@ import { FormError, FormFooter, FormSection } from '@/components/ui/form-layout'
 import { saveCompanyDetailsAction } from '../actions/company'
 import type { CompanySettings } from '../types'
 
-export function CompanyDetailsForm({ settings, canEdit }: { settings: CompanySettings | null; canEdit: boolean }) {
+export function CompanyDetailsForm({ settings, canEdit, termsManaged = { quote: false, invoice: false } }: { settings: CompanySettings | null; canEdit: boolean; termsManaged?: { quote: boolean; invoice: boolean } }) {
   const [state, run, pending] = useActionState(saveCompanyDetailsAction, undefined)
   const [, startTransition] = useTransition()
   const [dirty, setDirty] = useState(false)
@@ -68,8 +69,16 @@ export function CompanyDetailsForm({ settings, canEdit }: { settings: CompanySet
             <TextField name="vatRate" label="VAT rate (%)" defaultValue={value('vat_rate', '15')} />
             <TextField name="defaultQuoteValidDays" label="Quotes are valid for (days)" defaultValue={value('default_quote_valid_days', '30')} />
             <TextField name="defaultPaymentDays" label="Invoices are due after (days)" defaultValue={value('default_payment_days', '30')} />
-            <TextAreaField name="defaultQuoteTerms" label="Default quote terms (one per line)" defaultValue={value('default_quote_terms')} className="md:col-span-2" />
-            <TextAreaField name="defaultPaymentTerms" label="Default payment terms" defaultValue={value('default_payment_terms')} className="md:col-span-2" />
+            {termsManaged.quote ? (
+              <ManagedTerms name="defaultQuoteTerms" label="Quote terms" current={value('default_quote_terms')} />
+            ) : (
+              <TextAreaField name="defaultQuoteTerms" label="Default quote terms (one per line)" defaultValue={value('default_quote_terms')} className="md:col-span-2" />
+            )}
+            {termsManaged.invoice ? (
+              <ManagedTerms name="defaultPaymentTerms" label="Payment terms" current={value('default_payment_terms')} />
+            ) : (
+              <TextAreaField name="defaultPaymentTerms" label="Default payment terms" defaultValue={value('default_payment_terms')} className="md:col-span-2" />
+            )}
             <TextAreaField name="quoteClosingText" label="Closing text on a quote (“Next steps”)" rows={3} defaultValue={value('quote_closing_text')} className="md:col-span-2" />
             <TextAreaField name="invoiceClosingText" label="Closing text on an invoice (“Thank you”)" rows={3} defaultValue={value('invoice_closing_text')} className="md:col-span-2" />
           </FormSection>
@@ -87,5 +96,18 @@ export function CompanyDetailsForm({ settings, canEdit }: { settings: CompanySet
         {canEdit ? <FormFooter cancelHref="/settings" submitLabel="Save company details" pending={pending} /> : null}
       </form>
     </>
+  )
+}
+
+/** The default text box is retired once an approved company template exists; the saved text is kept as it is. */
+function ManagedTerms({ name, label, current }: { name: string; label: string; current: string }) {
+  return (
+    <div className="md:col-span-2 text-sm">
+      <input type="hidden" name={name} value={current} />
+      <p>
+        {label} now come from the approved company-wide template.{' '}
+        <Link href="/settings/terms" className="underline">Manage them under Commercial terms</Link>.
+      </p>
+    </div>
   )
 }

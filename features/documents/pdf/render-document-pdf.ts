@@ -161,12 +161,26 @@ function table(view: DocumentView) {
 }
 
 function termsAndTotals(view: DocumentView) {
-  const terms = view.terms.length
+  const inclusions = view.inclusions.length
+    ? [
+        h(View, { style: s({ width: mm(14), height: mm(0.6), backgroundColor: INK }) }),
+        h(Text, { style: s({ marginTop: 8, fontSize: 8, letterSpacing: 2 }) }, upper('Service inclusions')),
+        ...view.inclusions.map((item) =>
+          h(
+            View,
+            { style: s({ flexDirection: 'row', marginTop: 4 }) },
+            h(Text, { style: s({ width: 12, flexShrink: 0, fontSize: 8.5 }) }, '•'),
+            h(Text, { style: s({ flexGrow: 1, flexShrink: 1, flexBasis: 0, fontSize: 8.5 }) }, t(item)),
+          ),
+        ),
+      ]
+    : []
+  const terms = view.terms.length || view.inclusions.length
     ? h(
         View,
         { style: s({ flexGrow: 1, flexShrink: 1, flexBasis: 0, paddingRight: mm(8) }) },
-        h(View, { style: s({ width: mm(14), height: mm(0.6), backgroundColor: INK }) }),
-        h(Text, { style: s({ marginTop: 8, fontSize: 8, letterSpacing: 2 }) }, upper(view.termsHeading)),
+        ...inclusions,
+        ...(view.terms.length ? [h(View, { style: s({ width: mm(14), height: mm(0.6), backgroundColor: INK, marginTop: view.inclusions.length ? 8 : 0 }) }), h(Text, { style: s({ marginTop: 8, fontSize: 8, letterSpacing: 2 }) }, upper(view.termsHeading))] : []),
         ...view.terms.map((term, index) =>
           view.termsNumbered
             ? h(
@@ -188,7 +202,7 @@ function termsAndTotals(view: DocumentView) {
     )
   return h(
     View,
-    { wrap: !short(...view.terms), style: s({ flexDirection: 'row', marginTop: mm(5), paddingHorizontal: mm(12) }) },
+    { wrap: !short(...view.terms, ...view.inclusions), style: s({ flexDirection: 'row', marginTop: mm(5), paddingHorizontal: mm(12) }) },
     terms,
     h(
       View,

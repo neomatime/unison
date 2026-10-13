@@ -5,6 +5,7 @@ import { createServerSupabase } from "@/lib/supabase/server";
 import { isUuid } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/format-money";
 import { packageName } from "@/features/billing/rate-card";
+import { companyTermsManaged } from "@/features/terms/queries/company-terms";
 import { referenceYear } from "../document-references";
 import {
   collectNameIds,
@@ -120,6 +121,7 @@ export async function getPhaseSixOptions(): Promise<PhaseSixOptions> {
   for (const result of [members, clients, projects, vendors, leads, opportunities, quotes, settings]) {
     if (result.error) throw result.error;
   }
+  const managed = await companyTermsManaged(db, organizationId);
   return {
     members: (members.data ?? []).map((row: any) => ({ id: row.id, label: row.full_name })),
     clients: (clients.data ?? []).map((row: any) => ({ id: row.id, label: row.name })),
@@ -135,9 +137,10 @@ export async function getPhaseSixOptions(): Promise<PhaseSixOptions> {
     contactsByClient: contactLists(contacts.error ? [] : contacts.data ?? []),
     // A failed rate card read only means no package choices; it must not break the lead, expense or forecast forms.
     packages: packageOptions(rateRows.error ? [] : rateRows.data ?? []),
+    // Once an approved company-wide template is in force, new documents get their terms from Fill terms, not from the old text box.
     defaults: {
-      quoteTerms: settings.data?.default_quote_terms ?? null,
-      paymentTerms: settings.data?.default_payment_terms ?? null,
+      quoteTerms: managed.quote ? null : settings.data?.default_quote_terms ?? null,
+      paymentTerms: managed.invoice ? null : settings.data?.default_payment_terms ?? null,
     },
   };
 }

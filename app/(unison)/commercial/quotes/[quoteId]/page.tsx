@@ -8,6 +8,7 @@ import { QuoteInvoices } from '@/features/documents/components/quote-invoices'
 import { getDocument } from '@/features/documents/queries/get-document'
 import { listPriceItems, listRateCardItems } from '@/features/documents/queries/list-price-items'
 import { isDraftStatus } from '@/features/documents/vocabulary'
+import { DocumentTermsPanel } from '@/features/terms/components/document-terms-panel'
 
 // Loaded inside `actions` and `after` so PhaseSixDetail has already called notFound() for a missing record:
 // getRecordWorkspace returns empty facts for an id that does not exist rather than failing.
@@ -47,6 +48,7 @@ async function QuoteWorkspace({ quoteId, notice }: { quoteId: string; notice?: s
         </p>
       ) : null}
       <QuoteLines quoteId={quoteId} />
+      <DocumentTermsPanel kind="quote" id={quoteId} />
       <EmailSection kind="quote" id={quoteId} />
       <QuoteInvoices quoteId={quoteId} />
       <RecordWorkspaceSections workspace={workspace} sections={['timeline']} />
