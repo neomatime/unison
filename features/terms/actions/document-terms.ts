@@ -20,7 +20,7 @@ export async function fillDocumentTermsAction(kind: string, id: string, _previou
 
   // A quote's offerings come from the picker; an invoice has no picker and uses the ones it already carries.
   const submitted = form.getAll('offering').map(String).filter((token) => OFFERING.test(token))
-  const state = await getDocumentTermsState(kind, bundle.record, bundle.lines)
+  const state = await getDocumentTermsState(kind, bundle.record)
   const offerings = kind === 'quote' && form.has('offeringsShown') ? submitted : state.offerings
 
   const { resolved, offerings: used } = await resolveDocumentTerms(kind, offerings)

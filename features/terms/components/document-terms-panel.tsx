@@ -21,7 +21,7 @@ export async function DocumentTermsPanel({ kind, id }: { kind: DocumentKind; id:
   const { record } = bundle
   const draft = isDraftStatus(kind, record.status)
   const sources = (Array.isArray(record.terms_sources) ? record.terms_sources : []) as Array<{ templateId: string; version: number }>
-  const state = await getDocumentTermsState(kind, record, bundle.lines)
+  const state = await getDocumentTermsState(kind, record)
   const used = sourceSummary(sources, state.titles)
   const typed = String(record[kind === 'quote' ? 'terms' : 'payment_terms'] ?? '').trim() !== ''
   const accepted = kind === 'invoice' && record.quote_id ? sourceSummary(await acceptedQuoteSources(String(record.quote_id)), state.titles) : null

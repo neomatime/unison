@@ -6,7 +6,7 @@ import { EmailSection } from '@/features/documents/components/email-section'
 import { LineEditor } from '@/features/documents/components/line-editor'
 import { QuoteInvoices } from '@/features/documents/components/quote-invoices'
 import { getDocument } from '@/features/documents/queries/get-document'
-import { listPriceItems, listRateCardItems } from '@/features/documents/queries/list-price-items'
+import { listHiveOfferings } from '@/features/documents/queries/list-hive-offerings'
 import { isDraftStatus } from '@/features/documents/vocabulary'
 import { DocumentTermsPanel } from '@/features/terms/components/document-terms-panel'
 
@@ -21,16 +21,14 @@ async function QuoteLines({ quoteId }: { quoteId: string }) {
   const bundle = await getDocument('quote', quoteId)
   if (!bundle) return null
   const locked = !isDraftStatus('quote', bundle.record.status)
-  const priceItems = locked ? [] : await listPriceItems()
-  const rateItems = locked ? [] : await listRateCardItems()
+  const hiveOfferings = locked ? { offerings: [], error: null } : await listHiveOfferings()
   const { record } = bundle
   return (
     <LineEditor
       kind="quote"
       documentId={quoteId}
       lines={bundle.lines}
-      priceItems={priceItems}
-      rateItems={rateItems}
+      hiveOfferings={hiveOfferings}
       locked={locked}
       currency={String(record.currency ?? 'ZAR')}
       totals={{ subtotal: record.subtotal, tax: record.tax_amount, total: record.total_amount, vatRate: record.vat_rate }}
@@ -38,15 +36,10 @@ async function QuoteLines({ quoteId }: { quoteId: string }) {
   )
 }
 
-async function QuoteWorkspace({ quoteId, notice }: { quoteId: string; notice?: string | string[] }) {
+async function QuoteWorkspace({ quoteId }: { quoteId: string }) {
   const workspace = await getRecordWorkspace('quote', quoteId)
   return (
     <>
-      {notice === 'package_failed' ? (
-        <p role="alert" className="mb-4 border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-          The quote was saved without its package lines. Use "Add from the rate card" below to add them.
-        </p>
-      ) : null}
       <QuoteLines quoteId={quoteId} />
       <DocumentTermsPanel kind="quote" id={quoteId} />
       <EmailSection kind="quote" id={quoteId} />
@@ -56,15 +49,14 @@ async function QuoteWorkspace({ quoteId, notice }: { quoteId: string; notice?: s
   )
 }
 
-export default async function Page({ params, searchParams }: { params: Promise<{ quoteId: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+export default async function Page({ params }: { params: Promise<{ quoteId: string }> }) {
   const { quoteId } = await params
-  const { notice } = await searchParams
   return (
     <PhaseSixDetail
       kind="quote"
       id={quoteId}
       actions={<QuoteHeaderActions quoteId={quoteId} />}
-      after={<QuoteWorkspace quoteId={quoteId} notice={notice} />}
+      after={<QuoteWorkspace quoteId={quoteId} />}
     />
   )
 }

@@ -304,10 +304,6 @@ export function OrganisationSettingsLink() {
               <span className="block text-xs text-muted-foreground">Printed on quotes and invoices.</span>
             </li>
             <li>
-              <Link href="/settings/price-list" className="font-semibold text-brand hover:underline">Price list</Link>
-              <span className="block text-xs text-muted-foreground">Products and services to pick from.</span>
-            </li>
-            <li>
               <Link href="/settings/terms" className="font-semibold text-brand hover:underline">Commercial terms</Link>
               <span className="block text-xs text-muted-foreground">Standard terms for each offering.</span>
             </li>

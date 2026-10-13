@@ -1,4 +1,5 @@
 // How a quote or invoice gets its terms from the templates. Pure: no imports from the framework.
+// Which offerings a document is for is chosen on the document itself (the picker); nothing is derived from titles or lines.
 import type { ResolvedTerms, TermsSource } from './resolve-terms.ts'
 import { termsTargetsFor, type TermsTarget } from './selection.ts'
 
@@ -8,39 +9,12 @@ export type Offering = { kind: OfferingKind; key: string }
 const KEY = /^[a-z0-9_]{1,60}$/
 const OFFERING_KINDS: readonly string[] = ['retainer', 'project', 'support']
 
-/** "retainer.growth.monthly" -> retainer/growth; "project.top_up" and unknown shapes -> null. */
-export function offeringFromRateKey(rateKey: string | null | undefined): Offering | null {
-  const [kind, key] = (rateKey ?? '').split('.')
-  if (!OFFERING_KINDS.includes(kind) || !key || !KEY.test(key) || key === 'top_up') return null
-  return { kind: kind as OfferingKind, key }
-}
-
-const sameOffering = (a: Offering, b: Offering) => a.kind === b.kind && a.key === b.key
-
-/**
- * The offerings a document is for: the engagement's package when it has one, otherwise the ones its locked rate card
- * lines were added from. Order is kept and repeats are dropped. Never derived from a title.
- */
-export function offeringsForDocument(input: {
-  engagement: { kind: 'retainer' | 'project'; packageKey: string } | null
-  lines: Array<{ rateKey: string | null }>
-}): Offering[] {
-  const found: Offering[] = []
-  const add = (offering: Offering | null) => {
-    if (offering && !found.some((item) => sameOffering(item, offering))) found.push(offering)
-  }
-  if (input.engagement && KEY.test(input.engagement.packageKey)) {
-    add({ kind: input.engagement.kind, key: input.engagement.packageKey })
-    return found
-  }
-  for (const line of input.lines) add(offeringFromRateKey(line.rateKey))
-  return found
-}
-
 /** The offerings as stored on a document (`kind.key` text). Anything malformed is dropped. */
 export const offeringToken = (offering: Offering) => `${offering.kind}.${offering.key}`
 export function offeringFromToken(token: string): Offering | null {
-  return offeringFromRateKey(token)
+  const [kind, key, ...rest] = String(token).split('.')
+  if (rest.length > 0 || !OFFERING_KINDS.includes(kind) || !key || !KEY.test(key)) return null
+  return { kind: kind as OfferingKind, key }
 }
 
 /** The templates whose current version feeds the document, in layer order, without repeats. */

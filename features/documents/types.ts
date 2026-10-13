@@ -33,20 +33,6 @@ export type CompanySettings = {
   header_image_path: string | null
 }
 
-export type PriceItem = {
-  id: string
-  title: string
-  description: string | null
-  unit_price: number | string
-  vat_code: string
-  archived_at: string | null
-  rate_key: string | null
-  item_kind: string | null
-  credits: number | string | null
-  initiative_limit: number | null
-  rate_status: string | null
-}
-
 export type DocumentLine = {
   id: string
   position: number
@@ -56,17 +42,19 @@ export type DocumentLine = {
   unit_price: number | string
   vat_code: string
   line_amount: number | string
-  price_list_item_id: string | null
-  rate_locked: boolean
 }
 
-/** One item of the rate card, as the "Add from rate card" picker needs it. */
-export type RateCardItem = {
-  rate_key: string
-  item_kind: string
+/** One HIVE Origin offering, as the "Add from HIVE offerings" picker shows it. `price` is a rand amount excluding VAT, or null when HIVE has no approved rand price (projects). */
+export type HiveOfferingChoice = {
+  key: string
+  kind: string
+  name: string
+  /** The rate-card style title a line gets, for example "Signature Partner: monthly retainer". */
   title: string
   description: string | null
-  unit_price: number | string
-  credits: number | string | null
-  rate_status: string
+  price: number | null
+  billingPeriod: string | null
+  credits: string | null
 }
+
+export type HiveOfferingsResult = { offerings: HiveOfferingChoice[]; error: string | null }

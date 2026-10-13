@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { offeringFromRateKey, offeringsForDocument, planFill, sourceSummary, targetsForDocument } from '../../features/terms/document-terms.ts'
+import { offeringFromToken, planFill, sourceSummary, targetsForDocument } from '../../features/terms/document-terms.ts'
 import type { ResolvedTerms } from '../../features/terms/resolve-terms.ts'
 
 const resolved = (over: Partial<ResolvedTerms> = {}): ResolvedTerms => ({
@@ -13,27 +13,14 @@ const resolved = (over: Partial<ResolvedTerms> = {}): ResolvedTerms => ({
   ...over,
 })
 
-test('a rate key names its offering; top-ups and unknown shapes name none', () => {
-  assert.deepEqual(offeringFromRateKey('retainer.growth.monthly'), { kind: 'retainer', key: 'growth' })
-  assert.deepEqual(offeringFromRateKey('project.digital_presence'), { kind: 'project', key: 'digital_presence' })
-  assert.deepEqual(offeringFromRateKey('support.website_care'), { kind: 'support', key: 'website_care' })
-  assert.equal(offeringFromRateKey('project.top_up'), null)
-  assert.equal(offeringFromRateKey('credit.thing'), null)
-  assert.equal(offeringFromRateKey(null), null)
-  assert.equal(offeringFromRateKey('retainer.Bad Key.monthly'), null)
-})
-
-test('the engagement beats the lines', () => {
-  const found = offeringsForDocument({ engagement: { kind: 'retainer', packageKey: 'growth' }, lines: [{ rateKey: 'support.website_care' }] })
-  assert.deepEqual(found, [{ kind: 'retainer', key: 'growth' }])
-})
-
-test('without an engagement the locked lines give the offerings, in order, without repeats', () => {
-  const found = offeringsForDocument({
-    engagement: null,
-    lines: [{ rateKey: 'project.operating_model' }, { rateKey: null }, { rateKey: 'support.website_care' }, { rateKey: 'project.operating_model' }, { rateKey: 'project.top_up' }],
-  })
-  assert.deepEqual(found, [{ kind: 'project', key: 'operating_model' }, { kind: 'support', key: 'website_care' }])
+test('a stored offering token names its offering; anything malformed names none', () => {
+  assert.deepEqual(offeringFromToken('retainer.growth'), { kind: 'retainer', key: 'growth' })
+  assert.deepEqual(offeringFromToken('project.digital_presence'), { kind: 'project', key: 'digital_presence' })
+  assert.deepEqual(offeringFromToken('support.website_care'), { kind: 'support', key: 'website_care' })
+  assert.equal(offeringFromToken('retainer.growth.monthly'), null)
+  assert.equal(offeringFromToken('credit.thing'), null)
+  assert.equal(offeringFromToken('retainer.Bad Key'), null)
+  assert.equal(offeringFromToken(''), null)
 })
 
 test('targets start with company terms and add each offering once', () => {

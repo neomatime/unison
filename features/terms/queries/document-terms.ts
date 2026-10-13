@@ -2,8 +2,9 @@ import 'server-only'
 
 import { documentContext } from '@/features/documents/server-context'
 import type { DocumentKind } from '@/features/documents/vocabulary'
+import { fetchHiveOfferings } from '@/lib/integrations/hive-offerings'
 import { formatCurrency } from '@/lib/utils/format-money'
-import { offeringFromToken, offeringsForDocument, offeringToken, targetsForDocument, type Offering } from '../document-terms'
+import { offeringFromToken, offeringToken, targetsForDocument, type Offering } from '../document-terms'
 import { resolveTerms, type ResolvedLayer, type ResolvedTerms } from '../resolve-terms'
 import { appliesToKind, currentVersion, saToday } from '../selection'
 import { buildPlaceholderValues } from '../values'
@@ -16,36 +17,20 @@ export type DocumentTermsState = {
   titles: Record<string, string>
 }
 
-/** The offerings a document is for: the ones chosen on it, else what its engagement or locked rate card lines say. */
-async function offeringsOf(kind: DocumentKind, record: Record<string, any>, lines: Array<{ price_list_item_id: string | null }>): Promise<Offering[]> {
+/** The offerings chosen on a document, in the order they were chosen. */
+async function offeringsOf(kind: DocumentKind, record: Record<string, any>): Promise<Offering[]> {
   const { organization, db } = await documentContext()
   const table = kind === 'quote' ? 'quote_offerings' : 'invoice_offerings'
   const column = kind === 'quote' ? 'quote_id' : 'invoice_id'
   const stored = await db.from(table).select('offering_kind,offering_key').eq(column, record.id).eq('organization_id', organization.id).order('position')
   if (stored.error) throw stored.error
-  const chosen = (stored.data ?? []).map((row: any) => offeringFromToken(`${row.offering_kind}.${row.offering_key}`)).filter((item: Offering | null): item is Offering => item !== null)
-  if (chosen.length > 0) return chosen
-  let engagement: { kind: 'retainer' | 'project'; packageKey: string } | null = null
-  if (record.engagement_id) {
-    const found = await db.from('client_engagements').select('kind,package_key').eq('id', record.engagement_id).eq('organization_id', organization.id).maybeSingle()
-    if (found.error) throw found.error
-    if (found.data && (found.data.kind === 'retainer' || found.data.kind === 'project')) engagement = { kind: found.data.kind, packageKey: found.data.package_key }
-  }
-  const itemIds = lines.map((line) => line.price_list_item_id).filter((id): id is string => Boolean(id))
-  let rateKeys: Array<{ rateKey: string | null }> = []
-  if (!engagement && itemIds.length > 0) {
-    const items = await db.from('price_list_items').select('id,rate_key').eq('organization_id', organization.id).in('id', itemIds)
-    if (items.error) throw items.error
-    const byId = new Map<string, string | null>((items.data ?? []).map((row: any) => [row.id, row.rate_key]))
-    rateKeys = lines.map((line) => ({ rateKey: line.price_list_item_id ? (byId.get(line.price_list_item_id) ?? null) : null }))
-  }
-  return offeringsForDocument({ engagement, lines: rateKeys })
+  return (stored.data ?? []).map((row: any) => offeringFromToken(`${row.offering_kind}.${row.offering_key}`)).filter((item: Offering | null): item is Offering => item !== null)
 }
 
-export async function getDocumentTermsState(kind: DocumentKind, record: Record<string, any>, lines: Array<{ price_list_item_id: string | null }>): Promise<DocumentTermsState> {
+export async function getDocumentTermsState(kind: DocumentKind, record: Record<string, any>): Promise<DocumentTermsState> {
   const { organization, db } = await documentContext()
   const [offerings, templates] = await Promise.all([
-    offeringsOf(kind, record, lines),
+    offeringsOf(kind, record),
     db.from('terms_templates').select('id,target_kind,target_key,applies_to,title').eq('organization_id', organization.id),
   ])
   if (templates.error) throw templates.error
@@ -94,19 +79,33 @@ export async function resolveDocumentTerms(kind: DocumentKind, offeringTokens: s
   }
 
   const retainer = offerings.find((item) => item.kind === 'retainer')
+  // The retainer's fee, credits and project limit come from the HIVE offerings feed. If HIVE cannot be reached they stay
+  // unfilled, which blocks the fill with the placeholder named; a number is never guessed.
+  const retainerFromHive = async () => {
+    if (!retainer) return null
+    try {
+      const offering = (await fetchHiveOfferings()).offerings.find((candidate) => candidate.key === `retainer:${retainer.key}`)
+      const amount = offering?.price.amount
+      if (!offering || typeof amount !== 'number') return null
+      const credits = (offering.credits as { amount?: unknown } | null | undefined)?.amount
+      return {
+        monthlyFee: amount,
+        credits: typeof credits === 'number' ? credits : null,
+        initiativeLimit: typeof offering.projectLimit === 'number' ? offering.projectLimit : null,
+      }
+    } catch {
+      console.error('[document-terms] HIVE offerings unavailable')
+      return null
+    }
+  }
   const [rate, settings] = await Promise.all([
-    retainer
-      ? db.from('price_list_items').select('unit_price,credits,initiative_limit').eq('organization_id', organization.id).eq('rate_key', `retainer.${retainer.key}.monthly`).maybeSingle()
-      : Promise.resolve({ data: null, error: null }),
+    retainerFromHive(),
     db.from('organization_settings').select('default_quote_valid_days,default_payment_days').eq('organization_id', organization.id).maybeSingle(),
   ])
-  if (rate.error) throw rate.error
   if (settings.error) throw settings.error
 
   const values = buildPlaceholderValues({
-    retainer: rate.data
-      ? { monthlyFee: Number(rate.data.unit_price), credits: rate.data.credits === null ? null : Number(rate.data.credits), initiativeLimit: rate.data.initiative_limit === null ? null : Number(rate.data.initiative_limit) }
-      : null,
+    retainer: rate,
     validDays: settings.data?.default_quote_valid_days ?? null,
     paymentDays: settings.data?.default_payment_days ?? null,
     formatMoney: (amount) => formatCurrency(amount, 'ZAR'),

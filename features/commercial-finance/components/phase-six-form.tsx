@@ -5,10 +5,9 @@ import { useActionState, useState, type ChangeEvent, type ReactNode } from "reac
 
 import { WorkspaceHeader } from "@/components/shared/workspace-header";
 import { QUOTE_SENT_STATUSES, isDraftStatus } from "@/features/documents/vocabulary";
-import { packageName } from "@/features/billing/rate-card";
 import { savePhaseSixRecordAction } from "../actions/phase-six";
 import { NameCombobox } from "./name-combobox";
-import { PACKAGE_NAMES, packageKeyForName, referenceYear, suggestClientRef, suggestProjectRef } from "../document-references";
+import { packageKeyForName, referenceYear, suggestClientRef, suggestProjectRef } from "../document-references";
 import type {
   PhaseSixKind,
   PhaseSixOptions,
@@ -134,8 +133,7 @@ function Fields({
     }
     return (
       <>
-        <Notice>The quote number is assigned when the quote is sent. {record ? "Add or change its lines on the quote page." : "Choose a package to fill the lines at the rate card prices, or leave it Blank and add lines on the quote page."}</Notice>
-        {record ? null : <PackageSelect packages={options.packages} value={identity.packageKey} onChange={identity.onPackage} />}
+        <Notice>The quote number is assigned when the quote is sent. {record ? "Add or change its lines on the quote page." : "Add its lines on the quote page after saving."}</Notice>
         <ClientFields options={options.clients} clientId={identity.clientId} clientName={identity.clientName} onClientId={identity.onClient} onClientName={identity.onClientName} />
         <ClientContactField kind="quote" identity={identity} />
         <OptionSelect name="leadId" label="Related lead" options={options.leads} value={value("leadId")} optional />
@@ -165,8 +163,7 @@ function Fields({
     }
     return (
       <>
-        <Notice>The invoice number is assigned when the invoice is issued. {record ? "Add or change its lines on the invoice page." : "Choose a package to fill the lines at the rate card prices, or leave it Blank and add lines on the invoice page."}</Notice>
-        {record ? null : <PackageSelect packages={options.packages} value={identity.packageKey} onChange={identity.onPackage} />}
+        <Notice>The invoice number is assigned when the invoice is issued. {record ? "Add or change its lines on the invoice page." : "Add its lines on the invoice page after saving."}</Notice>
         <ClientFields options={options.clients} clientId={identity.clientId} clientName={identity.clientName} onClientId={identity.onClient} onClientName={identity.onClientName} />
         <ClientContactField kind="invoice" identity={identity} />
         <OptionSelect name="projectId" label="Delivery project (optional)" options={options.projects} value={value("projectId")} optional />
@@ -389,32 +386,6 @@ function TextArea({
   );
 }
 
-/** Starts a new quote or invoice from a retainer tier or a project: the draft is created with its lines at the rate card prices. */
-function PackageSelect({ packages, value, onChange }: { packages: PhaseSixOptions["packages"]; value: string; onChange: (key: string) => void }) {
-  if (packages.retainers.length === 0 && packages.projects.length === 0) return null;
-  return (
-    <div className="md:col-span-2">
-    <label className="block">
-      <span className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Package</span>
-      <select name="packageKey" value={value} onChange={(event) => onChange(event.target.value)} aria-describedby="package-hint" className={inputClass}>
-        <option value="">Blank (add the lines yourself on the next page)</option>
-        {packages.retainers.length ? (
-          <optgroup label="Retainer (monthly fee plus one-time implementation fee)">
-            {packages.retainers.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
-          </optgroup>
-        ) : null}
-        {packages.projects.length ? (
-          <optgroup label="Project (fixed fee)">
-            {packages.projects.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
-          </optgroup>
-        ) : null}
-      </select>
-    </label>
-    <p id="package-hint" className="mt-1 text-xs text-muted-foreground">Prices are in rand and come from the rate card; they cannot be changed on the document. You can still remove a line or add others. This does not set up a client package or a credit balance.</p>
-    </div>
-  );
-}
-
 type DocumentIdentity = ReturnType<typeof useDocumentIdentity>;
 
 /**
@@ -426,7 +397,7 @@ type DocumentIdentity = ReturnType<typeof useDocumentIdentity>;
 function useDocumentIdentity(record: PhaseSixRecord | null | undefined, options: PhaseSixOptions) {
   const initial = (key: string) => String(record?.[key] ?? "");
   const fresh = !record;
-  const [packageKey, setPackageKey] = useState("");
+  const [packageKey, setPackageKey] = useState(""); // the HIVE offering key a listed project name stands for; used only to suggest a reference
   const [projectName, setProjectName] = useState(initial("projectName"));
   const [projectRef, setProjectRef] = useState(initial("projectRef"));
   const [clientRef, setClientRef] = useState(initial("clientRef"));
@@ -448,7 +419,7 @@ function useDocumentIdentity(record: PhaseSixRecord | null | undefined, options:
 
   return {
     fresh,
-    packageKey,
+    projectNames: options.projectNames,
     projectName,
     projectRef,
     clientRef,
@@ -462,15 +433,9 @@ function useDocumentIdentity(record: PhaseSixRecord | null | undefined, options:
       setContactName(text);
       markTyped("contactName", text.trim() !== "");
     },
-    onPackage(key: string) {
-      setPackageKey(key);
-      if (!key) return;
-      if (!typed.projectName) setProjectName(packageName(key));
-      fillProjectRef(key);
-    },
     onProjectName(text: string) {
       setProjectName(text);
-      const key = packageKeyForName(text);
+      const key = packageKeyForName(text, options.projectNames);
       markTyped("projectName", text.trim() !== "" && key === null);
       if (!fresh) return;
       if (key) setPackageKey(key);
@@ -499,7 +464,7 @@ function useDocumentIdentity(record: PhaseSixRecord | null | undefined, options:
       if (!fresh || !details) return;
       if (details.projectName && !typed.projectName) {
         setProjectName(details.projectName);
-        const key = packageKeyForName(details.projectName);
+        const key = packageKeyForName(details.projectName, options.projectNames);
         if (key) setPackageKey(key);
       }
       if (details.projectRef && !typed.projectRef) setProjectRef(details.projectRef);
@@ -523,7 +488,7 @@ function ClientContactField({ kind, identity }: { kind: "quote" | "invoice"; ide
   );
 }
 
-/** The project name (picked from the rate card names or typed) and the two references of a quote or invoice. */
+/** The project name (picked from the HIVE names or typed) and the two references of a quote or invoice. */
 function ProjectIdentityFields({ kind, identity }: { kind: "quote" | "invoice"; identity: DocumentIdentity }) {
   return (
     <>
@@ -532,7 +497,7 @@ function ProjectIdentityFields({ kind, identity }: { kind: "quote" | "invoice"; 
         label={`Project name (printed on the ${kind})`}
         value={identity.projectName}
         onValueChange={identity.onProjectName}
-        suggestions={PACKAGE_NAMES.map((entry) => entry.name)}
+        suggestions={identity.projectNames.map((entry) => entry.name)}
         hint="Pick a retainer or project from the list, or type your own."
       />
       <Field

@@ -5,7 +5,6 @@ import { ArchiveConfirmation, ArchiveTrigger } from '@/components/shared/archive
 import { WorkspaceHeader } from '@/components/shared/workspace-header'
 import { DetailTile, SummaryTile } from '@/components/ui/record-tiles'
 import { StatusBadge } from '@/components/ui/status-badge'
-import { BillingPackageSection } from '@/features/billing/components/billing-package-section'
 import { RecordWorkspaceSections } from '@/features/crm-workspace/components/record-workspace'
 import type { RecordWorkspace } from '@/features/crm-workspace/types'
 import { formatDate } from '@/lib/utils'
@@ -101,7 +100,6 @@ export function ClientDetail({ client, workspace, confirmArchive, archiveError }
       </aside>
     </div>
     <RecordWorkspaceSections workspace={workspace} sections={['contacts', 'followups', 'timeline']} />
-    {!archived ? <BillingPackageSection clientId={client.id} /> : null}
     {!archived ? <ClientDocuments /> : null}
   </>
 }
