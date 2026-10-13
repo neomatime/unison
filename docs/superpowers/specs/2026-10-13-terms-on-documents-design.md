@@ -1,7 +1,7 @@
 # Commercial terms on quotes and invoices
 
 **Date:** 2026-10-13
-**Status:** Draft for review (not built)
+**Status:** Approved (build 2)
 **Build:** 2 of 3 of the "Dynamic Quotation & Invoice Terms Engine" brief. Follows `2026-10-12-commercial-terms-foundation-design.md`.
 Build 3 (credit allocations) gets its own spec.
 
