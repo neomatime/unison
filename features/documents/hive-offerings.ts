@@ -36,11 +36,58 @@ export function groupHiveOfferings(choices: HiveOfferingChoice[]): Array<{ label
   return groups.filter((group) => group.items.length > 0)
 }
 
+// The old rate card called the first three tiers "<name> Partner" and the top one "HIMARK Reserve".
+// HIVE sends the plan name only, so the suffix is added by plan code, once, here.
+const PARTNER_TIERS = new Set(['signature', 'growth', 'private'])
+
+function tierName(offering: HiveOffering): string {
+  const name = offering.name.replace(/ implementation$/i, '')
+  const code = offering.key.split(':')[1] ?? ''
+  return PARTNER_TIERS.has(code) && !/partner/i.test(name) ? `${name} Partner` : name
+}
+
+function credit(offering: HiveOffering, field: 'amount' | 'minimum'): number | null {
+  const value = (offering.credits as Record<string, unknown> | null | undefined)?.[field]
+  return typeof value === 'number' ? value : null
+}
+
+/** The wording of a line (and the picker's option) for an offering, matching the old rate card lines. */
+export function hiveOfferingWording(offering: HiveOffering): { title: string; description: string | null } {
+  const note = offering.description ? ` ${offering.description}` : ''
+  switch (offering.kind) {
+    case 'retainer': {
+      const credits = credit(offering, 'amount')
+      return { title: `${tierName(offering)}: monthly retainer`, description: credits === null ? null : `Includes ${credits} credits a month.` }
+    }
+    case 'retainer_implementation': {
+      const credits = credit(offering, 'amount')
+      return {
+        title: `${tierName(offering)}: one-time implementation`,
+        description: `Charged once at activation.${credits === null ? '' : ` Includes ${credits} one-time implementation credits.`}`,
+      }
+    }
+    case 'project': {
+      const credits = credit(offering, 'minimum')
+      return { title: `${offering.name}: project`, description: `Fixed-scope project fee.${credits === null ? '' : ` Includes ${credits} implementation credits.`}` }
+    }
+    case 'support': {
+      const credits = credit(offering, 'amount')
+      return { title: `${offering.name}: monthly`, description: `${credits === null ? '' : `Includes ${credits} credits a month.`}${note}`.trim() || null }
+    }
+    default: {
+      const parts = [offering.description, billingNote(offering.price.billingPeriod), creditsLabel(offering) ? `Includes ${creditsLabel(offering)}.` : null]
+        .filter((part): part is string => Boolean(part))
+      return { title: offering.name, description: parts.length ? parts.join('\n') : null }
+    }
+  }
+}
+
 export function toHiveOfferingChoice(offering: HiveOffering): HiveOfferingChoice {
   return {
     key: offering.key,
     kind: offering.kind,
     name: offering.name,
+    title: hiveOfferingWording(offering).title,
     description: offering.description ?? null,
     price: offeringRandPrice(offering),
     billingPeriod: offering.price.billingPeriod,
@@ -53,15 +100,10 @@ export function hiveOfferingToLine(offering: HiveOffering): LineFields | null {
   if (offering.status !== 'active') return null
   const price = offeringRandPrice(offering)
   if (price === null) return null
-  const choice = toHiveOfferingChoice(offering)
-  const parts = [
-    choice.description,
-    billingNote(choice.billingPeriod),
-    choice.credits ? `Includes ${choice.credits}.` : null,
-  ].filter((part): part is string => Boolean(part))
+  const wording = hiveOfferingWording(offering)
   return {
-    title: offering.name.slice(0, 200),
-    description: parts.length ? parts.join('\n').slice(0, 2000) : null,
+    title: wording.title.slice(0, 200),
+    description: wording.description?.slice(0, 2000) ?? null,
     quantity: 1,
     unit_price: price,
     vat_code: 'standard',

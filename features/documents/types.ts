@@ -76,6 +76,8 @@ export type HiveOfferingChoice = {
   key: string
   kind: string
   name: string
+  /** The rate-card style title a line gets, for example "Signature Partner: monthly retainer". */
+  title: string
   description: string | null
   price: number | null
   billingPeriod: string | null
