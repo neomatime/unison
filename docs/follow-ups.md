@@ -1282,3 +1282,26 @@ Deferred from the reviews, none blocking:
 - **The settings text boxes stay the source for new documents** until build 2 switches documents over to the company-wide templates
   (see (a)).
 - **Two provisioning database tests fail, and did before this build.** In `tests/integration/rls/provision-organization.test.ts`, "a HIMARK admin lists the tenants their own RLS hides from them" and "a HIMARK admin cannot reissue into a foreign existing organisation" assume a HIMARK admin cannot select another organisation directly. The policy `organizations_internal_select` (`is_himark_admin()`, migration `20260911154613_phase_seven_eight_platform_automation.sql`, 2026-09-11) lets them, so the premise assertions fail. The other 461 of the 463 database tests passed on 2026-10-12. Decide whether the policy or the tests are right, then fix the one that is wrong.
+
+## From terms on quotes and invoices (build 2, 2026-10-13)
+
+Build 2 of 3. A quote or invoice draft has a Terms panel: an offering picker (quotes), Fill terms, "Filled from ... / edited from template", and
+the wording, service inclusions and verified template versions are stored on the document and frozen when it is sent. An invoice made from
+an accepted quote takes the quote's offerings. Once an approved company-wide template is in force, the two default text boxes in the company
+details are replaced by a link to Commercial terms and new documents no longer prefill from them.
+
+- **A parallel schema was already in production.** `20261012221817_offerings_on_documents.sql` (offering tables, `set_document_offerings`,
+  `set_document_terms`, `add_proposed_support_line`, the "AI & Automation" rename) was applied on 2026-10-12 with no code in the repo. It is
+  now recorded in `supabase/migrations/`, and this build adopts it. Whoever applied it should say whether other code for it exists.
+- **Not built: a screen for `add_proposed_support_line`** (a "Proposed starting price" support line). The function exists and works.
+- **Verified how:** the RLS test `tests/integration/rls/document-terms.test.ts` is written but has not been run (no credentials in the
+  build environment). The same behaviours were checked against production in a transaction that was rolled back: fill, direct-write refusal,
+  edited flag, bad sources and offerings, send freezing, invoice offerings, invoice payment terms. Run `pnpm test:rls` where credentials exist.
+- **Not walked signed in yet.** Quote for a Growth engagement, Fill terms, edit one line, send, invoice from it, change the template, confirm
+  both documents are unchanged.
+- **Decisions (b), (c), (d) above are settled by production:** Strategic Consulting is an offering with terms and no rate card row;
+  "AI & Automation" is the name; support prices are quoted as "Proposed starting price".
+- **Still open from build 1:** (e) unapproved policies, (f) empty support-service wording, (g) other organisations get no templates until seeded.
+- A copy of a quote (`duplicate_quote`) does not copy its offerings, sources or inclusions; the copy starts unfilled.
+- One unit test fails on this environment (`crm-overview-metrics`, currency formatting by locale), unrelated to this work.
+
