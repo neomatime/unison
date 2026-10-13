@@ -88,6 +88,16 @@ reverse because they only affect data and labels.
 - An invoice not created from a quote (monthly, top-up) resolves its payment terms from the engagement's offering the
   same way.
 
+## Implementation note (2026-10-13)
+
+Production already carried a Build 2 schema applied on 2026-10-12 (`20261012221817_offerings_on_documents.sql`, now recorded in the repo):
+offerings live in `quote_offerings` / `invoice_offerings`, the inclusions column is `service_inclusions`, `terms_sources` holds
+`{layer, templateId, versionId, version}`, and `set_document_offerings` / `set_document_terms` are the write paths. This build adopts
+that schema. Where the data model below differs (`terms_inclusions`, `terms_offerings`, `quote_terms_sources`), production wins; the
+follow-up migration `20261013100000_document_terms.sql` only adds the edited-flag/direct-write guard and makes
+`create_invoice_from_quote` copy the quote's offerings. Production also renamed "Operations Improvement Support" to "AI & Automation"
+and added `add_proposed_support_line` (supports a "Proposed starting price" line); those supersede defaults 2 and 3 above.
+
 ## Data model (migration)
 
 On `quotes` and `invoices`:

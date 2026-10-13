@@ -55,9 +55,10 @@ export function targetsForDocument(offerings: Offering[]): TermsTarget[] {
 }
 
 
-export type FilledSource = { template_id: string; version_id: string; version: number; layer: string }
+/** What is stored on a document: the same shape the database writes back after checking each version. */
+export type FilledSource = { layer: string; templateId: string; versionId: string; version: number }
 export const sourcesForStorage = (sources: TermsSource[]): FilledSource[] =>
-  sources.map((source) => ({ template_id: source.templateId, version_id: source.versionId, version: source.version, layer: source.layer }))
+  sources.map((source) => ({ layer: source.layer, templateId: source.templateId, versionId: source.versionId, version: source.version }))
 
 export type FillPlan =
   | { ok: false; missing: string[] }
@@ -79,7 +80,7 @@ export function planFill(input: { resolved: ResolvedTerms; existingTerms: string
 }
 
 /** "Company terms v1, HIMARK Growth v1" from the stored sources and a title lookup by template id. */
-export function sourceSummary(sources: Array<{ template_id: string; version: number }>, titles: Record<string, string>): string | null {
-  const parts = sources.map((source) => `${titles[source.template_id] ?? 'Terms'} v${source.version}`)
+export function sourceSummary(sources: Array<{ templateId: string; version: number }> | null | undefined, titles: Record<string, string>): string | null {
+  const parts = (sources ?? []).map((source) => `${titles[source.templateId] ?? 'Terms'} v${source.version}`)
   return parts.length ? parts.join(', ') : null
 }

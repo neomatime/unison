@@ -151,7 +151,7 @@ export function buildDocumentView(input: { kind: DocumentKind; record: Row; line
     totals: { subtotal: formatAmount(record.subtotal), vatLabel, vat: formatAmount(record.tax_amount), total: formatAmount(record.total_amount) },
     termsHeading: quote ? 'Terms & conditions' : 'Payment terms',
     // Service inclusions are part of what a client accepts, so only a quote prints them (an invoice carries them for reference).
-    inclusions: quote ? termItems(record.terms_inclusions) : [],
+    inclusions: quote ? termItems(record.service_inclusions) : [],
     terms: termItems(termsSource),
     termsNumbered: quote,
     bank: bankFields.flatMap(([label, key]) => (text(issuer[key]) ? [{ label, value: text(issuer[key]) as string }] : [])),

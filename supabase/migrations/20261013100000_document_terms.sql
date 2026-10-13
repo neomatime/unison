@@ -1,134 +1,42 @@
--- Commercial terms on quotes and invoices (build 2 of the terms engine).
--- A document remembers which approved template versions produced its terms, which offerings it was filled for, and its
--- service inclusions. Signed-in roles never write these columns directly: set_document_terms is the only write path
--- (it validates the sources), and a small trigger keeps them frozen once the document has gone out. The existing document
--- triggers and send_quote / issue_invoice are untouched: they already freeze the terms text.
--- An invoice created from a quote also records the sources the client accepted (quote_terms_sources) and takes the quote's
--- offerings and inclusions; its payment terms are resolved separately, so terms_sources on an invoice always describes
--- its own payment terms.
+-- Builds on 20261012221817_offerings_on_documents.sql (offering tables, set_document_offerings, set_document_terms, the frozen-column guard).
+-- 1. Signed-in roles can no longer write the template columns directly (terms_sources, service_inclusions): set_document_terms is
+--    the only write path, so the sources it validated are the sources stored. Direct changes raise TERMS_COLUMNS_GENERATED.
+-- 2. terms_edited is set by the database: changing the terms text of a document that was filled from templates marks it
+--    "edited from template"; the flag is never set by hand.
+-- 3. An invoice created from a quote takes the quote's offerings, so its payment terms can be filled for the same offerings.
+--    (The accepted quote's terms sources stay readable through the invoice's quote_id; they are not copied.)
 
-alter table public.quotes
-  add column terms_sources jsonb not null default '[]'::jsonb check (jsonb_typeof(terms_sources) = 'array'),
-  add column terms_inclusions text check (terms_inclusions is null or char_length(terms_inclusions) <= 10000),
-  add column terms_edited boolean not null default false,
-  add column terms_offerings text[] not null default '{}' check (cardinality(terms_offerings) <= 10);
-
-alter table public.invoices
-  add column terms_sources jsonb not null default '[]'::jsonb check (jsonb_typeof(terms_sources) = 'array'),
-  add column terms_inclusions text check (terms_inclusions is null or char_length(terms_inclusions) <= 10000),
-  add column terms_edited boolean not null default false,
-  add column terms_offerings text[] not null default '{}' check (cardinality(terms_offerings) <= 10),
-  add column quote_terms_sources jsonb not null default '[]'::jsonb check (jsonb_typeof(quote_terms_sources) = 'array');
-
-create or replace function public.documents_terms_guard() returns trigger
+create or replace function public.documents_terms_edit_guard() returns trigger
 language plpgsql security invoker set search_path = '' as $$
 declare
-  v_new jsonb := to_jsonb(new);
-  v_old jsonb;
   v_text_column text := case tg_table_name when 'quotes' then 'terms' else 'payment_terms' end;
 begin
   if current_user not in ('authenticated', 'anon') then
     return new;
   end if;
   if tg_op = 'INSERT' then
-    if new.terms_sources <> '[]'::jsonb or new.terms_inclusions is not null or new.terms_edited or cardinality(new.terms_offerings) > 0
-       or (tg_table_name = 'invoices' and v_new -> 'quote_terms_sources' <> '[]'::jsonb) then
+    if new.terms_sources is not null or new.service_inclusions is not null or new.terms_edited then
       raise exception 'TERMS_COLUMNS_GENERATED' using errcode = '23514';
     end if;
     return new;
   end if;
-  v_old := to_jsonb(old);
-  if new.terms_sources is distinct from old.terms_sources
-     or new.terms_inclusions is distinct from old.terms_inclusions
-     or new.terms_offerings is distinct from old.terms_offerings
-     or (v_new -> 'quote_terms_sources') is distinct from (v_old -> 'quote_terms_sources') then
+  if new.terms_sources is distinct from old.terms_sources or new.service_inclusions is distinct from old.service_inclusions then
     raise exception 'TERMS_COLUMNS_GENERATED' using errcode = '23514';
   end if;
-  -- Typing over filled terms is remembered; the flag is never set by hand.
   new.terms_edited := old.terms_edited;
-  if (v_new ->> v_text_column) is distinct from (v_old ->> v_text_column) and jsonb_array_length(old.terms_sources) > 0 then
+  if (to_jsonb(new) ->> v_text_column) is distinct from (to_jsonb(old) ->> v_text_column) and old.terms_sources is not null then
     new.terms_edited := true;
   end if;
   return new;
 end $$;
 
-create trigger quotes_terms_guard before insert or update on public.quotes
-  for each row execute function public.documents_terms_guard();
-create trigger invoices_terms_guard before insert or update on public.invoices
-  for each row execute function public.documents_terms_guard();
-revoke all on function public.documents_terms_guard() from public, anon, authenticated;
+create trigger quotes_terms_edit_guard before insert or update on public.quotes
+  for each row execute function public.documents_terms_edit_guard();
+create trigger invoices_terms_edit_guard before insert or update on public.invoices
+  for each row execute function public.documents_terms_edit_guard();
+revoke all on function public.documents_terms_edit_guard() from public, anon, authenticated;
 
-create or replace function public.set_document_terms(
-  p_kind text, p_id uuid, p_terms text, p_inclusions text, p_sources jsonb, p_offerings text[], p_edited boolean default false
-) returns void
-language plpgsql security definer set search_path = '' as $$
-declare
-  v_org uuid;
-  v_status text;
-  v_source jsonb;
-  v_offering text;
-  v_terms text := nullif(btrim(replace(coalesce(p_terms, ''), E'\r', '')), '');
-  v_inclusions text := nullif(btrim(replace(coalesce(p_inclusions, ''), E'\r', '')), '');
-begin
-  if p_kind not in ('quote', 'invoice') then
-    raise exception 'TERMS_NOT_FOUND' using errcode = '42501';
-  end if;
-  if p_kind = 'quote' then
-    select organization_id, status into v_org, v_status from public.quotes where id = p_id for update;
-  else
-    select organization_id, status into v_org, v_status from public.invoices where id = p_id for update;
-  end if;
-  if not found or not public.is_member_of(v_org) then
-    raise exception 'TERMS_NOT_FOUND' using errcode = '42501';
-  end if;
-  if (p_kind = 'quote' and v_status not in ('Draft', 'Internal Review')) or (p_kind = 'invoice' and v_status <> 'Draft') then
-    raise exception 'TERMS_NOT_DRAFT_DOCUMENT' using errcode = '23514';
-  end if;
-  if char_length(coalesce(v_terms, '')) > 20000 or char_length(coalesce(v_inclusions, '')) > 10000 then
-    raise exception 'TERMS_TOO_LONG' using errcode = '23514';
-  end if;
-
-  if p_sources is null or jsonb_typeof(p_sources) <> 'array' or jsonb_array_length(p_sources) > 20 then
-    raise exception 'TERMS_SOURCE_INVALID' using errcode = '23514';
-  end if;
-  for v_source in select * from jsonb_array_elements(p_sources) loop
-    if jsonb_typeof(v_source) <> 'object'
-       or coalesce(v_source ->> 'version_id', '') !~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
-       or not exists (
-         select 1 from public.terms_template_versions v
-         where v.id = (v_source ->> 'version_id')::uuid and v.organization_id = v_org and v.status in ('approved', 'archived')
-           and v.template_id::text = v_source ->> 'template_id' and v.version::text = v_source ->> 'version'
-       ) then
-      raise exception 'TERMS_SOURCE_INVALID' using errcode = '23514';
-    end if;
-  end loop;
-
-  if coalesce(cardinality(p_offerings), 0) > 10 then
-    raise exception 'TERMS_OFFERING_UNKNOWN' using errcode = '23514';
-  end if;
-  foreach v_offering in array coalesce(p_offerings, '{}') loop
-    if v_offering !~ '^(retainer|project|support)\.[a-z0-9_]{1,60}$' then
-      raise exception 'TERMS_OFFERING_UNKNOWN' using errcode = '23514';
-    end if;
-  end loop;
-
-  if p_kind = 'quote' then
-    update public.quotes
-       set terms = v_terms, terms_inclusions = v_inclusions, terms_sources = p_sources,
-           terms_offerings = coalesce(p_offerings, '{}'), terms_edited = coalesce(p_edited, false)
-     where id = p_id;
-  else
-    update public.invoices
-       set payment_terms = v_terms, terms_inclusions = v_inclusions, terms_sources = p_sources,
-           terms_offerings = coalesce(p_offerings, '{}'), terms_edited = coalesce(p_edited, false)
-     where id = p_id;
-  end if;
-end $$;
-
-revoke all on function public.set_document_terms(text, uuid, text, text, jsonb, text[], boolean) from public, anon;
-grant execute on function public.set_document_terms(text, uuid, text, text, jsonb, text[], boolean) to authenticated;
-
--- The same function as before (20261012120000), plus the quote's offerings, inclusions and accepted sources.
+-- The same function as before (20261012120000), plus the quote's offerings.
 create or replace function public.create_invoice_from_quote(p_quote_id uuid) returns uuid
 language plpgsql security definer set search_path = '' as $$
 declare
@@ -155,12 +63,10 @@ begin
   begin
     insert into public.invoices (
       organization_id, client_id, client_name, owner_id, opportunity_id, quote_id, currency, status,
-      project_name, project_description, project_ref, client_ref, engagement_id, billing_kind,
-      terms_offerings, terms_inclusions, quote_terms_sources)
+      project_name, project_description, project_ref, client_ref, engagement_id, billing_kind)
     values (
       v_org, v_quote.client_id, v_quote.client_name, v_quote.owner_id, v_quote.opportunity_id, v_quote.id, v_quote.currency, 'Draft',
-      v_quote.project_name, v_quote.project_description, v_quote.project_ref, v_quote.client_ref, v_quote.engagement_id, v_quote.billing_kind,
-      v_quote.terms_offerings, v_quote.terms_inclusions, v_quote.terms_sources)
+      v_quote.project_name, v_quote.project_description, v_quote.project_ref, v_quote.client_ref, v_quote.engagement_id, v_quote.billing_kind)
     returning id into v_new;
   exception when unique_violation then
     raise exception 'FIRST_INVOICE_EXISTS' using errcode = '23514';
@@ -170,6 +76,11 @@ begin
   select l.organization_id, v_new, l.position, l.title, l.description, l.quantity, l.unit_price, l.vat_code, l.price_list_item_id, l.rate_locked
   from public.quote_lines l
   where l.quote_id = p_quote_id and l.organization_id = v_org;
+
+  insert into public.invoice_offerings (organization_id, invoice_id, position, offering_kind, offering_key)
+  select o.organization_id, v_new, o.position, o.offering_kind, o.offering_key
+  from public.quote_offerings o
+  where o.quote_id = p_quote_id and o.organization_id = v_org;
 
   insert into public.activities (organization_id, kind, subject, details, created_by, quote_id)
   values (v_org, 'quote.invoiced', 'Draft invoice created from quote ' || v_quote.quote_number,

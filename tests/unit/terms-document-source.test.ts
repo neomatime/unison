@@ -12,14 +12,18 @@ test('filling terms goes only through set_document_terms and never overwrites ty
   assert.match(source, /plan\.ok/)
 })
 
-test('the migration makes the template columns function-only and freezes them', () => {
+test('the follow-up migration keeps the template columns function-only and copies offerings to the invoice', () => {
   const sql = read('supabase/migrations/20261013100000_document_terms.sql')
   assert.match(sql, /TERMS_COLUMNS_GENERATED/)
-  assert.match(sql, /security definer set search_path = ''/)
-  assert.match(sql, /revoke all on function public\.set_document_terms/)
-  assert.match(sql, /grant execute on function public\.set_document_terms[\s\S]*to authenticated/)
-  assert.match(sql, /v\.organization_id = v_org and v\.status in \('approved', 'archived'\)/, 'sources must belong to the same organisation')
-  assert.match(sql, /quote_terms_sources/)
+  assert.match(sql, /new\.terms_edited := old\.terms_edited/, 'the edited flag is never set by hand')
+  assert.match(sql, /insert into public\.invoice_offerings[\s\S]*from public\.quote_offerings/)
+  assert.match(sql, /revoke all on function public\.create_invoice_from_quote/)
+})
+
+test('the offering and terms functions already in production are recorded in the repo', () => {
+  const sql = read('supabase/migrations/20261012221817_offerings_on_documents.sql')
+  for (const name of ['set_document_offerings', 'set_document_terms', 'documents_terms_guard', 'document_draft_org']) assert.match(sql, new RegExp(name))
+  assert.match(read('features/terms/actions/document-terms.ts'), /rpc\('set_document_offerings'/)
 })
 
 test('both document pages mount the terms panel and the sheet prints inclusions', () => {

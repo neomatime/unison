@@ -3,7 +3,16 @@ import { getDocument } from '@/features/documents/queries/get-document'
 import { isDraftStatus, type DocumentKind } from '@/features/documents/vocabulary'
 import { sourceSummary } from '../document-terms'
 import { getDocumentTermsState } from '../queries/document-terms'
+import { documentContext } from '@/features/documents/server-context'
 import { FillTermsForm } from './fill-terms-form'
+
+/** The template versions the accepted quote was filled from (the invoice keeps its own sources for its payment terms). */
+async function acceptedQuoteSources(quoteId: string) {
+  const { organization, db } = await documentContext()
+  const found = await db.from('quotes').select('terms_sources').eq('id', quoteId).eq('organization_id', organization.id).maybeSingle()
+  if (found.error) throw found.error
+  return (Array.isArray(found.data?.terms_sources) ? found.data.terms_sources : []) as Array<{ templateId: string; version: number }>
+}
 
 /** Where a quote or invoice gets its terms from: the approved templates, filled for what is being sold. */
 export async function DocumentTermsPanel({ kind, id }: { kind: DocumentKind; id: string }) {
@@ -11,12 +20,11 @@ export async function DocumentTermsPanel({ kind, id }: { kind: DocumentKind; id:
   if (!bundle) return null
   const { record } = bundle
   const draft = isDraftStatus(kind, record.status)
-  const sources = (Array.isArray(record.terms_sources) ? record.terms_sources : []) as Array<{ template_id: string; version: number }>
+  const sources = (Array.isArray(record.terms_sources) ? record.terms_sources : []) as Array<{ templateId: string; version: number }>
   const state = await getDocumentTermsState(kind, record, bundle.lines)
   const used = sourceSummary(sources, state.titles)
   const typed = String(record[kind === 'quote' ? 'terms' : 'payment_terms'] ?? '').trim() !== ''
-  const quoteSources = (Array.isArray(record.quote_terms_sources) ? record.quote_terms_sources : []) as Array<{ template_id: string; version: number }>
-  const accepted = kind === 'invoice' ? sourceSummary(quoteSources, state.titles) : null
+  const accepted = kind === 'invoice' && record.quote_id ? sourceSummary(await acceptedQuoteSources(String(record.quote_id)), state.titles) : null
 
   if (!draft && !used && !accepted) return null
   return (

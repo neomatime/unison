@@ -47,13 +47,13 @@ test('a fill with a missing value is refused and names it', () => {
   assert.deepEqual(plan, { ok: false, missing: ['initiative_limit'] })
 })
 
-test('a fill writes plain lines, inclusions and snake_case sources', () => {
+test('a fill writes plain lines, inclusions and camelCase sources', () => {
   const plan = planFill({ resolved: resolved(), existingTerms: null })
   assert.equal(plan.ok, true)
   if (!plan.ok) return
   assert.equal(plan.terms, 'Payment is due in 30 days.\nWork starts on acceptance.')
   assert.equal(plan.inclusions, 'Engagement lead')
-  assert.deepEqual(plan.sources, [{ template_id: 't1', version_id: 'v1', version: 1, layer: 'company' }])
+  assert.deepEqual(plan.sources, [{ layer: 'company', templateId: 't1', versionId: 'v1', version: 1 }])
   assert.equal(plan.needsConfirm, false)
 })
 
@@ -68,7 +68,8 @@ test('typed terms need confirming before they are replaced; identical text or bl
 })
 
 test('the summary names each template and version', () => {
-  assert.equal(sourceSummary([{ template_id: 'a', version: 1 }, { template_id: 'b', version: 2 }], { a: 'Company terms', b: 'HIMARK Growth' }), 'Company terms v1, HIMARK Growth v2')
+  assert.equal(sourceSummary([{ templateId: 'a', version: 1 }, { templateId: 'b', version: 2 }], { a: 'Company terms', b: 'HIMARK Growth' }), 'Company terms v1, HIMARK Growth v2')
   assert.equal(sourceSummary([], {}), null)
-  assert.equal(sourceSummary([{ template_id: 'x', version: 3 }], {}), 'Terms v3')
+  assert.equal(sourceSummary(null, {}), null)
+  assert.equal(sourceSummary([{ templateId: 'x', version: 3 }], {}), 'Terms v3')
 })

@@ -18,9 +18,13 @@ export type DocumentTermsState = {
 
 /** The offerings a document is for: the ones chosen on it, else what its engagement or locked rate card lines say. */
 async function offeringsOf(kind: DocumentKind, record: Record<string, any>, lines: Array<{ price_list_item_id: string | null }>): Promise<Offering[]> {
-  const chosen = ((record.terms_offerings ?? []) as string[]).map(offeringFromToken).filter((item): item is Offering => item !== null)
-  if (chosen.length > 0) return chosen
   const { organization, db } = await documentContext()
+  const table = kind === 'quote' ? 'quote_offerings' : 'invoice_offerings'
+  const column = kind === 'quote' ? 'quote_id' : 'invoice_id'
+  const stored = await db.from(table).select('offering_kind,offering_key').eq(column, record.id).eq('organization_id', organization.id).order('position')
+  if (stored.error) throw stored.error
+  const chosen = (stored.data ?? []).map((row: any) => offeringFromToken(`${row.offering_kind}.${row.offering_key}`)).filter((item: Offering | null): item is Offering => item !== null)
+  if (chosen.length > 0) return chosen
   let engagement: { kind: 'retainer' | 'project'; packageKey: string } | null = null
   if (record.engagement_id) {
     const found = await db.from('client_engagements').select('kind,package_key').eq('id', record.engagement_id).eq('organization_id', organization.id).maybeSingle()

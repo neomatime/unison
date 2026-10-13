@@ -33,8 +33,12 @@ export async function fillDocumentTermsAction(kind: string, id: string, _previou
   }
 
   const { db } = await documentContext()
+  const chosen = await db.rpc('set_document_offerings', {
+    p_kind: kind, p_document: id, p_offerings: used.map((token) => { const [offeringKind, ...rest] = token.split('.'); return { kind: offeringKind, key: rest.join('.') } }),
+  })
+  if (chosen.error) return failureState(chosen.error)
   const saved = await db.rpc('set_document_terms', {
-    p_kind: kind, p_id: id, p_terms: plan.terms, p_inclusions: plan.inclusions, p_sources: plan.sources, p_offerings: used, p_edited: false,
+    p_kind: kind, p_document: id, p_terms: plan.terms, p_inclusions: plan.inclusions, p_sources: plan.sources, p_edited: false,
   })
   if (saved.error) return failureState(saved.error)
   revalidateDocumentPages()
