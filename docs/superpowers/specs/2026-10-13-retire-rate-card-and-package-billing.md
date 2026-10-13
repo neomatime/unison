@@ -1,15 +1,23 @@
 # Retiring the rate card and package billing
 
 **Date:** 2026-10-13
-**Status:** Step 1 (app) is live (PR #45). Step 2 and step 3 are drafted as migrations in PR #46 and are **not applied**:
-`20261013230000_retire_rate_card_and_package_billing.sql`, then `20261013240000_drop_retired_billing_columns.sql`
-(step 3 refuses to run until step 2 has been applied). The code cleanup that stops reading and writing the retired
-columns, and removes `features/billing/rate-card.ts`, is in the same PR. Decisions taken: project names from the HIVE
+**Status:** Done. All three steps are applied to `unison-uat` (2026-10-13 and 2026-10-14):
+1. App: package billing, the Package list and the price list screen are gone, and terms placeholders and project
+   names read the HIVE feed (PR #45). The leftover code, including `features/billing/rate-card.ts`, went in PR #46.
+2. Database step 2 (`20261013230000_retire_rate_card_and_package_billing.sql`): applied by hand in the Supabase SQL
+   editor (the Supabase tool cannot run DROP statements without a confirmation prompt). The snapshot was created first
+   with the tool, the rest was run in the editor. 28 rate card rows, the 5 formerly locked lines (now ordinary lines on
+   their draft documents, unchanged in title and price) and 20 function definitions are kept in schema `retired_rate_card`.
+3. Database step 3 (`20261013240000_drop_retired_billing_columns.sql`): applied in the SQL editor. `duplicate_quote()`
+   and `create_invoice_from_quote()` were rewritten without the retired columns, then `engagement_id`, `billing_kind`,
+   `billing_month`, `rate_locked`, `price_list_item_id` and the `price_list_items` table were dropped. The two old function
+   bodies are in `retired_rate_card.function_definitions` ("before step 3").
+
+`types/database.ts` never contained these objects (it predates them), so it needed no change.
+
+`retired_rate_card` can be dropped once nobody needs the rollback data. Decisions taken: project names from the HIVE
 feed, the 5 locked lines become ordinary lines, the price list screen goes.
 
-Note: while writing the migrations I found the scoping below understated one thing. `duplicate_quote()` and
-`create_invoice_from_quote()` copy the retired columns, so the columns could not be dropped in step 2; they go in step 3
-after those two functions are rewritten.
 **Follows:** `2026-10-13-client-focused-boundary-design.md` (on `claude/awesome-einstein-9eqd4z`), step 4 and step 5.
 
 ## Where we are
