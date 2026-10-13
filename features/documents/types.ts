@@ -42,8 +42,6 @@ export type DocumentLine = {
   unit_price: number | string
   vat_code: string
   line_amount: number | string
-  price_list_item_id: string | null
-  rate_locked: boolean
 }
 
 /** One HIVE Origin offering, as the "Add from HIVE offerings" picker shows it. `price` is a rand amount excluding VAT, or null when HIVE has no approved rand price (projects). */

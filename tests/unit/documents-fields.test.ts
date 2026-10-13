@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { parseDecimal, readCompanyFields, readDocumentExtras, readLineFields, readPriceItemFields } from '../../features/documents/fields.ts'
+import { parseDecimal, readCompanyFields, readDocumentExtras, readLineFields } from '../../features/documents/fields.ts'
 
 const form = (fields: Record<string, string>) => {
   const data = new FormData()
@@ -29,11 +29,10 @@ test('parseDecimal refuses a comma that looks like a thousands separator but kee
 
 test('a line reads title, description, quantity, price and VAT code', () => {
   assert.deepEqual(readLineFields(form(line)), {
-    title: 'Advisory day', description: 'One day', quantity: 2, unit_price: 1500, vat_code: 'standard', price_list_item_id: null,
+    title: 'Advisory day', description: 'One day', quantity: 2, unit_price: 1500, vat_code: 'standard',
   })
-  const withItem = readLineFields(form({ ...line, priceListItemId: '3b241101-e2bb-4255-8caf-4136c566a962', description: '  ' }))
-  assert.equal((withItem as { description: unknown }).description, null)
-  assert.equal((withItem as { price_list_item_id: unknown }).price_list_item_id, '3b241101-e2bb-4255-8caf-4136c566a962')
+  const blankDescription = readLineFields(form({ ...line, description: '  ' }))
+  assert.equal((blankDescription as { description: unknown }).description, null)
   assert.equal((readLineFields(form({ ...line, quantity: '2,5', unitPrice: '99,99' })) as { quantity: number }).quantity, 2.5)
 })
 
@@ -51,7 +50,6 @@ test('a line refuses what the database would refuse, with a message that says wh
     [{ unitPrice: '10000000' }, /too large/i],
     [{ vatCode: 'exempt' }, /standard rate or zero-rated/i],
     [{ vatCode: '' }, /standard rate or zero-rated/i],
-    [{ priceListItemId: 'not-a-uuid' }, /price list item/i],
   ]
   for (const [override, message] of cases) assert.match(error(readLineFields(form({ ...line, ...override })))!, message, JSON.stringify(override))
   assert.equal(error(readLineFields(form({ ...line, unitPrice: '0' }))), undefined, 'a free line is allowed')
@@ -61,29 +59,9 @@ test('a quantity or price typed with a thousands comma is refused with a message
   for (const typed of ['1,200', '2,500']) {
     assert.match(error(readLineFields(form({ ...line, quantity: typed })))!, /Enter a quantity as a plain number.*no thousands separators/, `quantity ${typed}`)
     assert.match(error(readLineFields(form({ ...line, unitPrice: typed })))!, /Enter a unit price as a plain number.*no thousands separators/, `unit price ${typed}`)
-    assert.match(error(readPriceItemFields(form({ title: 'x', unitPrice: typed, vatCode: 'standard' })))!, /Enter a unit price as a plain number/, `price item ${typed}`)
   }
   assert.equal((readLineFields(form({ ...line, quantity: '2,5' })) as { quantity: number }).quantity, 2.5)
   assert.equal((readLineFields(form({ ...line, unitPrice: '1 200,5' })) as { unit_price: number }).unit_price, 1200.5)
-})
-
-test('a price list item reads title, description, price and VAT code', () => {
-  assert.deepEqual(readPriceItemFields(form({ title: 'Workshop', description: '', unitPrice: '35 000', vatCode: 'zero' })), {
-    title: 'Workshop', description: null, unit_price: 35000, vat_code: 'zero',
-  })
-  assert.match(error(readPriceItemFields(form({ title: '', unitPrice: '1', vatCode: 'standard' })))!, /title is required/i)
-  assert.match(error(readPriceItemFields(form({ title: 'x', unitPrice: '-5', vatCode: 'standard' })))!, /unit price/i)
-})
-
-test('a monthly retainer tier item reads the active projects it allows: empty is no limit, a whole number from 1 to 50 is a limit', () => {
-  const base = { title: 'Tier', unitPrice: '10000', vatCode: 'standard' }
-  assert.equal('initiative_limit' in (readPriceItemFields(form(base)) as object), false, 'an ordinary item sends no limit')
-  assert.equal((readPriceItemFields(form({ ...base, initiativeLimit: '' })) as { initiative_limit: number | null }).initiative_limit, null)
-  assert.equal((readPriceItemFields(form({ ...base, initiativeLimit: ' 3 ' })) as { initiative_limit: number | null }).initiative_limit, 3)
-  assert.equal((readPriceItemFields(form({ ...base, initiativeLimit: '50' })) as { initiative_limit: number | null }).initiative_limit, 50)
-  for (const typed of ['0', '-1', '1.5', 'x', '51']) {
-    assert.match(error(readPriceItemFields(form({ ...base, initiativeLimit: typed })))!, /active projects allowed/i, `limit ${typed}`)
-  }
 })
 
 const company = {

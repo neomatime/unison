@@ -1,7 +1,6 @@
 // Pure readers for the document forms, so the validation the server actions depend on is unit
 // testable. Relative imports only: Node's test runner cannot resolve '@/', and 'use server'
 // modules cannot be imported by a test.
-import { isUuid } from '../../lib/utils/index.ts'
 import { VAT_CODES, type VatCode } from './vocabulary.ts'
 
 const value = (form: FormData, key: string) => String(form.get(key) ?? '').trim()
@@ -42,7 +41,6 @@ export type LineFields = {
   quantity: number
   unit_price: number
   vat_code: VatCode
-  price_list_item_id: string | null
 }
 
 export function readLineFields(form: FormData): LineFields | Failure {
@@ -62,32 +60,7 @@ export function readLineFields(form: FormData): LineFields | Failure {
   if (typeof price !== 'number') return price
   const vat = readVatCode(form)
   if (typeof vat !== 'string') return vat
-  const itemId = optional(form, 'priceListItemId')
-  if (itemId && !isUuid(itemId)) return { error: 'That price list item is not valid.' }
-  return { title, description, quantity: quantity.value, unit_price: price, vat_code: vat, price_list_item_id: itemId }
-}
-
-export type PriceItemFields = { title: string; description: string | null; unit_price: number; vat_code: VatCode; initiative_limit?: number | null }
-
-export function readPriceItemFields(form: FormData): PriceItemFields | Failure {
-  const title = value(form, 'title')
-  if (!title) return { error: 'A title is required.' }
-  if (title.length > 200) return { error: 'The title is too long (200 characters at most).' }
-  const description = optional(form, 'description')
-  if (description && description.length > 2000) return { error: 'The description is too long (2,000 characters at most).' }
-  const price = readMoney(form, 'unitPrice', 'unit price')
-  if (typeof price !== 'number') return price
-  const vat = readVatCode(form)
-  if (typeof vat !== 'string') return vat
-  const fields: PriceItemFields = { title, description, unit_price: price, vat_code: vat }
-  // Only the form of a monthly retainer tier sends this: how many active projects the tier allows. Empty means no limit.
-  if (form.has('initiativeLimit')) {
-    const raw = value(form, 'initiativeLimit')
-    if (raw === '') fields.initiative_limit = null
-    else if (/^\d{1,2}$/.test(raw) && Number(raw) >= 1 && Number(raw) <= 50) fields.initiative_limit = Number(raw)
-    else return { error: 'Enter the active projects allowed as a whole number from 1 to 50, or leave it empty for no limit.' }
-  }
-  return fields
+  return { title, description, quantity: quantity.value, unit_price: price, vat_code: vat }
 }
 
 export type CompanyFields = {
