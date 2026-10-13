@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { hiveOfferingToLine, toHiveOfferingChoice } from '../../features/documents/hive-offerings.ts'
+import { groupHiveOfferings, hiveOfferingToLine, toHiveOfferingChoice } from '../../features/documents/hive-offerings.ts'
 import { parseHiveOfferingsFeed } from '../../lib/integrations/hive-offerings.ts'
 
 const feed = parseHiveOfferingsFeed({
@@ -50,4 +50,19 @@ test('the HIVE action trusts only an offering key from the browser and reads the
   assert.match(action, /currency !== 'ZAR'/)
   const picker = readFileSync(new URL('../../features/documents/components/hive-offering-picker.tsx', import.meta.url), 'utf8')
   assert.deepEqual([...picker.matchAll(/data\.set\('(\w+)'/g)].map((m) => m[1]), ['offeringKey'])
+})
+
+test('groups follow the rate card order, price-less offerings are left out, and one-time fees say so', () => {
+  const mk = (key: string, kind: string, amount: number | null, period: string | null) => ({
+    key, kind, name: key, status: 'active',
+    price: { model: amount === null ? 'credit_range' : 'fixed', currency: amount === null ? null : 'ZAR', amount, billingPeriod: period, binding: amount !== null },
+  })
+  const parsed = parseHiveOfferingsFeed({
+    schemaVersion: '1.0', source: 's', workspace: { key: 'k', name: 'n' }, generatedAt: 'x', revision: 'r',
+    offerings: [mk('pack', 'credit_pack', 17500, 'once'), mk('p', 'project', null, null), mk('r', 'retainer', 1, 'month'), mk('i', 'retainer_implementation', 1, 'once'), mk('s', 'support', 1, 'month'), mk('z', 'weird', 5, 'month')],
+  })
+  const groups = groupHiveOfferings(parsed.offerings.map(toHiveOfferingChoice))
+  assert.deepEqual(groups.map((g) => g.items[0].key), ['r', 'i', 's', 'pack', 'z'])
+  assert.equal(groups.at(-1)?.label, 'Other HIVE offerings')
+  assert.match(hiveOfferingToLine(parsed.offerings[3])?.description ?? '', /Charged once\./)
 })

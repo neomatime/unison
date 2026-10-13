@@ -4,6 +4,7 @@ import { useActionState, useEffect, useState, useTransition } from 'react'
 
 import { formatCurrency } from '@/lib/utils/format-money'
 import { addHiveOfferingLineAction } from '../actions/hive-offering-line'
+import { groupHiveOfferings } from '../hive-offerings'
 import type { HiveOfferingsResult } from '../types'
 import type { DocumentKind } from '../vocabulary'
 
@@ -18,7 +19,7 @@ export function HiveOfferingPicker({ kind, documentId, result, currency }: { kin
   useEffect(() => {
     if (state?.success) setOfferingKey('')
   }, [state])
-  const priced = result.offerings.filter((item) => item.price !== null)
+  const groups = groupHiveOfferings(result.offerings)
   const unpriced = result.offerings.filter((item) => item.price === null)
   if (result.error) {
     return <p role="status" className="border-t border-border px-5 py-4 text-xs text-[var(--briefing-muted)]">{result.error}</p>
@@ -40,16 +41,16 @@ export function HiveOfferingPicker({ kind, documentId, result, currency }: { kin
       <label>
         <span className="text-xs font-semibold text-[var(--briefing-muted)]">Add from HIVE offerings (prices set in HIVE Origin, excluding VAT)</span>
         <select aria-label="Add from HIVE offerings" value={offeringKey} onChange={(event) => setOfferingKey(event.target.value)} className={`mt-1 ${field}`}>
-          <option value="">Choose a HIVE retainer…</option>
-          {priced.length ? (
-            <optgroup label="Priced in HIVE">
-              {priced.map((item) => (
+          <option value="">Choose a retainer, project, support service or top-up…</option>
+          {groups.map((group) => (
+            <optgroup key={group.label} label={group.label}>
+              {group.items.map((item) => (
                 <option key={item.key} value={item.key}>
-                  {item.name}: {formatCurrency(Number(item.price), currency)}{item.billingPeriod ? ` per ${item.billingPeriod}` : ''}
+                  {item.name}: {formatCurrency(Number(item.price), currency)}{item.billingPeriod === 'month' ? ' per month' : ''}
                 </option>
               ))}
             </optgroup>
-          ) : null}
+          ))}
           {unpriced.length ? (
             <optgroup label="No approved rand price in HIVE (add as a one-off line)">
               {unpriced.map((item) => <option key={item.key} value={item.key} disabled>{item.name}{item.credits ? `: ${item.credits}` : ''}</option>)}
