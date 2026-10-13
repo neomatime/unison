@@ -2,7 +2,9 @@ import 'server-only'
 
 import { isUuid } from '@/lib/utils'
 import { documentContext } from '../server-context'
-import type { PriceItem, RateCardItem } from '../types'
+import { HiveOfferingsError, fetchHiveOfferings } from '@/lib/integrations/hive-offerings'
+import { toHiveOfferingChoice } from '../hive-offerings'
+import type { HiveOfferingsResult, PriceItem, RateCardItem } from '../types'
 
 const COLUMNS = 'id,title,description,unit_price,vat_code,archived_at,rate_key,item_kind,credits,initiative_limit,rate_status'
 
@@ -40,4 +42,19 @@ export async function listRateCardItems(): Promise<RateCardItem[]> {
     .order('unit_price')
   if (result.error) throw result.error
   return (result.data ?? []) as RateCardItem[]
+}
+
+/** The HIVE offering catalogue for the picker. Never throws: when HIVE is unreachable the page still renders and the picker says why. */
+export async function listHiveOfferings(): Promise<HiveOfferingsResult> {
+  try {
+    const feed = await fetchHiveOfferings()
+    return { offerings: feed.offerings.filter((offering) => offering.status === 'active').map(toHiveOfferingChoice), error: null }
+  } catch (error) {
+    const reason = error instanceof HiveOfferingsError ? error.reason : 'unavailable'
+    console.error('[hive-offerings] feed unavailable', { reason })
+    const message = error instanceof Error && error.name === 'MissingEnvError'
+      ? 'HIVE offerings are not configured for this environment.'
+      : 'HIVE offerings are unavailable right now. Try again shortly.'
+    return { offerings: [], error: message }
+  }
 }
