@@ -6,7 +6,7 @@ import { EmailSection } from '@/features/documents/components/email-section'
 import { LineEditor } from '@/features/documents/components/line-editor'
 import { QuoteInvoices } from '@/features/documents/components/quote-invoices'
 import { getDocument } from '@/features/documents/queries/get-document'
-import { listHiveOfferings, listPriceItems, listRateCardItems } from '@/features/documents/queries/list-price-items'
+import { listHiveOfferings, listPriceItems } from '@/features/documents/queries/list-price-items'
 import { isDraftStatus } from '@/features/documents/vocabulary'
 
 // Loaded inside `actions` and `after` so PhaseSixDetail has already called notFound() for a missing record:
@@ -21,7 +21,6 @@ async function QuoteLines({ quoteId }: { quoteId: string }) {
   if (!bundle) return null
   const locked = !isDraftStatus('quote', bundle.record.status)
   const priceItems = locked ? [] : await listPriceItems()
-  const rateItems = locked ? [] : await listRateCardItems()
   const hiveOfferings = locked ? { offerings: [], error: null } : await listHiveOfferings()
   const { record } = bundle
   return (
@@ -30,7 +29,6 @@ async function QuoteLines({ quoteId }: { quoteId: string }) {
       documentId={quoteId}
       lines={bundle.lines}
       priceItems={priceItems}
-      rateItems={rateItems}
       hiveOfferings={hiveOfferings}
       locked={locked}
       currency={String(record.currency ?? 'ZAR')}

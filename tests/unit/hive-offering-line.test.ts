@@ -24,8 +24,8 @@ const [growth, project, inactive, usd] = feed.offerings
 test('a priced retainer becomes a one-unit standard-VAT line at the HIVE price', () => {
   const line = hiveOfferingToLine(growth)
   assert.deepEqual(line, {
-    title: 'Growth',
-    description: 'Expanded delivery.\nBilled per month.\nIncludes 75 credits a month.',
+    title: 'Growth Partner: monthly retainer',
+    description: 'Includes 75 credits a month.',
     quantity: 1, unit_price: 150000, vat_code: 'standard', price_list_item_id: null,
   })
 })
@@ -64,5 +64,28 @@ test('groups follow the rate card order, price-less offerings are left out, and 
   const groups = groupHiveOfferings(parsed.offerings.map(toHiveOfferingChoice))
   assert.deepEqual(groups.map((g) => g.items[0].key), ['r', 'i', 's', 'pack', 'z'])
   assert.equal(groups.at(-1)?.label, 'Other HIVE offerings')
-  assert.match(hiveOfferingToLine(parsed.offerings[3])?.description ?? '', /Charged once\./)
+  assert.match(hiveOfferingToLine(parsed.offerings[3])?.description ?? '', /Charged once at activation\./)
+})
+
+test('line wording matches the old rate card lines', () => {
+  const mk = (key: string, kind: string, name: string, credits: Record<string, unknown>, description: string | null, period: string) => ({
+    key, kind, name, description, status: 'active', credits,
+    price: { model: 'fixed', currency: 'ZAR', amount: 100000, billingPeriod: period, binding: true },
+  })
+  const wording = (o: ReturnType<typeof mk>) => {
+    const line = hiveOfferingToLine(parseHiveOfferingsFeed({
+      schemaVersion: '1.0', source: 's', workspace: { key: 'k', name: 'n' }, generatedAt: 'x', revision: 'r', offerings: [o],
+    }).offerings[0])
+    return [line?.title, line?.description]
+  }
+  assert.deepEqual(wording(mk('retainer:signature', 'retainer', 'Signature', { amount: 40, unit: 'month' }, 'x', 'month')),
+    ['Signature Partner: monthly retainer', 'Includes 40 credits a month.'])
+  assert.deepEqual(wording(mk('implementation:signature', 'retainer_implementation', 'Signature implementation', { amount: 40, unit: 'once' }, 'y', 'once')),
+    ['Signature Partner: one-time implementation', 'Charged once at activation. Includes 40 one-time implementation credits.'])
+  assert.deepEqual(wording(mk('retainer:reserve', 'retainer', 'HIMARK Reserve', { amount: 220, unit: 'month' }, null, 'month')),
+    ['HIMARK Reserve: monthly retainer', 'Includes 220 credits a month.'])
+  assert.deepEqual(wording(mk('project:digital-presence', 'project', 'Digital Presence', { minimum: 15, maximum: 150, unit: 'project' }, null, 'once')),
+    ['Digital Presence: project', 'Fixed-scope project fee. Includes 15 implementation credits.'])
+  assert.deepEqual(wording(mk('support:website-care', 'support', 'Website Care', { amount: 2, unit: 'month' }, 'Optional monthly care.', 'month')),
+    ['Website Care: monthly', 'Includes 2 credits a month. Optional monthly care.'])
 })

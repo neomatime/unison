@@ -57,31 +57,15 @@ test('the package labels come from the rate card rows, with the implementation f
   assert.match(query, /packages: packageOptions\(rateRows\.error \? \[\] : rateRows\.data \?\? \[\]\)/, 'a failed rate read only removes the choices')
 })
 
-test('the line editor offers the rate card on a draft only, and its action sends a key and a whole credit count, never a price', () => {
+test('the rate card picker is gone: lines are added from HIVE offerings, the price list or by hand', () => {
   const editor = read('features', 'documents', 'components', 'line-editor.tsx')
-  assert.match(editor, /\{locked \? null : <RateCardPicker kind=\{kind\} documentId=\{documentId\} rateItems=\{rateItems\} currency=\{currency\} \/>\}/)
-  assert.match(editor, /Add from the rate card \(fixed prices, excluding VAT\)/)
-  assert.match(editor, /Top-up credits \(per credit\)/)
-  assert.match(editor, /data\.set\('quantity', isTopUp \? quantity : '1'\)/, 'only top-up credits take a quantity')
-  const picker = editor.slice(editor.indexOf('function RateCardPicker'))
-  assert.deepEqual([...picker.matchAll(/data\.set\('(\w+)'/g)].map((m) => m[1]), ['rateKey', 'quantity'], 'the picker sends only a key and a quantity, never a price')
+  assert.doesNotMatch(editor, /RateCardPicker|addRateCardLineAction|Add from the rate card/)
+  assert.match(editor, /\{locked \? null : <HiveOfferingPicker /)
   for (const page of [['app', '(unison)', 'commercial', 'quotes', '[quoteId]', 'page.tsx'], ['app', '(unison)', 'finance', 'invoices', '[invoiceId]', 'page.tsx']]) {
     const source = read(...page)
-    assert.match(source, /const rateItems = locked \? \[\] : await listRateCardItems\(\)/)
-    assert.match(source, /rateItems=\{rateItems\}/)
+    assert.doesNotMatch(source, /listRateCardItems|rateItems/)
+    assert.match(source, /hiveOfferings=\{hiveOfferings\}/)
   }
-  const lines = read('features', 'documents', 'actions', 'lines.ts')
-  const add = lines.slice(lines.indexOf('export async function addRateCardLineAction'))
-  assert.match(add, /isDocumentKind\(kind\) \|\| !isUuid\(documentId\)/)
-  assert.match(add, /\/\^\[a-z0-9_\.\]\{1,80\}\$\/\.test\(rateKey\)/)
-  assert.match(add, /\/\^\\d\{1,5\}\$\/\.test\(rawQuantity\)/)
-  assert.match(add, /rpc\('add_rate_card_line', \{ p_kind: kind, p_document: documentId, p_rate_key: rateKey, p_quantity: Number\(rawQuantity\) \}\)/)
-  assert.doesNotMatch(add, /unit_price|unitPrice|amount/i)
-})
-
-test('the rate card query lists only rate card rows that are not archived', () => {
-  const query = read('features', 'documents', 'queries', 'list-price-items.ts')
-  const fn = query.slice(query.indexOf('export async function listRateCardItems'))
-  assert.match(fn, /\.not\('rate_key', 'is', null\)/)
-  assert.match(fn, /\.is\('archived_at', null\)/)
+  assert.doesNotMatch(read('features', 'documents', 'actions', 'lines.ts'), /add_rate_card_line/)
+  assert.doesNotMatch(read('features', 'documents', 'queries', 'list-price-items.ts'), /listRateCardItems/)
 })

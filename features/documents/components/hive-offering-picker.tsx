@@ -46,7 +46,7 @@ export function HiveOfferingPicker({ kind, documentId, result, currency }: { kin
             <optgroup key={group.label} label={group.label}>
               {group.items.map((item) => (
                 <option key={item.key} value={item.key}>
-                  {item.name}: {formatCurrency(Number(item.price), currency)}{item.billingPeriod === 'month' ? ' per month' : ''}
+                  {item.title}: {formatCurrency(Number(item.price), currency)}
                 </option>
               ))}
             </optgroup>
