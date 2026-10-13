@@ -4,7 +4,6 @@ import { join } from 'node:path'
 import test from 'node:test'
 
 import {
-  PACKAGE_NAMES,
   clientCode,
   nextReference,
   packageKeyForName,
@@ -13,41 +12,32 @@ import {
   suggestProjectRef,
 } from '../../features/commercial-finance/document-references.ts'
 
-test('the Project name list holds the four retainers then the five projects, with the rate card names', () => {
-  assert.deepEqual(
-    PACKAGE_NAMES.map((entry) => entry.name),
-    [
-      'Signature Partner',
-      'Growth Partner',
-      'Private Partner',
-      'HIMARK Reserve',
-      'Operating Model & Operations Transformation',
-      'Intelligence & AI Transformation',
-      'Digital Experience',
-      'Digital Presence',
-      'Visual Communication & Operations',
-    ],
-  )
-})
+const NAMES = [
+  { key: 'retainer:signature', name: 'Signature Partner' },
+  { key: 'retainer:growth', name: 'Growth Partner' },
+  { key: 'project:digital-presence', name: 'Digital Presence' },
+]
 
-test('a listed name maps to its package whatever the case or spacing, and a custom name maps to none', () => {
-  assert.equal(packageKeyForName('Growth Partner'), 'growth')
-  assert.equal(packageKeyForName('  digital presence '), 'digital_presence')
-  assert.equal(packageKeyForName('Growth Partner extra'), null)
-  assert.equal(packageKeyForName(''), null)
+test('a listed HIVE name maps to its offering whatever the case or spacing, and a custom name maps to none', () => {
+  assert.equal(packageKeyForName('Growth Partner', NAMES), 'retainer:growth')
+  assert.equal(packageKeyForName('  digital presence ', NAMES), 'project:digital-presence')
+  assert.equal(packageKeyForName('Growth Partner extra', NAMES), null)
+  assert.equal(packageKeyForName('', NAMES), null)
+  assert.equal(packageKeyForName('Growth Partner', []), null, 'with no HIVE names nothing is listed')
 })
 
 test('the project reference is the package code, the year and the next free number', () => {
-  assert.equal(suggestProjectRef('growth', 2026, []), 'GP-2026-001')
-  assert.equal(suggestProjectRef('digital_presence', 2026, ['DP-2026-001', 'DP-2026-007', 'GP-2026-009']), 'DP-2026-008')
-  assert.equal(suggestProjectRef('growth', 2027, ['GP-2026-004']), 'GP-2027-001', 'a new year starts again at 001')
+  assert.equal(suggestProjectRef('retainer:growth', 2026, []), 'GP-2026-001')
+  assert.equal(suggestProjectRef('project:digital-presence', 2026, ['DP-2026-001', 'DP-2026-007', 'GP-2026-009']), 'DP-2026-008')
+  assert.equal(suggestProjectRef('retainer:growth', 2027, ['GP-2026-004']), 'GP-2027-001', 'a new year starts again at 001')
   assert.equal(suggestProjectRef(null, 2026, []), '', 'a custom name has no code')
   assert.equal(suggestProjectRef('unknown_key', 2026, []), '')
 })
 
 test('every package has its own code', () => {
-  const codes = PACKAGE_NAMES.map((entry) => suggestProjectRef(entry.key, 2026, []).slice(0, 2))
-  assert.equal(new Set(codes).size, PACKAGE_NAMES.length)
+  const keys = ['retainer:signature', 'retainer:growth', 'retainer:private', 'retainer:reserve', 'project:strategic-consulting', 'project:operations-transformation', 'project:intelligence-ai', 'project:digital-experience', 'project:digital-presence', 'project:visual-operations']
+  const codes = keys.map((key) => suggestProjectRef(key, 2026, []).slice(0, 2))
+  assert.equal(new Set(codes).size, keys.length)
   assert.ok(codes.every((code) => /^[A-Z]{2}$/.test(code)))
 })
 
@@ -77,11 +67,11 @@ test('the reference year is the year in South Africa', () => {
   assert.equal(referenceYear(new Date('2026-06-15T10:00:00Z')), 2026)
 })
 
-test('the quote and invoice forms list the rate card names and fill the references only on a new document', () => {
+test('the quote and invoice forms list the HIVE names and fill the references only on a new document', () => {
   const form = readFileSync(join(process.cwd(), 'features', 'commercial-finance', 'components', 'phase-six-form.tsx'), 'utf8').replace(/\r\n/g, '\n')
   assert.equal([...form.matchAll(/<ProjectIdentityFields kind="(quote|invoice)" identity=\{identity\} \/>/g)].length, 2, 'both forms use the shared fields')
   assert.match(form, /<NameCombobox\n\s+name="projectName"/)
-  assert.match(form, /suggestions=\{PACKAGE_NAMES\.map\(\(entry\) => entry\.name\)\}/)
+  assert.match(form, /suggestions=\{identity\.projectNames\.map\(\(entry\) => entry\.name\)\}/)
   assert.doesNotMatch(form, /<datalist/, 'the browser list cannot be styled, so the form uses its own list')
   assert.match(form, /label="Client reference"/)
   assert.doesNotMatch(form, /their PO number/)

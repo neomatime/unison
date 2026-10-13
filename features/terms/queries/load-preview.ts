@@ -1,6 +1,7 @@
 import 'server-only'
 
 import { documentContext } from '@/features/documents/server-context'
+import { fetchHiveOfferings } from '@/lib/integrations/hive-offerings'
 import { formatCurrency } from '@/lib/utils/format-money'
 import { resolveTerms, type ResolvedLayer, type ResolvedTerms } from '../resolve-terms'
 import { appliesToKind, currentVersion, saToday } from '../selection'
@@ -16,7 +17,7 @@ export type TemplateInfo = {
 
 /**
  * The terms as a client would read them: the current company terms (for quotes, or for invoices when the template is for
- * invoices), then the given version of this template, with the placeholders filled from the rate card and the company
+ * invoices), then the given version of this template, with the placeholders filled from the HIVE offerings feed and the company
  * settings as they are today.
  */
 export async function loadTermsPreview(template: TemplateInfo, version: { id: string; version: number; body: string; inclusions: string }): Promise<ResolvedTerms> {
@@ -45,19 +46,33 @@ export async function loadTermsPreview(template: TemplateInfo, version: { id: st
     templateId: template.id, versionId: version.id, version: version.version, body: version.body, inclusions: version.inclusions,
   })
 
-  const [rate, settings] = await Promise.all([
-    template.targetKind === 'retainer' && template.targetKey
-      ? db.from('price_list_items').select('unit_price,credits,initiative_limit').eq('organization_id', organization.id).eq('rate_key', `retainer.${template.targetKey}.monthly`).maybeSingle()
-      : Promise.resolve({ data: null, error: null }),
+  // The retainer's fee, credits and project limit come from HIVE. When HIVE cannot be reached they stay unfilled, which the
+  // preview shows as unresolved placeholders, never as a guessed number.
+  const retainerFromHive = async () => {
+    if (template.targetKind !== 'retainer' || !template.targetKey) return null
+    try {
+      const offering = (await fetchHiveOfferings()).offerings.find((candidate) => candidate.key === `retainer:${template.targetKey}`)
+      const amount = offering?.price.amount
+      if (!offering || typeof amount !== 'number') return null
+      const credits = (offering.credits as { amount?: unknown } | null | undefined)?.amount
+      return {
+        monthlyFee: amount,
+        credits: typeof credits === 'number' ? credits : null,
+        initiativeLimit: typeof offering.projectLimit === 'number' ? offering.projectLimit : null,
+      }
+    } catch {
+      console.error('[terms-preview] HIVE offerings unavailable')
+      return null
+    }
+  }
+  const [retainer, settings] = await Promise.all([
+    retainerFromHive(),
     db.from('organization_settings').select('default_quote_valid_days,default_payment_days').eq('organization_id', organization.id).maybeSingle(),
   ])
-  if (rate.error) throw rate.error
   if (settings.error) throw settings.error
 
   const values = buildPlaceholderValues({
-    retainer: rate.data
-      ? { monthlyFee: Number(rate.data.unit_price), credits: rate.data.credits === null ? null : Number(rate.data.credits), initiativeLimit: rate.data.initiative_limit === null ? null : Number(rate.data.initiative_limit) }
-      : null,
+    retainer,
     validDays: settings.data?.default_quote_valid_days ?? null,
     paymentDays: settings.data?.default_payment_days ?? null,
     formatMoney: (amount) => formatCurrency(amount, 'ZAR'),

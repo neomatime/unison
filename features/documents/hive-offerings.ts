@@ -46,6 +46,11 @@ function tierName(offering: HiveOffering): string {
   return PARTNER_TIERS.has(code) && !/partner/i.test(name) ? `${name} Partner` : name
 }
 
+/** The name a project or retainer goes by on a document, for example "Signature Partner" or "Digital Presence". */
+export function hiveOfferingDisplayName(offering: HiveOffering): string {
+  return offering.kind === 'retainer' ? tierName(offering) : offering.name
+}
+
 function credit(offering: HiveOffering, field: 'amount' | 'minimum'): number | null {
   const value = (offering.credits as Record<string, unknown> | null | undefined)?.[field]
   return typeof value === 'number' ? value : null
