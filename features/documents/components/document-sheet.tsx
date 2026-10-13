@@ -197,6 +197,15 @@ export function DocumentSheet({ view }: { view: DocumentView }) {
 
         <section className="mt-[4mm] grid grid-cols-[1fr_78mm] gap-[8mm] px-[12mm]">
           <div className="min-w-0">
+            {view.inclusions.length ? (
+              <>
+                <div className={RULE} />
+                <h3 className="mt-3 text-[8pt] uppercase tracking-[0.25em]">Service inclusions</h3>
+                <ul className="mt-2 list-disc space-y-1 pl-5 text-[8.5pt]">
+                  {view.inclusions.map((item, index) => <li key={index} className="break-words">{item}</li>)}
+                </ul>
+              </>
+            ) : null}
             {view.terms.length ? (
               <>
                 <div className={RULE} />

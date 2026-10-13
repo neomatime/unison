@@ -92,6 +92,9 @@ const MESSAGES: ReadonlyArray<readonly [token: string, message: string]> = [
   ['TERMS_PLACEHOLDER_UNKNOWN', 'The text contains a placeholder UNISON does not know. Use only {{monthly_fee}}, {{monthly_credits}}, {{initiative_limit}}, {{valid_days}} and {{payment_days}}, typed exactly like that, with no spaces.'],
   ['TERMS_TOO_LONG', 'The text is too long (terms 20,000 characters at most, inclusions 10,000, change note 500).'],
   ['TERMS_FORBIDDEN', 'Only an owner or admin can change commercial terms.'],
+  ['OFFERING_INVALID', 'One of the chosen offerings is not valid. Refresh the page and choose again.'],
+  ['TERMS_SOURCE_INVALID', 'The terms could not be matched to approved versions. Refresh the page and fill the terms again.'],
+  ['TERMS_COLUMNS_GENERATED', 'The template details of a document are set by Fill terms and cannot be typed.'],
   ['TERMS_VERSION_IMMUTABLE', 'An approved version cannot be edited. Write a new version instead.'],
 ]
 

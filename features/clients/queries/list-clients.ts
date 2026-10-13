@@ -2,6 +2,7 @@ import 'server-only'
 import { getSessionContext } from '@/lib/auth/get-session-context'
 import { createServerSupabase } from '@/lib/supabase/server'
 import type { MockRecord } from '@/features/product-ui/types'
+import { engagementLabel } from '../engagement'
 
 const PAGE_SIZE = 25
 
@@ -22,7 +23,7 @@ export async function listClients(params: { q?: string; status?: string; sort?: 
 
   let query = supabase
     .from('clients')
-    .select('id, name, status, health, contact_name, service, engagement_type, updated_at, archived_at', { count: 'exact' })
+    .select('id, name, status, health, contact_name, engagement_type, updated_at, archived_at', { count: 'exact' })
     .eq('organization_id', organization.id)
     .is('archived_at', null)
 
@@ -43,13 +44,8 @@ export async function listClients(params: { q?: string; status?: string; sort?: 
     owner: '—',
     updated: new Date(row.updated_at).toLocaleDateString('en-ZA', { day: '2-digit', month: 'short', year: 'numeric' }),
     contact: row.contact_name ?? '—',
-    service: row.service ?? '—',
-    engagementType: row.engagement_type ?? '—',
+    engagementType: engagementLabel(row.engagement_type) ?? '—',
     health: row.health,
-    // public.projects exists now, but this query does not count it: a per-row
-    // count needs an aggregate embed, and a wrong or missing count is worse
-    // than an honest dash. Not fabricated as 0.
-    projects: '—',
   }))
 
   return { records, total: count ?? 0, page, pageSize: PAGE_SIZE }

@@ -5,6 +5,7 @@ import { LineEditor } from '@/features/documents/components/line-editor'
 import { getDocument } from '@/features/documents/queries/get-document'
 import { listHiveOfferings } from '@/features/documents/queries/list-hive-offerings'
 import { isDraftStatus } from '@/features/documents/vocabulary'
+import { DocumentTermsPanel } from '@/features/terms/components/document-terms-panel'
 import { PaymentsSection } from '@/features/payments/components/payments-section'
 import { listPayments } from '@/features/payments/queries/list-payments'
 
@@ -39,6 +40,7 @@ async function InvoiceWorkspace({ invoiceId }: { invoiceId: string }) {
   return (
     <>
       <InvoiceLines invoiceId={invoiceId} />
+      <DocumentTermsPanel kind="invoice" id={invoiceId} />
       <PaymentsSection invoiceId={invoiceId} />
       <EmailSection kind="invoice" id={invoiceId} />
     </>

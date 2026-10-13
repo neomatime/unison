@@ -20,7 +20,6 @@ export async function createClientAction(_prev: { error?: string } | undefined, 
     contact_name: parsed.data.contactName,
     contact_email: parsed.data.contactEmail,
     contact_phone: parsed.data.contactPhone,
-    service: parsed.data.service,
     billing_email: parsed.data.billingEmail,
     // These columns are not in types/database.ts until the types are regenerated; the cast keeps the typed insert compiling.
     ...({

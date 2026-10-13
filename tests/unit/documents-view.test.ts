@@ -256,3 +256,11 @@ test('a document that has gone out prints its own contact, with the client name 
   })
   assert.deepEqual(sent.billTo, ['Snapshot Client', 'Attention: Thandi Dlamini'])
 })
+
+test('a quote prints its service inclusions; an invoice does not, and blank lines and bullets are dropped', () => {
+  const withInclusions = { ...draftQuote, service_inclusions: '1. Engagement lead\n\nRoadmap' }
+  const quote = buildDocumentView({ kind: 'quote', record: withInclusions, lines: [], client: null, settings: null })
+  assert.deepEqual(quote.inclusions, ['Engagement lead', 'Roadmap'])
+  const none = buildDocumentView({ kind: 'quote', record: draftQuote, lines: [], client: null, settings: null })
+  assert.deepEqual(none.inclusions, [])
+})
