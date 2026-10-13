@@ -63,7 +63,7 @@ declare
   v_key public.client_api_keys%rowtype;
   v_limit integer := least(greatest(coalesce(p_limit, 100), 1), 500);
   v_rows jsonb;
-  v_count integer;
+  v_total integer;
   v_last uuid;
 begin
   select * into v_key
@@ -110,14 +110,14 @@ begin
       'createdAt', s.created_at,
       'updatedAt', s.updated_at
     ) order by s.id), '[]'::jsonb),
-    count(*)::integer,
+    (select count(*)::integer from page),
     (select id from shown order by id desc limit 1)
-  into v_rows, v_count, v_last
+  into v_rows, v_total, v_last
   from shown s;
 
   return jsonb_build_object(
     'clients', v_rows,
-    'nextCursor', case when (select count(*) from page) > v_limit then v_last else null end
+    'nextCursor', case when v_total > v_limit then v_last else null end
   );
 end;
 $$;
