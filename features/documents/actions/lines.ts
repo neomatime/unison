@@ -118,17 +118,3 @@ export async function moveLineAction(
   revalidateDocumentPages()
   return { success: 'Moved.' }
 }
-
-/** Adds one rate card item to a draft document at its fixed price (a locked line). Only a key and, for top-up credits, a whole quantity come from the browser. */
-export async function addRateCardLineAction(kind: string, documentId: string, _previous: ActionState, form: FormData): Promise<ActionState> {
-  if (!isDocumentKind(kind) || !isUuid(documentId)) return { error: NOT_FOUND }
-  const rateKey = String(form.get('rateKey') ?? '').trim()
-  if (!/^[a-z0-9_.]{1,80}$/.test(rateKey)) return { error: 'Choose an item from the rate card.' }
-  const rawQuantity = String(form.get('quantity') ?? '1').trim() || '1'
-  if (!/^\d{1,5}$/.test(rawQuantity)) return { error: 'Enter a whole number of credits.' }
-  const { db } = await documentContext()
-  const added = await db.rpc('add_rate_card_line', { p_kind: kind, p_document: documentId, p_rate_key: rateKey, p_quantity: Number(rawQuantity) })
-  if (added.error) return { error: documentErrorMessage(added.error.message) ?? 'The line could not be added. Please try again.' }
-  revalidateDocumentPages()
-  return { success: 'Line added from the rate card.' }
-}
