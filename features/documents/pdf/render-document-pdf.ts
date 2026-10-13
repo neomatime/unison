@@ -22,6 +22,8 @@ const breakAnywhere = (word: string) => (word.length > 12 ? Array.from(word) : [
 // A table row or a block is kept on one page only while it is short. Something taller than a page cannot be kept
 // together, and asking for it makes react-pdf draw it over the next section and off the bottom of the page.
 const KEEP_TOGETHER_CHARACTERS = 1200
+const KEEP_TERMS_TOGETHER_CHARACTERS = 4500
+const shortTerms = (...texts: Array<string | null | undefined>) => texts.reduce((total, text) => total + (text?.length ?? 0), 0) < KEEP_TERMS_TOGETHER_CHARACTERS
 const short = (...texts: Array<string | null | undefined>) => texts.reduce((total, text) => total + (text?.length ?? 0), 0) < KEEP_TOGETHER_CHARACTERS
 
 const INK = '#0c2a4d'
@@ -204,7 +206,9 @@ function termsBlock(view: DocumentView) {
   if (!view.terms.length) return null
   return h(
     View,
-    { wrap: !short(...view.terms), style: s({ marginTop: mm(5), paddingHorizontal: mm(12) }) },
+    // Kept together on one page, so a list that does not fit below the totals moves whole to the next page rather than
+    // splitting; only a list longer than a page (not real terms) is allowed to run on.
+    { wrap: !shortTerms(...view.terms), style: s({ marginTop: mm(5), paddingHorizontal: mm(12) }) },
     h(View, { style: s({ width: mm(14), height: mm(0.6), backgroundColor: INK }) }),
     h(Text, { style: s({ marginTop: 8, fontSize: 8, letterSpacing: 2 }) }, upper(view.termsHeading)),
     ...view.terms.map((term, index) =>
