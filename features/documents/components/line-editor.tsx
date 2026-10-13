@@ -6,8 +6,9 @@ import { ActionButton } from '@/features/crm-workspace/components/action-button'
 import { WorkspaceSection } from '@/features/crm-workspace/components/workspace-section'
 import { formatCurrency } from '@/lib/utils/format-money'
 import { addLineAction, addRateCardLineAction, moveLineAction, removeLineAction, updateLineAction } from '../actions/lines'
+import { HiveOfferingPicker } from './hive-offering-picker'
 import { formatQuantity } from '../document-view'
-import type { DocumentLine, PriceItem, RateCardItem } from '../types'
+import type { DocumentLine, HiveOfferingsResult, PriceItem, RateCardItem } from '../types'
 import { VAT_CODES, VAT_LABELS, type DocumentKind, type VatCode } from '../vocabulary'
 
 const field = 'h-10 w-full rounded-none border border-border bg-background px-3 text-sm'
@@ -20,13 +21,14 @@ const LOCKED_NOTE: Record<DocumentKind, string> = {
 type Totals = { subtotal: number | string; tax: number | string; total: number | string; vatRate: number | string }
 
 export function LineEditor({
-  kind, documentId, lines, priceItems, rateItems, locked, currency, totals,
+  kind, documentId, lines, priceItems, rateItems, hiveOfferings, locked, currency, totals,
 }: {
   kind: DocumentKind
   documentId: string
   lines: DocumentLine[]
   priceItems: PriceItem[]
   rateItems: RateCardItem[]
+  hiveOfferings: HiveOfferingsResult
   locked: boolean
   currency: string
   totals: Totals
@@ -54,6 +56,7 @@ export function LineEditor({
         <dt className="font-semibold text-foreground">Total</dt>
         <dd className="text-right font-semibold text-foreground">{money(totals.total)}</dd>
       </dl>
+      {locked ? null : <HiveOfferingPicker kind={kind} documentId={documentId} result={hiveOfferings} currency={currency} />}
       {locked ? null : <RateCardPicker kind={kind} documentId={documentId} rateItems={rateItems} currency={currency} />}
       {locked ? null : <AddLineForm kind={kind} documentId={documentId} priceItems={priceItems} />}
     </WorkspaceSection>

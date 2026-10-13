@@ -3,7 +3,7 @@ import { DocumentActions } from '@/features/documents/components/document-action
 import { EmailSection } from '@/features/documents/components/email-section'
 import { LineEditor } from '@/features/documents/components/line-editor'
 import { getDocument } from '@/features/documents/queries/get-document'
-import { listPriceItems, listRateCardItems } from '@/features/documents/queries/list-price-items'
+import { listHiveOfferings, listPriceItems, listRateCardItems } from '@/features/documents/queries/list-price-items'
 import { isDraftStatus } from '@/features/documents/vocabulary'
 import { PaymentsSection } from '@/features/payments/components/payments-section'
 import { listPayments } from '@/features/payments/queries/list-payments'
@@ -22,6 +22,7 @@ async function InvoiceLines({ invoiceId }: { invoiceId: string }) {
   const locked = !isDraftStatus('invoice', bundle.record.status)
   const priceItems = locked ? [] : await listPriceItems()
   const rateItems = locked ? [] : await listRateCardItems()
+  const hiveOfferings = locked ? { offerings: [], error: null } : await listHiveOfferings()
   const { record } = bundle
   return (
     <LineEditor
@@ -30,6 +31,7 @@ async function InvoiceLines({ invoiceId }: { invoiceId: string }) {
       lines={bundle.lines}
       priceItems={priceItems}
       rateItems={rateItems}
+      hiveOfferings={hiveOfferings}
       locked={locked}
       currency={String(record.currency ?? 'ZAR')}
       totals={{ subtotal: record.subtotal, tax: record.tax_amount, total: record.total_amount, vatRate: record.vat_rate }}

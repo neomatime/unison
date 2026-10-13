@@ -70,3 +70,16 @@ export type RateCardItem = {
   credits: number | string | null
   rate_status: string
 }
+
+/** One HIVE Origin offering, as the "Add from HIVE offerings" picker shows it. `price` is a rand amount excluding VAT, or null when HIVE has no approved rand price (projects). */
+export type HiveOfferingChoice = {
+  key: string
+  kind: string
+  name: string
+  description: string | null
+  price: number | null
+  billingPeriod: string | null
+  credits: string | null
+}
+
+export type HiveOfferingsResult = { offerings: HiveOfferingChoice[]; error: string | null }
