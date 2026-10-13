@@ -42,9 +42,20 @@ export function readGraphEnv(source: Source) {
   } as const
 }
 
+// The HIVE Origin offering feed. UNISON pulls it server-to-server with a bearer
+// key that must equal HIVE's UNISON_OFFERINGS_API_KEY. Read lazily where the feed
+// is fetched, never at import, and never expose either value as NEXT_PUBLIC.
+export function readHiveOfferingsEnv(source: Source) {
+  return {
+    HIVE_OFFERINGS_URL: required(source, 'HIVE_OFFERINGS_URL'),
+    HIVE_OFFERINGS_API_KEY: required(source, 'HIVE_OFFERINGS_API_KEY'),
+  } as const
+}
+
 export function readAppUrl(source: Source): string {
   return required(source, 'NEXT_PUBLIC_APP_URL')
 }
 
 export type SupabasePublicEnv = ReturnType<typeof readSupabasePublicEnv>
+export type HiveOfferingsEnv = ReturnType<typeof readHiveOfferingsEnv>
 export type GraphEnv = ReturnType<typeof readGraphEnv>
