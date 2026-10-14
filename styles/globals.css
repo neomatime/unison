@@ -211,3 +211,338 @@
   from { opacity: 0; transform: translateY(3px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* ------------------------------------------------------------------------------------------------------------------
+   Landing page motion. Slow, soft easing and small distances: things settle into place rather than pop. Every rule that
+   moves something is switched off under prefers-reduced-motion, and the page stays fully visible without JavaScript
+   (the landing page adds a <noscript> override). Revealed by features/marketing/components/reveal.tsx, which sets
+   data-in on a wrapper once it scrolls into view.
+------------------------------------------------------------------------------------------------------------------ */
+:root:has(.lux-page) {
+  scroll-behavior: smooth;
+}
+
+.lux-page {
+  --lux-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --lux-soft: cubic-bezier(0.33, 1, 0.68, 1);
+}
+
+/* Fade, rise and un-blur. */
+.lux-reveal {
+  opacity: 0;
+  transform: translate3d(0, 1.75rem, 0);
+  filter: blur(6px);
+  transition:
+    opacity 1.1s var(--lux-soft) var(--lux-delay, 0ms),
+    transform 1.4s var(--lux-ease) var(--lux-delay, 0ms),
+    filter 1.1s var(--lux-soft) var(--lux-delay, 0ms);
+}
+.lux-reveal[data-in],
+[data-in] .lux-reveal {
+  opacity: 1;
+  transform: none;
+  filter: none;
+}
+
+/* A headline line that slides up from behind a mask. */
+.lux-mask {
+  display: block;
+  overflow: hidden;
+  padding-bottom: 0.1em;
+  margin-bottom: -0.1em;
+}
+.lux-mask > span {
+  display: block;
+  transform: translate3d(0, 108%, 0);
+  transition: transform 1.5s var(--lux-ease) var(--lux-delay, 0ms);
+}
+[data-in] .lux-mask > span {
+  transform: none;
+}
+
+/* A hairline that draws itself. */
+.lux-draw {
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 1.8s var(--lux-ease) var(--lux-delay, 0ms);
+}
+[data-in] .lux-draw,
+.lux-draw[data-in] {
+  transform: scaleX(1);
+}
+.lux-draw-y {
+  transform: scaleY(0);
+  transform-origin: top center;
+  transition: transform 2.2s var(--lux-ease) var(--lux-delay, 0ms);
+}
+[data-in] .lux-draw-y,
+.lux-draw-y[data-in] {
+  transform: scaleY(1);
+}
+
+/* The product preview settles into place from a slight tilt, then floats very gently. */
+.lux-stage {
+  perspective: 1600px;
+}
+.lux-preview {
+  opacity: 0;
+  transform: translate3d(0, 3rem, 0) rotateX(9deg) scale(0.965);
+  transform-origin: 50% 100%;
+  transition:
+    opacity 1.4s var(--lux-soft) var(--lux-delay, 0ms),
+    transform 2.2s var(--lux-ease) var(--lux-delay, 0ms);
+}
+[data-in] .lux-preview {
+  opacity: 1;
+  transform: none;
+}
+.lux-float {
+  animation: lux-float 12s ease-in-out 2.6s infinite;
+}
+@keyframes lux-float {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(0, -0.5rem, 0);
+  }
+}
+
+/* Parts of the preview that fill in once it has settled. */
+.lux-fill {
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 1.6s var(--lux-ease) var(--lux-delay, 0ms);
+}
+[data-in] .lux-fill {
+  transform: scaleX(1);
+}
+.lux-fade {
+  opacity: 0;
+  transform: translate3d(0, 0.4rem, 0);
+  transition:
+    opacity 0.9s var(--lux-soft) var(--lux-delay, 0ms),
+    transform 1.1s var(--lux-ease) var(--lux-delay, 0ms);
+}
+[data-in] .lux-fade {
+  opacity: 1;
+  transform: none;
+}
+
+/* A slow light sweep across the preview, once it has settled. */
+.lux-sheen {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(105deg, transparent 38%, rgb(255 255 255 / 0.55) 50%, transparent 62%);
+  transform: translateX(-120%);
+}
+[data-in] .lux-sheen {
+  animation: lux-sheen 2.4s var(--lux-ease) 2.2s 1 both;
+}
+@keyframes lux-sheen {
+  from {
+    transform: translateX(-120%);
+  }
+  to {
+    transform: translateX(120%);
+  }
+}
+
+/* Buttons: a soft highlight glides across, and the arrow leans forward. */
+.lux-btn {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  transition:
+    background-color 0.5s var(--lux-soft),
+    box-shadow 0.6s var(--lux-soft),
+    transform 0.6s var(--lux-ease);
+}
+.lux-btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(105deg, transparent 30%, rgb(255 255 255 / 0.22) 50%, transparent 70%);
+  transform: translateX(-130%);
+  transition: transform 0.9s var(--lux-ease);
+}
+.lux-btn:hover {
+  box-shadow: 0 14px 34px -14px rgb(23 105 170 / 0.65);
+  transform: translateY(-1px);
+}
+.lux-btn:hover::after {
+  transform: translateX(130%);
+}
+.lux-btn svg {
+  transition: transform 0.6s var(--lux-ease);
+}
+.lux-btn:hover svg,
+.lux-link:hover svg {
+  transform: translateX(4px);
+}
+.lux-link svg {
+  transition: transform 0.6s var(--lux-ease);
+}
+
+/* Navigation links: an underline that draws in. */
+.lux-nav a {
+  position: relative;
+  padding-block: 0.35rem;
+}
+.lux-nav a::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 0.6s var(--lux-ease);
+}
+.lux-nav a:hover::after {
+  transform: scaleX(1);
+}
+
+/* Feature cards: lift a little, and a blue hairline draws across the top. */
+.lux-card {
+  position: relative;
+  transition:
+    background-color 0.6s var(--lux-soft),
+    box-shadow 0.8s var(--lux-soft),
+    transform 0.8s var(--lux-ease);
+}
+.lux-card::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 2px;
+  background: linear-gradient(90deg, #1769aa, #8fb9ec);
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 0.9s var(--lux-ease);
+}
+.lux-card:hover {
+  background: #fff;
+  box-shadow: 0 28px 60px -30px rgb(13 35 64 / 0.35);
+  transform: translateY(-3px);
+  z-index: 1;
+}
+.lux-card:hover::before {
+  transform: scaleX(1);
+}
+.lux-card .lux-icon {
+  transition: transform 0.9s var(--lux-ease), color 0.6s var(--lux-soft);
+}
+.lux-card:hover .lux-icon {
+  transform: translateY(-2px) scale(1.08);
+}
+
+/* The client journey: the line draws step by step and the current step glows softly. */
+.lux-step-dot {
+  transform: scale(0.6);
+  opacity: 0;
+  transition:
+    transform 1s var(--lux-ease) var(--lux-delay, 0ms),
+    opacity 0.8s var(--lux-soft) var(--lux-delay, 0ms);
+}
+[data-in] .lux-step-dot {
+  transform: none;
+  opacity: 1;
+}
+.lux-pulse::after {
+  content: '';
+  position: absolute;
+  inset: -0.35rem;
+  border-radius: 9999px;
+  border: 1px solid #5ca579;
+  opacity: 0;
+}
+[data-in] .lux-pulse::after {
+  animation: lux-pulse 3.6s ease-out 2.4s infinite;
+}
+@keyframes lux-pulse {
+  0% {
+    opacity: 0.7;
+    transform: scale(0.85);
+  }
+  70%,
+  100% {
+    opacity: 0;
+    transform: scale(1.5);
+  }
+}
+
+/* Slow scroll-linked drift for the decorative panel and hairline, where the browser supports it. */
+@supports (animation-timeline: scroll()) {
+  .lux-drift {
+    animation: lux-drift linear both;
+    animation-timeline: scroll(root);
+    animation-range: 0 90vh;
+  }
+  @keyframes lux-drift {
+    to {
+      transform: translate3d(0, 4.5rem, 0);
+    }
+  }
+}
+
+/* A soft, slow glow behind the hero. */
+.lux-glow {
+  animation: lux-glow 14s ease-in-out infinite alternate;
+}
+@keyframes lux-glow {
+  from {
+    opacity: 0.55;
+    transform: translate3d(-2%, 0, 0) scale(1);
+  }
+  to {
+    opacity: 0.9;
+    transform: translate3d(3%, -2%, 0) scale(1.08);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lux-reveal,
+  .lux-mask > span,
+  .lux-draw,
+  .lux-draw-y,
+  .lux-preview,
+  .lux-fill,
+  .lux-fade,
+  .lux-step-dot {
+    opacity: 1 !important;
+    transform: none !important;
+    filter: none !important;
+    transition: none !important;
+  }
+  .lux-float,
+  .lux-glow,
+  .lux-drift,
+  .lux-pulse::after,
+  .lux-sheen {
+    animation: none !important;
+  }
+  .lux-sheen {
+    display: none;
+  }
+  .lux-btn,
+  .lux-btn::after,
+  .lux-btn svg,
+  .lux-link svg,
+  .lux-card,
+  .lux-card::before,
+  .lux-card .lux-icon,
+  .lux-nav a::after {
+    transition: none !important;
+  }
+  .lux-btn:hover,
+  .lux-card:hover,
+  .lux-card:hover .lux-icon {
+    transform: none !important;
+  }
+}
