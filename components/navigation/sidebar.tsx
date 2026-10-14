@@ -185,7 +185,7 @@ export function Sidebar({ onNavigate }: SidebarProps = {}) {
                         : 'text-tenant-sidebar-muted hover:bg-tenant-sidebar-hover hover:text-tenant-sidebar-foreground',
                     )}
                   >
-                    {isActive ? <span aria-hidden="true" className="absolute inset-y-0 -left-3 w-0.5 bg-brand" /> : null}
+                    {isActive ? <span aria-hidden="true" className="unison-nav-indicator absolute inset-y-0 -left-3 w-0.5 bg-brand" /> : null}
                     <Icon className="size-[1.125rem] shrink-0" strokeWidth={1.75} />
                     <span className={cn(collapsed && 'sr-only')}>{item.label}</span>
                   </Link>

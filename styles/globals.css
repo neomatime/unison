@@ -126,12 +126,56 @@
 
 @keyframes unison-view-enter {
   from {
-    opacity: 0.96;
-    transform: translateY(6px);
+    opacity: 0;
+    transform: translate3d(0, 10px, 0);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: none;
+  }
+}
+
+/* Page content and table rows settle in: a short rise and fade. These animations never hold their end state (see
+   .unison-route-view), so nothing is left as a containing block for fixed-position children. */
+@keyframes unison-rise-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 14px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes unison-row-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 6px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes unison-indicator-in {
+  from {
+    transform: scaleY(0);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+@keyframes unison-bar-grow {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: none;
   }
 }
 
@@ -172,33 +216,33 @@
 @keyframes unison-dialog-enter {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translate3d(0, 16px, 0) scale(0.985);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: none;
   }
 }
 
 @keyframes unison-drawer-enter {
   from {
-    opacity: 0.98;
-    transform: translateX(10px);
+    opacity: 0.9;
+    transform: translate3d(28px, 0, 0);
   }
   to {
     opacity: 1;
-    transform: translateX(0);
+    transform: none;
   }
 }
 
 @keyframes unison-menu-enter {
   from {
     opacity: 0;
-    transform: translateY(-4px);
+    transform: translate3d(0, -6px, 0) scale(0.98);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: none;
   }
 }
 

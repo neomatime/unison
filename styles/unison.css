@@ -198,13 +198,16 @@
   @media (hover: hover) {
     .unison-interactive-card:hover {
       border-color: color-mix(in oklab, var(--border) 55%, var(--brand));
-      box-shadow: var(--shadow-interactive);
-      transform: translateY(-1px);
+      box-shadow: 0 14px 34px -18px rgb(13 35 64 / 0.28);
+      transform: translateY(-2px);
     }
   }
 
+  /* Entrance animations use `backwards` fill, never `both`: once finished, the element returns to its own styles. Holding a
+     transform or filter after the end would make every animated block a containing block for fixed-position children
+     (a dialog or drawer rendered inside it would be pinned to the block instead of the window). */
   .unison-route-view {
-    animation: unison-view-enter var(--motion-view) var(--ease-unison) both;
+    animation: unison-view-enter var(--motion-view) var(--ease-lux) backwards;
   }
 
   .unison-skeleton {
@@ -235,20 +238,130 @@
   }
 
   .unison-dialog-enter {
-    animation: unison-dialog-enter var(--motion-panel) var(--ease-unison) both;
+    animation: unison-dialog-enter var(--motion-panel) var(--ease-lux) both;
   }
 
   .unison-drawer-enter {
-    animation: unison-drawer-enter var(--motion-panel) var(--ease-unison) both;
+    animation: unison-drawer-enter calc(var(--motion-panel) + 60ms) var(--ease-lux) both;
   }
 
   .unison-menu-enter {
-    animation: unison-menu-enter var(--motion-micro) var(--ease-unison) both;
+    animation: unison-menu-enter var(--motion-micro) var(--ease-lux) both;
     transform-origin: top right;
   }
 
   .unison-overlay-enter {
-    animation: unison-overlay-enter var(--motion-micro) var(--ease-unison) both;
+    animation: unison-overlay-enter var(--motion-panel) var(--ease-unison) both;
+  }
+
+  /* The active item in the sidebar: its blue edge draws in rather than snapping on. */
+  .unison-nav-indicator {
+    transform-origin: center;
+    animation: unison-indicator-in 560ms var(--ease-lux) backwards;
+  }
+
+  /* Progress bars grow from the left when they first appear (later changes still ease the width). */
+  .unison-bar-fill {
+    transform-origin: left center;
+    animation: unison-bar-grow 900ms var(--ease-lux) 120ms backwards;
+  }
+
+  /* Navigation icons lean in a touch on hover. */
+  .unison-interface nav a svg {
+    transition: transform var(--motion-panel) var(--ease-lux);
+  }
+
+  @media (hover: hover) {
+    .unison-interface nav a:hover svg {
+      transform: translateX(1.5px) scale(1.06);
+    }
+  }
+
+
+  /* Page content settles in block by block. Only the first eight blocks are staggered (the rest arrive with the page),
+     nothing fixed or modal is touched, and specificity is zero so any component's own animation class wins. */
+  :where(:is(.unison-route-view > :not(:only-child), .unison-route-view > :only-child > *):not([class*='fixed']):not([role='dialog']):not([role='alertdialog']):not(.document-print):not(script):not(style)) {
+    animation: unison-rise-in var(--motion-view) var(--ease-lux) backwards;
+  }
+  :where(:is(.unison-route-view > :not(:only-child), .unison-route-view > :only-child > *):not([class*='fixed']):not([role='dialog']):not([role='alertdialog']):not(.document-print):not(script):not(style)):nth-child(2) {
+    animation-delay: calc(1 * var(--motion-stagger));
+  }
+  :where(:is(.unison-route-view > :not(:only-child), .unison-route-view > :only-child > *):not([class*='fixed']):not([role='dialog']):not([role='alertdialog']):not(.document-print):not(script):not(style)):nth-child(3) {
+    animation-delay: calc(2 * var(--motion-stagger));
+  }
+  :where(:is(.unison-route-view > :not(:only-child), .unison-route-view > :only-child > *):not([class*='fixed']):not([role='dialog']):not([role='alertdialog']):not(.document-print):not(script):not(style)):nth-child(4) {
+    animation-delay: calc(3 * var(--motion-stagger));
+  }
+  :where(:is(.unison-route-view > :not(:only-child), .unison-route-view > :only-child > *):not([class*='fixed']):not([role='dialog']):not([role='alertdialog']):not(.document-print):not(script):not(style)):nth-child(5) {
+    animation-delay: calc(4 * var(--motion-stagger));
+  }
+  :where(:is(.unison-route-view > :not(:only-child), .unison-route-view > :only-child > *):not([class*='fixed']):not([role='dialog']):not([role='alertdialog']):not(.document-print):not(script):not(style)):nth-child(6) {
+    animation-delay: calc(5 * var(--motion-stagger));
+  }
+  :where(:is(.unison-route-view > :not(:only-child), .unison-route-view > :only-child > *):not([class*='fixed']):not([role='dialog']):not([role='alertdialog']):not(.document-print):not(script):not(style)):nth-child(7) {
+    animation-delay: calc(6 * var(--motion-stagger));
+  }
+  :where(:is(.unison-route-view > :not(:only-child), .unison-route-view > :only-child > *):not([class*='fixed']):not([role='dialog']):not([role='alertdialog']):not(.document-print):not(script):not(style)):nth-child(8) {
+    animation-delay: calc(7 * var(--motion-stagger));
+  }
+
+  /* Table rows ease in, top rows first. */
+  .unison-interface table:not(.sheet-lines):not(.sheet-frame) tbody tr:nth-child(-n + 12) {
+    animation: unison-row-in calc(var(--motion-view) - 40ms) var(--ease-lux) backwards;
+  }
+  .unison-interface table:not(.sheet-lines):not(.sheet-frame) tbody tr:nth-child(2) {
+    animation-delay: calc(1 * 28ms);
+  }
+  .unison-interface table:not(.sheet-lines):not(.sheet-frame) tbody tr:nth-child(3) {
+    animation-delay: calc(2 * 28ms);
+  }
+  .unison-interface table:not(.sheet-lines):not(.sheet-frame) tbody tr:nth-child(4) {
+    animation-delay: calc(3 * 28ms);
+  }
+  .unison-interface table:not(.sheet-lines):not(.sheet-frame) tbody tr:nth-child(5) {
+    animation-delay: calc(4 * 28ms);
+  }
+  .unison-interface table:not(.sheet-lines):not(.sheet-frame) tbody tr:nth-child(6) {
+    animation-delay: calc(5 * 28ms);
+  }
+  .unison-interface table:not(.sheet-lines):not(.sheet-frame) tbody tr:nth-child(7) {
+    animation-delay: calc(6 * 28ms);
+  }
+  .unison-interface table:not(.sheet-lines):not(.sheet-frame) tbody tr:nth-child(8) {
+    animation-delay: calc(7 * 28ms);
+  }
+  .unison-interface table:not(.sheet-lines):not(.sheet-frame) tbody tr:nth-child(9) {
+    animation-delay: calc(8 * 28ms);
+  }
+  .unison-interface table:not(.sheet-lines):not(.sheet-frame) tbody tr:nth-child(10) {
+    animation-delay: calc(9 * 28ms);
+  }
+  .unison-interface table:not(.sheet-lines):not(.sheet-frame) tbody tr:nth-child(11) {
+    animation-delay: calc(10 * 28ms);
+  }
+  .unison-interface table:not(.sheet-lines):not(.sheet-frame) tbody tr:nth-child(12) {
+    animation-delay: calc(11 * 28ms);
+  }
+
+  /* Primary actions feel tactile: they lift a hair on hover and press down when clicked. The theme is gradient-free, so
+     there is no highlight sweep here (that stays on the marketing page). */
+  .unison-interface :where(button, a):is(.bg-brand, .bg-foreground, .bg-primary, [class*='bg-[#1769aa]']):not(.lux-btn):not(:disabled):not([aria-disabled='true']) {
+    transition:
+      background-color var(--motion-micro) var(--ease-lux),
+      box-shadow var(--motion-panel) var(--ease-lux),
+      transform var(--motion-micro) var(--ease-lux);
+  }
+
+  @media (hover: hover) {
+    .unison-interface :where(button, a):is(.bg-brand, .bg-foreground, .bg-primary, [class*='bg-[#1769aa]']):not(.lux-btn):not(:disabled):not([aria-disabled='true']):hover {
+      box-shadow: 0 12px 28px -16px rgb(23 105 170 / 0.7);
+      transform: translateY(-1px);
+    }
+  }
+
+  .unison-interface :where(button, a):is(.bg-brand, .bg-foreground, .bg-primary, [class*='bg-[#1769aa]']):not(.lux-btn):not(:disabled):active {
+    transform: translateY(0) scale(0.985);
+    box-shadow: none;
   }
 
   @media (max-width: 640px) {
@@ -309,8 +422,20 @@
     .unison-interface *::after {
       scroll-behavior: auto !important;
       animation-duration: 0.01ms !important;
+      animation-delay: 0s !important;
       animation-iteration-count: 1 !important;
       transition-duration: 0.01ms !important;
+      transition-delay: 0s !important;
+    }
+  }
+
+  /* Nothing moves on paper. */
+  @media print {
+    .unison-interface *,
+    .unison-interface *::before,
+    .unison-interface *::after {
+      animation: none !important;
+      transition: none !important;
     }
   }
 }
