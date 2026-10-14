@@ -25,6 +25,12 @@ import type { DocumentView } from '../document-view'
 // the rest of the page (so a one-page quote still ends with its panel reaching the ribbon). They are real table rows, not a
 // flex column, because a browser does not repeat the table header on a page that holds only the spill-over of a flex item.
 const RIBBON_HEIGHT = '12mm'
+// When the bank / closing / picture band lands on a later page (long terms or many lines) it ends where its content ends, and
+// the rest of the page above the ribbon would be white. A table row cannot know how much page is left, so the band's colour
+// is carried down to the ribbon as ink only: stacked box-shadows that copy each coloured cell downwards. Shadows are paint,
+// not layout, so they never add a page or move anything; the page edge clips them and the ribbon sits over their end. The
+// copies are 25mm apart, so they join up as long as the band is at least 25mm tall (the picture cell is 28mm at least).
+const bandExtension = (colour: string) => Array.from({ length: 10 }, (_, index) => `0 ${(index + 1) * 25}mm 0 0 ${colour}`).join(', ')
 const RUNNER_HEIGHT = '14mm'
 const PRINT_CSS = `
   @page { size: A4; margin: 0; }
@@ -54,8 +60,9 @@ const PRINT_CSS = `
     .document-print .sheet-terms { break-inside: avoid; }
     .document-print .sheet-bottom > td { display: table-cell; vertical-align: top; border-top: 4mm solid transparent; background-clip: padding-box; }
     .document-print .sheet-bank { width: 38%; }
+    .document-print .sheet-bank-filled { box-shadow: ${bandExtension('#e3ebf5')}; }
     .document-print .sheet-closing { width: 34%; }
-    .document-print .sheet-photo { width: 28%; height: 28mm; position: relative; }
+    .document-print .sheet-photo { width: 28%; height: 28mm; position: relative; background-color: #bcd9f5; box-shadow: ${bandExtension('#bcd9f5')}; }
     .document-print .sheet-frame > thead { display: table-header-group; }
     .document-print .sheet-frame > thead > tr { display: table-row; }
     .document-print .sheet-frame > thead > tr > td { display: table-cell; height: ${RUNNER_HEIGHT}; padding: 0; }
@@ -240,7 +247,7 @@ export function DocumentSheet({ view }: { view: DocumentView }) {
               </td>
             </tr>
             <tr role="presentation" className="sheet-bottom mt-[4mm] grid flex-1 grid-cols-[38%_34%_28%]">
-              <td role="presentation" className={`sheet-bank ${view.bank.length ? 'break-inside-avoid bg-[#e3ebf5] px-[12mm] py-[3mm]' : ''}`}>
+              <td role="presentation" className={`sheet-bank ${view.bank.length ? 'sheet-bank-filled break-inside-avoid bg-[#e3ebf5] px-[12mm] py-[3mm]' : ''}`}>
                 {view.bank.length ? (
                   <>
                     <h3 className="text-[8pt] uppercase tracking-[0.25em]">Bank details</h3>

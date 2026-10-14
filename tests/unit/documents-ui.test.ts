@@ -409,3 +409,12 @@ test('every page after the first starts with a short header: the frame\'s table 
   assert.match(pdf, /\{ fixed: true, style: s\(\{ position: 'absolute', top: 0, left: 0, right: 0, height: RUNNER_HEIGHT,/, 'the PDF short header is fixed to the top of every page')
   assert.ok(pdf.indexOf('runner(view, images),\n      band(view, images)') > 0 || pdf.indexOf('runner(view, images),\r\n      band(view, images)') > 0, 'it is drawn before the band, so the band hides it on page 1')
 })
+
+test('a band that lands on a later page is carried down to the ribbon with ink only, so it can never add a page', () => {
+  const sheet = component('document-sheet')
+  assert.match(sheet, /const bandExtension = \(colour: string\) => Array\.from\(\{ length: 10 \}/, 'the band colour is copied downwards as stacked shadows')
+  assert.match(sheet, /\.sheet-bank-filled \{ box-shadow: \$\{bandExtension\('#e3ebf5'\)\}; \}/, 'the bank panel is extended')
+  assert.match(sheet, /\.sheet-photo \{[^}]*background-color: #bcd9f5; box-shadow: \$\{bandExtension\('#bcd9f5'\)\}; \}/, 'the picture column is extended in the header colour')
+  assert.match(sheet, /sheet-bank-filled break-inside-avoid bg-\[#e3ebf5\]/, 'only a bank panel that has details is extended')
+  assert.match(sheet, /\.sheet-frame \{ display: table; width: 100%; height: calc\(100vh - 1mm\);/, 'the frame stays one page tall: nothing is sized to a guessed page count')
+})
