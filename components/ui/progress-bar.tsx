@@ -26,7 +26,7 @@ export function ProgressBar({
       aria-valuemax={100}
     >
       <div
-        className={cn('h-full rounded-none transition-[width] duration-200 ease-out', className)}
+        className={cn('unison-bar-fill h-full rounded-none transition-[width] duration-500 ease-out', className)}
         style={{ width: `${clamped}%`, backgroundColor: color }}
       />
     </div>
