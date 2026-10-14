@@ -217,10 +217,10 @@ test('main sign-in uses the premium split workspace experience', () => {
   const screen = readFileSync(join(workspace, 'features', 'auth-ui', 'auth-screen.tsx'), 'utf8')
   for (const copy of [
     'Welcome to UNISON',
-    'Aligned delivery.',
-    'Greater impact.',
+    'Every client.',
+    'One relationship.',
     'Continue with Microsoft',
-    'The operating layer for governed enterprise delivery.',
+    'The client relationship platform.',
     'your UNISON administrator',
   ]) assert.match(screen, new RegExp(copy))
   for (const behavior of ['signInAction', 'signInWithMicrosoftAction', 'useFormStatus', 'name="next"', 'Show password']) assert.match(screen, new RegExp(behavior))

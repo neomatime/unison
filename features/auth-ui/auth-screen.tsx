@@ -20,7 +20,7 @@ type AuthKind = 'sign-in' | 'forgot' | 'reset' | 'accept' | 'verify' | 'create-o
 type CompletionMethod = 'email' | null
 
 const copy: Record<AuthKind, { title: string; description: string; action: string }> = {
-  'sign-in': { title: 'Sign in', description: 'Access the operating layer for governed enterprise delivery.', action: 'Sign in' },
+  'sign-in': { title: 'Sign in', description: 'Access your client relationship workspace.', action: 'Sign in' },
   forgot: { title: 'Reset your password', description: 'Enter your work email and we’ll prepare a reset link.', action: 'Continue' },
   reset: { title: 'Choose a new password', description: 'Use a strong password you have not used before.', action: 'Update password' },
   // The invitation names the tenant when it can be resolved. These generic
@@ -77,7 +77,7 @@ export function AuthScreen({ kind, next, token, message, organizationName }: { k
             <div className="w-full max-w-[36.5rem]">
               <p className="text-[0.6875rem] font-medium tracking-[0.22em] text-[#56749a] uppercase">Welcome to UNISON</p>
               <h1 className="mt-3 text-[2.65rem] leading-none font-medium tracking-[-0.035em] sm:text-[3rem]">Sign in</h1>
-              <p className="mt-3 max-w-[26rem] text-sm leading-6 text-[#657590]">Access the operating layer for governed enterprise delivery.</p>
+              <p className="mt-3 max-w-[26rem] text-sm leading-6 text-[#657590]">Access your client relationship workspace.</p>
 
               {message ? <p role="alert" className="mt-7 border-l-2 border-red-500 bg-red-50 px-4 py-3 text-sm text-red-700">{message}</p> : null}
 
@@ -167,7 +167,7 @@ export function AuthScreen({ kind, next, token, message, organizationName }: { k
 }
 
 function SignInBrandPanel() {
-  const principles = ['Structure', 'Own', 'Progress', 'Detect', 'Intervene', 'Govern', 'Communicate']
+  const principles = ['Capture', 'Qualify', 'Propose', 'Win', 'Invoice', 'Collect', 'Retain']
 
   return (
     <section className="relative hidden min-h-screen overflow-hidden bg-[#f7fafe] lg:flex lg:flex-col">
@@ -184,9 +184,9 @@ function SignInBrandPanel() {
 
         <div className="my-auto max-w-[35rem] py-16">
           <span className="block h-0.5 w-9 bg-[#1769aa]" />
-          <p className="mt-7 max-w-[22rem] text-[0.6875rem] leading-5 font-medium tracking-[0.2em] text-[#5e7290] uppercase">The operating layer for governed enterprise delivery.</p>
-          <h2 className="mt-14 text-[clamp(3.25rem,5vw,5.35rem)] leading-[0.99] font-medium tracking-[-0.045em] text-[#0d2340]">Aligned delivery.<br />Greater impact.</h2>
-          <p className="mt-8 max-w-[31rem] text-lg leading-8 text-[#657590]">One workspace. Complete visibility.<br />From strategy to outcomes.</p>
+          <p className="mt-7 max-w-[22rem] text-[0.6875rem] leading-5 font-medium tracking-[0.2em] text-[#5e7290] uppercase">The client relationship platform.</p>
+          <h2 className="mt-14 text-[clamp(3.25rem,5vw,5.35rem)] leading-[0.99] font-medium tracking-[-0.045em] text-[#0d2340]">Every client.<br />One relationship.</h2>
+          <p className="mt-8 max-w-[31rem] text-lg leading-8 text-[#657590]">One workspace. Complete visibility.<br />From first hello to final payment.</p>
         </div>
 
         <div>

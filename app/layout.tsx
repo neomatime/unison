@@ -7,7 +7,7 @@ import '@/styles/globals.css'
 export const metadata: Metadata = {
   title: `${application.name} — ${application.description}`,
   description:
-    `${application.name} is a governed enterprise project delivery system. ${application.tagline}`,
+    `${application.name} is a client relationship platform for leads, clients, quotes and invoices. ${application.tagline}`,
   generator: 'v0.app',
 }
 
