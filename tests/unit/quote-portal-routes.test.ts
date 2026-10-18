@@ -176,11 +176,21 @@ test('the portal client checks the token shape before it reads the environment o
 })
 
 test('the portal client rejects an answer that is not one of the six states', () => {
-  const portalClient = portalClientSource()
-  const body = bodyOf(portalClient, 'getPortalQuote')
-  assert.match(portalClient, /PORTAL_STATES/)
-  assert.match(body, /throw new Error\(/)
-  assert.match(body, /if \(error\)/)
+  const body = bodyOf(portalClientSource(), 'getPortalQuote')
+  // The state is read only from an object that is not null and not an array...
+  assert.match(body, /typeof data === 'object' && data !== null && !Array\.isArray\(data\)/)
+  // ...and the check itself: not a string, or not one of the six names, throws this exact message. Deleting or
+  // loosening the membership test fails here, which a search for the constant's name would not notice.
+  assert.match(
+    body,
+    /if \(typeof state !== 'string' \|\| !\(PORTAL_STATES as readonly string\[\]\)\.includes\(state\)\) \{\s*throw new Error\('portal_get_quote returned an unexpected answer'\)\s*\}/,
+  )
+  // Order: a database error first, then the contract check, and only then is the answer handed on.
+  const failed = body.indexOf('if (error)')
+  const checked = body.indexOf('.includes(state)')
+  const returned = body.indexOf('return data as PortalQuote')
+  assert.ok(failed > -1 && checked > failed && returned > checked, 'error, then the state check, then the return')
+  assert.equal((body.match(/return data/g) ?? []).length, 1, 'the answer leaves by one return only')
 })
 
 test('the token never reaches an error message or a log line', () => {
@@ -249,6 +259,52 @@ test('the root layout uses SafeAnalytics, not Analytics directly', () => {
   assert.deepEqual(importers, ['components/shared/safe-analytics.tsx'])
 })
 
+test('isPortalPath is true for /q and what sits under /q/, and for nothing else', async () => {
+  const { isPortalPath } = await import('../../components/shared/analytics-url.ts')
+  for (const path of ['/q', '/q/', '/q/abc', `/q/${TOKEN}`, `/q/${TOKEN}/pdf`]) {
+    assert.equal(isPortalPath(path), true, path)
+  }
+  for (const path of ['/quotes', '/qq/x', '/Q/x', '/Q', '/q-debug', '/commercial/quotes/1', `/commercial/quotes/${TOKEN}`, '/api/q', '/', '', 'q', 'q/abc', ' /q/abc', '//q/abc']) {
+    assert.equal(isPortalPath(path), false, JSON.stringify(path))
+  }
+  // Not a string: false, whatever it prints as. (SafeAnalytics treats "not a string" as a reason to render nothing.)
+  for (const value of [undefined, null, 42, true, {}, ['/q'], ['/q/abc'], { toString: () => '/q/abc' }, Symbol('/q')]) {
+    assert.equal(isPortalPath(value), false, String(typeof value))
+  }
+})
+
+test('SafeAnalytics loads nothing on a portal page and keeps the redaction everywhere else', () => {
+  // beforeSend cannot see everything the package hands its script: @vercel/analytics/next also passes the raw
+  // pathname (the token) as `path`. So on a portal page the script must not be loaded at all.
+  const wrapper = read('components', 'shared', 'safe-analytics.tsx')
+  assert.match(wrapper, /^\s*'use client'/)
+  assert.match(wrapper, /import \{ usePathname \} from 'next\/navigation'/)
+  assert.match(wrapper, /import \{[^}]*\bisPortalPath\b[^}]*\} from '@\/components\/shared\/analytics-url'/)
+  assert.match(wrapper, /import \{[^}]*\bSuspense\b[^}]*\} from 'react'/)
+
+  // The component that reads the pathname: the hook is called first and unconditionally (rules of hooks), and the
+  // early return sits before the Analytics element is created.
+  const start = wrapper.indexOf('function AnalyticsUnlessPortal(')
+  assert.ok(start > -1, 'the component that reads the pathname is named in the file')
+  const end = wrapper.indexOf('\nexport function SafeAnalytics', start)
+  assert.ok(end > start, 'and it is followed by the exported SafeAnalytics')
+  const reader = wrapper.slice(start, end)
+  const hook = reader.indexOf('usePathname()')
+  const guard = reader.indexOf('if (')
+  const nothing = reader.indexOf('return null')
+  const element = reader.indexOf('<Analytics')
+  assert.ok(hook > -1 && guard > hook, 'usePathname() is called before any condition')
+  assert.ok(nothing > guard && element > nothing, 'the guard returns null before Analytics is rendered')
+  assert.equal((reader.match(/usePathname\(\)/g) ?? []).length, 1)
+  assert.match(reader, /if \(typeof pathname !== 'string' \|\| isPortalPath\(pathname\)\) return null/, 'fails closed on a non-string, and renders nothing on a portal page')
+  assert.match(reader, /<Analytics beforeSend=\{redactPortalUrl\} \/>/, 'elsewhere the redaction stays on as defence in depth')
+  assert.doesNotMatch(reader.slice(0, nothing), /<Analytics|beforeSend/, 'nothing of Analytics is set up before the guard')
+
+  // The exported component wraps the reader in Suspense with no fallback (usePathname can suspend on a dynamic
+  // route when cacheComponents is on, and would then fail the build without a boundary).
+  assert.match(wrapper.slice(end), /<Suspense fallback=\{null\}>\s*<AnalyticsUnlessPortal \/>\s*<\/Suspense>/)
+})
+
 test('redactPortalUrl replaces the whole portal address and nothing else', async () => {
   const { redactPortalUrl } = await import('../../components/shared/analytics-url.ts')
 
@@ -294,6 +350,15 @@ test('redactPortalUrl never throws on a string that is not an absolute URL', asy
   assert.equal(redactPortalUrl({ url: '/q' }).url, '/q/redacted')
   assert.equal(redactPortalUrl({ url: '/quotes/1' }).url, '/quotes/1')
   assert.equal(redactPortalUrl({ url: '/qq/x' }).url, '/qq/x')
+  // A protocol-relative address (no scheme, so it cannot be parsed either) keeps its host and loses its path.
+  assert.equal(redactPortalUrl({ url: `//host.example/q/${TOKEN}?x=1#h` }).url, '//host.example/q/redacted')
+  assert.equal(redactPortalUrl({ url: `//host.example:3000/q/${TOKEN}` }).url, '//host.example:3000/q/redacted')
+  assert.equal(redactPortalUrl({ url: '//host.example/q' }).url, '//host.example/q/redacted')
+  assert.equal(redactPortalUrl({ url: `//host.example/q?t=${TOKEN}` }).url, '//host.example/q/redacted')
+  for (const url of ['//host.example/quotes/1', '//host.example/qq/x', '//host.example/', '//host.example', '//q/abc', '//q', `//host.example/commercial/quotes/${TOKEN}`]) {
+    const event = { url }
+    assert.equal(redactPortalUrl(event), event, `${url} is returned as it came`)
+  }
   // Not a string at all (the type forbids it, a script could send it): returned as it came.
   const odd = { url: undefined as unknown as string }
   assert.doesNotThrow(() => redactPortalUrl(odd))

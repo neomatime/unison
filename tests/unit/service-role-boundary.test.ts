@@ -87,8 +87,8 @@ test('the allowlist names files that exist', () => {
 
 test('the allowlist is exactly the known request-path callers', () => {
   // Pinned by value so widening it is a visible diff in this file rather than a
-  // silent pass. A third service-role request path may well be legitimate; it
-  // must be argued for here, next to the reasons the other two carry.
+  // silent pass. A further service-role request path may well be legitimate; it
+  // must be argued for here, next to the reasons the existing entries carry.
   assert.deepEqual([...SERVICE_ROLE_REQUEST_PATHS].sort(), [
     'app/api/integrations/website-leads/route.ts',
     'features/internal-provisioning/actions/provision-organization.ts',
