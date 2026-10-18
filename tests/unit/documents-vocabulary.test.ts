@@ -1,23 +1,38 @@
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import test from 'node:test'
 
 import { DOCUMENT_ERROR_TOKENS, documentErrorMessage } from '../../features/documents/errors.ts'
 import {
-  DOCUMENTS, INVOICE_DRAFT_STATUSES, INVOICE_ISSUED_STATUSES, QUOTE_DRAFT_STATUSES, QUOTE_SENT_STATUSES, VAT_CODES,
+  CHARGE_KINDS, CHARGE_KIND_LABELS, DOCUMENTS, INVOICE_DRAFT_STATUSES, INVOICE_ISSUED_STATUSES, QUOTE_DRAFT_STATUSES, QUOTE_SENT_STATUSES, VAT_CODES,
   isDocumentKind, isDraftReference, isDraftStatus,
 } from '../../features/documents/vocabulary.ts'
 
 const migration = (name: string) => readFileSync(join(process.cwd(), 'supabase', 'migrations', name), 'utf8')
 const quoted = (values: readonly string[], separator: string) => values.map((value) => `'${value}'`).join(separator)
 
+/** The quote status list of the newest `quotes_status_check` definition: migrations sorted by file name, the last match wins. */
+function newestQuoteStatuses(): string[] {
+  const directory = join(process.cwd(), 'supabase', 'migrations')
+  const sql = readdirSync(directory).filter((name) => name.endsWith('.sql')).sort().map((name) => readFileSync(join(directory, name), 'utf8')).join('\n')
+  const definitions = [...sql.matchAll(/add constraint quotes_status_check check \(status in \(([^)]*)\)\)/g)]
+  assert.ok(definitions.length > 0, 'a migration defines quotes_status_check')
+  return definitions[definitions.length - 1][1].split(',').map((value) => value.trim().replace(/^'|'$/g, ''))
+}
+
 test('the vocabulary equals the database checks it mirrors', () => {
   const phaseSix = migration('20260910175724_phase_six_commercial_finance.sql')
-  assert.ok(phaseSix.includes(`status in (${quoted([...QUOTE_DRAFT_STATUSES, ...QUOTE_SENT_STATUSES], ',')})`), 'quote statuses')
+  assert.deepEqual(newestQuoteStatuses(), [...QUOTE_DRAFT_STATUSES, ...QUOTE_SENT_STATUSES], 'quote statuses')
   assert.ok(phaseSix.includes(`status in (${quoted([...INVOICE_DRAFT_STATUSES, ...INVOICE_ISSUED_STATUSES], ',')})`), 'invoice statuses')
   const documents = migration('20261011100000_documents_tables.sql')
   assert.ok(documents.includes(`vat_code in (${quoted(VAT_CODES, ', ')})`), 'VAT codes')
+})
+
+test('the charge kinds equal the quote_lines check and each has a label', () => {
+  const portal = migration('20261018100000_quote_portal_schema.sql')
+  assert.ok(portal.includes(`charge_kind text check (charge_kind in (${quoted(CHARGE_KINDS, ', ')}))`), 'charge kinds')
+  assert.deepEqual(CHARGE_KIND_LABELS, { once_off: 'Once-off', monthly: 'Monthly' })
 })
 
 test('draft statuses and draft references', () => {

@@ -27,7 +27,14 @@ test('the quote and invoice forms no longer ask for a number or any total', () =
   assert.doesNotMatch(form, /name="issueDate"/, 'an invoice is dated the day it is issued; the draft form has no issue date to type')
   assert.match(form, /isDraftStatus\(/, 'the form behaves differently for a sent or issued document')
   assert.match(form, /QUOTE_SENT_STATUSES/)
+  assert.match(form, /QUOTE_SENT_STATUSES\.filter\(\(status\) => status !== "Superseded" \|\| record\.status === "Superseded"\)/, 'staff never pick Superseded by hand: the select leaves it out unless the quote already is')
   assert.doesNotMatch(form, /INVOICE_ISSUED_STATUSES/, 'an issued invoice has no status to pick: it comes from the payments')
+})
+
+test('the save action refuses to set a sent quote to Superseded by hand', () => {
+  const action = read('features', 'commercial-finance', 'actions', 'phase-six.ts')
+  const quote = between(action, QUOTE_OPENER, INVOICE_OPENER, 'quote branch')
+  assert.match(quote, /status === "Superseded" && state\.status !== "Superseded"/, 'only the database moves a quote to Superseded; a form post that leaves it as it is stays fine')
 })
 
 test('the save action never writes a number, a total or a milestone for a quote or an invoice', () => {

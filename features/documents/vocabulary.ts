@@ -4,6 +4,11 @@ export const VAT_CODES = ['standard', 'zero'] as const
 export type VatCode = (typeof VAT_CODES)[number]
 export const VAT_LABELS: Record<VatCode, string> = { standard: 'Standard rate', zero: 'Zero-rated' }
 
+/** What a quote line charges for. Nullable in the database: a line from before this existed has no kind. */
+export const CHARGE_KINDS = ['once_off', 'monthly'] as const
+export type ChargeKind = (typeof CHARGE_KINDS)[number]
+export const CHARGE_KIND_LABELS: Record<ChargeKind, string> = { once_off: 'Once-off', monthly: 'Monthly' }
+
 export type DocumentKind = 'quote' | 'invoice'
 
 export const DOCUMENTS = {
@@ -17,7 +22,7 @@ export function isDocumentKind(value: unknown): value is DocumentKind {
 
 /** A quote can be edited freely in these statuses; once it is sent it is in one of the next. */
 export const QUOTE_DRAFT_STATUSES = ['Draft', 'Internal Review'] as const
-export const QUOTE_SENT_STATUSES = ['Sent', 'Accepted', 'Declined', 'Expired'] as const
+export const QUOTE_SENT_STATUSES = ['Sent', 'Accepted', 'Declined', 'Expired', 'Superseded'] as const
 export const INVOICE_DRAFT_STATUSES = ['Draft'] as const
 export const INVOICE_ISSUED_STATUSES = ['Issued', 'Partially Paid', 'Paid', 'Overdue', 'Cancelled'] as const
 

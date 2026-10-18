@@ -151,7 +151,8 @@ export async function savePhaseSixRecordAction(
       if (!status || isOneOf(QUOTE_DRAFT_STATUSES, status)) {
         return { error: documentErrorMessage("QUOTE_FROZEN") ?? "This quote has already been sent and can no longer be edited." };
       }
-      if (!isOneOf(QUOTE_SENT_STATUSES, status)) return { error: "Choose Sent, Accepted, Declined or Expired." };
+      // Superseded is set by the database when a revision goes out, never by hand; a form that posts it back unchanged is fine.
+      if (!isOneOf(QUOTE_SENT_STATUSES, status) || (status === "Superseded" && state.status !== "Superseded")) return { error: "Choose Sent, Accepted, Declined or Expired." };
       values = { status, notes: optional(form, "notes") };
     } else {
       if (status && !isOneOf(QUOTE_DRAFT_STATUSES, status)) {

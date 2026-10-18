@@ -41,7 +41,10 @@ test('the status lists equal the database checks', () => {
     return list(match![1])
   }
   assert.deepEqual([...REGISTERS.lead.statuses], check('leads', 'status'))
-  assert.deepEqual([...REGISTERS.quote.statuses], check('quotes', 'status'))
+  // A quote's status check has been redefined since the table was made: the newest `quotes_status_check` wins.
+  const definitions = [...sql.matchAll(/add constraint quotes_status_check check \(status in \(([^)]*)\)\)/g)]
+  assert.ok(definitions.length > 0, 'a migration defines quotes_status_check')
+  assert.deepEqual([...REGISTERS.quote.statuses], list(definitions[definitions.length - 1][1]))
   assert.deepEqual([...REGISTERS.opportunity.statuses], check('sales_opportunities', 'stage'))
   assert.deepEqual([...REGISTERS.invoice.statuses], check('invoices', 'status'))
   assert.deepEqual([...REGISTERS.expense.statuses], check('expenses', 'status'))

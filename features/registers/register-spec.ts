@@ -38,7 +38,7 @@ export const REGISTERS: Record<RegisterKind, RegisterSpec> = {
     collection: 'quotes',
     searchColumns: ['quote_number', 'client_name'],
     statusColumn: 'status',
-    statuses: ['Draft', 'Internal Review', 'Sent', 'Accepted', 'Declined', 'Expired'],
+    statuses: ['Draft', 'Internal Review', 'Sent', 'Accepted', 'Declined', 'Expired', 'Superseded'],
     ownerColumn: 'owner_id',
     sortable: { name: 'quote_number', client: 'client_name', total: 'total_amount', expiry: 'valid_until', status: 'status' },
     defaultSort: { column: 'created_at', dir: 'desc' },
