@@ -29,6 +29,8 @@ const MESSAGES: ReadonlyArray<readonly [token: string, message: string]> = [
   ['EMAIL_BODY_TOO_LONG', 'The message is too long (10,000 characters at most).'],
   ['EMAIL_RECORD_INVALID', 'The email record was incomplete, so it was not saved.'],
   ['QUOTE_NOT_ACCEPTED', 'Only an accepted quote can be invoiced.'],
+  // Before QUOTE_ARCHIVED, which it contains: the first token found in the text wins.
+  ['QUOTE_ARCHIVED_LINK', 'An archived quote cannot be sent with a secure link.'],
   ['QUOTE_ARCHIVED', 'An archived quote cannot be invoiced.'],
   ['INVOICE_NOT_PAYABLE', 'Only an issued invoice that still has a balance can be paid.'],
   ['PAYMENT_AMOUNT_INVALID', 'Enter an amount above zero, with at most two decimals.'],

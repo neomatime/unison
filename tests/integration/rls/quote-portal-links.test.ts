@@ -182,6 +182,13 @@ test('creation is refused when the switch is off, the quote is not Sent, the add
   assert.equal((await linksOf(accepted)).length, 0)
 })
 
+test('create_quote_access_link refuses an archived quote and leaves no link row', async () => {
+  const quote = await sentQuote()
+  await setQuote(quote, { archived_at: new Date().toISOString() })
+  refused((await createLink(quote, 'client@example.test')).error, 'QUOTE_ARCHIVED_LINK', '23514')
+  assert.equal((await linksOf(quote)).length, 0)
+})
+
 test('two recipients get two independent active links', async () => {
   const quote = await sentQuote()
   const first = await newLink(quote, 'first@example.test')
@@ -251,6 +258,47 @@ test('revise_quote copies lines with their charge kind and links back', async ()
   refused((await memberBClient.rpc('revise_quote', { p_id: original })).error, 'QUOTE_NOT_FOUND', '42501')
   const anon = await anonymous.rpc('revise_quote', { p_id: original })
   assert.match(anon.error?.message ?? '', /permission denied/i)
+})
+
+test('revise_quote copies service_inclusions, terms_sources, terms_edited and the offerings onto the draft', async () => {
+  const original = await sentQuote()
+  const sources = [{ template_id: randomUUID(), version_id: randomUUID(), version: 3, target: 'retainer:growth' }]
+  await setQuote(original, { service_inclusions: 'Monthly strategy session\nQuarterly review', terms_sources: sources, terms_edited: true })
+  const offeringRows = [
+    { organization_id: orgA, quote_id: original, position: 1, offering_kind: 'retainer', offering_key: 'growth' },
+    { organization_id: orgA, quote_id: original, position: 2, offering_kind: 'support', offering_key: 'website_care' },
+  ]
+  assert.equal((await admin.from('quote_offerings').insert(offeringRows)).error, null)
+  const offeringsOf = async (quoteId: string) =>
+    must(await admin.from('quote_offerings').select('id, organization_id, position, offering_kind, offering_key').eq('quote_id', quoteId).order('position')) as Array<Record<string, any>>
+  const sourceBefore = await offeringsOf(original)
+  const source = await quoteRow(original)
+
+  const revision = must(await memberAClient.rpc('revise_quote', { p_id: original })) as string
+  const draft = await quoteRow(revision)
+  assert.equal(draft.status, 'Draft')
+  assert.equal(draft.service_inclusions, 'Monthly strategy session\nQuarterly review')
+  assert.deepEqual(draft.terms_sources, sources)
+  assert.equal(draft.terms_edited, true)
+  assert.equal(draft.terms, source.terms, 'the terms text comes along as before')
+
+  const copied = await offeringsOf(revision)
+  const shape = (rows: Array<Record<string, any>>) => rows.map(({ organization_id, position, offering_kind, offering_key }) => ({ organization_id, position, offering_kind, offering_key }))
+  assert.deepEqual(shape(copied), shape(sourceBefore), 'the draft has the same offerings, in the same order')
+  assert.ok(copied.every((row) => !sourceBefore.some((other) => other.id === row.id)), 'they are its own rows')
+  assert.deepEqual(await offeringsOf(original), sourceBefore, "the source's offerings are unchanged")
+  const sourceAfter = await quoteRow(original)
+  assert.equal(sourceAfter.service_inclusions, source.service_inclusions)
+  assert.deepEqual(sourceAfter.terms_sources, source.terms_sources)
+  assert.equal(sourceAfter.terms_edited, true)
+
+  // The plain duplicate keeps its behaviour: the terms text only.
+  const duplicate = must(await memberAClient.rpc('duplicate_quote', { p_id: original })) as string
+  const plain = await quoteRow(duplicate)
+  assert.equal(plain.service_inclusions, null)
+  assert.equal(plain.terms_sources, null)
+  assert.equal(plain.terms_edited, false)
+  assert.deepEqual(await offeringsOf(duplicate), [])
 })
 
 test('refuses an Accepted or draft source', async () => {

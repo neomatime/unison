@@ -60,7 +60,7 @@ test('every database error token the app maps is raised by the send and issue mi
   const sendIssue = migration('20261011110000_documents_send_issue.sql') + migration('20261011120000_documents_hardening.sql') + migration('20261011130000_documents_delivery.sql') + migration('20261011140000_payments_overdue.sql') + migration('20261011160000_register_summary.sql')
     + migration('20261012100000_rate_card.sql') + migration('20261012101000_rate_card_hardening.sql') + migration('20261012110000_client_engagements.sql') + migration('20261012111000_client_engagements_hardening.sql')
     + migration('20261012120000_billing_documents.sql') + migration('20261012121000_billing_documents_hardening.sql') + migration('20261012130000_final_review_fixes.sql') + migration('20261012140000_document_rate_card_lines.sql') + migration('20261012141000_document_rate_card_lines_hardening.sql') + migration('20261012160000_commercial_terms.sql') + migration('20261012161000_commercial_terms_seed.sql') + migration('20261012221817_offerings_on_documents.sql') + migration('20261013100000_document_terms.sql')
-    + migration('20261018101000_quote_portal_links.sql')
+    + migration('20261018101000_quote_portal_links.sql') + migration('20261018101500_quote_portal_links_fixes.sql')
   for (const token of DOCUMENT_ERROR_TOKENS) assert.ok(sendIssue.includes(`'${token}'`), `${token} must be raised by the migration`)
 })
 
@@ -69,7 +69,7 @@ test('every token the send and issue migrations raise is either mapped or knowin
   const sendIssue = migration('20261011110000_documents_send_issue.sql') + migration('20261011120000_documents_hardening.sql') + migration('20261011130000_documents_delivery.sql') + migration('20261011140000_payments_overdue.sql') + migration('20261011160000_register_summary.sql')
     + migration('20261012100000_rate_card.sql') + migration('20261012101000_rate_card_hardening.sql') + migration('20261012110000_client_engagements.sql') + migration('20261012111000_client_engagements_hardening.sql')
     + migration('20261012120000_billing_documents.sql') + migration('20261012121000_billing_documents_hardening.sql') + migration('20261012130000_final_review_fixes.sql') + migration('20261012140000_document_rate_card_lines.sql') + migration('20261012141000_document_rate_card_lines_hardening.sql') + migration('20261012160000_commercial_terms.sql') + migration('20261012161000_commercial_terms_seed.sql') + migration('20261012221817_offerings_on_documents.sql') + migration('20261013100000_document_terms.sql')
-    + migration('20261018101000_quote_portal_links.sql')
+    + migration('20261018101000_quote_portal_links.sql') + migration('20261018101500_quote_portal_links_fixes.sql')
   const raised = new Set([...sendIssue.matchAll(/raise exception '([A-Z_]+)'/g)].map((match) => match[1]))
   assert.ok(raised.size >= 20, `expected to find the raised tokens, found ${raised.size}`)
   for (const token of raised) {
@@ -99,6 +99,8 @@ test('database tokens become plain messages, and anything else is left to the ca
   assert.match(documentErrorMessage('FIRST_INVOICE_EXISTS')!, /Discard the draft, or cancel the issued invoice, first\./)
   assert.match(documentErrorMessage('MONTH_ALREADY_BILLED')!, /Discard the draft, or cancel the issued invoice, first\./)
   assert.equal(documentErrorMessage('FIRST_INVOICE_MISSING'), "Build the retainer's first invoice before the monthly ones.")
+  assert.equal(documentErrorMessage('QUOTE_ARCHIVED_LINK'), 'An archived quote cannot be sent with a secure link.', 'not the shorter QUOTE_ARCHIVED it contains')
+  assert.equal(documentErrorMessage('QUOTE_ARCHIVED'), 'An archived quote cannot be invoiced.')
   assert.equal(documentErrorMessage('permission denied for table quotes'), null)
   assert.equal(documentErrorMessage(null), null)
   assert.equal(documentErrorMessage(undefined), null)
