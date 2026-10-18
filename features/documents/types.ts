@@ -41,6 +41,8 @@ export type DocumentLine = {
   quantity: number | string
   unit_price: number | string
   vat_code: string
+  /** Quote lines only: once-off or monthly, or null for a line from before this existed. An invoice line has no such column, so it is undefined there. */
+  charge_kind: string | null
   line_amount: number | string
 }
 

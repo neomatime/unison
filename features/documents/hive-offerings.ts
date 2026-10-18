@@ -3,6 +3,7 @@
 import { offeringRandPrice, type HiveOffering } from '../../lib/integrations/hive-offerings.ts'
 import type { LineFields } from './fields.ts'
 import type { HiveOfferingChoice } from './types.ts'
+import type { ChargeKind } from './vocabulary.ts'
 
 function creditsLabel(offering: HiveOffering): string | null {
   const credits = offering.credits as Record<string, unknown> | null | undefined
@@ -100,6 +101,12 @@ export function toHiveOfferingChoice(offering: HiveOffering): HiveOfferingChoice
   }
 }
 
+/** A retainer or a support service is charged every month, and so is any offering HIVE bills per month; everything else (implementation fees, projects, credit packs) is charged once. */
+export function chargeKindForOffering(offering: HiveOffering): ChargeKind {
+  if (offering.kind === 'retainer' || offering.kind === 'support' || offering.price.billingPeriod === 'month') return 'monthly'
+  return 'once_off'
+}
+
 /** Only active offerings with a binding rand price can become a line; HIVE gives projects a credit range, never a rand price. */
 export function hiveOfferingToLine(offering: HiveOffering): LineFields | null {
   if (offering.status !== 'active') return null
@@ -112,5 +119,6 @@ export function hiveOfferingToLine(offering: HiveOffering): LineFields | null {
     quantity: 1,
     unit_price: price,
     vat_code: 'standard',
+    charge_kind: chargeKindForOffering(offering),
   }
 }

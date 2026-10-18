@@ -9,9 +9,15 @@ import { addLineAction, moveLineAction, removeLineAction, updateLineAction } fro
 import { HiveOfferingPicker } from './hive-offering-picker'
 import { formatQuantity } from '../document-view'
 import type { DocumentLine, HiveOfferingsResult } from '../types'
-import { VAT_CODES, VAT_LABELS, type DocumentKind, type VatCode } from '../vocabulary'
+import { CHARGE_KIND_LABELS, CHARGE_KINDS, VAT_CODES, VAT_LABELS, type ChargeKind, type DocumentKind, type VatCode } from '../vocabulary'
 
 const field = 'h-10 w-full rounded-none border border-border bg-background px-3 text-sm'
+
+// A quote line also carries a charge kind (an invoice line has no such column), so a quote's form has one more column.
+const FORM_LAYOUT: Record<DocumentKind, { grid: string; span: string }> = {
+  quote: { grid: 'md:grid-cols-[2fr_1fr_1fr_1fr_1fr]', span: 'md:col-span-5' },
+  invoice: { grid: 'md:grid-cols-[2fr_1fr_1fr_1fr]', span: 'md:col-span-4' },
+}
 
 const LOCKED_NOTE: Record<DocumentKind, string> = {
   quote: 'This document has been sent or issued, so its lines are frozen. To revise it, duplicate it as a new draft.',
@@ -85,7 +91,8 @@ function LineRow({
         <p className="break-words text-sm font-medium text-foreground">{line.title}</p>
         {line.description ? <p className="whitespace-pre-line break-words text-xs text-[var(--briefing-muted)]">{line.description}</p> : null}
         <p className="mt-1 text-xs text-[var(--briefing-muted)]">
-          {formatQuantity(line.quantity)} × {money(line.unit_price)} · {VAT_LABELS[line.vat_code as VatCode] ?? line.vat_code} ={' '}
+          {formatQuantity(line.quantity)} × {money(line.unit_price)} · {VAT_LABELS[line.vat_code as VatCode] ?? line.vat_code}
+          {line.charge_kind ? ` · ${CHARGE_KIND_LABELS[line.charge_kind as ChargeKind] ?? line.charge_kind}` : ''} ={' '}
           <span className="font-semibold text-foreground">{money(line.line_amount)}</span>
         </p>
       </div>
@@ -116,9 +123,27 @@ function VatSelect({ value, onChange, defaultValue }: { value?: string; onChange
   )
 }
 
+/** The same shape as VatSelect: controlled when given a value (the add form), otherwise it starts at defaultValue. `notSet` adds the blank option a line from before charge kinds needs. */
+function ChargeKindSelect({
+  value, onChange, defaultValue, notSet,
+}: { value?: string; onChange?: (next: string) => void; defaultValue?: string; notSet?: boolean }) {
+  return (
+    <select
+      name="chargeKind"
+      aria-label="Charge kind"
+      {...(value !== undefined ? { value, onChange: (event: ChangeEvent<HTMLSelectElement>) => onChange?.(event.target.value) } : { defaultValue })}
+      className={field}
+    >
+      {notSet ? <option value="">Not set</option> : null}
+      {CHARGE_KINDS.map((chargeKind) => <option key={chargeKind} value={chargeKind}>{CHARGE_KIND_LABELS[chargeKind]}</option>)}
+    </select>
+  )
+}
+
 function EditLineForm({ kind, line, onDone }: { kind: DocumentKind; line: DocumentLine; onDone: () => void }) {
   const [state, run, pending] = useActionState(updateLineAction.bind(null, kind, line.id), undefined)
   const [, startTransition] = useTransition()
+  const layout = FORM_LAYOUT[kind]
   useEffect(() => {
     if (state?.success) onDone()
   }, [state, onDone])
@@ -129,15 +154,16 @@ function EditLineForm({ kind, line, onDone }: { kind: DocumentKind; line: Docume
         const data = new FormData(event.currentTarget)
         startTransition(() => run(data))
       }}
-      className="grid gap-3 md:grid-cols-[2fr_1fr_1fr_1fr]"
+      className={`grid gap-3 ${layout.grid}`}
     >
       <input name="title" required aria-label="Title" defaultValue={line.title} className={field} />
       <input name="quantity" required inputMode="decimal" aria-label="Quantity" defaultValue={String(line.quantity)} className={field} />
       <input name="unitPrice" required inputMode="decimal" aria-label="Unit price" defaultValue={String(line.unit_price)} className={field} />
       <VatSelect defaultValue={line.vat_code} />
-      <textarea name="description" rows={2} aria-label="Description" defaultValue={line.description ?? ''} className="w-full rounded-none border border-border bg-background px-3 py-2 text-sm md:col-span-4" />
-      {state?.error ? <p role="alert" className="text-sm text-destructive md:col-span-4">{state.error}</p> : null}
-      <div className="flex gap-2 md:col-span-4">
+      {kind === 'quote' ? <ChargeKindSelect defaultValue={line.charge_kind ?? ''} notSet /> : null}
+      <textarea name="description" rows={2} aria-label="Description" defaultValue={line.description ?? ''} className={`w-full rounded-none border border-border bg-background px-3 py-2 text-sm ${layout.span}`} />
+      {state?.error ? <p role="alert" className={`text-sm text-destructive ${layout.span}`}>{state.error}</p> : null}
+      <div className={`flex gap-2 ${layout.span}`}>
         <button type="submit" disabled={pending} className="bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-60">{pending ? 'Saving…' : 'Save line'}</button>
         <button type="button" onClick={onDone} className="border border-border px-4 py-2 text-sm font-medium">Cancel</button>
       </div>
@@ -145,12 +171,13 @@ function EditLineForm({ kind, line, onDone }: { kind: DocumentKind; line: Docume
   )
 }
 
-const EMPTY = { title: '', description: '', quantity: '1', unitPrice: '', vatCode: 'standard' }
+const EMPTY = { title: '', description: '', quantity: '1', unitPrice: '', vatCode: 'standard', chargeKind: 'once_off' }
 
 function AddLineForm({ kind, documentId }: { kind: DocumentKind; documentId: string }) {
   const [state, run, pending] = useActionState(addLineAction.bind(null, kind, documentId), undefined)
   const [, startTransition] = useTransition()
   const [fields, setFields] = useState(EMPTY)
+  const layout = FORM_LAYOUT[kind]
   const set = (key: keyof typeof EMPTY, next: string) => setFields((current) => ({ ...current, [key]: next }))
 
   // A saved line starts a fresh form; a failed one keeps what was typed.
@@ -163,19 +190,23 @@ function AddLineForm({ kind, documentId }: { kind: DocumentKind; documentId: str
       onSubmit={(event) => {
         event.preventDefault()
         const data = new FormData()
-        for (const [key, value] of Object.entries(fields)) data.set(key, value)
+        for (const [key, value] of Object.entries(fields)) {
+          if (key === 'chargeKind' && kind !== 'quote') continue
+          data.set(key, value)
+        }
         startTransition(() => run(data))
       }}
-      className="grid gap-3 border-t border-border p-5 md:grid-cols-[2fr_1fr_1fr_1fr]"
+      className={`grid gap-3 border-t border-border p-5 ${layout.grid}`}
     >
       <input aria-label="Title" placeholder="Title" required value={fields.title} onChange={(event) => set('title', event.target.value)} className={field} />
       <input aria-label="Quantity" placeholder="Quantity" required inputMode="decimal" value={fields.quantity} onChange={(event) => set('quantity', event.target.value)} className={field} />
       <input aria-label="Unit price" placeholder="Unit price" required inputMode="decimal" value={fields.unitPrice} onChange={(event) => set('unitPrice', event.target.value)} className={field} />
       <VatSelect value={fields.vatCode} onChange={(next) => set('vatCode', next)} />
-      <textarea aria-label="Description" placeholder="Description (optional)" rows={2} value={fields.description} onChange={(event) => set('description', event.target.value)} className="w-full rounded-none border border-border bg-background px-3 py-2 text-sm md:col-span-4" />
-      {state?.error ? <p role="alert" className="text-sm text-destructive md:col-span-4">{state.error}</p> : null}
-      {state?.success ? <p role="status" className="text-sm text-success md:col-span-4">{state.success}</p> : null}
-      <div className="md:col-span-4">
+      {kind === 'quote' ? <ChargeKindSelect value={fields.chargeKind} onChange={(next) => set('chargeKind', next)} /> : null}
+      <textarea aria-label="Description" placeholder="Description (optional)" rows={2} value={fields.description} onChange={(event) => set('description', event.target.value)} className={`w-full rounded-none border border-border bg-background px-3 py-2 text-sm ${layout.span}`} />
+      {state?.error ? <p role="alert" className={`text-sm text-destructive ${layout.span}`}>{state.error}</p> : null}
+      {state?.success ? <p role="status" className={`text-sm text-success ${layout.span}`}>{state.success}</p> : null}
+      <div className={layout.span}>
         <button type="submit" disabled={pending} className="bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-60">{pending ? 'Adding…' : 'Add line'}</button>
       </div>
     </form>

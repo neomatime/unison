@@ -29,7 +29,7 @@ test('parseDecimal refuses a comma that looks like a thousands separator but kee
 
 test('a line reads title, description, quantity, price and VAT code', () => {
   assert.deepEqual(readLineFields(form(line)), {
-    title: 'Advisory day', description: 'One day', quantity: 2, unit_price: 1500, vat_code: 'standard',
+    title: 'Advisory day', description: 'One day', quantity: 2, unit_price: 1500, vat_code: 'standard', charge_kind: null,
   })
   const blankDescription = readLineFields(form({ ...line, description: '  ' }))
   assert.equal((blankDescription as { description: unknown }).description, null)
