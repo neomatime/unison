@@ -23,6 +23,9 @@ const AUTH_EXEMPT = [
   // Read-only client feed for HIVE. It checks its own hashed per-organisation bearer key and accepts no
   // browser session. Exact prefix only.
   '/api/v1/clients',
+  // The client quote portal. The link token in the address is the credential and there is no browser session to
+  // look for; the page and its PDF check the token themselves. Exact prefix only: /q and what sits under /q/.
+  '/q',
 ]
 
 // A plain startsWith would also match e.g. /auth/callback-admin or

@@ -1,6 +1,6 @@
 import type React from 'react'
 import type { Metadata, Viewport } from 'next'
-import { Analytics } from '@vercel/analytics/next'
+import { SafeAnalytics } from '@/components/shared/safe-analytics'
 import { application } from '@/config/constants'
 import '@/styles/globals.css'
 
@@ -24,7 +24,7 @@ export default function RootLayout({
     <html lang="en">
       <body className="unison-interface bg-background font-sans antialiased">
         {children}
-        <Analytics />
+        <SafeAnalytics />
       </body>
     </html>
   )

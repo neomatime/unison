@@ -298,4 +298,7 @@ test('the build ships the brand images and keeps react-pdf out of the server-com
   assert.match(config, /serverExternalPackages:\s*\[[^\]]*@react-pdf\/renderer/)
   assert.match(config, /outputFileTracingIncludes/)
   assert.match(config, /public\/brand/)
+  // The client's download route in the quote portal draws the same PDF, so it ships the same images. The key's brackets
+  // are escaped (two backslashes in the file): unescaped, "[token]" is a character class and matches nothing.
+  assert.ok(config.includes("'/q/\\\\[token\\\\]/pdf': ['./public/brand/**/*']"), 'the portal pdf route is traced with the brand images')
 })
