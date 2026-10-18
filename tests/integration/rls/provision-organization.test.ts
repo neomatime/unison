@@ -208,14 +208,26 @@ test('the provisioned organization is invisible to an outsider', async () => {
   assert.deepEqual(data, [], 'a new tenant must not leak to other organizations')
 })
 
-test('a HIMARK admin lists the tenants their own RLS hides from them', async () => {
+test('a HIMARK admin lists the tenants their own membership does not include', async () => {
   const client = await sessionFor(himarkAdmin)
 
-  // The premise: organizations_select is is_member_of(id), and a HIMARK
-  // administrator is not a member of the tenants they provision. A plain
-  // select must come back empty, or the function has nothing to do.
-  const { data: direct } = await client.from('organizations').select('id').eq('id', provisioned[0])
-  assert.deepEqual(direct, [], 'the register cannot be built from a direct select')
+  // The old premise here was that organizations_select (is_member_of(id))
+  // hides a provisioned tenant from the HIMARK admin who provisioned it, so a
+  // plain select must come back empty. Migration 20260911154613 added a
+  // second, additional permissive policy, organizations_internal_select
+  // (is_himark_admin()), to back the Internal Tenants console
+  // (features/platform-admin/queries.ts) -- Postgres ORs permissive policies
+  // together, so a HIMARK admin's plain select now reaches every tenant,
+  // membership or not. That is intentional platform-admin visibility, not a
+  // regression, so it is no longer a premise this spec can assert.
+  //
+  // memberships stays a reliable oracle for "has a role here": its own
+  // policy (is_member_of(organization_id)) was untouched by that migration,
+  // and provision_organization never inserts a membership row for its actor
+  // (confirmed against the live schema -- see the migration's insert list).
+  const { data: membership } = await client
+    .from('memberships').select('id').eq('organization_id', provisioned[0]).eq('user_id', himarkAdmin.id)
+  assert.deepEqual(membership, [], 'provisioning a tenant must not itself grant the actor membership in it')
 
   const { data, error } = await client.rpc('list_provisioned_organizations')
   assert.equal(error, null)
@@ -343,9 +355,21 @@ test('a HIMARK admin cannot reissue into a foreign existing organisation', async
   // was the whole attack.
   const client = await sessionFor(himarkAdmin)
 
-  // Premise: it really is foreign -- their own RLS cannot see it.
-  const { data: visible } = await client.from('organizations').select('id').eq('id', outsiderOrg)
-  assert.deepEqual(visible, [], 'the fixture must be an organisation the admin has no role in')
+  // Premise: it really is foreign -- the admin holds no role there. This used
+  // to be checked with a plain select on organizations, back when
+  // organizations_select (is_member_of(id)) was the only select policy on
+  // that table. Migration 20260911154613 added organizations_internal_select
+  // (is_himark_admin()) alongside it to back the Internal Tenants console
+  // (features/platform-admin/queries.ts); permissive policies OR together, so
+  // every HIMARK admin's plain select now reaches every tenant regardless of
+  // membership, and organizations can no longer stand in for "has a role
+  // here". memberships can: its policy (is_member_of(organization_id)) was
+  // untouched by that migration, so it stays the reliable oracle for the
+  // thing this test actually needs "foreign" to mean -- reissue_invitation's
+  // own authorisation runs on membership/role, not on select visibility.
+  const { data: membership } = await client
+    .from('memberships').select('id').eq('organization_id', outsiderOrg).eq('user_id', himarkAdmin.id)
+  assert.deepEqual(membership, [], 'the fixture must be an organisation the admin has no role in')
 
   const rawToken = randomBytes(32).toString('base64url')
   const { error } = await client.rpc('reissue_invitation', {

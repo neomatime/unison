@@ -1281,7 +1281,7 @@ Deferred from the reviews, none blocking:
 - **`selection.ts` assumes date-only effective dates.** A timestamp in `effective_from` would compare wrongly.
 - **The settings text boxes stay the source for new documents** until build 2 switches documents over to the company-wide templates
   (see (a)).
-- **Two provisioning database tests fail, and did before this build.** In `tests/integration/rls/provision-organization.test.ts`, "a HIMARK admin lists the tenants their own RLS hides from them" and "a HIMARK admin cannot reissue into a foreign existing organisation" assume a HIMARK admin cannot select another organisation directly. The policy `organizations_internal_select` (`is_himark_admin()`, migration `20260911154613_phase_seven_eight_platform_automation.sql`, 2026-09-11) lets them, so the premise assertions fail. The other 461 of the 463 database tests passed on 2026-10-12. Decide whether the policy or the tests are right, then fix the one that is wrong.
+- **Two provisioning database tests were stale, now fixed (2026-10-18).** In `tests/integration/rls/provision-organization.test.ts`, "a HIMARK admin lists the tenants their own membership does not include" (renamed) and "a HIMARK admin cannot reissue into a foreign existing organisation" assumed a HIMARK admin cannot select another organisation directly. That premise predated the `organizations_internal_select` policy (`is_himark_admin()`, migration `20260911154613_phase_seven_eight_platform_automation.sql`), which lets them, on purpose, for the Internal Tenants console. The policy was right and the tests were wrong: both now check membership through `memberships` instead. The file passes 28 of 28.
 
 ## From terms on quotes and invoices (build 2, 2026-10-13)
 
