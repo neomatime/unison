@@ -18,6 +18,7 @@ let orgA: string
 let memberA: U
 let memberAClient: SupabaseClient
 let clientA: string
+let otherClientA: string // a second client of orgA
 let ownerA: string // a team member of orgA who owns a quote
 
 const anonymous = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!, {
@@ -51,7 +52,8 @@ const RECORD_KEYS = [
 ].sort()
 const LINE_KEYS = ['id', 'position', 'title', 'description', 'quantity', 'unit_price', 'vat_code', 'line_amount', 'charge_kind'].sort()
 const RESULT_KEYS = ['state', 'expires_at', 'recipient_email', 'recipient_name', 'record', 'lines', 'version', 'replaces_number', 'owner'].sort()
-const SHORT_RESULT_KEYS = RESULT_KEYS.filter((key) => key !== 'lines')
+// Expired and superseded (Ruling 18): no lines, no recipient and no link expiry.
+const SHORT_RESULT_KEYS = ['state', 'record', 'version', 'replaces_number', 'owner'].sort()
 const SHORT_RECORD_KEYS = ['client_name', 'quote_number', 'valid_until']
 const FORBIDDEN_KEYS = ['organization_id', 'owner_id', 'notes', 'token_hash', 'client_id', 'quote_id']
 const DEFAULT_TERMS = 'Portal read terms: payment within 30 days of acceptance.'
@@ -113,11 +115,11 @@ const assertInvalid = (result: Record<string, any>, label = 'invalid') => {
   assert.deepEqual(result, { state: 'invalid' }, label)
   assert.equal(JSON.stringify(result), '{"state":"invalid"}', `${label}: exactly the invalid shape and nothing else`)
 }
-/** Expired and superseded: the number, client and valid-until only, no lines and no terms. */
+/** Expired and superseded: the number, client and valid-until only; no lines, no terms, no recipient, no link expiry. */
 const assertShort = async (result: Record<string, any>, state: 'expired' | 'superseded', quoteId: string) => {
   assert.equal(result.state, state)
-  assert.deepEqual(keysOf(result), SHORT_RESULT_KEYS, `${state} carries no lines key`)
-  assert.equal(result.lines, undefined)
+  assert.deepEqual(keysOf(result), SHORT_RESULT_KEYS, `${state} carries no lines, recipient or expiry keys`)
+  for (const key of ['lines', 'recipient_email', 'recipient_name', 'expires_at']) assert.equal(result[key], undefined, `${state} has no ${key}`)
   assert.deepEqual(keysOf(result.record), SHORT_RECORD_KEYS)
   const row = await quoteRow(quoteId)
   assert.deepEqual(result.record, { quote_number: row.quote_number, client_name: row.client_name, valid_until: row.valid_until })
@@ -125,6 +127,7 @@ const assertShort = async (result: Record<string, any>, state: 'expired' | 'supe
   assert.ok(!json.includes('"terms'), `${state} carries no terms`)
   assert.ok(!json.includes(DEFAULT_TERMS), `${state} carries no terms text`)
   assert.ok(!json.includes('"lines"'), `${state} carries no lines`)
+  assert.ok(!json.includes('@example.test'), `${state} carries no recipient address`)
 }
 
 before(async () => {
@@ -132,6 +135,7 @@ before(async () => {
   memberA = await createFixtureUser(orgA, 'member')
   memberAClient = await signedInClient(memberA.email, memberA.password)
   clientA = must(await admin.from('clients').insert({ organization_id: orgA, name: 'Portal Read Client', status: 'Active' }).select('id').single()).id
+  otherClientA = must(await admin.from('clients').insert({ organization_id: orgA, name: 'Portal Read Other Client', status: 'Active' }).select('id').single()).id
   must(await admin.from('organization_settings').insert({
     organization_id: orgA, legal_name: 'Portal Read (Pty) Ltd', document_prefix: 'PRD', vat_rate: 15, quote_portal_enabled: true,
     default_quote_terms: DEFAULT_TERMS, email: 'hello@portal-read.test', website: 'https://portal-read.test',
@@ -187,6 +191,7 @@ test('an open link returns the frozen record, lines and owner, and nothing inter
     else assert.deepEqual(result.record[key], row[key], key)
   }
   assert.equal(result.record.status, 'Sent')
+  assert.match(result.record.sent_at, /\+00:00$/, 'the snapshot renders sent_at in UTC whatever the session time zone (Ruling 16)')
   assert.equal(result.record.terms, DEFAULT_TERMS)
   assert.equal(result.record.service_inclusions, 'Monthly strategy session')
   assert.equal(result.record.contact_name, 'Pat Client')
@@ -305,6 +310,7 @@ test('state follows the quote and the link', async () => {
   assert.deepEqual(keysOf(acceptedResult), RESULT_KEYS)
   assert.equal(acceptedResult.record.status, 'Accepted')
   assert.ok(acceptedResult.record.accepted_at, 'accepted_at is carried')
+  assert.match(acceptedResult.record.accepted_at, /\+00:00$/)
   assert.equal(time(acceptedResult.record.accepted_at), time((await quoteRow(acceptedQuote)).accepted_at))
   assert.equal(acceptedResult.lines.length, 1)
 
@@ -326,6 +332,105 @@ test('state follows the quote and the link', async () => {
   assert.ok(revokedBySupersede.revoked_at)
   assert.equal(revokedBySupersede.revoked_reason, 'superseded')
   await assertShort(await portal(originalLink.token), 'superseded', original)
+})
+
+// Ruling 13: a revoked link keeps a state only when the system revoked it for the state its quote is in.
+test('a link staff revoked stays invalid after its quote is superseded, and only system revocations keep a state', async () => {
+  const original = await sentQuote({ owner_id: ownerA })
+  const wrongAddress = await newLink(original, 'wrong@example.test', 'Wrong Person')
+  assert.equal((await memberAClient.rpc('revoke_quote_access_link', { p_link_id: wrongAddress.id })).error, null)
+  const notSent = await newLink(original, 'bounced@example.test')
+  assert.equal((await memberAClient.rpc('revoke_quote_access_link', { p_link_id: notSent.id, p_reason: 'email not sent' })).error, null)
+  const live = await newLink(original, 'right@example.test')
+  assert.equal((await send(await revise(original))).error, null)
+  assert.equal((await quoteRow(original)).status, 'Superseded')
+  assert.equal((await linkRow(wrongAddress.id)).revoked_reason, 'revoked by staff', 'the supersede left the earlier reason alone')
+  assert.equal((await linkRow(notSent.id)).revoked_reason, 'email not sent')
+  assert.equal((await linkRow(live.id)).revoked_reason, 'superseded')
+
+  assertInvalid(await portal(wrongAddress.token), 'staff-revoked, then superseded')
+  assertInvalid(await portal(notSent.token), "revoked 'email not sent', then superseded")
+  await assertShort(await portal(live.token), 'superseded', original)
+  for (const link of [wrongAddress, notSent]) {
+    await recordView(link.token)
+    const row = await linkRow(link.id)
+    assert.equal(row.first_viewed_at, null, 'a revoked link is never stamped')
+    assert.equal(row.last_viewed_at, null)
+  }
+
+  // 'superseded' on a quote that is not Superseded: invalid, whatever the quote's status.
+  const sent = await sentQuote()
+  const fakeSuperseded = await newLink(sent)
+  await setLink(fakeSuperseded.id, { revoked_at: new Date().toISOString(), revoked_reason: 'superseded' })
+  assertInvalid(await portal(fakeSuperseded.token), "'superseded' on a Sent quote")
+  const acceptedQuote = await sentQuote()
+  const acceptedLink = await newLink(acceptedQuote)
+  await setStatusAsMember(acceptedQuote, 'Accepted')
+  await setLink(acceptedLink.id, { revoked_at: new Date().toISOString(), revoked_reason: 'superseded' })
+  assertInvalid(await portal(acceptedLink.token), "'superseded' on an Accepted quote")
+
+  // A revocation with no reason at all is invalid.
+  const unexplained = await newLink(sent, 'unexplained@example.test')
+  await setLink(unexplained.id, { revoked_at: new Date().toISOString(), revoked_reason: null })
+  assertInvalid(await portal(unexplained.token), 'revoked without a reason')
+
+  // 'expired' on an Expired quote: expired.
+  const expiredQuote = await sentQuote()
+  const expiredLink = await newLink(expiredQuote)
+  await setStatusAsMember(expiredQuote, 'Expired')
+  await setLink(expiredLink.id, { revoked_at: new Date().toISOString(), revoked_reason: 'expired' })
+  await assertShort(await portal(expiredLink.token), 'expired', expiredQuote)
+
+  // A link on a draft (only the service role could make one) is invalid and never stamped.
+  const draft = await draftQuote()
+  const draftToken = randomBytes(32).toString('base64url')
+  const draftLink = must(await admin.from('quote_access_links').insert({
+    organization_id: orgA, quote_id: draft, token_hash: sha256(draftToken), recipient_email: 'draft@example.test', expires_at: new Date(Date.now() + DAY).toISOString(),
+  }).select('id').single()).id as string
+  assertInvalid(await portal(draftToken), 'a link on a Draft quote')
+  await recordView(draftToken)
+  assert.equal((await linkRow(draftLink)).first_viewed_at, null)
+})
+
+// Ruling 13: Accepted and Declined come before any date check; the quote's status is authoritative.
+test('an accepted or declined quote is still shown after its link has expired', async () => {
+  for (const [status, state] of [['Accepted', 'accepted'], ['Declined', 'declined']] as const) {
+    const quote = await sentQuote()
+    const link = await newLink(quote)
+    await setStatusAsMember(quote, status)
+    await setLink(link.id, { expires_at: new Date(time((await linkRow(link.id)).created_at)! - 1000).toISOString() })
+    const result = await portal(link.token)
+    assert.equal(result.state, state, `a ${status} quote past its link's expiry reads ${state}`)
+    assert.deepEqual(keysOf(result), RESULT_KEYS)
+    assert.deepEqual(keysOf(result.record), RECORD_KEYS)
+    assert.equal(result.record.status, status)
+    assert.equal(result.lines.length, 1)
+    assert.deepEqual(keysOf(result.lines[0]), LINE_KEYS)
+    await recordView(link.token)
+    assert.ok((await linkRow(link.id)).first_viewed_at, `a ${status} link past its expiry is still stamped`)
+  }
+})
+
+// Ruling 17: replaces_number names only a numbered predecessor of the same client; the version still counts it.
+test('replaces_number names only a numbered predecessor of the same client', async () => {
+  const original = await sentQuote()
+  const forOtherClient = await draftQuote({ client_id: otherClientA, client_name: 'Portal Read Other Client' })
+  assert.equal((await memberAClient.from('quotes').update({ supersedes_quote_id: original }).eq('id', forOtherClient)).error, null)
+  assert.equal((await send(forOtherClient)).error, null)
+  const crossClient = await portal((await newLink(forOtherClient)).token)
+  assert.equal(crossClient.state, 'open')
+  assert.equal(crossClient.version, 2, 'the version still counts the predecessor')
+  assert.equal(crossClient.replaces_number, null, "another client's quote number is not shown")
+
+  const unnumbered = await draftQuote()
+  const next = await draftQuote()
+  assert.equal((await memberAClient.from('quotes').update({ supersedes_quote_id: unnumbered }).eq('id', next)).error, null)
+  assert.equal((await send(next)).error, null)
+  assert.match((await quoteRow(unnumbered)).quote_number, /^DRAFT-/)
+  const fromDraft = await portal((await newLink(next)).token)
+  assert.equal(fromDraft.state, 'open')
+  assert.equal(fromDraft.version, 2)
+  assert.equal(fromDraft.replaces_number, null, 'a DRAFT- number is not shown')
 })
 
 test('an archived quote reads as invalid, before every other rule, and is never stamped', async () => {

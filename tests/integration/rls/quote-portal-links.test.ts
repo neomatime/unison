@@ -232,6 +232,30 @@ test("revoking is idempotent and cannot reach another organisation's link", asyn
   assert.match(anon.error?.message ?? '', /permission denied/i)
 })
 
+// Ruling 15: 'expired' and 'superseded' are the system's reasons (the portal keeps a state for them), so a member
+// cannot store either; a blank reason is the default; a reason is at most 500 characters.
+test('revoke_quote_access_link keeps the system reasons for the system and caps a reason at 500 characters', async () => {
+  const quote = await sentQuote()
+  const revokeWith = async (reason: string | null) => {
+    const link = await newLink(quote)
+    const args = reason === null ? { p_link_id: link.id } : { p_link_id: link.id, p_reason: reason }
+    assert.equal((await memberAClient.rpc('revoke_quote_access_link', args)).error, null)
+    const row = await linkRow(link.id)
+    assert.ok(row.revoked_at)
+    return row.revoked_reason as string
+  }
+  for (const reserved of ['expired', 'superseded', '  Expired  ', 'SUPERSEDED', ' SuPeRsEdEd']) {
+    assert.equal(await revokeWith(reserved), 'revoked by staff', `${JSON.stringify(reserved)} is stored as the default`)
+  }
+  for (const blank of ['', '   ']) assert.equal(await revokeWith(blank), 'revoked by staff')
+  assert.equal(await revokeWith(null), 'revoked by staff')
+  assert.equal(await revokeWith('email not sent'), 'email not sent', 'an ordinary reason is kept')
+  assert.equal(await revokeWith('expired early by request'), 'expired early by request', 'only the exact reserved words are rewritten')
+  const long = await revokeWith('r'.repeat(600))
+  assert.equal(long.length, 500)
+  assert.equal(long, 'r'.repeat(500))
+})
+
 test('a plain member cannot switch the portal on', async () => {
   const changed = await memberBClient.from('organization_settings').update({ quote_portal_enabled: true }).eq('organization_id', orgB).select('organization_id')
   assert.deepEqual(changed.data, [], 'row level security hides the row from an update')
