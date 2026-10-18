@@ -96,6 +96,13 @@ const MESSAGES: ReadonlyArray<readonly [token: string, message: string]> = [
   ['TERMS_SOURCE_INVALID', 'The terms could not be matched to approved versions. Refresh the page and fill the terms again.'],
   ['TERMS_COLUMNS_GENERATED', 'The template details of a document are set by Fill terms and cannot be typed.'],
   ['TERMS_VERSION_IMMUTABLE', 'An approved version cannot be edited. Write a new version instead.'],
+  ['QUOTE_PORTAL_OFF', 'The client portal is switched off. An owner or admin can turn it on under Settings, Company details.'],
+  ['QUOTE_NOT_SENT', 'The secure link can only be added to a quote that is still awaiting a response.'],
+  ['RECIPIENT_INVALID', 'Enter one valid email address.'],
+  ['QUOTE_EXPIRED', 'This quote has passed its valid-until date.'],
+  ['LINK_NOT_FOUND', 'That link was not found.'],
+  ['QUOTE_CANNOT_REVISE', 'Only a sent, declined or expired quote can be revised.'],
+  ['QUOTE_SUPERSEDED_AUTOMATIC', 'A superseded quote is set automatically when its revision is sent.'],
 ]
 
 export const DOCUMENT_ERROR_TOKENS: readonly string[] = MESSAGES.map(([token]) => token)
