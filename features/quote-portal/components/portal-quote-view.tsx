@@ -92,15 +92,20 @@ function FactsStrip({ facts }: { facts: PortalFact[] }) {
     <dl className="grid grid-cols-2 border-l border-t border-border bg-accent/40 sm:grid-cols-3">
       {facts.map((fact) => {
         const Icon = FACT_ICONS[fact.label]
+        // The quote number takes both columns on a phone: in one column a hyphen would let it break as "HMK-Q-2026-" / "00001".
+        const isNumber = fact.label === 'Quote number'
         return (
-          <div key={fact.label} className="min-w-0 border-b border-r border-border p-4">
-            {Icon ? <Icon aria-hidden="true" className="size-5 text-brand" /> : null}
-            <dt className={cn('mt-2 text-[11px] uppercase tracking-[0.14em]', MUTED)}>{fact.label}</dt>
+          <div key={fact.label} className={cn('min-w-0 border-b border-r border-border p-4', isNumber && 'col-span-2 sm:col-span-1')}>
+            {/* A list may hold only terms and descriptions, so the icon lives inside the term. */}
+            <dt className={cn('text-[11px] uppercase tracking-[0.14em]', MUTED)}>
+              {Icon ? <Icon aria-hidden="true" className="mb-2 block size-5 text-brand" /> : null}
+              {fact.label}
+            </dt>
             <dd className="mt-1">
               {fact.tone ? (
                 <span className={cn('inline-block px-2.5 py-1 text-sm font-medium', STATUS_PILL[fact.tone])}>{fact.value}</span>
               ) : (
-                <span className={cn('font-medium', WRAP)}>{fact.value}</span>
+                <span className={cn('font-medium', isNumber ? 'whitespace-nowrap' : WRAP)}>{fact.value}</span>
               )}
             </dd>
           </div>
@@ -112,7 +117,10 @@ function FactsStrip({ facts }: { facts: PortalFact[] }) {
 
 // The commercial summary is a grid of rows, not an HTML table: on a phone the quantity and unit price columns are dropped,
 // and a table cannot drop columns while its summary rows still span them. Both grids end in the same amount column, so
-// the figures line up whichever rows they are on. The ARIA roles keep the table's meaning for assistive technology.
+// the figures line up whichever rows they are on. The ARIA roles keep the table's meaning for assistive technology: it
+// always has four columns. On a phone the quantity and unit price cells are only visually hidden (sr-only, which also
+// takes them out of the grid), never display:none, so a screen reader still reads them, a sum row's label spans three
+// columns (aria-colspan) and its amount is read under "Amount", not under "Qty".
 const LINE_GRID = 'grid grid-cols-[minmax(0,1fr)_7.5rem] gap-x-3 sm:grid-cols-[minmax(0,1fr)_4rem_7rem_9rem]'
 const SUM_GRID = 'grid grid-cols-[minmax(0,1fr)_7.5rem] gap-x-3 sm:grid-cols-[minmax(0,1fr)_9rem]'
 const HEAD = cn('text-[11px] font-medium uppercase tracking-[0.14em]', MUTED)
@@ -125,15 +133,15 @@ function LineRows({ rows }: { rows: PortalLineRow[] }) {
           <div role="cell" className={WRAP}>
             <p className="font-medium">{row.title}</p>
             {row.zeroRated ? <p className={cn('text-xs', MUTED)}>Zero-rated</p> : null}
-            {/* On a narrow screen the quantity and unit price columns are hidden; they are shown under the title instead. */}
-            <p className={cn('text-xs sm:hidden', MUTED)}>
+            {/* On a narrow screen the quantity and unit price columns are not drawn; they are shown under the title instead (and not read twice). */}
+            <p aria-hidden="true" className={cn('text-xs sm:hidden', MUTED)}>
               {row.quantity} x {row.unitPrice}
             </p>
           </div>
-          <div role="cell" className="hidden text-right tabular-nums sm:block">
+          <div role="cell" className="sr-only text-right tabular-nums sm:not-sr-only">
             {row.quantity}
           </div>
-          <div role="cell" className="hidden text-right tabular-nums sm:block">
+          <div role="cell" className="sr-only text-right tabular-nums sm:not-sr-only">
             {row.unitPrice}
           </div>
           <div role="cell" className="text-right tabular-nums">
@@ -148,7 +156,7 @@ function LineRows({ rows }: { rows: PortalLineRow[] }) {
 function GroupLabel({ children }: { children: ReactNode }) {
   return (
     <div role="row">
-      <div role="columnheader" className={cn('bg-accent/40 px-3 py-2', HEAD)}>
+      <div role="cell" aria-colspan={4} className={cn('bg-accent/40 px-3 py-2', HEAD)}>
         {children}
       </div>
     </div>
@@ -158,7 +166,7 @@ function GroupLabel({ children }: { children: ReactNode }) {
 function SumRow({ label, amount, strong }: { label: ReactNode; amount: string; strong?: boolean }) {
   return (
     <div role="row" className={cn(SUM_GRID, 'border-b border-border px-3 py-3', strong && 'bg-accent font-semibold')}>
-      <div role="rowheader" className={cn('text-right', !strong && 'font-normal', WRAP)}>
+      <div role="rowheader" aria-colspan={3} className={cn('text-right', !strong && 'font-normal', WRAP)}>
         {label}
       </div>
       <div role="cell" className={cn('text-right tabular-nums', strong && 'text-base')}>
@@ -176,10 +184,10 @@ function CommercialTable({ commercial }: { commercial: PortalCommercial }) {
         <div role="rowgroup">
           <div role="row" className={cn(LINE_GRID, 'bg-accent px-3 py-2', HEAD)}>
             <div role="columnheader">Description</div>
-            <div role="columnheader" className="hidden text-right sm:block">
+            <div role="columnheader" className="sr-only text-right sm:not-sr-only">
               Qty
             </div>
-            <div role="columnheader" className="hidden text-right sm:block">
+            <div role="columnheader" className="sr-only text-right sm:not-sr-only">
               Unit price
             </div>
             <div role="columnheader" className="text-right">
@@ -365,19 +373,18 @@ export function PortalQuoteView({ token, quote }: { token: string; quote: Portal
           ) : null}
         </div>
 
-        <aside aria-label={READY_TO_RESPOND} className="border border-border bg-card lg:sticky lg:top-6">
+        <aside aria-label={model.respondable ? READY_TO_RESPOND : DOWNLOAD_PDF} className="border border-border bg-card lg:sticky lg:top-6">
           <div className="p-5 sm:p-6">
-            <SectionTitle icon={PenLine} id="portal-respond">
-              {READY_TO_RESPOND}
-            </SectionTitle>
+            {/* Only an open quote is offered a response: an accepted or declined one has been answered, and the panel then says nothing about responding. */}
+            {model.respondable ? <SectionTitle icon={PenLine} id="portal-respond">{READY_TO_RESPOND}</SectionTitle> : null}
             <a
               href={`/q/${token}/pdf`}
-              className="mt-5 flex w-full items-center justify-center gap-2 border border-foreground px-4 py-3 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+              className={cn('flex w-full items-center justify-center gap-2 border border-foreground px-4 py-3 text-sm font-medium text-foreground transition-colors hover:bg-accent', model.respondable && 'mt-5')}
             >
               <Download aria-hidden="true" className="size-4" />
               {DOWNLOAD_PDF}
             </a>
-            <p className={cn('mt-4 text-sm leading-relaxed', MUTED)}>{SLICE_ONE_RESPOND_NOTE}</p>
+            {model.respondable ? <p className={cn('mt-4 text-sm leading-relaxed', MUTED)}>{SLICE_ONE_RESPOND_NOTE}</p> : null}
           </div>
           {hasContact(contact) ? (
             <div className="border-t border-border p-5 sm:p-6">

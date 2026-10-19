@@ -355,10 +355,32 @@ test('an accepted or declined quote gets a short banner with its date', () => {
   const unreadable = buildPortalQuoteModel(full({ state: 'accepted' }, { status: 'Accepted', accepted_at: 'not a time' }))
   assert.deepEqual(unreadable.banner, { tone: 'accepted', text: copy.acceptedBanner(null) })
 
+  // The record keeps no decline date, so a declined quote's banner states the fact and no date (Ruling 22b).
   const declined = buildPortalQuoteModel(full({ state: 'declined' }, { status: 'Declined' }))
-  assert.deepEqual(declined.banner, { tone: 'declined', text: copy.declinedBanner('18 October 2026') }, 'a declined quote carries the date it was sent')
+  assert.deepEqual(declined.banner, { tone: 'declined', text: copy.DECLINED_BANNER })
+  assert.equal(copy.DECLINED_BANNER, 'This quotation has been declined.')
+  assert.ok(!/sent on|\d{4}/.test(declined.banner?.text ?? ''), 'no date and no "sent on" clause')
   assert.equal(declined.facts.find((fact) => fact.label === 'Status')?.tone, 'declined')
-  assert.deepEqual(buildPortalQuoteModel(full({ state: 'declined' }, { status: 'Declined', sent_at: null })).banner, { tone: 'declined', text: copy.declinedBanner(null) })
+  assert.deepEqual(buildPortalQuoteModel(full({ state: 'declined' }, { status: 'Declined', sent_at: null })).banner, { tone: 'declined', text: copy.DECLINED_BANNER })
+})
+
+test('only an open quote invites a response: accepted, declined and the cards carry no respond heading or note (Ruling 21)', () => {
+  assert.equal(buildPortalQuoteModel(full()).respondable, true, 'an open quote can still be responded to')
+  assert.equal(buildPortalQuoteModel(full({ state: 'accepted' }, { status: 'Accepted' })).respondable, false)
+  assert.equal(buildPortalQuoteModel(full({ state: 'declined' }, { status: 'Declined' })).respondable, false)
+  for (const state of ['open', 'accepted', 'declined'] as const) {
+    const model = buildPortalQuoteModel(full({ state }, { status: state === 'open' ? 'Sent' : state === 'accepted' ? 'Accepted' : 'Declined' }))
+    assert.equal(model.respondable, state === 'open', state)
+    // The words that invite a response are the view's to print, and only when the model says so; they are not in the model.
+    const printed = JSON.stringify(model)
+    assert.ok(!printed.includes(copy.SLICE_ONE_RESPOND_NOTE) && !printed.includes(copy.READY_TO_RESPOND), `${state} model carries no respond text`)
+  }
+  // The cards for links that cannot be read never invite a response either.
+  for (const card of [buildStateCardModel(short('expired')), buildStateCardModel(short('superseded')), buildStateCardModel({ state: 'invalid' }), buildStateCardModel({ state: 'error' })]) {
+    const printed = JSON.stringify(card)
+    assert.ok(!printed.includes(copy.SLICE_ONE_RESPOND_NOTE) && !printed.includes(copy.READY_TO_RESPOND), `${card.kind} card carries no respond text`)
+    assert.ok(!/reply to the email|accept or decline/i.test(printed), `${card.kind} card does not invite a decision`)
+  }
 })
 
 test('hostile text reaches the page as plain data and is never altered into markup', () => {
@@ -433,12 +455,22 @@ test('the drafted state copy is plain ASCII with no placeholders', () => {
     assert.match(value as string, /^[\x20-\x7e]+$/, `${name} is printable ASCII`)
     assert.ok(!/[{}$]/.test(value as string), `${name} has no placeholder`)
   }
-  // Each card has one heading and one sentence.
+  // Each card has one heading and a short calm explanation of at most two sentences, ending in a full stop.
   for (const name of ['EXPIRED_SENTENCE', 'SUPERSEDED_SENTENCE', 'INVALID_SENTENCE', 'ERROR_SENTENCE']) {
     const value = (copy as unknown as Record<string, string>)[name]
-    assert.equal(value.split(/[.!?]\s/).length, 1, `${name} is one sentence`)
+    assert.ok(value.split(/[.!?]\s/).length <= 2, `${name} is at most two sentences`)
     assert.ok(value.endsWith('.'), `${name} ends with a full stop`)
   }
+})
+
+test('the card sentences and the retry label are the approved wording (Ruling 22)', () => {
+  assert.equal(copy.EXPIRED_SENTENCE, 'This quotation is no longer open for response. Please get in touch if you would like an updated one.')
+  assert.equal(copy.SUPERSEDED_SENTENCE, 'A newer version of this quotation has been issued. Please use the link in the most recent email you received from HIMARK, or get in touch.')
+  assert.equal(copy.RETRY_LABEL, 'Try again')
+  // A replaced quotation points the client to the latest email, and says nothing of how to accept or decline.
+  assert.match(copy.SUPERSEDED_SENTENCE, /most recent email/)
+  assert.match(buildStateCardModel(short('superseded')).sentence, /most recent email/)
+  assert.match(buildStateCardModel(short('expired')).sentence, /no longer open for response/)
 })
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -520,6 +552,31 @@ test('the portal layout is bare: a title and a main, no navigation and no staff 
   assert.match(layout, /robots: \{ index: false, follow: false \}/, 'and not for search engines')
 })
 
+test('the portal metadata is neutral, so a link preview never shows the internal UNISON description (Ruling 22c)', () => {
+  const layout = read('app', '(portal)', 'layout.tsx')
+  assert.match(layout, /description: 'Your quotation from HIMARK\.'/, 'a neutral description replaces the one inherited from the root layout')
+  assert.match(layout, /generator: null/, 'and the generator is cleared')
+  // The root layout is what the portal would otherwise inherit from: pin that it still carries the internal wording.
+  const root = read('app', 'layout.tsx')
+  assert.match(root, /description:/)
+  assert.match(root, /generator: 'v0\.app'/)
+  assert.doesNotMatch(layout, /UNISON|v0\.app/)
+})
+
+test('the portal has its own error page: the designed temporary-error card with a retry, and no error detail (Ruling 22d)', () => {
+  const file = join(workspace, 'app', '(portal)', 'error.tsx')
+  assert.ok(existsSync(file), 'app/(portal)/error.tsx exists')
+  const source = read('app', '(portal)', 'error.tsx')
+  assert.match(source, /^\s*(\/\/[^\n]*\n\s*)*'use client'/, 'an error boundary is a client component, and the directive comes first')
+  assert.match(source, /export default function \w+\(\{ retry \}: \{ retry: \(\) => void \}\)/, 'it takes the retry prop of this Next version and nothing else')
+  assert.match(source, /<PortalStateCard quote=\{\{ state: 'error' \}\}>/, 'the designed error card')
+  assert.match(source, /<button\b[^>]*type="button"[^>]*onClick=\{\(\) => retry\(\)\}/, 'a retry button')
+  assert.match(source, /\{RETRY_LABEL\}/, 'with its words from copy.ts')
+  assert.doesNotMatch(source, /error\.message|error\.digest|\.stack|console\./, 'no error message, digest or log from the browser')
+  assert.doesNotMatch(source, /\berror\b[^\n]*:\s*Error|digest/, 'the error object is not even taken')
+  assert.doesNotMatch(source, /dangerouslySetInnerHTML/)
+})
+
 // ---------------------------------------------------------------------------------------------------------------
 // The components
 // ---------------------------------------------------------------------------------------------------------------
@@ -538,6 +595,43 @@ test('the response panel has Download PDF, the note and the questions block, and
   assert.match(view, /<a\b[^>]*href=\{`\/q\/\$\{token\}\/pdf`\}/, 'a plain anchor to /q/<token>/pdf')
   assert.doesNotMatch(view, /next\/link|<Link\b/)
   assert.match(view, /\bPortalQuote\b/, 'it takes the portal quote')
+})
+
+test('the respond heading and note are printed only when the model says the quote can be responded to; Download PDF and the questions always are (Ruling 21)', () => {
+  const view = viewSource()
+  assert.match(view, /\{model\.respondable \? <SectionTitle [^>]*>\{READY_TO_RESPOND\}<\/SectionTitle> : null\}/, 'the "Ready to respond?" heading is conditional')
+  assert.match(view, /\{model\.respondable \? <p [^>]*>\{SLICE_ONE_RESPOND_NOTE\}<\/p> : null\}/, 'and so is the note')
+  assert.equal((view.match(/\{READY_TO_RESPOND\}/g) ?? []).length, 1, 'the heading is printed in one place')
+  assert.equal((view.match(/\{SLICE_ONE_RESPOND_NOTE\}/g) ?? []).length, 1, 'and so is the note')
+  // Between the two conditions, unconditionally, is the download link.
+  assert.match(view, /<\/SectionTitle> : null\}\s*<a\b[^>]*href=\{`\/q\/\$\{token\}\/pdf`\}[\s\S]*?\{DOWNLOAD_PDF\}\s*<\/a>\s*\{model\.respondable \? <p /, 'Download PDF is outside both conditions')
+  assert.match(view, /hasContact\(contact\)/, 'the questions block depends on the contact, not on the state')
+  assert.doesNotMatch(view, /state === 'open'|\.state\b/, 'the view asks the model, not the raw state')
+})
+
+test('the commercial rows keep a four-column table for assistive technology: sum rows span three columns and the group label is a plain cell', () => {
+  const view = viewSource()
+  assert.match(view, /role="rowheader"[^>]*aria-colspan=\{3\}|aria-colspan=\{3\}[^>]*role="rowheader"/, 'a sum row label spans the quantity and unit price columns')
+  assert.match(view, /role="cell"[^>]*aria-colspan=\{4\}|aria-colspan=\{4\}[^>]*role="cell"/, 'a group label spans the whole row')
+  const group = view.slice(view.indexOf('function GroupLabel'), view.indexOf('function SumRow'))
+  assert.doesNotMatch(group, /columnheader/, 'a group label is not a column header')
+  // On a phone the quantity and unit price cells are visually hidden but stay in the table, so its column count never changes.
+  assert.equal((view.match(/"sr-only [^"]*sm:not-sr-only"/g) ?? []).length, 4, 'the header cells and the line cells for quantity and unit price')
+  assert.doesNotMatch(view, /hidden text-right[^"]*sm:block/, 'no display:none cell inside the table')
+  assert.match(view, /aria-hidden="true"[^>]*>\s*\{row\.quantity\} x \{row\.unitPrice\}|text-xs sm:hidden[^>]*aria-hidden="true"/, 'the phone-only "1 x 100.00" line is not read a second time')
+})
+
+test('in the information strip no icon sits between the list and its terms, and the quote number never breaks mid-string on a phone (Ruling 22f, g)', () => {
+  const view = viewSource()
+  const strip = view.slice(view.indexOf('function FactsStrip'), view.indexOf('// The commercial summary is a grid'))
+  // A <dl> may only contain dt and dd (inside a div): the icon is inside the dt.
+  const cell = strip.slice(strip.indexOf('<div key={fact.label}'))
+  assert.ok(cell.indexOf('<dt') < cell.indexOf('<Icon'), 'the icon comes after the dt opens')
+  assert.ok(cell.indexOf('<Icon') < cell.indexOf('</dt>'), 'and before it closes')
+  // The quote number takes both columns on a phone, so its hyphens are never a place to break the line.
+  assert.match(strip, /col-span-2 sm:col-span-1/)
+  assert.match(strip, /fact\.label === 'Quote number'/)
+  assert.match(strip, /whitespace-nowrap/)
 })
 
 test('the portal view prints the stored totals and does no money arithmetic of its own', () => {
@@ -571,6 +665,9 @@ test('the state card has no controls, no script and no data of its own', () => {
   assert.doesNotMatch(card, /<button\b|<form\b|onClick/)
   assert.match(card, /buildStateCardModel/)
   assert.doesNotMatch(card, /getPortalQuote|supabase|recordViewAction/)
+  // The one thing a page may add is children, which the error page uses for its retry button.
+  assert.match(card, /children\?: ReactNode/)
+  assert.match(card, /\{children\}/)
 })
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -622,9 +719,26 @@ test('the PDF is the frozen quote through the shared renderer, with the headers 
   ]) {
     assert.ok(route.includes(header), header)
   }
-  // The same two kinds of failure the staff download tells apart: a PDF that could not be made, and a read that failed.
-  assert.match(route, /DocumentPdfError/)
-  assert.doesNotMatch(route, /console\.error\([^)]*token/i, 'the token is never logged')
+  assert.doesNotMatch(route, /console\.error\([^)]*\btoken\b/i, 'the token is never logged')
+})
+
+test('every failure after the 404 checks is the same generic 500 for the client, and the real token-free error goes to the log (Ruling 22e)', () => {
+  const route = routeSource()
+  assert.equal(copy.PDF_FAILED_MESSAGE, 'The PDF could not be prepared. Please try again, or get in touch.')
+  assert.match(route, /PDF_FAILED_MESSAGE/)
+  assert.match(route, /status: 500/)
+  assert.doesNotMatch(route, /status: 503/, 'a failed read is the same answer as a failed render')
+  // The message of a DocumentPdfError names fonts, images and company details: none of it reaches the client.
+  assert.doesNotMatch(route, /DocumentPdfError|error\.message \}|message: error/, 'no error text in a response')
+  // The failure helper logs the real error (its message only: no token is ever passed to it) and answers generically.
+  const helper = route.slice(route.indexOf('function pdfFailed'), route.indexOf('export async function GET'))
+  assert.ok(helper.length > 0, 'one helper answers every failure')
+  assert.match(helper, /console\.error\('\[quote-portal:pdf\]', error instanceof Error \? error\.message : 'unknown error'\)/)
+  assert.match(helper, /NextResponse\.json\(\{ message: PDF_FAILED_MESSAGE \}, \{ status: 500 \}\)/)
+  // Both the read and the render go through it, and the 404 answers are untouched.
+  assert.equal((route.match(/return pdfFailed\(error\)/g) ?? []).length, 2, 'the read and the render')
+  assert.match(route, /const NOT_FOUND = \{ message: 'That quotation was not found\.' \}/)
+  assert.equal((route.match(/NextResponse\.json\(NOT_FOUND, \{ status: 404 \}\)/g) ?? []).length, 2, 'a malformed token and a quote that cannot be read')
 })
 
 // ---------------------------------------------------------------------------------------------------------------

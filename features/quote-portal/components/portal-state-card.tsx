@@ -1,4 +1,5 @@
 import { Clock, FileText, Link2Off, TriangleAlert, type LucideIcon } from 'lucide-react'
+import type { ReactNode } from 'react'
 
 import { PortalHeader } from '@/features/quote-portal/components/portal-header'
 import { QUESTIONS_HEADING } from '@/features/quote-portal/copy'
@@ -10,9 +11,10 @@ const ICONS: Record<StateCardKind, LucideIcon> = { expired: Clock, superseded: F
 /**
  * The page for a link whose quote cannot be read: expired, replaced by a newer version, not valid, or a temporary
  * fault. Calm: one heading, one sentence, what little the short answer carries of the quote, and the owner to contact
- * where there is one. A link that is not valid shows nothing about any quote. No controls.
+ * where there is one. A link that is not valid shows nothing about any quote. No controls of its own: the error page
+ * passes its retry button as children.
  */
-export function PortalStateCard({ quote }: { quote: PortalQuoteShort | PortalQuoteInvalid | { state: 'error' } }) {
+export function PortalStateCard({ quote, children }: { quote: PortalQuoteShort | PortalQuoteInvalid | { state: 'error' }; children?: ReactNode }) {
   const card = buildStateCardModel(quote)
   const Icon = ICONS[card.kind]
   return (
@@ -57,6 +59,7 @@ export function PortalStateCard({ quote }: { quote: PortalQuoteShort | PortalQuo
             ) : null}
           </div>
         ) : null}
+        {children}
       </section>
     </div>
   )

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 
-import { DocumentPdfError, makeDocumentPdf } from '@/features/documents/pdf/make-document-pdf'
+import { makeDocumentPdf } from '@/features/documents/pdf/make-document-pdf'
+import { PDF_FAILED_MESSAGE } from '@/features/quote-portal/copy'
 import { toDocumentBundle } from '@/features/quote-portal/to-bundle'
 import { getPortalQuote } from '@/lib/quote-portal/portal-client'
 import { isPortalToken } from '@/lib/quote-portal/token'
@@ -15,6 +16,17 @@ export const dynamic = 'force-dynamic'
 const NOT_FOUND = { message: 'That quotation was not found.' }
 
 /**
+ * Every other failure (the quote could not be read, the PDF could not be drawn) is the same generic answer to the
+ * client: the real error can name fonts, image files or company details, which are not theirs to see. It is logged here
+ * instead. Only the message of an error is logged: the errors of portal-client are built without the token, and nothing
+ * that holds the token is ever passed to the renderer.
+ */
+function pdfFailed(error: unknown): NextResponse {
+  console.error('[quote-portal:pdf]', error instanceof Error ? error.message : 'unknown error')
+  return NextResponse.json({ message: PDF_FAILED_MESSAGE }, { status: 500 })
+}
+
+/**
  * The PDF of the quote a link points at: the same frozen quote the page shows, drawn by the same code as the emailed
  * attachment. Only a quote the client can read has one. Reading it changes nothing: it does not mark the quote as opened.
  */
@@ -26,9 +38,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ tok
   try {
     quote = await getPortalQuote(token)
   } catch (error) {
-    // portal-client builds its errors without the token, so the message is safe to log.
-    console.error('[quote-portal:pdf]', error instanceof Error ? error.message : 'unknown error')
-    return NextResponse.json({ message: 'The quotation could not be loaded. Please try again in a moment.' }, { status: 503 })
+    return pdfFailed(error)
   }
   if (!isViewableQuote(quote)) return NextResponse.json(NOT_FOUND, { status: 404 })
 
@@ -44,7 +54,6 @@ export async function GET(_request: Request, { params }: { params: Promise<{ tok
       },
     })
   } catch (error) {
-    if (error instanceof DocumentPdfError) return NextResponse.json({ message: error.message }, { status: 500 })
-    throw error
+    return pdfFailed(error)
   }
 }

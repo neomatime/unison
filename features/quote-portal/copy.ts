@@ -49,11 +49,12 @@ export const DOWNLOAD_PDF = 'Download PDF'
 
 export const EXPIRED_HEADING = 'This quotation has expired'
 
-export const EXPIRED_SENTENCE = 'The validity period of this quotation has ended, so please get in touch and we will gladly prepare an updated one.'
+export const EXPIRED_SENTENCE = 'This quotation is no longer open for response. Please get in touch if you would like an updated one.'
 
 export const SUPERSEDED_HEADING = 'This quotation has been replaced'
 
-export const SUPERSEDED_SENTENCE = 'This quotation has been replaced by a newer version, so please get in touch to receive the latest one.'
+export const SUPERSEDED_SENTENCE =
+  'A newer version of this quotation has been issued. Please use the link in the most recent email you received from HIMARK, or get in touch.'
 
 export const INVALID_HEADING = 'This link is not valid'
 
@@ -68,7 +69,11 @@ export function acceptedBanner(date: string | null): string {
   return date ? `This quotation was accepted on ${date}.` : 'This quotation has been accepted.'
 }
 
-/** The banner on a declined quote. The record keeps no decline date, so the date shown is the day the quotation was sent. */
-export function declinedBanner(sentDate: string | null): string {
-  return sentDate ? `This quotation has been declined. It was sent on ${sentDate}.` : 'This quotation has been declined.'
-}
+/** The banner on a declined quote. The record keeps no decline date, so it states the fact and no date. */
+export const DECLINED_BANNER = 'This quotation has been declined.'
+
+/** The label of the retry button on the portal's error page. */
+export const RETRY_LABEL = 'Try again'
+
+/** What the client is told when the PDF cannot be made or the quotation cannot be read for it: nothing of why. */
+export const PDF_FAILED_MESSAGE = 'The PDF could not be prepared. Please try again, or get in touch.'

@@ -14,7 +14,7 @@ import { buildDocumentView, formatAmount, formatDocumentDate, formatQuantity } f
 import { isDraftReference } from '../documents/vocabulary.ts'
 import {
   acceptedBanner,
-  declinedBanner,
+  DECLINED_BANNER,
   ERROR_HEADING,
   ERROR_SENTENCE,
   EXPIRED_HEADING,
@@ -138,6 +138,8 @@ export type PortalContact = {
 }
 
 export type PortalQuoteModel = {
+  /** True only while the quote is open: a decided quote must not be offered a response (the panel then has no "Ready to respond?" heading and no note on how to respond). */
+  respondable: boolean
   facts: PortalFact[]
   banner: { tone: 'accepted' | 'declined'; text: string } | null
   scope: { description: string[]; inclusions: string[]; services: Array<{ title: string; description: string }> } | null
@@ -186,7 +188,7 @@ export function buildPortalQuoteModel(quote: PortalQuoteFull): PortalQuoteModel 
     quote.state === 'accepted'
       ? { tone: 'accepted', text: acceptedBanner(formatInstantDate(record.accepted_at)) }
       : quote.state === 'declined'
-        ? { tone: 'declined', text: declinedBanner(formatInstantDate(record.sent_at)) }
+        ? { tone: 'declined', text: DECLINED_BANNER }
         : null
 
   // --- scope: the project description, the inclusions, and each line's description as stored
@@ -227,7 +229,7 @@ export function buildPortalQuoteModel(quote: PortalQuoteFull): PortalQuoteModel 
   })
   const terms = view.terms.length ? { items: view.terms, sources } : null
 
-  return { facts, banner, scope, commercial, terms, contact: buildContact(quote.owner, record.issuer) }
+  return { respondable: quote.state === 'open', facts, banner, scope, commercial, terms, contact: buildContact(quote.owner, record.issuer) }
 }
 
 /** The owner's name and job title, with the company's website, email and phone; the company's name stands in for a missing owner. */
