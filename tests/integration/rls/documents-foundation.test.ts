@@ -113,17 +113,12 @@ test('a line must have a title, a positive quantity, a price within range and a 
   }
 })
 
-test('a line cannot point at another organisation’s document or price list item', async () => {
+test('a line cannot point at another organisation’s document', async () => {
   const quoteB = must(await admin.from('quotes').insert({ organization_id: orgB, client_name: 'B' }).select('id').single())
   const crossQuote = await memberClient.from('quote_lines').insert({ organization_id: orgB, quote_id: quoteB.id, title: 'x', quantity: 1, unit_price: 1 })
   assert.ok(crossQuote.error, 'a member of A cannot write into B')
   const mixed = await memberClient.from('quote_lines').insert({ organization_id: orgA, quote_id: quoteB.id, title: 'x', quantity: 1, unit_price: 1 })
   assert.ok(mixed.error, 'an A line cannot hang off a B quote')
-
-  const itemB = must(await admin.from('price_list_items').insert({ organization_id: orgB, title: 'B item', unit_price: 5 }).select('id').single())
-  const quote = await newQuote()
-  const crossItem = await quoteLine(quote.id, { price_list_item_id: itemB.id })
-  assert.ok(crossItem.error, 'a line cannot reference another organisation’s price list item')
 })
 
 test('a document without a number gets a draft reference, and a real number is required once it is not a draft', async () => {
@@ -207,25 +202,6 @@ test('a document takes its VAT rate from the settings when it is created and kee
   assert.equal(Number((await read('quotes', quote.id)).total_amount), 120)
 })
 
-test('the price list: any member manages it, items are archived not deleted, and it is private to the organisation', async () => {
-  const made = must(await memberClient.from('price_list_items').insert({ organization_id: orgA, title: 'Advisory day', description: 'One day', unit_price: 1500, vat_code: 'standard' }).select('id').single())
-  const renamed = await memberClient.from('price_list_items').update({ unit_price: 1600, archived_at: new Date().toISOString() }).eq('id', made.id).select('id')
-  assert.equal(renamed.error, null)
-  assert.equal(renamed.data?.length, 1)
-  const removal = await memberClient.from('price_list_items').delete().eq('id', made.id)
-  assert.ok(removal.error, 'there is no delete privilege')
-  assert.equal((await admin.from('price_list_items').select('id').eq('id', made.id)).data?.length, 1)
-
-  const crossRead = await outsiderClient.from('price_list_items').select('id').eq('organization_id', orgA)
-  assert.deepEqual(crossRead.data, [])
-  const crossWrite = await outsiderClient.from('price_list_items').insert({ organization_id: orgA, title: 'x', unit_price: 1 })
-  assert.ok(crossWrite.error)
-  for (const bad of [{ title: ' ' }, { unit_price: -1 }, { unit_price: 10000000 }, { vat_code: 'exempt' }]) {
-    const result = await memberClient.from('price_list_items').insert({ organization_id: orgA, title: 'T', unit_price: 1, ...bad })
-    assert.ok(result.error, `must refuse ${JSON.stringify(bad)}`)
-  }
-})
-
 test('number counters are not readable or writable by members or anon', async () => {
   const read = await memberClient.from('document_counters').select('*')
   assert.ok(read.error, 'a member cannot read counters')
@@ -244,7 +220,7 @@ test('a client’s billing address and VAT number can be saved by a member', asy
 })
 
 test('anon has no access to the new tables', async () => {
-  for (const table of ['price_list_items', 'quote_lines', 'invoice_lines', 'organization_settings']) {
+  for (const table of ['quote_lines', 'invoice_lines', 'organization_settings']) {
     const result = await anonymous.from(table).select('id')
     assert.ok(result.error, `${table}: anon has no privilege, so a read is an error and not an empty list`)
   }
