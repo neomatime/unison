@@ -77,12 +77,13 @@ export async function emailDocumentAction(kind: string, id: string, _previous: A
     return { error: 'Email is in log mode (EMAIL_TRANSPORT=log): the message was logged, not sent, and nothing was recorded.' }
   }
 
-  // Only now, with the message accepted, is the send recorded.
+  // Only now, with the message accepted, is the send recorded, with the subject actually sent: the branded template
+  // tidies it (one line, runs of spaces collapsed, 200 characters at most); the plain email sends it as typed.
   const recorded = await db.rpc('record_document_email', {
     p_kind: kind,
     p_id: id,
     p_to: fields.to,
-    p_subject: fields.subject,
+    p_subject: portal ? portal.template.subject : fields.subject,
     p_body: fields.body,
     p_sha256: createHash('sha256').update(made.bytes).digest('hex'),
     p_bytes: made.bytes.length,

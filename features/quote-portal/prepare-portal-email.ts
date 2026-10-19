@@ -3,14 +3,14 @@ import 'server-only'
 import { createHash } from 'node:crypto'
 
 import type { EmailTemplate } from '@/lib/email/templates/invitation'
-import { quoteEmailTemplate, type QuoteEmailData } from '@/lib/email/templates/quote'
+import { quoteEmailTemplate } from '@/lib/email/templates/quote'
 import { readAppUrl } from '@/lib/env'
 import { isPortalToken } from '@/lib/quote-portal/token'
-import { buildDocumentView, formatDocumentDate } from '../documents/document-view'
+import { buildDocumentView } from '../documents/document-view'
 import type { EmailFields } from '../documents/email'
 import { documentErrorMessage } from '../documents/errors'
 import type { DocumentBundle } from '../documents/queries/get-document'
-import { clientStatusLabel } from './summary'
+import { buildQuoteEmailData } from './email-data'
 
 /**
  * The branded quote email with a secure link, for the email action (features/documents/actions/email.ts), which calls
@@ -118,33 +118,18 @@ export async function preparePortalEmail(input: {
     return { error: NOT_SENT }
   }
 
+  // The link exists from here on: anything that throws while the email is built revokes it, and nothing is sent.
   try {
     const reviewUrl = `${appUrl}/q/${token}`
-    const record = bundle.record
-    const data: QuoteEmailData = {
-      quoteNumber: view.number,
-      clientName: String(record.client_name ?? ''),
-      projectName: view.project?.title ?? null,
-      // The quote total, which includes VAT when VAT was charged.
-      totalLabel: `${view.currency} ${view.totals.total}`,
-      // "Incl. VAT (15%)", with the rate the view prints from record.vat_rate.
-      vatNote: Number(record.tax_amount) > 0 ? `Incl. ${view.totals.vatLabel}` : 'No VAT charged',
-      validUntil: formatDocumentDate(record.valid_until),
-      statusLabel: clientStatusLabel(String(record.status)),
-      recipientName: record.contact_name ?? null,
+    const data = buildQuoteEmailData({
+      view,
+      record: bundle.record,
       personalNote: fields.body,
       reviewUrl,
       pdfUrl: `${reviewUrl}/pdf`,
       assetBaseUrl: appUrl,
-      sender: {
-        name: senderName,
-        role,
-        company: view.from.name ?? '',
-        website: view.footer.website,
-        email: view.footer.email,
-        phone: view.footer.phone,
-      },
-    }
+      sender: { name: senderName, role },
+    })
     return { template: quoteEmailTemplate(data, fields.subject), linkId }
   } catch (error) {
     // The template's own errors never repeat an address, so this line carries no link.

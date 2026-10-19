@@ -50,8 +50,12 @@ test('preparePortalEmail is server-only, reads the app address itself, and mints
   assert.match(prepare, /createHash\('sha256'\)\.update\(token\)\.digest\('hex'\)/)
   assert.match(prepare, /from\('quote_access_links'\)[\s\S]*?\.eq\('token_hash', [^)]+\)[\s\S]*?\.single\(\)/)
   assert.match(prepare, /from\('team_members'\)[\s\S]*?\.eq\('organization_id', organizationId\)[\s\S]*?\.eq\('user_id', senderUserId\)/, "the sender's role comes from their own team record")
-  assert.match(prepare, /clientStatusLabel\(/, 'a Sent quote reads "Awaiting response"')
+  // The figures and words come from the pure mapping (tested in quote-portal-email-data.test.ts), fed the view the PDF uses.
+  assert.match(source, /import \{ buildQuoteEmailData \} from '\.\/email-data'/)
   assert.match(prepare, /buildDocumentView\(\{ kind: 'quote', \.\.\.bundle \}\)/, 'the email shows what the PDF shows')
+  assert.match(prepare, /buildQuoteEmailData\(\{\s*view,\s*record: bundle\.record,\s*personalNote: fields\.body,\s*reviewUrl,\s*pdfUrl: `\$\{reviewUrl\}\/pdf`,\s*assetBaseUrl: appUrl,\s*sender: \{ name: senderName, role \},?\s*\}\)/)
+  assert.ok(prepare.indexOf('buildQuoteEmailData(') < prepare.indexOf('quoteEmailTemplate('), 'the data is built, then rendered')
+  assert.doesNotMatch(prepare, /totals\.|clientStatusLabel|formatDocumentDate|tax_amount/, 'no mapping is done here, so none can drift from the tested one')
   assert.doesNotMatch(source, /supabase\/admin|createAdminSupabase|portal-client/, "the link is made with the signed-in member's client, never the service role")
 })
 
@@ -61,6 +65,19 @@ test('abandonPortalLink revokes the link as "email not sent" and never throws', 
   assert.match(abandon, /rpc\('revoke_quote_access_link', \{ p_link_id: linkId, p_reason: 'email not sent' \}\)/)
   assert.match(abandon, /try \{[\s\S]*\} catch/, 'a failure to revoke is logged, so the message the sender sees stays the same')
   assert.doesNotMatch(abandon, /\bthrow\b/)
+})
+
+test('a failure while building the email after the link was minted revokes the link and sends nothing', () => {
+  const source = prepareSource()
+  const prepare = bodyOf(source, 'preparePortalEmail')
+  assert.match(source, /const NOT_SENT = 'The secure quotation link could not be added, so nothing was sent\. Please try again\.'/)
+  const minted = prepare.indexOf('linkId = found.data.id')
+  const tryBuild = prepare.lastIndexOf('try {', prepare.indexOf('buildQuoteEmailData('))
+  assert.ok(minted > -1 && tryBuild > minted, 'the build runs in its own try, after the link id is known')
+  const build = prepare.slice(tryBuild)
+  assert.ok(build.indexOf('buildQuoteEmailData(') > -1 && build.indexOf('quoteEmailTemplate(') > -1, 'both the mapping and the template are inside it')
+  assert.match(build, /^try \{[\s\S]*?return \{ template: quoteEmailTemplate\(data, fields\.subject\), linkId \}\s+\} catch \(error\) \{\s+(?:\/\/[^\n]*\s+)*console\.error\('\[quote-portal:email:build\]', error instanceof Error \? error\.message : 'unknown error'\)\s+await abandonPortalLink\(db, linkId\)\s+return \{ error: NOT_SENT \}\s+\}/, 'a throw revokes the minted link, then returns the not-added error')
+  assert.doesNotMatch(source, /send-email|sendEmail\(/, 'nothing here can send: the action sends only when this returns a template')
 })
 
 test('the raw token is never logged, thrown, returned or put into a message', () => {
@@ -118,7 +135,20 @@ test('the action abandons the link when the mail server refuses the message and 
   assert.match(catchBlock, /return \{ error: 'The mail server did not accept the message\. It may not have been sent; check Emails sent and your mailbox before trying again\.' \}/)
 })
 
+test('the send is recorded with the subject actually sent (the branded template tidies it), and still once', () => {
+  const source = actionSource()
+  assert.equal(count(source, "rpc('record_document_email'"), 1)
+  const record = source.slice(source.indexOf("rpc('record_document_email'"))
+  assert.match(record, /^rpc\('record_document_email', \{\s+p_kind: kind,\s+p_id: id,\s+p_to: fields\.to,\s+p_subject: portal \? portal\.template\.subject : fields\.subject,\s+p_body: fields\.body,/)
+})
+
 // ---- the defaults and the form ----
+
+test('the email section remounts the form when its mode changes, so a stale form cannot keep the other defaults', () => {
+  const source = read('features', 'documents', 'components', 'email-section.tsx')
+  assert.match(source, /<EmailDocumentForm key=\{String\(defaults\.portal\)\} kind=\{kind\} id=\{id\} defaults=\{defaults\} \/>/)
+})
+
 
 test('the email defaults report portal under the same condition as the action, with the default note as the body', () => {
   const source = defaultsSource()
