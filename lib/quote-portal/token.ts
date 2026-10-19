@@ -12,3 +12,14 @@ export function isPortalToken(value: unknown): value is string {
   // The type check comes first: RegExp.test coerces its argument, so an array or object that prints as a token would pass.
   return typeof value === 'string' && PORTAL_TOKEN.test(value)
 }
+
+/** "/q/" and a token wherever it appears in a longer text, such as a portal address inside an email. */
+const PORTAL_TOKEN_IN_TEXT = /\/q\/[A-Za-z0-9_-]{43}/g
+
+/**
+ * The text with every "/q/" + 43 base64url characters replaced by "/q/redacted", for anything that prints a message
+ * which may carry a portal link (the email transport's log mode). "/q/<token>/pdf" becomes "/q/redacted/pdf".
+ */
+export function redactPortalTokens(text: string): string {
+  return text.replace(PORTAL_TOKEN_IN_TEXT, '/q/redacted')
+}

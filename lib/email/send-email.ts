@@ -1,5 +1,6 @@
 import 'server-only'
 import { readGraphEnv } from '@/lib/env'
+import { redactPortalTokens } from '@/lib/quote-portal/token'
 import { sendMimeViaGraph } from './graph'
 import { buildMimeMessage, type MimeAttachment } from './mime'
 import type { EmailTemplate } from './templates/invitation'
@@ -17,15 +18,16 @@ export async function sendEmail(input: {
 }): Promise<{ delivered: boolean }> {
   // Local work and tests run without credentials: render the message and log it
   // rather than sending. Checked before readGraphEnv so the log path needs no
-  // Azure configuration at all.
+  // Azure configuration at all. A quote portal link in the message is printed as /q/redacted: its token is the
+  // client's credential, and a log is no place for it.
   if (process.env.EMAIL_TRANSPORT === 'log') {
-    console.log('[email:log]', JSON.stringify({
+    console.log('[email:log]', redactPortalTokens(JSON.stringify({
       to: input.to,
       replyTo: input.replyTo,
       subject: input.template.subject,
       text: input.template.text,
       attachments: (input.attachments ?? []).map((attachment) => ({ filename: attachment.filename, contentType: attachment.contentType, bytes: attachment.content.byteLength })),
-    }, null, 2))
+    }, null, 2)))
     return { delivered: false }
   }
 

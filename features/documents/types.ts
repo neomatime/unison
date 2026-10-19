@@ -31,6 +31,8 @@ export type CompanySettings = {
   default_payment_days: number
   logo_path: string | null
   header_image_path: string | null
+  /** The quote portal switch (default false): when on, an emailed Sent quote carries a secure link. Anything but true is off. */
+  quote_portal_enabled?: boolean
 }
 
 export type DocumentLine = {
