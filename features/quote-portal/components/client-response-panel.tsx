@@ -43,7 +43,7 @@ export async function ClientResponsePanel({ quoteId }: { quoteId: string }) {
   return (
     <WorkspaceSection
       title="Client portal"
-      description="Secure links for the client to review this quote online. Opened means the client's browser loaded the page; mail scanners do not count."
+      description="Secure links for the client to review this quote online. Opened is best effort: servers and mail scanners that do not run scripts are not counted."
     >
       {replacesNumber || replacedBy.length > 0 ? (
         <p className="border-b border-border px-5 py-3 text-sm text-muted-foreground">
@@ -54,15 +54,12 @@ export async function ClientResponsePanel({ quoteId }: { quoteId: string }) {
       ) : null}
       {links.length === 0 ? (
         <p className="px-5 py-6 text-sm text-muted-foreground">
-          {awaitingResponse
-            ? 'No secure link has been sent for this quote yet. When you email it, the message carries a link where the client can review it online.'
-            : 'No secure link was sent for this quote.'}
+          {awaitingResponse ? 'A secure link is added to quote emails while the quote is awaiting a response.' : 'No secure link was sent for this quote.'}
         </p>
       ) : (
         <ul className="divide-y divide-border">
           {links.map((link) => {
             const state = linkState(link, now)
-            const emailed = isLinkEmailConfirmed(link, sends)
             return (
               <li key={link.id} className="flex flex-wrap items-start justify-between gap-3 px-5 py-3 text-sm">
                 <div className="min-w-0">
@@ -70,7 +67,8 @@ export async function ClientResponsePanel({ quoteId }: { quoteId: string }) {
                     {link.recipient_name ? `${link.recipient_name} (${link.recipient_email})` : link.recipient_email}
                   </p>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Created {when(link.created_at)} · Expires {when(link.expires_at)} · {emailed ? 'Emailed' : 'Not confirmed sent'}
+                    Created {when(link.created_at)} · Expires {when(link.expires_at)}
+                    {state === 'Not sent' ? null : <> · {isLinkEmailConfirmed(link, links, sends) ? 'Emailed' : 'Not confirmed sent'}</>}
                     {state === 'Revoked' && link.revoked_at ? <> · Revoked {when(link.revoked_at)}</> : null}
                   </p>
                   <p className="mt-1 text-xs text-muted-foreground">

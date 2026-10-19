@@ -29,21 +29,37 @@ export function linkState(link: { expires_at: string; revoked_at: string | null;
 
 const ONE_MINUTE = 60_000
 
+type LinkKey = { id: string; recipient_email: string; created_at: string }
+
+const sameAddress = (address: string) => address.trim().toLowerCase()
+
 /**
- * Whether an email to this link's recipient was recorded at or after the link was made (less one minute, because the
- * link is made just before the message is sent and the two clocks are the database's). A link can exist without its
- * email in the rare cases where the send failed after the link was made, so staff are shown this rather than told
- * that an active link was emailed. Addresses are compared without regard to case or surrounding spaces.
+ * Whether an email on record is the one this link was sent with.
+ *
+ * An email confirms at most one link: the latest link to the same address that was made at or before the email was
+ * sent, plus a minute (the link is made just before the message goes out, and both clocks are the database's). A link is
+ * confirmed when some email chooses it. So when a send fails and staff retry, the retry's email confirms the retry's
+ * link and never the abandoned one before it; and a link whose email never went out is not confirmed by a later send.
+ * Addresses are compared without regard to case or surrounding spaces, and times as instants whatever offset they were
+ * written with. A time that cannot be read takes no part. `allLinks` is every link of the quote, in any order,
+ * and includes `link`; two links made at the same instant to one address are told apart by id, so the answer is stable.
+ *
+ * Staff are shown this rather than told that an active link was emailed: a link can exist whose email never went out.
  */
-export function isLinkEmailConfirmed(
-  link: { recipient_email: string; created_at: string },
-  emails: Array<{ to_address: string; sent_at: string }>,
-): boolean {
-  const created = Date.parse(link.created_at)
-  if (!Number.isFinite(created)) return false
-  const recipient = link.recipient_email.trim().toLowerCase()
-  return emails.some((email) => {
+export function isLinkEmailConfirmed(link: LinkKey, allLinks: LinkKey[], emails: Array<{ to_address: string; sent_at: string }>): boolean {
+  const recipient = sameAddress(link.recipient_email)
+  for (const email of emails) {
+    if (sameAddress(email.to_address) !== recipient) continue
     const sent = Date.parse(email.sent_at)
-    return Number.isFinite(sent) && sent >= created - ONE_MINUTE && email.to_address.trim().toLowerCase() === recipient
-  })
+    if (!Number.isFinite(sent)) continue
+    let chosen: { id: string; created: number } | null = null
+    for (const candidate of allLinks) {
+      if (sameAddress(candidate.recipient_email) !== recipient) continue
+      const created = Date.parse(candidate.created_at)
+      if (!Number.isFinite(created) || created > sent + ONE_MINUTE) continue
+      if (!chosen || created > chosen.created || (created === chosen.created && candidate.id > chosen.id)) chosen = { id: candidate.id, created }
+    }
+    if (chosen?.id === link.id) return true
+  }
+  return false
 }

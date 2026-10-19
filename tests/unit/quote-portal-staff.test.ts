@@ -87,63 +87,145 @@ test('an expiry that cannot be read is never reported as Active', async () => {
   assert.equal(linkState(link({ expires_at: '' }), new Date('2026-10-19T08:00:00Z')), 'Expired')
 })
 
-// ---- isLinkEmailConfirmed ----
+/// ---- isLinkEmailConfirmed ----
+// Ruling 26: an email confirms at most one link, the latest link to the same address that was made at or before the email
+// was sent (plus a minute). So a later retry's email can never confirm the earlier, abandoned link.
 
-const CREATED = '2026-10-19T08:00:00Z'
-const created = new Date(CREATED).getTime()
-const sentAt = (offsetMs: number) => new Date(created + offsetMs).toISOString()
+const T0 = Date.parse('2026-10-19T08:00:00Z')
+const iso = (offsetMs: number) => new Date(T0 + offsetMs).toISOString()
+const SECOND = 1_000
+const MINUTE = 60 * SECOND
+const HOUR = 60 * MINUTE
+const ADDRESS = 'client@example.com'
+const aLink = (id: string, offsetMs: number, address = ADDRESS) => ({ id, recipient_email: address, created_at: iso(offsetMs) })
+const aMail = (offsetMs: number, address = ADDRESS) => ({ to_address: address, sent_at: iso(offsetMs) })
 
-test('an email to the link recipient sent after the link was made confirms it', async () => {
+test('an email sent just after a link was made confirms that link', async () => {
   const { isLinkEmailConfirmed } = await loadState()
-  const row = { recipient_email: 'client@example.com', created_at: CREATED }
-  assert.equal(isLinkEmailConfirmed(row, [{ to_address: 'client@example.com', sent_at: sentAt(2_000) }]), true)
-  assert.equal(isLinkEmailConfirmed(row, [{ to_address: 'client@example.com', sent_at: sentAt(0) }]), true, 'at the same instant')
-  assert.equal(isLinkEmailConfirmed(row, [{ to_address: 'client@example.com', sent_at: sentAt(3 * 60 * 60 * 1000) }]), true, 'a later email to the same person still counts')
+  const only = aLink('only', 0)
+  assert.equal(isLinkEmailConfirmed(only, [only], [aMail(2 * SECOND)]), true)
+  assert.equal(isLinkEmailConfirmed(only, [only], [aMail(0)]), true, 'at the same instant')
+  assert.equal(isLinkEmailConfirmed(only, [only], [aMail(3 * HOUR)]), true, 'with no later link to compete for it, a late email still goes to the only link')
+})
+
+test('the retry story: a link abandoned as "email not sent" is not confirmed by the email of the retry', async () => {
+  const { isLinkEmailConfirmed } = await loadState()
+  const first = aLink('link-1', 0) // the send failed, so this link was revoked as 'email not sent'
+  const retry = aLink('link-2', 10 * MINUTE) // staff retried: a new link
+  const emails = [aMail(10 * MINUTE + 3 * SECOND)] // and only the retry's email went out
+  for (const links of [[retry, first], [first, retry]]) {
+    assert.equal(isLinkEmailConfirmed(retry, links, emails), true, 'the retry is confirmed')
+    assert.equal(isLinkEmailConfirmed(first, links, emails), false, 'the abandoned link is not, however late the email was')
+  }
+})
+
+test('the abandon-failed form: a first link still Active after a quick retry is not confirmed either', async () => {
+  const { isLinkEmailConfirmed } = await loadState()
+  // The helper does not look at state; the first link here is simply the earlier one of two to the same address.
+  const first = aLink('link-1', 0)
+  const retry = aLink('link-2', 90 * SECOND)
+  const emails = [aMail(95 * SECOND)]
+  assert.equal(isLinkEmailConfirmed(retry, [retry, first], emails), true)
+  assert.equal(isLinkEmailConfirmed(first, [retry, first], emails), false)
+})
+
+test('two sends to the same address with two links: each email confirms its own link, in order', async () => {
+  const { isLinkEmailConfirmed } = await loadState()
+  const one = aLink('link-1', 0)
+  const two = aLink('link-2', 2 * HOUR)
+  const links = [two, one]
+  const both = [aMail(2 * HOUR + 4 * SECOND), aMail(3 * SECOND)] // newest first, as the query returns them
+  assert.equal(isLinkEmailConfirmed(one, links, both), true)
+  assert.equal(isLinkEmailConfirmed(two, links, both), true)
+  assert.equal(isLinkEmailConfirmed(one, links, [aMail(3 * SECOND)]), true, 'only the first email is on record')
+  assert.equal(isLinkEmailConfirmed(two, links, [aMail(3 * SECOND)]), false, 'so the second link has none')
+  assert.equal(isLinkEmailConfirmed(one, links, [aMail(2 * HOUR + 4 * SECOND)]), false, 'only the second email is on record: it is the second link\'s')
+  assert.equal(isLinkEmailConfirmed(two, links, [aMail(2 * HOUR + 4 * SECOND)]), true)
+})
+
+test('an email confirms at most one link, even when two links to the address were made at the same instant', async () => {
+  const { isLinkEmailConfirmed } = await loadState()
+  const a = aLink('a', 0)
+  const b = aLink('b', 0)
+  const confirmed = [a, b].filter((link) => isLinkEmailConfirmed(link, [a, b], [aMail(SECOND)]))
+  assert.equal(confirmed.length, 1)
+  const again = [b, a].filter((link) => isLinkEmailConfirmed(link, [b, a], [aMail(SECOND)]))
+  assert.deepEqual(again.map((link) => link.id), confirmed.map((link) => link.id), 'whichever order the links arrive in')
 })
 
 test('the address is compared without regard to case or surrounding spaces', async () => {
   const { isLinkEmailConfirmed } = await loadState()
-  const row = { recipient_email: 'client@example.com', created_at: CREATED }
-  assert.equal(isLinkEmailConfirmed(row, [{ to_address: 'Client@Example.COM', sent_at: sentAt(1_000) }]), true)
-  assert.equal(isLinkEmailConfirmed(row, [{ to_address: '  client@example.com ', sent_at: sentAt(1_000) }]), true)
-  assert.equal(isLinkEmailConfirmed({ recipient_email: 'Client@Example.com', created_at: CREATED }, [{ to_address: 'client@example.com', sent_at: sentAt(1_000) }]), true)
+  const lower = aLink('lower', 0)
+  assert.equal(isLinkEmailConfirmed(lower, [lower], [aMail(SECOND, 'Client@Example.COM')]), true)
+  assert.equal(isLinkEmailConfirmed(lower, [lower], [aMail(SECOND, '  client@example.com ')]), true)
+  const upper = aLink('upper', 0, 'Client@Example.com')
+  assert.equal(isLinkEmailConfirmed(upper, [upper], [aMail(SECOND, 'client@example.com')]), true)
+  // A later link to the same person is the same person whatever its case: it takes the email, not the earlier link.
+  const first = aLink('first', 0, 'client@example.com')
+  const second = aLink('second', 10 * MINUTE, 'CLIENT@example.com')
+  assert.equal(isLinkEmailConfirmed(second, [second, first], [aMail(10 * MINUTE + SECOND, 'client@example.com')]), true)
+  assert.equal(isLinkEmailConfirmed(first, [second, first], [aMail(10 * MINUTE + SECOND, 'client@example.com')]), false)
 })
 
-test('an email up to one minute before the link was made counts, one millisecond more does not', async () => {
+test('the one-minute tolerance: an email sent a minute before its link was made still pairs, a second more does not', async () => {
   const { isLinkEmailConfirmed } = await loadState()
-  const row = { recipient_email: 'client@example.com', created_at: CREATED }
-  assert.equal(isLinkEmailConfirmed(row, [{ to_address: 'client@example.com', sent_at: sentAt(-60_000) }]), true, 'exactly one minute before')
-  assert.equal(isLinkEmailConfirmed(row, [{ to_address: 'client@example.com', sent_at: sentAt(-30_000) }]), true)
-  assert.equal(isLinkEmailConfirmed(row, [{ to_address: 'client@example.com', sent_at: sentAt(-60_001) }]), false, 'one millisecond past the tolerance')
+  const at = (linkOffset: number) => {
+    const link = aLink('link', linkOffset)
+    return isLinkEmailConfirmed(link, [link], [aMail(0)])
+  }
+  assert.equal(at(60 * SECOND), true, 'the email is exactly 60 seconds before the link')
+  assert.equal(at(30 * SECOND), true)
+  assert.equal(at(61 * SECOND), false, 'the email is 61 seconds before the link')
+  assert.equal(at(60 * SECOND + 1), false, 'one millisecond past the tolerance')
 })
 
-test('an earlier email to the same address, or an email to someone else, does not confirm the link', async () => {
+test('an email to a different address never confirms a link, and does not take a link away from its own recipient', async () => {
   const { isLinkEmailConfirmed } = await loadState()
-  const row = { recipient_email: 'client@example.com', created_at: CREATED }
-  assert.equal(isLinkEmailConfirmed(row, [{ to_address: 'client@example.com', sent_at: sentAt(-24 * 60 * 60 * 1000) }]), false, 'yesterday')
-  assert.equal(isLinkEmailConfirmed(row, [{ to_address: 'someone.else@example.com', sent_at: sentAt(1_000) }]), false)
-  assert.equal(isLinkEmailConfirmed(row, [{ to_address: 'client@example.com.au', sent_at: sentAt(1_000) }]), false, 'a longer address is not the same address')
-  assert.equal(isLinkEmailConfirmed(row, [{ to_address: 'xclient@example.com', sent_at: sentAt(1_000) }]), false)
+  const client = aLink('client', 0)
+  assert.equal(isLinkEmailConfirmed(client, [client], [aMail(SECOND, 'someone.else@example.com')]), false)
+  assert.equal(isLinkEmailConfirmed(client, [client], [aMail(SECOND, 'client@example.com.au')]), false, 'a longer address is not the same address')
+  assert.equal(isLinkEmailConfirmed(client, [client], [aMail(SECOND, 'xclient@example.com')]), false)
+  // A later link to someone else is not a rival: "latest" means the latest to the same address.
+  const other = aLink('other', 5 * MINUTE, 'colleague@example.com')
+  assert.equal(isLinkEmailConfirmed(client, [other, client], [aMail(10 * MINUTE)]), true)
+  assert.equal(isLinkEmailConfirmed(other, [other, client], [aMail(10 * MINUTE)]), false, 'and the email, sent to the client, is not the colleague\'s')
 })
 
-test('with no emails at all, or among several of which one fits, the answer follows the one that fits', async () => {
+test('an email sent long before the link was made never confirms it', async () => {
   const { isLinkEmailConfirmed } = await loadState()
-  const row = { recipient_email: 'client@example.com', created_at: CREATED }
-  assert.equal(isLinkEmailConfirmed(row, []), false, 'nothing was emailed')
-  assert.equal(
-    isLinkEmailConfirmed(row, [
-      { to_address: 'other@example.com', sent_at: sentAt(500) },
-      { to_address: 'client@example.com', sent_at: sentAt(-3_600_000) },
-      { to_address: 'client@example.com', sent_at: sentAt(900) },
-    ]),
-    true,
-  )
+  const link = aLink('link', 24 * HOUR)
+  assert.equal(isLinkEmailConfirmed(link, [link], [aMail(0)]), false, 'yesterday')
+  assert.equal(isLinkEmailConfirmed(link, [link], [aMail(24 * HOUR - 61 * SECOND)]), false)
+  assert.equal(isLinkEmailConfirmed(link, [link], [aMail(24 * HOUR - 59 * SECOND)]), true, 'inside the minute it pairs')
 })
 
-test('a time that cannot be read confirms nothing', async () => {
+test('with no emails at all, or a link that is not among the links, nothing is confirmed', async () => {
   const { isLinkEmailConfirmed } = await loadState()
-  assert.equal(isLinkEmailConfirmed({ recipient_email: 'client@example.com', created_at: 'garbage' }, [{ to_address: 'client@example.com', sent_at: sentAt(1_000) }]), false)
-  assert.equal(isLinkEmailConfirmed({ recipient_email: 'client@example.com', created_at: CREATED }, [{ to_address: 'client@example.com', sent_at: 'garbage' }]), false)
+  const link = aLink('link', 0)
+  assert.equal(isLinkEmailConfirmed(link, [link], []), false, 'nothing was emailed')
+  assert.equal(isLinkEmailConfirmed(link, [], [aMail(SECOND)]), false)
+})
+
+test('times are compared as instants, whatever offset they were written with', async () => {
+  const { isLinkEmailConfirmed } = await loadState()
+  // 10:30+02:00 is 08:30Z. As text it sorts after 08:31Z; as an instant it is a minute earlier.
+  const link = { id: 'link', recipient_email: ADDRESS, created_at: '2026-10-19T10:30:00+02:00' }
+  assert.equal(isLinkEmailConfirmed(link, [link], [{ to_address: ADDRESS, sent_at: '2026-10-19T08:31:00Z' }]), true)
+  // 10:00+02:00 is 08:00Z. As text it sorts after 08:30Z; as an instant the link, at 08:30Z, is half an hour too late.
+  const late = { id: 'late', recipient_email: ADDRESS, created_at: '2026-10-19T08:30:00Z' }
+  assert.equal(isLinkEmailConfirmed(late, [late], [{ to_address: ADDRESS, sent_at: '2026-10-19T10:00:00+02:00' }]), false)
+  // The same instant written two ways is the same instant, to the second.
+  const same = { id: 'same', recipient_email: ADDRESS, created_at: '2026-10-19T10:00:00+02:00' }
+  assert.equal(isLinkEmailConfirmed(same, [same], [{ to_address: ADDRESS, sent_at: '2026-10-19T08:00:00Z' }]), true)
+})
+
+test('a time that cannot be read confirms nothing and takes nothing', async () => {
+  const { isLinkEmailConfirmed } = await loadState()
+  const broken = { id: 'broken', recipient_email: ADDRESS, created_at: 'garbage' }
+  const fine = aLink('fine', 0)
+  assert.equal(isLinkEmailConfirmed(broken, [broken], [aMail(SECOND)]), false)
+  assert.equal(isLinkEmailConfirmed(fine, [fine], [{ to_address: ADDRESS, sent_at: 'garbage' }]), false)
+  assert.equal(isLinkEmailConfirmed(fine, [broken, fine], [aMail(SECOND)]), true, 'a link with no usable time is not a rival')
 })
 
 test('the state module is pure: no directive, no server-only, no alias import, so node --test can load it', () => {
@@ -281,11 +363,32 @@ test('with no links the panel says something only when the portal switch is on, 
 test('each link shows its recipient, when it was made, when it expires, its state, and whether it was emailed', () => {
   const source = panel()
   assert.match(source, /linkState\(link, now\)/)
-  assert.match(source, /isLinkEmailConfirmed\(link, sends\)/)
+  assert.match(source, /isLinkEmailConfirmed\(link, links, sends\)/, 'the link is checked against all the links, so one email confirms one link')
+  assert.doesNotMatch(source, /isLinkEmailConfirmed\(link, sends\)/, 'the old two-argument call is gone')
   assert.match(source, /link\.recipient_email/)
   assert.match(source, /Created \{when\(link\.created_at\)\}/)
   assert.match(source, /Expires \{when\(link\.expires_at\)\}/)
   assert.match(source, /'Emailed' : 'Not confirmed sent'/, 'an active link is not assumed to have been emailed')
+})
+
+test('a link that was Not sent shows no emailed or not-confirmed text: its badge already says it', () => {
+  const source = panel()
+  assert.match(
+    source,
+    /state === 'Not sent' \? null : <> · \{isLinkEmailConfirmed\(link, links, sends\) \? 'Emailed' : 'Not confirmed sent'\}<\/>/,
+    'the text is behind the Not sent check',
+  )
+  assert.equal(source.split('Emailed').length - 1, 1, 'the word appears once, behind that check')
+  assert.equal(source.split('Not confirmed sent').length - 1, 1)
+})
+
+test('the section says Opened is best effort and that scanners which do not run scripts are not counted; the empty line promises no link', () => {
+  const source = panel()
+  assert.match(source, /Opened is best effort: servers and mail scanners that do not run scripts are not counted\./)
+  assert.doesNotMatch(source, /mail scanners do not count/)
+  assert.match(source, /'A secure link is added to quote emails while the quote is awaiting a response\.'/)
+  assert.doesNotMatch(source, /When you email it|carries a link|No secure link has been sent for this quote yet/, 'an archived or past-valid-until quote cannot get a link, so nothing promises one')
+  assert.match(source, /'No secure link was sent for this quote\.'/, 'a quote that is no longer awaiting a response keeps its plain line')
 })
 
 test('the panel says Opened, never Read, and shows the first and the last time in South African time', () => {
