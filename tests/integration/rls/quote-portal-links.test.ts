@@ -19,6 +19,7 @@ let memberB: U
 let memberAClient: SupabaseClient
 let memberBClient: SupabaseClient
 let clientA: string
+let clientA2: string // a second client of orgA, for a revision whose client was changed
 let clientB: string
 
 const anonymous = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!, {
@@ -86,6 +87,7 @@ before(async () => {
   memberAClient = await signedInClient(memberA.email, memberA.password)
   memberBClient = await signedInClient(memberB.email, memberB.password)
   clientA = must(await admin.from('clients').insert({ organization_id: orgA, name: 'Portal Client A', status: 'Active' }).select('id').single()).id
+  clientA2 = must(await admin.from('clients').insert({ organization_id: orgA, name: 'Portal Client A2', status: 'Active' }).select('id').single()).id
   clientB = must(await admin.from('clients').insert({ organization_id: orgB, name: 'Portal Client B', status: 'Active' }).select('id').single()).id
   must(await admin.from('organization_settings').insert({ organization_id: orgA, legal_name: 'Portal A (Pty) Ltd', document_prefix: 'PLA', vat_rate: 15, quote_portal_enabled: true }).select('id').single())
   must(await admin.from('organization_settings').insert({ organization_id: orgB, legal_name: 'Portal B (Pty) Ltd', document_prefix: 'PLB', vat_rate: 15 }).select('id').single())
@@ -372,6 +374,43 @@ test('sending the revision supersedes a Sent original and revokes its links', as
   assert.equal(untouched.revoked_at, earlierRevoked.revoked_at, 'an already revoked link keeps its time')
   assert.equal(untouched.revoked_reason, 'wrong address', 'and its reason')
   refused((await createLink(original, 'late@example.test')).error, 'QUOTE_NOT_SENT')
+})
+
+// Ruling 30: staff can change a revision draft's client. Sending it then must not replace another client's quote,
+// which the guard would stop staff from undoing.
+test("a revision whose client was changed before sending leaves the original Sent with its links active", async () => {
+  const original = await sentQuote()
+  const active = await newLink(original, 'active@example.test')
+  const beforeSend = await quoteRow(original)
+
+  const revision = must(await memberAClient.rpc('revise_quote', { p_id: original })) as string
+  assert.equal((await quoteRow(revision)).client_id, clientA, 'the revision starts with the original client')
+  const moved = await memberAClient.from('quotes').update({ client_id: clientA2, client_name: 'Portal Client A2' }).eq('id', revision)
+  assert.equal(moved.error, null, 'a member can change the client of a revision draft')
+  const { error } = await send(revision)
+  assert.equal(error, null)
+
+  const sent = await quoteRow(revision)
+  assert.equal(sent.status, 'Sent')
+  assert.equal(sent.client_id, clientA2)
+  const afterSend = await quoteRow(original)
+  assert.equal(afterSend.status, 'Sent', "the other client's original is not superseded")
+  assert.equal(afterSend.quote_number, beforeSend.quote_number)
+  const link = await linkRow(active.id)
+  assert.equal(link.revoked_at, null, "the original's link stays active")
+  assert.equal(link.revoked_reason, null, 'and carries no reason')
+  assert.equal((await createLink(original, 'later@example.test')).error, null, 'the original can still be sent with a new link')
+})
+
+test('a revision whose client was changed and changed back still supersedes the original', async () => {
+  const original = await sentQuote()
+  const active = await newLink(original)
+  const revision = must(await memberAClient.rpc('revise_quote', { p_id: original })) as string
+  assert.equal((await memberAClient.from('quotes').update({ client_id: clientA2 }).eq('id', revision)).error, null)
+  assert.equal((await memberAClient.from('quotes').update({ client_id: clientA }).eq('id', revision)).error, null)
+  assert.equal((await send(revision)).error, null)
+  assert.equal((await quoteRow(original)).status, 'Superseded', 'the same client: superseded as before')
+  assert.equal((await linkRow(active.id)).revoked_reason, 'superseded')
 })
 
 test('an Accepted, Declined or Expired original keeps its status when its revision is sent', async () => {
