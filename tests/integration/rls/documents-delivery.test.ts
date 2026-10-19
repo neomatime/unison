@@ -13,7 +13,6 @@ let other: U // owner of B
 let memberClient: SupabaseClient
 let otherClient: SupabaseClient
 let clientA: string
-let priceItem: string
 const anonymous = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!, {
   auth: { autoRefreshToken: false, persistSession: false },
 })
@@ -31,14 +30,14 @@ const refused = (error: { message: string } | null, token: string) => {
 }
 const row = async (table: string, id: string) => must(await admin.from(table).select('*').eq('id', id).single()) as Record<string, any>
 
-/** A draft quote with two lines (one zero-rated, one tied to a price list item) and every header field filled. */
+/** A draft quote with two lines (one standard-rated, one zero-rated) and every header field filled. */
 async function draftQuote(clientId: string | null = clientA, clientName = 'Doc Client A') {
   const quote = must(await memberClient.from('quotes').insert({
     organization_id: orgA, client_id: clientId, client_name: clientName,
     project_name: 'Project X', project_description: 'Scope text', project_ref: 'PX-1', client_ref: 'PO-77', notes: 'Internal only',
   }).select('id').single())
   assert.equal((await memberClient.from('quote_lines').insert([
-    { organization_id: orgA, quote_id: quote.id, position: 1, title: 'Advisory', description: 'A day', quantity: 2, unit_price: 100, vat_code: 'standard', price_list_item_id: priceItem },
+    { organization_id: orgA, quote_id: quote.id, position: 1, title: 'Advisory', description: 'A day', quantity: 2, unit_price: 100, vat_code: 'standard' },
     { organization_id: orgA, quote_id: quote.id, position: 2, title: 'Licence', quantity: 1, unit_price: 50.5, vat_code: 'zero' },
   ])).error, null)
   return quote.id as string
@@ -76,7 +75,6 @@ before(async () => {
   must(await admin.from('organization_settings').insert({
     organization_id: orgA, legal_name: 'Test Co (Pty) Ltd', document_prefix: 'TST', vat_rate: 15, default_quote_terms: 'Term one', default_payment_terms: 'Pay within 30 days',
   }).select('id').single())
-  priceItem = must(await admin.from('price_list_items').insert({ organization_id: orgA, title: 'Advisory day', unit_price: 100 }).select('id').single()).id
 })
 
 after(async () => {
@@ -233,11 +231,10 @@ test('an accepted quote becomes a draft invoice with the same header and every l
   assert.equal(invoice.bill_to, null)
   assert.equal(invoice.issuer, null)
 
-  const quoteLines = (await admin.from('quote_lines').select('position,title,description,quantity,unit_price,vat_code,price_list_item_id').eq('quote_id', quote).order('position')).data!
-  const invoiceLines = (await admin.from('invoice_lines').select('position,title,description,quantity,unit_price,vat_code,price_list_item_id').eq('invoice_id', invoice.id).order('position')).data!
+  const quoteLines = (await admin.from('quote_lines').select('position,title,description,quantity,unit_price,vat_code').eq('quote_id', quote).order('position')).data!
+  const invoiceLines = (await admin.from('invoice_lines').select('position,title,description,quantity,unit_price,vat_code').eq('invoice_id', invoice.id).order('position')).data!
   assert.equal(invoiceLines.length, 2)
   assert.deepEqual(invoiceLines, quoteLines)
-  assert.equal(invoiceLines[0].price_list_item_id, priceItem)
   assert.equal(invoiceLines[1].vat_code, 'zero')
   assert.equal(Number(invoice.subtotal), Number(before.subtotal))
   assert.equal(Number(invoice.tax_amount), Number(before.tax_amount))
