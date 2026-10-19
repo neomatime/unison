@@ -284,7 +284,7 @@ export function PortalQuoteView({ token, quote }: { token: string; quote: Portal
     <div className="mx-auto w-full max-w-[1200px] px-4 pb-12 sm:px-6 lg:px-8">
       <PortalHeader />
       <div className="h-28 overflow-hidden sm:h-40 lg:h-56">
-        <img src="/brand/banner.png" alt="" width={2056} height={765} decoding="async" className="size-full object-cover object-right-bottom" />
+        <img src="/brand/email-banner.jpg" alt="" width={1200} height={446} decoding="async" className="size-full object-cover object-right-bottom" />
       </div>
 
       <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
