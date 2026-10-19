@@ -1305,3 +1305,96 @@ details are replaced by a link to Commercial terms and new documents no longer p
 - A copy of a quote (`duplicate_quote`) does not copy its offerings, sources or inclusions; the copy starts unfilled.
 - One unit test fails on this environment (`crm-overview-metrics`, currency formatting by locale), unrelated to this work.
 
+## From the quote portal, slice 1 (2026-10-19)
+
+Slice 1 of 3 is built: a branded quotation email with a secure link, the client page at `/q/<token>` with a PDF download, a per-organisation
+switch (Settings > Company details, off by default), a Client portal panel on the quote page, and Revise this quote. Accept and decline are
+slice 2; the HIVE feed gate is slice 3. Spec: `docs/superpowers/specs/2026-10-18-quote-portal-design.md`. **Next step for the owner:** turn the
+switch on under Settings > Company details and email one real quote to your own address, then open the link on a phone and a laptop.
+
+### Not verified
+
+- **Outlook and Gmail rendering of the email.** It was rendered once in the browser pane at 600 and 375 px and compared with the reference image;
+  no mail client has opened it.
+- **A real send.** No quote has been emailed with the switch on. Tests mint real links and build the real email, and a harness proved a minted link
+  opens the same quote number and total; nothing was sent.
+- **The signed-in staff screens.** The Client portal panel and Revise this quote on the quote page, the charge-kind select on the line editor
+  (the five-column grid at 768-1100 px may squeeze the selects), the Company details switch, and the email form changing between plain and branded
+  mode have only been tested as code, not seen in a signed-in browser.
+- **`app/(portal)/error.tsx`** (the temporary-error card with Try again) has not been exercised in a browser. A failed read inside the page shows
+  the same card inline, without the button.
+- **Hosted Vercel behaviour.** On a production build on this machine no request goes to `/_vercel/insights` and the response headers are right.
+  Re-check both on the deployed address after release.
+
+### Not built
+
+- Accept and Decline, the emailed one-time code and the decision record (slice 2); the HIVE feed gate (slice 3); a "view needs a code" option.
+- The `quote.superseded` and `quote.declined` timeline entries (they arrive with slice 2).
+- Designed email images: `public/brand/email-wordmark.png` (480x67) and `email-banner.jpg` (1200x446) are derived from the existing
+  `himark-wordmark.png` and `banner.png`, as approved on 2026-10-18; the reference email's banner carries overlay words ("Let's build what's next")
+  that these do not. Replace them with supplied files if wanted (same names, same sizes).
+
+### Known limitations
+
+- **The switch gates minting only.** Turning `quote_portal_enabled` off stops new links and branded emails; links already issued keep working.
+  It is not a kill switch: revoke links from the quote's Client portal panel.
+- **A send that throws after the mail service accepted the message** (for example the connection drops after the hand-over) revokes its link, so the
+  client's emailed link reads "not valid" until staff resend. A resend mints a fresh link. The error message tells staff to check and resend.
+- **The nightly job expires Sent quotes past their valid-until date in every organisation** from the first night, whether or not the switch is on.
+  Zero were due when this was built. A member who reopens an expired quote sees it expire again the next night.
+- **Old quotes have no charge kind on their lines,** so the portal shows a flat commercial list for them; only quotes whose lines are marked
+  once-off or monthly are grouped.
+- **The token appears in platform request logs** (the path `/q/<token>` is logged by the host). Our own code never logs it, and the mail log mode
+  replaces it with `/q/redacted`. A link is a bearer credential: anyone with it can read the quote until it expires or is revoked.
+- **Quote ids are not in the portal payload, but the line ids are.** Nothing accepts a line id without a signed-in membership.
+- **A revision's `replaces_number` is hidden** when the original belongs to another client, is still a draft, or the revision has no client (a lead-only
+  quote). The supersede trigger itself does not check that the two quotes share a client.
+- **Statuses can still be set by hand** (Accepted, Declined, Expired). The portal follows the quote's status, so a hand-set status changes the page the
+  client sees, with no decision record behind it until slice 2. Superseded cannot be set or cleared by hand; it is set when a revision is sent.
+- **The Client portal panel reads a link's own state only.** A link on an archived quote or a hand-Expired quote reads Active there, while the portal
+  shows "not valid" or "expired".
+- **Stale wording:** the `QUOTE_FROZEN` message and the locked-lines note on the line editor still say "duplicate it to revise"; they should point to
+  Revise this quote.
+- **`types/database.ts` is stale.** It predates the portal tables and functions, so the portal code uses untyped (`as any`) database clients, like
+  the rest of the document code. Regenerate it (Supabase `generate_typescript_types`) before relying on it.
+
+### Owner decisions
+
+- **Client-facing copy drafted by the implementer, not in the spec appendix** (all in `features/quote-portal/copy.ts`; change the text there):
+  the expired, replaced, "link is not valid" and "could not load" cards; the accepted and declined banners; the PDF-failed message; the
+  "Try again" label; and `SLICE_ONE_RESPOND_NOTE` ("To accept or decline this quotation, reply to the email you received or contact your HIMARK
+  contact."), which goes when slice 2 adds the buttons. `TERMS_STRIP` (appendix wording, "before responding") also shows on accepted and declined quotes;
+  decide whether decided quotes need a different sentence.
+- **Three visual departures in the email from the reference image:** a slim navy bar with the company name above the white logo row (the reference has
+  none; `himark-wordmark-white.png` exists and could give a single navy header row); the banner is uncropped at 600x223 (about 2.7:1) where the
+  reference strip is about 9:1 (a 4:1 crop, 1200x300, would shorten the header by about 100 px); no icons in the summary card.
+- **Contrast of the muted grey** (`#6e7d8c`, about 4.0-4.2:1 on the small labels) is below the 4.5:1 AA level. It is the grey the brief specified.
+- **Phone layout without media-query support.** Mail apps that drop the phone style block show the two buttons side by side, 471 px wide at
+  375 px. The email is complete and readable there; the buttons overflow. Stacked buttons need the media query or a different button layout.
+- **The summary card at the email's 600 px width is tight.** The five columns are 80 to 120 px wide, so a long project name wraps over three lines
+  and the valid-until date over three ("18 / November / 2026"); the reference image was captured in a wide Gmail reading pane. Below 620 px the card
+  stacks into rows and reads well. A two-row card on desktop would fix it.
+
+### For slice 2
+
+- **Hash what the database stores.** The accepted-quote hash must be taken over the database's jsonb text (`private.quote_snapshot`, fixed to UTC), never a
+  JavaScript re-serialisation: JavaScript turns `100.00` into `100`.
+- **Store the full `terms_sources`** (with ids) from `quotes.terms_sources`, not from the snapshot the portal reads.
+- **Treat the archived-quote rule on the accept path.** An archived quote already reads "not valid" in the portal and cannot be invoiced, so accepting
+  one must be refused the same way.
+- **"Replaced by" wording on Declined and Expired originals.** A Declined or Expired quote can be revised but keeps its status (only a Sent original becomes
+  Superseded), so the panel's "Replaced by" line and the Revise confirmation can disagree. Settle the wording when the decision record exists.
+- **The accepted and declined cards must stay reachable after valid-until:** the quote's status decides the page, before any date check.
+
+### Test debt found by the final run (2026-10-19, not caused by this slice)
+
+The full `pnpm test:rls` run against production passed 449 of 451. The two failures and one leak below are older than this slice.
+
+- **`tests/integration/rls/documents-foundation.test.ts` still writes to `price_list_items`,** a table dropped by `20261013240000_drop_retired_billing_columns.sql`.
+  Two of its 16 tests fail with "Could not find the table 'public.price_list_items' in the schema cache": "a line cannot point at another organisation's
+  document or price list item" and "the price list: any member manages it ...". The file was untouched by this slice and fails the same way on the
+  branch base. `documents-delivery.test.ts` had the same cause and was fixed in this slice's final task; this file was left alone. Repair: delete the two
+  price-list tests and the `price_list_item_id` assertions.
+- **`cleanup()` in `tests/integration/rls/helpers.ts` does not trace `invoice_offerings` audit rows.** `document-terms.test.ts` leaves four
+  `audit_events` rows with no organisation behind it on every full run (two inserts, two deletes). They were deleted by id after this run; the count of such rows
+  is back at 1,320. Add `'invoice_offerings'` to the resource list in `cleanup()`, and fix its stale "Coverage as of Task 12's fix round 1" comment.
