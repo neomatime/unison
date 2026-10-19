@@ -27,8 +27,6 @@ export function linkState(link: { expires_at: string; revoked_at: string | null;
   return 'Active'
 }
 
-const ONE_MINUTE = 60_000
-
 type LinkKey = { id: string; recipient_email: string; created_at: string }
 
 const sameAddress = (address: string) => address.trim().toLowerCase()
@@ -36,10 +34,12 @@ const sameAddress = (address: string) => address.trim().toLowerCase()
 /**
  * Whether an email on record is the one this link was sent with.
  *
- * An email confirms at most one link: the latest link to the same address that was made at or before the email was
- * sent, plus a minute (the link is made just before the message goes out, and both clocks are the database's). A link is
- * confirmed when some email chooses it. So when a send fails and staff retry, the retry's email confirms the retry's
- * link and never the abandoned one before it; and a link whose email never went out is not confirmed by a later send.
+ * An email confirms at most one link: the latest link to the same address that was made at or before the instant the
+ * email was recorded, exactly. There is no grace period: a link's `created_at` and an email's `sent_at` are both the
+ * database's clock, and an email is recorded only after its link was made, so the email of a link is never earlier than
+ * the link. A link is confirmed when some email chooses it. So when a send fails and staff retry, the retry's email
+ * confirms the retry's link and never the abandoned one before it; a quick resend does not take the email of the link
+ * before it; and a link whose email never went out is not confirmed by a later send.
  * Addresses are compared without regard to case or surrounding spaces, and times as instants whatever offset they were
  * written with. A time that cannot be read takes no part. `allLinks` is every link of the quote, in any order,
  * and includes `link`; two links made at the same instant to one address are told apart by id, so the answer is stable.
@@ -56,7 +56,7 @@ export function isLinkEmailConfirmed(link: LinkKey, allLinks: LinkKey[], emails:
     for (const candidate of allLinks) {
       if (sameAddress(candidate.recipient_email) !== recipient) continue
       const created = Date.parse(candidate.created_at)
-      if (!Number.isFinite(created) || created > sent + ONE_MINUTE) continue
+      if (!Number.isFinite(created) || created > sent) continue
       if (!chosen || created > chosen.created || (created === chosen.created && candidate.id > chosen.id)) chosen = { id: candidate.id, created }
     }
     if (chosen?.id === link.id) return true

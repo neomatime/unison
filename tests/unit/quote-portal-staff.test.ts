@@ -87,9 +87,11 @@ test('an expiry that cannot be read is never reported as Active', async () => {
   assert.equal(linkState(link({ expires_at: '' }), new Date('2026-10-19T08:00:00Z')), 'Expired')
 })
 
-/// ---- isLinkEmailConfirmed ----
-// Ruling 26: an email confirms at most one link, the latest link to the same address that was made at or before the email
-// was sent (plus a minute). So a later retry's email can never confirm the earlier, abandoned link.
+// ---- isLinkEmailConfirmed ----
+// Rulings 26 and 28: an email confirms at most one link, the latest link to the same address that was made at or before the
+// instant the email was recorded, exactly (no tolerance: both times are the database's clock, and an email is recorded only
+// after its link was made). So a retry's email can never confirm the earlier, abandoned link, and a quick resend does not
+// steal the email of the link before it.
 
 const T0 = Date.parse('2026-10-19T08:00:00Z')
 const iso = (offsetMs: number) => new Date(T0 + offsetMs).toISOString()
@@ -167,16 +169,45 @@ test('the address is compared without regard to case or surrounding spaces', asy
   assert.equal(isLinkEmailConfirmed(first, [second, first], [aMail(10 * MINUTE + SECOND, 'client@example.com')]), false)
 })
 
-test('the one-minute tolerance: an email sent a minute before its link was made still pairs, a second more does not', async () => {
+test('a quick resend: each email confirms its own link, so both links are confirmed', async () => {
   const { isLinkEmailConfirmed } = await loadState()
-  const at = (linkOffset: number) => {
-    const link = aLink('link', linkOffset)
-    return isLinkEmailConfirmed(link, [link], [aMail(0)])
+  const a = aLink('A', 0)
+  const b = aLink('B', 30 * SECOND) // staff resent 30 seconds later
+  const e1 = aMail(5 * SECOND) // recorded for A before B existed
+  const e2 = aMail(35 * SECOND)
+  for (const links of [[b, a], [a, b]]) {
+    for (const emails of [[e2, e1], [e1, e2]]) {
+      assert.equal(isLinkEmailConfirmed(a, links, emails), true, 'E1 pairs with A, the latest link made at or before it')
+      assert.equal(isLinkEmailConfirmed(b, links, emails), true, 'E2 pairs with B')
+    }
   }
-  assert.equal(at(60 * SECOND), true, 'the email is exactly 60 seconds before the link')
-  assert.equal(at(30 * SECOND), true)
-  assert.equal(at(61 * SECOND), false, 'the email is 61 seconds before the link')
-  assert.equal(at(60 * SECOND + 1), false, 'one millisecond past the tolerance')
+  // Each link needs its own email: E1 alone confirms A only, E2 alone confirms B only.
+  assert.equal(isLinkEmailConfirmed(a, [b, a], [e1]), true)
+  assert.equal(isLinkEmailConfirmed(b, [b, a], [e1]), false, 'B was made after E1 was recorded, so E1 is not its email')
+  assert.equal(isLinkEmailConfirmed(a, [b, a], [e2]), false)
+  assert.equal(isLinkEmailConfirmed(b, [b, a], [e2]), true)
+})
+
+test('an email recorded before a link was made does not confirm that link, but confirms the earlier link to the same address', async () => {
+  const { isLinkEmailConfirmed } = await loadState()
+  const earlier = aLink('earlier', 0)
+  const later = aLink('later', 10 * SECOND)
+  const email = [aMail(9 * SECOND)] // one second before `later` was made
+  assert.equal(isLinkEmailConfirmed(later, [later, earlier], email), false)
+  assert.equal(isLinkEmailConfirmed(earlier, [later, earlier], email), true)
+  // With no earlier link to take it, the email confirms nothing, by a second or by a millisecond.
+  assert.equal(isLinkEmailConfirmed(later, [later], email), false, 'one second before')
+  assert.equal(isLinkEmailConfirmed(later, [later], [aMail(10 * SECOND - 1)]), false, 'one millisecond before')
+})
+
+test('an email recorded at the very instant its link was made confirms it', async () => {
+  const { isLinkEmailConfirmed } = await loadState()
+  const earlier = aLink('earlier', -5 * SECOND)
+  const link = aLink('link', 0)
+  assert.equal(isLinkEmailConfirmed(link, [link], [aMail(0)]), true, 'sent_at === created_at')
+  assert.equal(isLinkEmailConfirmed(link, [link, earlier], [aMail(0)]), true, 'and it beats the earlier link')
+  assert.equal(isLinkEmailConfirmed(earlier, [link, earlier], [aMail(0)]), false)
+  assert.equal(isLinkEmailConfirmed(link, [link], [aMail(1)]), true, 'a millisecond after')
 })
 
 test('an email to a different address never confirms a link, and does not take a link away from its own recipient', async () => {
@@ -191,12 +222,27 @@ test('an email to a different address never confirms a link, and does not take a
   assert.equal(isLinkEmailConfirmed(other, [other, client], [aMail(10 * MINUTE)]), false, 'and the email, sent to the client, is not the colleague\'s')
 })
 
+test('two different addresses never cross-confirm: each email goes to the link for its own address only', async () => {
+  const { isLinkEmailConfirmed } = await loadState()
+  const toClient = aLink('to-client', 0)
+  const toColleague = aLink('to-colleague', 0, 'colleague@example.com')
+  const links = [toColleague, toClient]
+  assert.equal(isLinkEmailConfirmed(toClient, links, [aMail(5 * SECOND)]), true)
+  assert.equal(isLinkEmailConfirmed(toColleague, links, [aMail(5 * SECOND)]), false, 'an email to the client says nothing about the colleague\'s link')
+  assert.equal(isLinkEmailConfirmed(toColleague, links, [aMail(5 * SECOND, 'colleague@example.com')]), true)
+  assert.equal(isLinkEmailConfirmed(toClient, links, [aMail(5 * SECOND, 'colleague@example.com')]), false)
+  const both = [aMail(5 * SECOND, 'colleague@example.com'), aMail(6 * SECOND)]
+  assert.equal(isLinkEmailConfirmed(toClient, links, both), true)
+  assert.equal(isLinkEmailConfirmed(toColleague, links, both), true)
+})
+
 test('an email sent long before the link was made never confirms it', async () => {
   const { isLinkEmailConfirmed } = await loadState()
   const link = aLink('link', 24 * HOUR)
   assert.equal(isLinkEmailConfirmed(link, [link], [aMail(0)]), false, 'yesterday')
   assert.equal(isLinkEmailConfirmed(link, [link], [aMail(24 * HOUR - 61 * SECOND)]), false)
-  assert.equal(isLinkEmailConfirmed(link, [link], [aMail(24 * HOUR - 59 * SECOND)]), true, 'inside the minute it pairs')
+  assert.equal(isLinkEmailConfirmed(link, [link], [aMail(24 * HOUR - 59 * SECOND)]), false, 'nor does one recorded 59 seconds earlier: there is no grace period')
+  assert.equal(isLinkEmailConfirmed(link, [link], [aMail(24 * HOUR - 1)]), false, 'nor one millisecond earlier')
 })
 
 test('with no emails at all, or a link that is not among the links, nothing is confirmed', async () => {
@@ -208,7 +254,7 @@ test('with no emails at all, or a link that is not among the links, nothing is c
 
 test('times are compared as instants, whatever offset they were written with', async () => {
   const { isLinkEmailConfirmed } = await loadState()
-  // 10:30+02:00 is 08:30Z. As text it sorts after 08:31Z; as an instant it is a minute earlier.
+  // 10:30+02:00 is 08:30Z. As text it sorts after 08:31Z; as an instant it is before it.
   const link = { id: 'link', recipient_email: ADDRESS, created_at: '2026-10-19T10:30:00+02:00' }
   assert.equal(isLinkEmailConfirmed(link, [link], [{ to_address: ADDRESS, sent_at: '2026-10-19T08:31:00Z' }]), true)
   // 10:00+02:00 is 08:00Z. As text it sorts after 08:30Z; as an instant the link, at 08:30Z, is half an hour too late.
@@ -233,6 +279,17 @@ test('the state module is pure: no directive, no server-only, no alias import, s
   assert.doesNotMatch(source, /^\s*['"]use (server|client)['"]/m)
   assert.doesNotMatch(source, /server-only/)
   assert.doesNotMatch(source, /from\s+['"]@\//)
+})
+
+test('pairing an email with a link has no grace period: no tolerance constant, no mention of a minute', () => {
+  for (const [name, source] of [
+    ['link-state.ts', read('features', 'quote-portal', 'link-state.ts')],
+    ['client-response-panel.tsx', read('features', 'quote-portal', 'components', 'client-response-panel.tsx')],
+  ] as const) {
+    assert.doesNotMatch(source, /ONE_MINUTE|60_000|60 \* 1000|tolerance|\bminutes?\b/i, `${name}: both times are the database's clock, so the comparison is exact`)
+  }
+  const pairing = read('features', 'quote-portal', 'link-state.ts')
+  assert.match(pairing, /created > sent\) continue/, 'a link made after the email was recorded is never its link')
 })
 
 // ---- the actions ----
