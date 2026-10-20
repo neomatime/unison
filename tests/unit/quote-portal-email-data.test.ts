@@ -46,6 +46,7 @@ function build(record: Record<string, unknown> = {}, extra: Partial<Parameters<t
     pdfUrl: PDF_URL,
     assetBaseUrl: ASSET_BASE,
     sender: { name: 'Neo Matime', role: 'Founder' },
+    version: { version: 1, replacesNumber: null },
     ...extra,
   })
 }
@@ -53,6 +54,7 @@ function build(record: Record<string, unknown> = {}, extra: Partial<Parameters<t
 test('a sent quote maps to the whole summary card and sign-off', () => {
   assert.deepEqual(build(), {
     quoteNumber: 'HMK-Q-2026-00045',
+    versionLabel: null,
     clientName: 'Acme Holdings',
     projectName: 'Signature Partner',
     totalLabel: 'ZAR 230,000.00',
@@ -73,6 +75,25 @@ test('a sent quote maps to the whole summary card and sign-off', () => {
       phone: '+27 10 000 0000',
     },
   })
+})
+
+// Ruling 31: the email says which version it is, as the spec's "Version 2, replacing HMK-Q-2026-00045".
+test('version 1 shows no version line; a revision shows its version and the number it replaces', () => {
+  assert.equal(build().versionLabel, null, 'version 1: nothing')
+  const revision = (version: number, replacesNumber: string | null) => build({ quote_number: 'HMK-Q-2026-00046' }, { version: { version, replacesNumber } }).versionLabel
+  assert.equal(revision(2, 'HMK-Q-2026-00045'), 'Version 2, replacing HMK-Q-2026-00045')
+  assert.equal(revision(2, null), 'Version 2', 'without a replaced number (another client, or not numbered) the version alone')
+  assert.equal(revision(2, '   '), 'Version 2', 'a blank number is no number')
+  assert.equal(revision(3, 'HMK-Q-2026-00046'), 'Version 3, replacing HMK-Q-2026-00046')
+})
+
+test('the version line renders under the quote number in the html and in the text', () => {
+  const data = build({ quote_number: 'HMK-Q-2026-00046' }, { version: { version: 2, replacesNumber: 'HMK-Q-2026-00045' } })
+  const mail = quoteEmailTemplate(data, 'Quote HMK-Q-2026-00046 from HIMARK')
+  assert.ok(mail.html.includes('Version 2, replacing HMK-Q-2026-00045'))
+  assert.ok(mail.text.includes('Quote number: HMK-Q-2026-00046\nVersion 2, replacing HMK-Q-2026-00045\n'))
+  const first = quoteEmailTemplate(build(), 'Quote HMK-Q-2026-00045 from HIMARK')
+  assert.ok(!/Version \d/.test(first.html) && !/Version \d/.test(first.text), 'version 1 prints no version line')
 })
 
 test('the amount is the quote total with its currency, never the subtotal or the VAT', () => {

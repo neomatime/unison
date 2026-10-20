@@ -53,10 +53,35 @@ test('preparePortalEmail is server-only, reads the app address itself, and mints
   // The figures and words come from the pure mapping (tested in quote-portal-email-data.test.ts), fed the view the PDF uses.
   assert.match(source, /import \{ buildQuoteEmailData \} from '\.\/email-data'/)
   assert.match(prepare, /buildDocumentView\(\{ kind: 'quote', \.\.\.bundle \}\)/, 'the email shows what the PDF shows')
-  assert.match(prepare, /buildQuoteEmailData\(\{\s*view,\s*record: bundle\.record,\s*personalNote: fields\.body,\s*reviewUrl,\s*pdfUrl: `\$\{reviewUrl\}\/pdf`,\s*assetBaseUrl: appUrl,\s*sender: \{ name: senderName, role \},?\s*\}\)/)
+  assert.match(prepare, /buildQuoteEmailData\(\{\s*view,\s*record: bundle\.record,\s*personalNote: fields\.body,\s*reviewUrl,\s*pdfUrl: `\$\{reviewUrl\}\/pdf`,\s*assetBaseUrl: appUrl,\s*sender: \{ name: senderName, role \},\s*version,?\s*\}\)/)
   assert.ok(prepare.indexOf('buildQuoteEmailData(') < prepare.indexOf('quoteEmailTemplate('), 'the data is built, then rendered')
-  assert.doesNotMatch(prepare, /totals\.|clientStatusLabel|formatDocumentDate|tax_amount/, 'no mapping is done here, so none can drift from the tested one')
-  assert.doesNotMatch(source, /supabase\/admin|createAdminSupabase|portal-client/, "the link is made with the signed-in member's client, never the service role")
+  assert.doesNotMatch(prepare, /totals\.|clientStatusLabel|formatDocumentDate|tax_amount|versionLabel/, 'no mapping is done here, so none can drift from the tested one')
+  // Ruling 31: the portal's own read (portal-client, the service-role module) opens the new link; the link itself is
+  // still made with the signed-in member's client, and this module never builds a service-role client of its own.
+  assert.doesNotMatch(source, /supabase\/admin|createAdminSupabase/, 'no service-role client is built here')
+  assert.match(prepare, /await db\.rpc\('create_quote_access_link'/, "the link is made with the signed-in member's client")
+  assert.match(source, /^import \{ getPortalQuote \} from '@\/lib\/quote-portal\/portal-client'$/m, 'portal-client gives only the read the client makes')
+})
+
+test('the new link is opened with the real getPortalQuote before the email is built, and anything but open abandons it (Ruling 31)', () => {
+  const prepare = bodyOf(prepareSource(), 'preparePortalEmail')
+  const found = prepare.indexOf('linkId = found.data.id')
+  const opened = prepare.indexOf('await getPortalQuote(token)')
+  const built = prepare.indexOf('buildQuoteEmailData(')
+  assert.equal(count(prepare, 'getPortalQuote('), 1, 'one read')
+  assert.ok(found > -1 && opened > found, 'after the link id is known (so the link can be abandoned)')
+  assert.ok(built > opened && prepare.indexOf('quoteEmailTemplate(') > opened, 'before the email is built')
+
+  // The block from the read to the build: a not-open answer and a throw both abandon the link and send nothing.
+  const tryOpen = prepare.lastIndexOf('try {', opened)
+  const block = prepare.slice(tryOpen, prepare.lastIndexOf('try {', built))
+  assert.ok(tryOpen > found, 'the read runs in its own try')
+  assert.match(block, /if \(opened\.state !== 'open'\) \{[^}]*await abandonPortalLink\(db, linkId\)\s+return \{ error: NOT_SENT \}\s+\}/, 'a link that does not open is abandoned')
+  assert.match(block, /\} catch \(error\) \{\s+console\.error\('\[quote-portal:email:open\]', error instanceof Error \? error\.message : 'unknown error'\)\s+await abandonPortalLink\(db, linkId\)\s+return \{ error: NOT_SENT \}\s+\}/, 'a read that throws is abandoned too, logged without the token')
+  assert.equal(count(block, 'await abandonPortalLink(db, linkId)'), 2)
+  assert.doesNotMatch(block, /quoteEmailTemplate|buildQuoteEmailData/, 'nothing is built on that path')
+  // The version and the replaced number come from what the client will see.
+  assert.match(block, /version = \{ version: opened\.version, replacesNumber: opened\.replaces_number \}/)
 })
 
 test('abandonPortalLink revokes the link as "email not sent" and never throws', () => {

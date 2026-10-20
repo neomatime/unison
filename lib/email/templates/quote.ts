@@ -19,6 +19,8 @@ import { assertSafeUrl, escapeHtml, sanitizeLine } from './safe.ts'
 
 export type QuoteEmailData = {
   quoteNumber: string
+  /** "Version 2, replacing HMK-Q-2026-00045" for a revision; null for version 1, whose email has no version line. */
+  versionLabel: string | null
   clientName: string
   projectName: string | null
   totalLabel: string
@@ -168,6 +170,7 @@ export function quoteEmailTemplate(data: QuoteEmailData, subject: string): Email
   const cleanSubject = sanitizeLine(subject)
 
   const quoteNumber = line(data.quoteNumber)
+  const versionLabel = data.versionLabel ? line(data.versionLabel) : ''
   const clientName = line(data.clientName)
   const projectName = data.projectName ? line(data.projectName) : ''
   const totalLabel = line(data.totalLabel)
@@ -223,16 +226,21 @@ export function quoteEmailTemplate(data: QuoteEmailData, subject: string): Email
   const label = (text: string) =>
     paragraph(text, `font-family:${SANS};font-size:9px;line-height:12px;font-weight:bold;letter-spacing:0.16em;color:${MUTED};padding-bottom:6px`)
   const value = (html: string) => paragraph(html, `font-family:${SANS};font-size:12px;line-height:17px;font-weight:bold;color:${NAVY};word-wrap:break-word`)
+  // Small muted text under a value: the VAT note under the amount, the version under the quote number.
+  const note = (html: string) => paragraph(html, `font-family:${SANS};font-size:11px;line-height:16px;color:${MUTED};padding-top:2px`)
 
   const summaryCells: SummaryCell[] = [
-    { label: 'QUOTE NUMBER', weight: 25, render: () => value(escapeHtml(quoteNumber)) },
+    {
+      label: 'QUOTE NUMBER',
+      weight: 25,
+      render: () => value(escapeHtml(quoteNumber)) + (versionLabel ? note(escapeHtml(versionLabel)) : ''),
+    },
     ...(projectName ? [{ label: 'PROJECT', weight: 18, render: () => value(escapeHtml(projectName)) }] : []),
     {
       label: 'AMOUNT',
       weight: 22,
       render: () =>
-        value(escapeHtml(totalLabel)) +
-        (vatNote ? paragraph(escapeHtml(vatNote), `font-family:${SANS};font-size:11px;line-height:16px;color:${MUTED};padding-top:2px`) : ''),
+        value(escapeHtml(totalLabel)) + (vatNote ? note(escapeHtml(vatNote)) : ''),
     },
     ...(validUntil ? [{ label: 'VALID UNTIL', weight: 17, render: () => value(escapeHtml(validUntil)) }] : []),
     ...(statusLabel
@@ -378,6 +386,7 @@ export function quoteEmailTemplate(data: QuoteEmailData, subject: string): Email
     paragraphs.join('\n\n'),
     '',
     `Quote number: ${quoteNumber}`,
+    ...(versionLabel ? [versionLabel] : []),
     `Client: ${clientName}`,
     ...(projectName ? [`Project: ${projectName}`] : []),
     `Amount: ${totalLabel}${vatNote ? ` (${vatNote})` : ''}`,

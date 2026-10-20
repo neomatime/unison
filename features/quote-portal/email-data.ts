@@ -3,7 +3,7 @@
 // `node --test` can load it (tests/unit/quote-portal-email-data.test.ts).
 import type { QuoteEmailData } from '../../lib/email/templates/quote.ts'
 import { formatDocumentDate, type DocumentView } from '../documents/document-view.ts'
-import { clientStatusLabel } from './summary.ts'
+import { clientStatusLabel, versionLabel } from './summary.ts'
 
 export function buildQuoteEmailData(input: {
   /** buildDocumentView of the Sent quote: its number, totals and company details are the frozen ones. */
@@ -15,11 +15,15 @@ export function buildQuoteEmailData(input: {
   pdfUrl: string
   assetBaseUrl: string
   sender: { name: string; role: string | null }
+  /** The quote's place in its revision chain, as the portal reads it for the new link (version, replaces_number). */
+  version: { version: number; replacesNumber: string | null }
 }): QuoteEmailData {
   const { view, record } = input
   return {
     // A Sent quote always has its number; the caller refuses one without it before minting a link.
     quoteNumber: view.number ?? '',
+    // Version 1 says nothing; a revision says "Version 2, replacing HMK-Q-2026-00045", as the portal does.
+    versionLabel: input.version.version > 1 ? versionLabel(input.version.version, input.version.replacesNumber) : null,
     clientName: String(record.client_name ?? ''),
     projectName: view.project?.title ?? null,
     // The quote total, which includes VAT when VAT was charged; never the subtotal.

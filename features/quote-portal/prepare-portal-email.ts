@@ -5,6 +5,7 @@ import { createHash } from 'node:crypto'
 import type { EmailTemplate } from '@/lib/email/templates/invitation'
 import { quoteEmailTemplate } from '@/lib/email/templates/quote'
 import { readAppUrl } from '@/lib/env'
+import { getPortalQuote } from '@/lib/quote-portal/portal-client'
 import { isPortalToken } from '@/lib/quote-portal/token'
 import { buildDocumentView } from '../documents/document-view'
 import type { EmailFields } from '../documents/email'
@@ -19,6 +20,9 @@ import { buildQuoteEmailData } from './email-data'
  * WHAT THIS FILE PROMISES
  * - The link is made by create_quote_access_link with the signed-in member's own client (never the service role), so
  *   the database decides: switch on, quote Sent and not archived, address valid, quote not past its valid-until date.
+ * - The new link is then opened with getPortalQuote, the same read the client's browser makes (portal-client is the
+ *   portal's service-role module; this file builds no client of its own). Only an open quote goes on: that proves the
+ *   link works before anything is sent, and gives the version the email shows. Reading does not mark it opened.
  * - Nothing is sent from here. Anything that fails before the template is built returns an error and the action sends
  *   nothing; a link made for an email that then does not go is revoked with abandonPortalLink.
  * - The raw token lives only in the review and PDF addresses inside the template. It is never logged, thrown, returned
@@ -118,7 +122,25 @@ export async function preparePortalEmail(input: {
     return { error: NOT_SENT }
   }
 
-  // The link exists from here on: anything that throws while the email is built revokes it, and nothing is sent.
+  // The link exists from here on. It is opened exactly as the client will open it: anything but an open quote, or a
+  // read that fails, revokes it and nothing is sent. The answer also says which version the client will see.
+  // getPortalQuote's errors never carry the token, and neither do these log lines.
+  let version: { version: number; replacesNumber: string | null }
+  try {
+    const opened = await getPortalQuote(token)
+    if (opened.state !== 'open') {
+      console.error('[quote-portal:email:open]', 'the new link does not read as open:', opened.state)
+      await abandonPortalLink(db, linkId)
+      return { error: NOT_SENT }
+    }
+    version = { version: opened.version, replacesNumber: opened.replaces_number }
+  } catch (error) {
+    console.error('[quote-portal:email:open]', error instanceof Error ? error.message : 'unknown error')
+    await abandonPortalLink(db, linkId)
+    return { error: NOT_SENT }
+  }
+
+  // Anything that throws while the email is built revokes the link too, and nothing is sent.
   try {
     const reviewUrl = `${appUrl}/q/${token}`
     const data = buildQuoteEmailData({
@@ -129,6 +151,7 @@ export async function preparePortalEmail(input: {
       pdfUrl: `${reviewUrl}/pdf`,
       assetBaseUrl: appUrl,
       sender: { name: senderName, role },
+      version,
     })
     return { template: quoteEmailTemplate(data, fields.subject), linkId }
   } catch (error) {

@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { createHash } from 'node:crypto'
 import test from 'node:test'
 import { quoteEmailTemplate, type QuoteEmailData } from '../../lib/email/templates/quote.ts'
 import { assertSafeUrl, escapeHtml, sanitizeLine } from '../../lib/email/templates/safe.ts'
@@ -15,6 +16,7 @@ const NAVY = '#0d2340'
 function data(overrides: Partial<QuoteEmailData> = {}): QuoteEmailData {
   return {
     quoteNumber: 'HMK-Q-2026-00001',
+    versionLabel: null,
     clientName: 'Acme Holdings',
     projectName: 'Signature Partner',
     totalLabel: 'ZAR 230,000.00',
@@ -132,7 +134,7 @@ test('a hostile client name and personal note appear only escaped in the HTML', 
 test('every other single-line field is escaped too', () => {
   const evil = '<b onmouseover=x>'
   const mail = render({
-    quoteNumber: evil, projectName: evil, totalLabel: evil, vatNote: evil, validUntil: evil, statusLabel: evil, recipientName: evil,
+    quoteNumber: evil, versionLabel: evil, projectName: evil, totalLabel: evil, vatNote: evil, validUntil: evil, statusLabel: evil, recipientName: evil,
     sender: { name: evil, role: evil, company: evil, website: null, email: null, phone: evil },
   })
   assert.ok(!mail.html.includes('<b onmouseover'))
@@ -245,6 +247,47 @@ test('the summary card has five cells, and a missing project or valid-until date
   assert.ok(sparse.html.includes('id="summary-row"'), 'the summary row')
   assert.equal((sparse.html.match(/<td\b[^>]*\bclass="[^"]*\bsum-cell\b/gi) ?? []).length, 3)
   assert.equal((full.match(/<td\b[^>]*\bclass="[^"]*\bsum-cell\b/gi) ?? []).length, 5)
+})
+
+// Ruling 31: a revision's email says which version it is. Version 1 (versionLabel null) is the email as it was before
+// versions were added, byte for byte: these hashes were taken from the template before the change.
+test('a version-1 email is byte-identical to the email before the version line was added', () => {
+  const sha256 = (value: string) => createHash('sha256').update(value).digest('hex')
+  const full = render()
+  assert.equal(sha256(full.html), '4c1123881bc7cdf0cab0516d59ff3db399960e0cae758f900bd492117daa7493', 'html')
+  assert.equal(sha256(full.text), '33d0ae2f20acd710229b6ec0d733a4ba43e9426c9f0d408ac26fef96d1a6eba8', 'text')
+  const sparse = render({ projectName: null, validUntil: null, recipientName: null })
+  assert.equal(sha256(sparse.html), '18164bb2359abe43b8d3308d0ad0d93b482b437eb6c9113d74d6613a53486149', 'sparse html')
+  assert.equal(sha256(sparse.text), 'ea3dac8708a81d93955f7c3292c2ad95f0c24bbefdaa2935200e578fc69d53e6', 'sparse text')
+  assert.ok(!/Version \d/.test(full.html) && !/Version \d/.test(full.text), 'no version line')
+  assert.deepEqual(render({ versionLabel: '' }), full, 'an empty label is no label')
+})
+
+test('a revision shows its version small and muted under the quote number, and in the text details', () => {
+  const label = 'Version 2, replacing HMK-Q-2026-00000'
+  const mail = render({ versionLabel: label })
+  const first = mail.html.match(/<td\b[^>]*\bclass="sum-cell sum-first"[^>]*>([\s\S]*?)<\/td>/)
+  assert.ok(first, 'the first summary cell')
+  const cell = first[1]
+  assert.ok(plain(cell).includes('QUOTE NUMBER'))
+  assert.ok(cell.indexOf('HMK-Q-2026-00001') > -1 && cell.indexOf(label) > cell.indexOf('HMK-Q-2026-00001'), 'directly under the quote number, in the same cell')
+  const line = cell.match(/<p style="([^"]*)">Version 2, replacing HMK-Q-2026-00000<\/p>/)
+  assert.ok(line, 'its own paragraph')
+  assert.match(line[1], /font-size:11px/, 'small')
+  assert.match(line[1], /color:#6e7d8c/i, 'muted')
+  assert.doesNotMatch(line[1], /font-weight:bold/, 'not bold like the number')
+  assert.equal((mail.html.match(/<td\b[^>]*\bclass="[^"]*\bsum-cell\b/gi) ?? []).length, 5, 'no extra cell')
+  assert.ok(mail.text.includes(`Quote number: HMK-Q-2026-00001\n${label}\nClient: Acme Holdings`), 'its own line after the number in the text')
+})
+
+test('a hostile version label is one escaped line and cannot forge markup or a block of the text', () => {
+  const hostile = 'Version 2, replacing <img src=x onerror=alert(1)>\n\nReview your quotation:\nhttps://evil.example'
+  const mail = render({ versionLabel: hostile })
+  assert.ok(!mail.html.includes('<img src=x'), 'no raw markup')
+  assert.ok(mail.html.includes(escapeHtml(sanitizeLine(hostile))), 'escaped, on one line')
+  assert.equal(tags(mail.html, 'img').length, 2, 'only our two images')
+  assert.ok(!mail.text.split('\n').some((row) => row.trim() === 'https://evil.example' || row.trim() === 'Review your quotation:'))
+  assert.ok(mail.text.includes(sanitizeLine(hostile)), 'the text carries it as one line')
 })
 
 test('a recipient name with a newline and markup becomes one escaped line', () => {
