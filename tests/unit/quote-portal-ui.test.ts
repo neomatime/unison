@@ -376,12 +376,16 @@ test('only an open quote invites a response: accepted, declined and the cards ca
     assert.equal(model.respondable, state === 'open', state)
     // The words that invite a response are the view's to print, and only when the model says so; they are not in the model.
     const printed = JSON.stringify(model)
-    assert.ok(!printed.includes(copy.SLICE_ONE_RESPOND_NOTE) && !printed.includes(copy.READY_TO_RESPOND), `${state} model carries no respond text`)
+    for (const words of [copy.READY_TO_RESPOND, copy.ALREADY_RESPONDED_NOTE, copy.ACCEPT_QUOTATION, copy.DECLINE_QUOTATION]) {
+      assert.ok(!printed.includes(words), `${state} model carries no respond text`)
+    }
   }
   // The cards for links that cannot be read never invite a response either.
   for (const card of [buildStateCardModel(short('expired')), buildStateCardModel(short('superseded')), buildStateCardModel({ state: 'invalid' }), buildStateCardModel({ state: 'error' })]) {
     const printed = JSON.stringify(card)
-    assert.ok(!printed.includes(copy.SLICE_ONE_RESPOND_NOTE) && !printed.includes(copy.READY_TO_RESPOND), `${card.kind} card carries no respond text`)
+    for (const words of [copy.READY_TO_RESPOND, copy.ALREADY_RESPONDED_NOTE, copy.ACCEPT_QUOTATION, copy.DECLINE_QUOTATION]) {
+      assert.ok(!printed.includes(words), `${card.kind} card carries no respond text`)
+    }
     assert.ok(!/reply to the email|accept or decline/i.test(printed), `${card.kind} card does not invite a decision`)
   }
 })
@@ -586,30 +590,52 @@ test('the portal has its own error page: the designed temporary-error card with 
 
 const viewSource = () => read('features', 'quote-portal', 'components', 'portal-quote-view.tsx')
 
-test('the response panel has Download PDF, the note and the questions block, and no Accept or Decline', () => {
+// Slice 2 (Task 9) replaced slice 1's note on how to respond by email with the decision flow, a client component of its
+// own: the view stays a server component with no control of its own, and hands the flow only what it needs.
+test('the response panel has the decision flow, Download PDF and the questions block, and the view itself has no control', () => {
   const view = viewSource()
   assert.doesNotMatch(view, /Accept Quotation|Decline Quotation|Accept quotation|Decline quotation/i)
-  assert.doesNotMatch(view, /<button\b|<form\b|type="submit"|onClick/i, 'nothing in the view can submit or respond')
+  assert.doesNotMatch(view, /<button\b|<form\b|type="submit"|onClick/i, 'nothing in the view itself can submit or respond')
   assert.doesNotMatch(view, /'use client'/, 'a server component')
-  for (const name of ['SLICE_ONE_RESPOND_NOTE', 'READY_TO_RESPOND', 'QUESTIONS_HEADING', 'PORTAL_HEADING', 'PORTAL_INTRO', 'TERMS_STRIP', 'DOWNLOAD_PDF']) {
+  for (const name of ['ALREADY_RESPONDED_NOTE', 'DECLINE_MESSAGE', 'READY_TO_RESPOND', 'QUESTIONS_HEADING', 'PORTAL_HEADING', 'PORTAL_INTRO', 'TERMS_STRIP', 'DOWNLOAD_PDF']) {
     assert.match(view, new RegExp(`\\b${name}\\b`), `${name} is used`)
   }
+  assert.match(view, /import \{ PortalDecisionFlow \} from '@\/features\/quote-portal\/components\/portal-decision-flow'/)
+  // The flow gets the address masked, worked out here on the server: the full address never reaches the browser.
+  assert.match(view, /verifiedEmail=\{maskEmail\(model\.recipientEmail\)\}/)
+  assert.doesNotMatch(view, /=\{model\.recipientEmail\}|=\{quote\b/, 'neither the full address nor the raw quote is handed to the flow')
   // The download is a plain link to the PDF route, not a client-side navigation.
   assert.match(view, /<a\b[^>]*href=\{`\/q\/\$\{token\}\/pdf`\}/, 'a plain anchor to /q/<token>/pdf')
   assert.doesNotMatch(view, /next\/link|<Link\b/)
   assert.match(view, /\bPortalQuote\b/, 'it takes the portal quote')
 })
 
-test('the respond heading and note are printed only when the model says the quote can be responded to; Download PDF and the questions always are (Ruling 21)', () => {
+test('the respond heading, the flow and the already-responded note are printed only as the model says; Download PDF and the questions always are (Ruling 21)', () => {
   const view = viewSource()
-  assert.match(view, /\{model\.respondable \? <SectionTitle [^>]*>\{READY_TO_RESPOND\}<\/SectionTitle> : null\}/, 'the "Ready to respond?" heading is conditional')
-  assert.match(view, /\{model\.respondable \? <p [^>]*>\{SLICE_ONE_RESPOND_NOTE\}<\/p> : null\}/, 'and so is the note')
+  // An open quote speaks of responding: with the flow while this link has not responded, with a note once it has.
+  assert.match(view, /const invitesResponse = model\.respondable \|\| model\.alreadyResponded/)
+  assert.match(view, /\{invitesResponse \? <SectionTitle [^>]*>\{READY_TO_RESPOND\}<\/SectionTitle> : null\}/, 'the "Ready to respond?" heading is conditional')
+  assert.match(view, /\{model\.respondable \? \(\s*<PortalDecisionFlow\b[^>]*\/>\s*\) : null\}/, 'the flow only while this link may still respond')
+  assert.match(view, /\{model\.alreadyResponded \? <p [^>]*>\{ALREADY_RESPONDED_NOTE\}<\/p> : null\}/, 'a link that has responded gets the note and no buttons')
   assert.equal((view.match(/\{READY_TO_RESPOND\}/g) ?? []).length, 1, 'the heading is printed in one place')
-  assert.equal((view.match(/\{SLICE_ONE_RESPOND_NOTE\}/g) ?? []).length, 1, 'and so is the note')
-  // Between the two conditions, unconditionally, is the download link.
-  assert.match(view, /<\/SectionTitle> : null\}\s*<a\b[^>]*href=\{`\/q\/\$\{token\}\/pdf`\}[\s\S]*?\{DOWNLOAD_PDF\}\s*<\/a>\s*\{model\.respondable \? <p /, 'Download PDF is outside both conditions')
+  assert.equal((view.match(/<PortalDecisionFlow\b/g) ?? []).length, 1, 'and so is the flow')
+  assert.equal((view.match(/\{ALREADY_RESPONDED_NOTE\}/g) ?? []).length, 1, 'and so is the note')
+  // After the last condition, unconditionally, is the download link, and then the panel's block ends.
+  assert.match(view, /\{ALREADY_RESPONDED_NOTE\}<\/p> : null\}\s*<a\b[^>]*href=\{`\/q\/\$\{token\}\/pdf`\}[\s\S]*?\{DOWNLOAD_PDF\}\s*<\/a>\s*<\/div>/, 'Download PDF is outside every condition')
+  // A long confirm step must be reachable on a desktop: the panel stops being sticky while it holds the form.
+  assert.match(view, /lg:sticky lg:top-6 lg:has-\[\[data-decision-form\]\]:static/)
   assert.match(view, /hasContact\(contact\)/, 'the questions block depends on the contact, not on the state')
   assert.doesNotMatch(view, /state === 'open'|\.state\b/, 'the view asks the model, not the raw state')
+})
+
+test('a declined page shows the decline message under its banner only when this link made the decision', () => {
+  const view = viewSource()
+  assert.match(view, /const declinedHere = banner\?\.tone === 'declined' && model\.response\?\.decision === 'declined'/)
+  assert.match(view, /\{declinedHere \? <p [^>]*>\{DECLINE_MESSAGE\}<\/p> : null\}/)
+  assert.equal((view.match(/\{DECLINE_MESSAGE\}/g) ?? []).length, 1)
+  // It sits right after the banner, inside the banner's block.
+  assert.ok(view.indexOf('{DECLINE_MESSAGE}') > view.indexOf('{banner.text}'), 'under the banner')
+  assert.ok(view.indexOf('{DECLINE_MESSAGE}') < view.indexOf('<FactsStrip'), 'and before the facts')
 })
 
 test('the commercial rows keep a four-column table for assistive technology: sum rows span three columns and the group label is a plain cell', () => {

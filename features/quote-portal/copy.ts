@@ -25,9 +25,6 @@ export const QUESTIONS_HEADING = 'Questions about this quotation?'
 
 export const RECURRING_NOTE = 'Monthly charges recur each month; the first month is included in the total above.'
 
-/** Slice 1 has no Accept or Decline buttons yet (slice 2 adds them), so the response panel says how to respond. */
-export const SLICE_ONE_RESPOND_NOTE = 'To accept or decline this quotation, reply to the email you received or contact your HIMARK contact.'
-
 // ---------------------------------------------------------------------------------------------------------------
 // Words of the portal page that the spec appendix does not fix.
 //
@@ -131,8 +128,10 @@ export function ownerNoticeTitle(client: string, decision: DecisionKind, number:
 // DRAFTED for the owner's approval: the words the appendix does not give. Like the drafted copy above, none of it
 // is final until the owner has seen it. Plain ASCII. Nothing here has a placeholder for client text except the four
 // functions straight below (the client emails' subject, greeting and reference lines), which put the quotation number,
-// the client or the signatory's name in; callers pass plain text, and the email templates escape it for HTML and strip
-// line breaks from anything that reaches a subject. The one other number in this section is the count of attempts left.
+// the client or the signatory's name in, and codeSentMessage, which puts in the masked address the code went to;
+// callers pass plain text, the page prints it as a text node, and the email templates escape it for HTML and strip
+// line breaks from anything that reaches a subject. The other numbers in this section are the count of attempts left
+// and the minutes a code lasts.
 // ---------------------------------------------------------------------------------------------------------------
 
 /** The subject of the client's acknowledgement. The appendix gives the sentence of that email, not its subject. */
@@ -168,6 +167,46 @@ export const STEP_LABELS = {
 /** Shown instead of the Accept and Decline buttons when this link has already responded (a reopened quote). */
 export const ALREADY_RESPONDED_NOTE =
   'A response has already been recorded using this link. If the quotation needs a new response, please ask your HIMARK contact for a new link.'
+
+/** The labels of the summary at the top of the confirm step: what the client is accepting or declining. */
+export const CONFIRMATION_LABELS = {
+  quotation: 'Quotation',
+  organisation: 'Organisation',
+  services: 'Services',
+  initialTotal: 'Initial total',
+  recurring: 'Recurring commitments',
+  keyTerms: 'Key terms',
+} as const
+
+/** The labels of the decision form's fields. The email is shown, never typed: it is where the code is sent. */
+export const FORM_LABELS = {
+  name: 'Full name',
+  position: 'Position',
+  organisation: 'Organisation',
+  email: 'Verified email',
+  reason: 'Reason for declining',
+  noReason: 'Choose a reason (optional)',
+  comments: 'Comments (optional)',
+  code: 'Confirmation code',
+} as const
+
+/** The buttons of the steps after Accept or Decline. "Email me a code" is the spec's own wording (its decision flow, step 2). */
+export const FLOW_BUTTONS = {
+  emailCode: 'Email me a code',
+  sending: 'Sending...',
+  confirm: 'Confirm',
+  confirming: 'Confirming...',
+  newCode: 'Send a new code',
+  back: 'Back',
+} as const
+
+/** Where the code went, once it has been sent: the address is the masked one (j***@acme.co.za), the minutes the database's expiry. */
+export function codeSentMessage(maskedEmail: string, minutes: number): string {
+  return `We have emailed a six-digit code to ${maskedEmail}. It expires in ${minutes} minutes.`
+}
+
+/** Shown for the moment between a recorded decision and the refreshed page that shows it. */
+export const DECISION_RECORDED = 'Thank you. Your response has been recorded.'
 
 /** What the client is told when a field of the decision form is not valid. One message per field; none repeats what was typed. */
 export const FIELD_ERRORS = {

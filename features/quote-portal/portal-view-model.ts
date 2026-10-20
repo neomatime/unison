@@ -9,7 +9,7 @@
 //
 // TEXT. Every string here is passed through as it is stored (trimmed at its ends, nothing else). It reaches the page as
 // a React text node, which escapes it; nothing here produces markup.
-import type { PortalLine, PortalOwner, PortalQuoteFull, PortalQuoteInvalid, PortalQuoteShort } from '../../lib/quote-portal/types.ts'
+import type { DecisionKind, PortalLine, PortalOwner, PortalQuoteFull, PortalQuoteInvalid, PortalQuoteShort } from '../../lib/quote-portal/types.ts'
 import { buildDocumentView, formatAmount, formatDocumentDate, formatQuantity } from '../documents/document-view.ts'
 import { isDraftReference } from '../documents/vocabulary.ts'
 import {
@@ -137,9 +137,38 @@ export type PortalContact = {
   phone: PortalLink | null
 }
 
+/** What the confirm step shows of the quote before the client accepts or declines it, and what it prefills. */
+export type ConfirmationModel = {
+  /** "HMK-Q-2026-00001 (Version 2, replacing HMK-Q-2026-00000)". */
+  numberAndVersion: string
+  organisation: string
+  /** The titles of the scope's services (the lines with a description), else of every line. */
+  services: string[]
+  /** The stored total, as the page prints it: "ZAR 230,000.00". */
+  initialTotal: string
+  /** The monthly figure (including VAT when the monthly lines carry it) "per month"; null unless the summary is grouped. */
+  recurring: string | null
+  /** The first three terms. */
+  keyTerms: string[]
+  /** The name from the link's recipient and the organisation from the quote's client; blank when unknown. */
+  prefill: { name: string; organisation: string }
+}
+
 export type PortalQuoteModel = {
-  /** True only while the quote is open: a decided quote must not be offered a response (the panel then has no "Ready to respond?" heading and no note on how to respond). */
+  /**
+   * True only while the quote is open and this link has not responded: only then are Accept and Decline offered. A
+   * decided quote has been answered, and the panel then has no "Ready to respond?" heading.
+   */
   respondable: boolean
+  /** True for an open quote whose link already carries a response (staff reopened it): the panel says so and offers nothing. */
+  alreadyResponded: boolean
+  /** The hash of the quote as shown, which a decision sends back. */
+  snapshotHash: string
+  /** The link's recipient: where a confirmation code is sent. */
+  recipientEmail: string
+  /** What this link decided, with the South African day it was decided on; null when it has decided nothing. */
+  response: { decision: DecisionKind; decidedOn: string | null } | null
+  confirmation: ConfirmationModel
   facts: PortalFact[]
   banner: { tone: 'accepted' | 'declined'; text: string } | null
   scope: { description: string[]; inclusions: string[]; services: Array<{ title: string; description: string }> } | null
@@ -171,8 +200,9 @@ export function buildPortalQuoteModel(quote: PortalQuoteFull): PortalQuoteModel 
     if (value) facts.push(tone ? { label, value, tone } : { label, value })
   }
   const tax = Number(record.tax_amount)
+  const version = versionLabel(quote.version, quote.replaces_number)
   addFact('Quote number', view.number)
-  addFact('Version', versionLabel(quote.version, quote.replaces_number))
+  addFact('Version', version)
   addFact('Client', text(record.client_name))
   addFact('Project / Service', text(record.project_name))
   addFact('Issue date', formatDocumentDate(record.issue_date))
@@ -229,7 +259,34 @@ export function buildPortalQuoteModel(quote: PortalQuoteFull): PortalQuoteModel 
   })
   const terms = view.terms.length ? { items: view.terms, sources } : null
 
-  return { respondable: quote.state === 'open', facts, banner, scope, commercial, terms, contact: buildContact(quote.owner, record.issuer) }
+  // --- the response: this link's own decision, and what the confirm step shows before one is made. decided_at is an
+  // instant that may be written in any time zone, so it is read as a Date, never compared or cut as text.
+  const response = quote.response ? { decision: quote.response.decision, decidedOn: formatInstantDate(quote.response.decided_at) } : null
+  const monthly = commercial.monthly
+  const confirmation: ConfirmationModel = {
+    numberAndVersion: view.number ? `${view.number} (${version})` : version,
+    organisation: text(record.client_name) ?? '',
+    services: (services.length ? services.map((service) => service.title) : view.lines.map((row) => row.title)).filter(Boolean),
+    initialTotal: `${currency} ${view.totals.total}`,
+    recurring: monthly ? `${currency} ${monthly.includingVat ?? monthly.subtotal} per month` : null,
+    keyTerms: view.terms.slice(0, 3),
+    prefill: { name: text(quote.recipient_name) ?? '', organisation: text(record.client_name) ?? '' },
+  }
+
+  return {
+    respondable: quote.state === 'open' && response === null,
+    alreadyResponded: quote.state === 'open' && response !== null,
+    snapshotHash: quote.snapshot_hash,
+    recipientEmail: text(quote.recipient_email) ?? '',
+    response,
+    confirmation,
+    facts,
+    banner,
+    scope,
+    commercial,
+    terms,
+    contact: buildContact(quote.owner, record.issuer),
+  }
 }
 
 /** The owner's name and job title, with the company's website, email and phone; the company's name stands in for a missing owner. */

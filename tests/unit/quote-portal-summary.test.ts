@@ -267,13 +267,14 @@ const EXPECTED_COPY = {
   EMAIL_NEXT_STEPS: 'If you choose to proceed, our team will coordinate onboarding, project planning and activation of the agreed services.',
   QUESTIONS_HEADING: 'Questions about this quotation?',
   RECURRING_NOTE: 'Monthly charges recur each month; the first month is included in the total above.',
-  SLICE_ONE_RESPOND_NOTE: 'To accept or decline this quotation, reply to the email you received or contact your HIMARK contact.',
 } as const
 
 test('each copy constant is exactly its appendix string', () => {
   for (const [name, expected] of Object.entries(EXPECTED_COPY)) {
     assert.equal((copy as Record<string, unknown>)[name], expected, name)
   }
+  // Slice 1's note on how to respond by email is gone: slice 2 puts the Accept and Decline buttons in its place.
+  assert.equal(Object.hasOwn(copy, 'SLICE_ONE_RESPOND_NOTE'), false)
 })
 
 test('the copy constants are plain ASCII, with a straight apostrophe and no stray spaces', () => {
@@ -290,11 +291,9 @@ test('the copy constants are plain ASCII, with a straight apostrophe and no stra
 })
 
 test('the copy constants appear in the spec appendix as written there', () => {
-  // The spec wraps its lines; join them with single spaces before comparing. SLICE_ONE_RESPOND_NOTE is a controller
-  // ruling for slice 1 and is not in the spec.
+  // The spec wraps its lines; join them with single spaces before comparing.
   const spec = read('docs', 'superpowers', 'specs', '2026-10-18-quote-portal-design.md').replace(/\s+/g, ' ')
   for (const [name, expected] of Object.entries(EXPECTED_COPY)) {
-    if (name === 'SLICE_ONE_RESPOND_NOTE') continue
     assert.ok(spec.includes(`"${expected}"`), `${name} is quoted in the spec`)
   }
 })

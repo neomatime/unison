@@ -21,17 +21,20 @@ import {
 import type { ReactNode } from 'react'
 
 import {
+  ALREADY_RESPONDED_NOTE,
   COMMERCIAL_HEADING,
+  DECLINE_MESSAGE,
   DOWNLOAD_PDF,
   PORTAL_HEADING,
   PORTAL_INTRO,
   QUESTIONS_HEADING,
   READY_TO_RESPOND,
   SCOPE_HEADING,
-  SLICE_ONE_RESPOND_NOTE,
   TERMS_HEADING,
   TERMS_STRIP,
 } from '@/features/quote-portal/copy'
+import { maskEmail } from '@/features/quote-portal/decision'
+import { PortalDecisionFlow } from '@/features/quote-portal/components/portal-decision-flow'
 import { PortalHeader } from '@/features/quote-portal/components/portal-header'
 import {
   buildPortalQuoteModel,
@@ -47,7 +50,8 @@ import { isViewableQuote, type PortalQuote } from '@/lib/quote-portal/types'
 // The client-facing quote, laid out. Every figure, date and link arrives already worked out by buildPortalQuoteModel:
 // this file does no arithmetic and builds no link of its own, and everything it prints is a React text node, so
 // whatever a quote contains (angle brackets, line breaks, five thousand characters) is shown as text and nowhere else.
-// In this slice there is no way to respond on the page: only the PDF, a note on how to respond, and who to ask.
+// The view has no control of its own: Accept and Decline are PortalDecisionFlow, a client component, rendered only
+// while the model says this link may respond.
 
 const MUTED = 'text-[var(--briefing-muted)]'
 const WRAP = '[overflow-wrap:anywhere]'
@@ -279,6 +283,10 @@ export function PortalQuoteView({ token, quote }: { token: string; quote: Portal
   if (!isViewableQuote(quote)) return null
   const model = buildPortalQuoteModel(quote)
   const { banner, scope, commercial, terms, contact } = model
+  // An open quote speaks of responding: with the flow while this link has not responded, with a note once it has.
+  const invitesResponse = model.respondable || model.alreadyResponded
+  // The decline message is for the client who declined from this link, not for a quote declined by hand or elsewhere.
+  const declinedHere = banner?.tone === 'declined' && model.response?.decision === 'declined'
 
   return (
     <div className="mx-auto w-full max-w-[1200px] px-4 pb-12 sm:px-6 lg:px-8">
@@ -298,13 +306,16 @@ export function PortalQuoteView({ token, quote }: { token: string; quote: Portal
           </section>
 
           {banner ? (
-            <p
-              role="status"
-              className={cn('flex items-start gap-3 border p-4 text-sm font-medium', banner.tone === 'accepted' ? 'border-success/40 bg-success-soft' : 'border-danger/40 bg-danger-soft')}
-            >
-              {banner.tone === 'accepted' ? <CircleCheck aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-success" /> : <CircleX aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-danger" />}
-              <span>{banner.text}</span>
-            </p>
+            <div className="space-y-3">
+              <p
+                role="status"
+                className={cn('flex items-start gap-3 border p-4 text-sm font-medium', banner.tone === 'accepted' ? 'border-success/40 bg-success-soft' : 'border-danger/40 bg-danger-soft')}
+              >
+                {banner.tone === 'accepted' ? <CircleCheck aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-success" /> : <CircleX aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-danger" />}
+                <span>{banner.text}</span>
+              </p>
+              {declinedHere ? <p className="text-sm leading-relaxed text-foreground/80">{DECLINE_MESSAGE}</p> : null}
+            </div>
           ) : null}
 
           <FactsStrip facts={model.facts} />
@@ -373,18 +384,22 @@ export function PortalQuoteView({ token, quote }: { token: string; quote: Portal
           ) : null}
         </div>
 
-        <aside aria-label={model.respondable ? READY_TO_RESPOND : DOWNLOAD_PDF} className="border border-border bg-card lg:sticky lg:top-6">
+        {/* Sticky beside the quote on a desktop, except while it holds the confirm or code step, which can be taller than the screen. */}
+        <aside aria-label={invitesResponse ? READY_TO_RESPOND : DOWNLOAD_PDF} className="border border-border bg-card lg:sticky lg:top-6 lg:has-[[data-decision-form]]:static">
           <div className="p-5 sm:p-6">
             {/* Only an open quote is offered a response: an accepted or declined one has been answered, and the panel then says nothing about responding. */}
-            {model.respondable ? <SectionTitle icon={PenLine} id="portal-respond">{READY_TO_RESPOND}</SectionTitle> : null}
+            {invitesResponse ? <SectionTitle icon={PenLine} id="portal-respond">{READY_TO_RESPOND}</SectionTitle> : null}
+            {model.respondable ? (
+              <PortalDecisionFlow token={token} snapshotHash={model.snapshotHash} verifiedEmail={maskEmail(model.recipientEmail)} confirmation={model.confirmation} />
+            ) : null}
+            {model.alreadyResponded ? <p className={cn('mt-4 text-sm leading-relaxed', MUTED)}>{ALREADY_RESPONDED_NOTE}</p> : null}
             <a
               href={`/q/${token}/pdf`}
-              className={cn('flex w-full items-center justify-center gap-2 border border-foreground px-4 py-3 text-sm font-medium text-foreground transition-colors hover:bg-accent', model.respondable && 'mt-5')}
+              className={cn('flex w-full items-center justify-center gap-2 border border-foreground px-4 py-3 text-sm font-medium text-foreground transition-colors hover:bg-accent', invitesResponse && 'mt-5')}
             >
               <Download aria-hidden="true" className="size-4" />
               {DOWNLOAD_PDF}
             </a>
-            {model.respondable ? <p className={cn('mt-4 text-sm leading-relaxed', MUTED)}>{SLICE_ONE_RESPOND_NOTE}</p> : null}
           </div>
           {hasContact(contact) ? (
             <div className="border-t border-border p-5 sm:p-6">
