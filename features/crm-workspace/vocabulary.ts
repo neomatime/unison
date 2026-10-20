@@ -23,6 +23,8 @@ export const SYSTEM_ACTIVITY_KINDS = [
   'billing.tier_changed',
   'billing.support_added',
   'billing.document_built',
+  'quote.declined',
+  'quote.superseded',
 ] as const
 
 /** Matches sales_opportunities_stage_check. */
@@ -52,4 +54,6 @@ export const ACTIVITY_LABELS: Record<string, string> = {
   'billing.tier_changed': 'Tier changed',
   'billing.support_added': 'Support service recorded',
   'billing.document_built': 'Billing document built',
+  'quote.declined': 'Quote declined',
+  'quote.superseded': 'Quote superseded',
 }
