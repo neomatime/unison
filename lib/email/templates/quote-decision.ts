@@ -5,8 +5,10 @@
 //
 // The same family as quoteEmailTemplate (lib/email/templates/quote.ts), in the same palette, but plainer: a single
 // column, nested tables with role="presentation", inline styles and a bgcolor next to every CSS background (Outlook),
-// and NO images, so there is nothing for a mail client to block. The sentences are copy.ts's (the spec appendix's), never
-// retyped here; what is written in this file is only layout and the owner-facing labels.
+// and NO images, so there is nothing for a mail client to block. Everything the client reads (the sentences, the
+// acknowledgement's subject and greeting, the code email's reference lines) is copy.ts's, never retyped here. What is
+// written in this file is layout, the brand bar (the name and strapline, as in quoteEmailTemplate) and the labels of the
+// owner's notice, which is staff mail.
 //
 // Every value that came from the client, or from a person on the quote, is cleaned and escaped. A single-line value
 // loses its bidi and control characters, is collapsed to one line and is capped (sanitizeLine); it is escaped with
@@ -18,6 +20,10 @@ import {
   CODE_EMAIL_SUBJECT,
   acknowledgementAccepted,
   acknowledgementDeclined,
+  acknowledgementGreeting,
+  acknowledgementSubject,
+  codeEmailClientLine,
+  codeEmailQuoteLine,
   codeEmailSentence,
   ownerNoticeTitle,
 } from '../../../features/quote-portal/copy.ts'
@@ -71,10 +77,6 @@ const SERIF = "Georgia,'Times New Roman',serif"
 const MONO = "'Courier New',Courier,monospace"
 
 const STRAPLINE = 'PEOPLE | STRATEGY | PROGRESS'
-
-// The subject of the acknowledgement. DRAFTED for the owner's approval, like the other strings the spec appendix does not
-// give: the appendix gives the sentence of this email but not its subject.
-const acknowledgementSubject = (number: string) => `Your response to quotation ${number}`
 
 /** The client's comments are cut to this many characters: the number the portal's own validator and the database allow. */
 const COMMENTS_MAX = 2000
@@ -286,10 +288,10 @@ export function quoteCodeEmailTemplate(data: QuoteCodeEmailData): EmailTemplate 
     heading(CODE_EMAIL_SUBJECT) +
       block(codeBlock, 22) +
       block(bodyText(sentence), 22) +
-      block(reference(`Quote number: ${quoteNumber}`) + (clientName ? reference(`Client: ${clientName}`) : ''), 22),
+      block(reference(codeEmailQuoteLine(quoteNumber)) + (clientName ? reference(codeEmailClientLine(clientName)) : ''), 22),
   )
 
-  const text = [CODE_EMAIL_SUBJECT, '', sentence, '', `Quote number: ${quoteNumber}`, ...(clientName ? [`Client: ${clientName}`] : [])].join('\n')
+  const text = [CODE_EMAIL_SUBJECT, '', sentence, '', codeEmailQuoteLine(quoteNumber), ...(clientName ? [codeEmailClientLine(clientName)] : [])].join('\n')
 
   return { subject: CODE_EMAIL_SUBJECT, html, text }
 }
@@ -307,7 +309,7 @@ export function quoteAcknowledgementEmailTemplate(data: QuoteAcknowledgementEmai
     decision === 'accepted'
       ? acknowledgementAccepted(quoteNumber, line(data.decidedOn), data.ownerName ? line(data.ownerName) || null : null)
       : acknowledgementDeclined(quoteNumber)
-  const greeting = signatoryName ? `Hello ${signatoryName},` : 'Hello,'
+  const greeting = acknowledgementGreeting(signatoryName || null)
   const subject = acknowledgementSubject(quoteNumber)
 
   const html = renderDocument(subject, sentence, heading(subject) + block(bodyText(greeting), 22) + block(bodyText(sentence), 10))

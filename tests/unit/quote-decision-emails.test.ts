@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import test from 'node:test'
+import { fileURLToPath } from 'node:url'
 import {
   quoteAcknowledgementEmailTemplate,
   quoteCodeEmailTemplate,
@@ -54,8 +56,21 @@ const declined = (overrides: Partial<NoticeData> = {}) =>
 const tags = (html: string, name: string) => html.match(new RegExp(`<${name}\\b[^>]*>`, 'gi')) ?? []
 const attr = (tag: string, name: string) => tag.match(new RegExp(`\\s${name}="([^"]*)"`, 'i'))?.[1]
 const anchors = (html: string) => [...html.matchAll(/<a\b([^>]*)>([\s\S]*?)<\/a>/gi)].map((m) => ({ href: attr(`<a${m[1]}>`, 'href'), inner: m[2] }))
+/**
+ * What a reader of the email sees as text. The <head> (it holds the title, which is the subject) and the hidden preheader
+ * (which repeats the sentence or the title) are dropped, so a sentence found here is in the visible body.
+ */
 const plain = (html: string) =>
-  html.replace(/<style[\s\S]*?<\/style>/gi, '').replace(/<!--[\s\S]*?-->/g, '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ')
+  html
+    .replace(/<head>[\s\S]*?<\/head>/i, '')
+    .replace(/<div style="display:none[^>]*>[\s\S]*?<\/div>/gi, '')
+    .replace(/<style[\s\S]*?<\/style>/gi, '')
+    .replace(/<!--[\s\S]*?-->/g, '')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+/** The inner html of every <p> and every <h1>: the visible sentences and the heading, one by one. */
+const paragraphs = (html: string) => [...html.matchAll(/<p\b[^>]*>([\s\S]*?)<\/p>/gi)].map((m) => m[1])
+const headings = (html: string) => [...html.matchAll(/<h1\b[^>]*>([\s\S]*?)<\/h1>/gi)].map((m) => m[1])
 
 /** One of each template, for the checks that hold for all of them. */
 function everyTemplate() {
@@ -77,9 +92,11 @@ test('the code email has the appendix subject and the appendix sentence, with th
   assert.equal(mail.subject, 'Your HIMARK confirmation code')
   const sentence =
     'Your confirmation code is 482913. It expires in 10 minutes. If you did not ask for this code, you can ignore this email; nothing has been accepted or declined.'
-  assert.ok(plain(mail.html).includes(sentence), 'the sentence in the html')
+  assert.ok(paragraphs(mail.html).includes(sentence), 'the sentence is a visible paragraph of the html')
+  assert.ok(plain(mail.html).includes(sentence), 'and so it is in the visible text')
+  assert.deepEqual(headings(mail.html), ['Your HIMARK confirmation code'], 'the heading')
   assert.ok(mail.text.includes(sentence), 'the sentence in the text')
-  const block = mail.html.match(/<td\b[^>]*monospace[^>]*>\s*482913\s*<\/td>/i)
+  const block =mail.html.match(/<td\b[^>]*monospace[^>]*>\s*482913\s*<\/td>/i)
   assert.ok(block, 'the code alone in a monospaced cell')
   const fontSize = Number(block[0].match(/font-size:(\d+)px/)?.[1])
   assert.ok(fontSize >= 28, `the code is large (${fontSize}px)`)
@@ -128,17 +145,18 @@ test('the accepted acknowledgement: subject, greeting by the signatory, and the 
   assert.equal(mail.subject, 'Your response to quotation HMK-Q-2026-00001')
   const sentence =
     'Thank you. We have recorded your acceptance of quotation HMK-Q-2026-00001 on 20 October 2026. Your HIMARK contact, Neo Matime, will be in touch about next steps.'
-  assert.ok(plain(mail.html).includes(sentence), 'html')
+  assert.ok(paragraphs(mail.html).includes(sentence), 'the sentence is a visible paragraph of the html')
   assert.ok(mail.text.includes(sentence), 'text')
-  assert.ok(plain(mail.html).includes('Hello Thandi Nkosi,'), 'the greeting in the html')
+  assert.ok(paragraphs(mail.html).includes('Hello Thandi Nkosi,'), 'the greeting is a visible paragraph of the html')
   assert.ok(mail.text.includes('Hello Thandi Nkosi,'), 'the greeting in the text')
+  assert.deepEqual(headings(mail.html), ['Your response to quotation HMK-Q-2026-00001'], 'the heading')
 })
 
 test('the declined acknowledgement: the appendix sentence, and no date and no owner', () => {
   const mail = ack({ decision: 'declined' })
   assert.equal(mail.subject, 'Your response to quotation HMK-Q-2026-00001')
   const sentence = 'Thank you for letting us know. We have recorded your response to quotation HMK-Q-2026-00001.'
-  assert.ok(plain(mail.html).includes(sentence), 'html')
+  assert.ok(paragraphs(mail.html).includes(sentence), 'the sentence is a visible paragraph of the html')
   assert.ok(mail.text.includes(sentence), 'text')
   assert.ok(!mail.text.includes('acceptance') && !mail.text.includes('20 October 2026') && !mail.text.includes('Neo Matime'))
   assert.ok(mail.text.includes('Hello Thandi Nkosi,'))
@@ -148,7 +166,7 @@ test('an accepted quote with no owner drops the name and keeps the sentence whol
   const mail = ack({ ownerName: null })
   const sentence = 'Thank you. We have recorded your acceptance of quotation HMK-Q-2026-00001 on 20 October 2026. Your HIMARK contact will be in touch about next steps.'
   assert.ok(mail.text.includes(sentence))
-  assert.ok(plain(mail.html).includes(sentence))
+  assert.ok(paragraphs(mail.html).includes(sentence), 'the sentence is a visible paragraph of the html')
   assert.ok(!/,\s*,|null|undefined/.test(mail.text + mail.html))
 })
 
@@ -171,7 +189,8 @@ test('the owner notice subjects are "<client> accepted|declined quotation <numbe
 test('the notice names the client, quotation, signatory and position, and links to the quote', () => {
   const mail = notice()
   const text = plain(mail.html)
-  for (const part of ['Acme Holdings accepted quotation HMK-Q-2026-00001', 'Thandi Nkosi', 'Chief Executive Officer', 'HMK-Q-2026-00001']) {
+  assert.deepEqual(headings(mail.html), ['Acme Holdings accepted quotation HMK-Q-2026-00001'], 'the heading')
+  for (const part of ['Acme Holdings', 'Thandi Nkosi', 'Chief Executive Officer', 'HMK-Q-2026-00001']) {
     assert.ok(text.includes(part), `html has ${part}`)
   }
   for (const part of ['Client: Acme Holdings', 'Quotation: HMK-Q-2026-00001', 'Signed by: Thandi Nkosi', 'Position: Chief Executive Officer']) {
@@ -393,4 +412,14 @@ test('the document title is the subject, escaped', () => {
   const mail = notice({ clientName: 'Smith & Sons' })
   assert.ok(mail.html.includes('<title>Smith &amp; Sons accepted quotation HMK-Q-2026-00001</title>'))
   assert.ok(code().html.includes('<title>Your HIMARK confirmation code</title>'))
+})
+
+test('the template file writes none of the client-facing words itself: they come from copy.ts', () => {
+  const source = readFileSync(fileURLToPath(new URL('../../lib/email/templates/quote-decision.ts', import.meta.url)), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/^\s*\/\/.*$/gm, '')
+  for (const words of ['Hello', 'Thank you', 'Your response', 'Your HIMARK', 'Your confirmation', 'Quote number', 'expires in', 'recorded your']) {
+    assert.ok(!source.includes(words), `"${words}" is not written in the template`)
+  }
+  assert.match(source, /features\/quote-portal\/copy\.ts/, 'and the template imports copy.ts')
 })

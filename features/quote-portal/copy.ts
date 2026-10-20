@@ -129,9 +129,31 @@ export function ownerNoticeTitle(client: string, decision: DecisionKind, number:
 
 // ---------------------------------------------------------------------------------------------------------------
 // DRAFTED for the owner's approval: the words the appendix does not give. Like the drafted copy above, none of it
-// is final until the owner has seen it. Plain ASCII. None has a placeholder for client text; the one number in it is
-// the count of attempts left.
+// is final until the owner has seen it. Plain ASCII. Nothing here has a placeholder for client text except the four
+// functions straight below (the client emails' subject, greeting and reference lines), which put the quotation number,
+// the client or the signatory's name in; callers pass plain text, and the email templates escape it for HTML and strip
+// line breaks from anything that reaches a subject. The one other number in this section is the count of attempts left.
 // ---------------------------------------------------------------------------------------------------------------
+
+/** The subject of the client's acknowledgement. The appendix gives the sentence of that email, not its subject. */
+export function acknowledgementSubject(number: string): string {
+  return `Your response to quotation ${number}`
+}
+
+/** The greeting of the client's acknowledgement: the signatory's name, or the bare greeting when there is none. */
+export function acknowledgementGreeting(name: string | null): string {
+  return name ? `Hello ${name},` : 'Hello,'
+}
+
+/** The first reference line under the confirmation code, so the client can tell which quotation the code is for. */
+export function codeEmailQuoteLine(number: string): string {
+  return `Quote number: ${number}`
+}
+
+/** The second reference line under the confirmation code; left out when the client's name is not known. */
+export function codeEmailClientLine(client: string): string {
+  return `Client: ${client}`
+}
 
 /** The consent wording of a decline: the appendix says only that decline has "its own, shorter, confirmation". */
 export const CONSENT_DECLINE = 'I confirm that I am authorised to decline this quotation on behalf of the organisation.'
