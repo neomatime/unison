@@ -272,17 +272,17 @@ for (const { field, key, max } of SINGLE_LINE) {
       'Pat\u0007Client',
       'Pat\u007fClient',
       'Pat\u0085Client',
-      'Pat‎Client',
-      'Pat‏Client',
-      'Pat‮Client',
-      'Pat ‪Client',
-      'Pat ‫Client',
-      'Pat ‬Client',
-      'Pat ‭Client',
-      'Pat ⁦Client',
-      'Pat ⁧Client',
-      'Pat ⁨Client',
-      'Pat ⁩Client',
+      'Pat\u200eClient',
+      'Pat\u200fClient',
+      'Pat\u202eClient',
+      'Pat \u202aClient',
+      'Pat \u202bClient',
+      'Pat \u202cClient',
+      'Pat \u202dClient',
+      'Pat \u2066Client',
+      'Pat \u2067Client',
+      'Pat \u2068Client',
+      'Pat \u2069Client',
       'Pat \ud800 Client',
     ]
     for (const text of hostile) {
@@ -326,21 +326,47 @@ test('comments: a null byte, any other control character, a lone carriage return
     'a\u000bb',
     'a\u000cb',
     'old\rMac line break',
-    'a‎b',
-    'a‏b',
-    'a‪b',
-    'a‫b',
-    'a‬b',
-    'a‭b',
-    'a‮b',
-    'a⁦b',
-    'a⁧b',
-    'a⁨b',
-    'a⁩b',
+    'a\u200eb',
+    'a\u200fb',
+    'a\u202ab',
+    'a\u202bb',
+    'a\u202cb',
+    'a\u202db',
+    'a\u202eb',
+    'a\u2066b',
+    'a\u2067b',
+    'a\u2068b',
+    'a\u2069b',
     'a\udc00b',
   ]
   for (const text of hostile) {
     assert.deepEqual(Object.keys(errorsOf(decline({ declineComments: text }))), ['comments'], JSON.stringify(text))
+  }
+})
+
+test('comments: the Unicode line and paragraph separators become newlines, so no locale can make the database refuse them', () => {
+  // glibc classes U+2028 and U+2029 as control characters, and portal_decide refuses a control character other than \n and \t.
+  for (const [name, separator] of [['U+2028 line separator', '\u2028'], ['U+2029 paragraph separator', '\u2029']] as const) {
+    const folded = valueOf(decline({ declineComments: `Line one${separator}Line two` })).declineComments
+    assert.equal(folded, 'Line one\nLine two', name)
+    assert.doesNotMatch(folded ?? '', /[\u2028\u2029]/, name)
+    assert.equal(valueOf(decline({ declineComments: `${separator}  spaced${separator}${separator}out ${separator}` })).declineComments, 'spaced\n\nout', `${name} at the ends and doubled`)
+    assert.equal(valueOf(decline({ declineComments: `${separator}${separator}` })).declineComments, null, `${name} alone is empty`)
+    assert.equal(valueOf(decline({ declineComments: `a\r\nb${separator}c` })).declineComments, 'a\nb\nc', `${name} beside \\r\\n`)
+    // Still one character each: the 2000 limit is the same before and after the fold.
+    assert.equal(valueOf(decline({ declineComments: 'x' + separator + 'y'.repeat(1998) })).declineComments?.length, 2000, name)
+    assert.deepEqual(Object.keys(errorsOf(decline({ declineComments: 'x' + separator + 'y'.repeat(1999) }))), ['comments'], `${name} counts as one character`)
+  }
+  // A separator beside a lone carriage return does not hide it: the lone \r is still refused.
+  assert.deepEqual(Object.keys(errorsOf(decline({ declineComments: 'a\r\u2028b' }))), ['comments'])
+})
+
+test('the single-line fields still collapse the Unicode line and paragraph separators to one space', () => {
+  for (const { field } of SINGLE_LINE) {
+    for (const separator of ['\u2028', '\u2029']) {
+      assert.equal(valueOf(accept({ [field]: `Pat${separator}Client` }))[field], 'Pat Client', field)
+      assert.equal(valueOf(accept({ [field]: `${separator}Pat ${separator}${separator} Client${separator}` }))[field], 'Pat Client', field)
+    }
   }
 })
 

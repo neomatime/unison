@@ -23,7 +23,7 @@ export type NormalisedDecisionInput = { ok: true; value: DecideInput } | { ok: f
 // Any control character (U+0000 to U+001F and U+007F to U+009F): a line break, a tab and a null byte are all in it.
 const CONTROL = /\p{Cc}/u
 // The marks that reorder text: left-to-right and right-to-left marks, embeddings, overrides and isolates.
-const BIDI_CONTROL = /[‎‏‪-‮⁦-⁩]/
+const BIDI_CONTROL = /[\u200e\u200f\u202a-\u202e\u2066-\u2069]/
 // With the u flag a surrogate matches only when it is unpaired, so a real emoji does not.
 const LONE_SURROGATE = /[\uD800-\uDFFF]/u
 const SIX_DIGITS = /^[0-9]{6}$/
@@ -50,13 +50,19 @@ function singleLine(value: unknown, bounds: { min: number; max: number }): strin
 }
 
 /**
- * The comments of a decline: "\r\n" becomes "\n", a newline and a tab are allowed and every other control character is
- * not, the ends are trimmed, and nothing (or only whitespace) is null. Not-ok means the text is refused.
+ * The comments of a decline: "\r\n" becomes "\n", and so do the Unicode line and paragraph separators (U+2028, U+2029),
+ * a newline and a tab are allowed and every other control character is not, the ends are trimmed, and nothing (or only
+ * whitespace) is null. Not-ok means the text is refused.
+ *
+ * The two separators are folded rather than refused because they are line breaks the client meant (they arrive with
+ * pasted text) and they are invisible, so a refusal would give the client nothing to find. They must not reach the
+ * database as they are: a C library that classes them as control characters (glibc does) makes portal_decide refuse the
+ * comments as "incomplete". As "\n" they are valid under any locale.
  */
 function comments(value: unknown): { ok: true; text: string | null } | { ok: false } {
   if (value === null || value === undefined) return { ok: true, text: null }
   if (typeof value !== 'string') return { ok: false }
-  const joined = value.replace(/\r\n/g, '\n')
+  const joined = value.replace(/\r\n/g, '\n').replace(/[\u2028\u2029]/g, '\n')
   if (CONTROL.test(joined.replace(/[\n\t]/g, '')) || isUnsafeText(joined)) return { ok: false }
   const text = joined.trim()
   if (text === '') return { ok: true, text: null }
@@ -76,7 +82,7 @@ const isDeclineReason = (value: string): value is DeclineReason => (DECLINE_REAS
  * - consent: `true`, and consentText equal to CONSENT_ACCEPT (accept) or CONSENT_DECLINE (decline), exactly.
  * - snapshotHash: 64 lower-case hex characters, exactly.
  * - declineReason: one of the six, trimmed; empty is null; on an accept any reason is refused.
- * - declineComments: see comments; empty is null; on an accept any comment is refused (the database refuses them too).
+ * - declineComments: see comments (line and paragraph separators become newlines); empty is null; on an accept any comment is refused (the database refuses them too).
  */
 export function normaliseDecisionInput(raw: Record<string, unknown>): NormalisedDecisionInput {
   const input: Record<string, unknown> = typeof raw === 'object' && raw !== null ? raw : {}
