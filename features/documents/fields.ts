@@ -1,7 +1,7 @@
 // Pure readers for the document forms, so the validation the server actions depend on is unit
 // testable. Relative imports only: Node's test runner cannot resolve '@/', and 'use server'
 // modules cannot be imported by a test.
-import { VAT_CODES, type VatCode } from './vocabulary.ts'
+import { CHARGE_KINDS, VAT_CODES, type ChargeKind, type DocumentKind, type VatCode } from './vocabulary.ts'
 
 const value = (form: FormData, key: string) => String(form.get(key) ?? '').trim()
 const optional = (form: FormData, key: string) => value(form, key) || null
@@ -35,12 +35,30 @@ function readVatCode(form: FormData): VatCode | Failure {
   return isOneOf(VAT_CODES, code) ? (code as VatCode) : { error: 'Choose Standard rate or Zero-rated VAT.' }
 }
 
+/** Blank or absent is "Not set" (null); anything else must be one of the known kinds. */
+function readChargeKind(form: FormData): ChargeKind | null | Failure {
+  const kind = value(form, 'chargeKind')
+  if (!kind) return null
+  return isOneOf(CHARGE_KINDS, kind) ? (kind as ChargeKind) : { error: 'Choose Once-off or Monthly.' }
+}
+
 export type LineFields = {
   title: string
   description: string | null
   quantity: number
   unit_price: number
   vat_code: VatCode
+  charge_kind: ChargeKind | null
+}
+
+/**
+ * The columns a line is written with. Quote and invoice lines share the line actions, but only quote_lines has a
+ * charge_kind column: an invoice line must not carry the key at all, or the write fails.
+ */
+export function lineColumns(kind: DocumentKind, fields: LineFields): LineFields | Omit<LineFields, 'charge_kind'> {
+  if (kind === 'quote') return fields
+  const { charge_kind: _dropped, ...columns } = fields
+  return columns
 }
 
 export function readLineFields(form: FormData): LineFields | Failure {
@@ -60,7 +78,9 @@ export function readLineFields(form: FormData): LineFields | Failure {
   if (typeof price !== 'number') return price
   const vat = readVatCode(form)
   if (typeof vat !== 'string') return vat
-  return { title, description, quantity: quantity.value, unit_price: price, vat_code: vat }
+  const chargeKind = readChargeKind(form)
+  if (chargeKind !== null && typeof chargeKind !== 'string') return chargeKind
+  return { title, description, quantity: quantity.value, unit_price: price, vat_code: vat, charge_kind: chargeKind }
 }
 
 export type CompanyFields = {

@@ -50,7 +50,8 @@ export async function EmailSection({ kind, id }: { kind: DocumentKind; id: strin
           <p className="px-5 py-6 text-sm text-muted-foreground">Send or issue this document before emailing it.</p>
         ) : (
           <>
-            <EmailDocumentForm kind={kind} id={id} defaults={defaults} />
+            {/* Keyed by its mode, so a switch or status change after the page loaded remounts it with the right defaults. */}
+            <EmailDocumentForm key={String(defaults.portal)} kind={kind} id={id} defaults={defaults} />
             {history}
           </>
         )}

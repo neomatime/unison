@@ -1,23 +1,38 @@
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import test from 'node:test'
 
 import { DOCUMENT_ERROR_TOKENS, documentErrorMessage } from '../../features/documents/errors.ts'
 import {
-  DOCUMENTS, INVOICE_DRAFT_STATUSES, INVOICE_ISSUED_STATUSES, QUOTE_DRAFT_STATUSES, QUOTE_SENT_STATUSES, VAT_CODES,
+  CHARGE_KINDS, CHARGE_KIND_LABELS, DOCUMENTS, INVOICE_DRAFT_STATUSES, INVOICE_ISSUED_STATUSES, QUOTE_DRAFT_STATUSES, QUOTE_SENT_STATUSES, VAT_CODES,
   isDocumentKind, isDraftReference, isDraftStatus,
 } from '../../features/documents/vocabulary.ts'
 
 const migration = (name: string) => readFileSync(join(process.cwd(), 'supabase', 'migrations', name), 'utf8')
 const quoted = (values: readonly string[], separator: string) => values.map((value) => `'${value}'`).join(separator)
 
+/** The quote status list of the newest `quotes_status_check` definition: migrations sorted by file name, the last match wins. */
+function newestQuoteStatuses(): string[] {
+  const directory = join(process.cwd(), 'supabase', 'migrations')
+  const sql = readdirSync(directory).filter((name) => name.endsWith('.sql')).sort().map((name) => readFileSync(join(directory, name), 'utf8')).join('\n')
+  const definitions = [...sql.matchAll(/add constraint quotes_status_check check \(status in \(([^)]*)\)\)/g)]
+  assert.ok(definitions.length > 0, 'a migration defines quotes_status_check')
+  return definitions[definitions.length - 1][1].split(',').map((value) => value.trim().replace(/^'|'$/g, ''))
+}
+
 test('the vocabulary equals the database checks it mirrors', () => {
   const phaseSix = migration('20260910175724_phase_six_commercial_finance.sql')
-  assert.ok(phaseSix.includes(`status in (${quoted([...QUOTE_DRAFT_STATUSES, ...QUOTE_SENT_STATUSES], ',')})`), 'quote statuses')
+  assert.deepEqual(newestQuoteStatuses(), [...QUOTE_DRAFT_STATUSES, ...QUOTE_SENT_STATUSES], 'quote statuses')
   assert.ok(phaseSix.includes(`status in (${quoted([...INVOICE_DRAFT_STATUSES, ...INVOICE_ISSUED_STATUSES], ',')})`), 'invoice statuses')
   const documents = migration('20261011100000_documents_tables.sql')
   assert.ok(documents.includes(`vat_code in (${quoted(VAT_CODES, ', ')})`), 'VAT codes')
+})
+
+test('the charge kinds equal the quote_lines check and each has a label', () => {
+  const portal = migration('20261018100000_quote_portal_schema.sql')
+  assert.ok(portal.includes(`charge_kind text check (charge_kind in (${quoted(CHARGE_KINDS, ', ')}))`), 'charge kinds')
+  assert.deepEqual(CHARGE_KIND_LABELS, { once_off: 'Once-off', monthly: 'Monthly' })
 })
 
 test('draft statuses and draft references', () => {
@@ -45,6 +60,7 @@ test('every database error token the app maps is raised by the send and issue mi
   const sendIssue = migration('20261011110000_documents_send_issue.sql') + migration('20261011120000_documents_hardening.sql') + migration('20261011130000_documents_delivery.sql') + migration('20261011140000_payments_overdue.sql') + migration('20261011160000_register_summary.sql')
     + migration('20261012100000_rate_card.sql') + migration('20261012101000_rate_card_hardening.sql') + migration('20261012110000_client_engagements.sql') + migration('20261012111000_client_engagements_hardening.sql')
     + migration('20261012120000_billing_documents.sql') + migration('20261012121000_billing_documents_hardening.sql') + migration('20261012130000_final_review_fixes.sql') + migration('20261012140000_document_rate_card_lines.sql') + migration('20261012141000_document_rate_card_lines_hardening.sql') + migration('20261012160000_commercial_terms.sql') + migration('20261012161000_commercial_terms_seed.sql') + migration('20261012221817_offerings_on_documents.sql') + migration('20261013100000_document_terms.sql')
+    + migration('20261018101000_quote_portal_links.sql') + migration('20261018101500_quote_portal_links_fixes.sql')
   for (const token of DOCUMENT_ERROR_TOKENS) assert.ok(sendIssue.includes(`'${token}'`), `${token} must be raised by the migration`)
 })
 
@@ -53,6 +69,7 @@ test('every token the send and issue migrations raise is either mapped or knowin
   const sendIssue = migration('20261011110000_documents_send_issue.sql') + migration('20261011120000_documents_hardening.sql') + migration('20261011130000_documents_delivery.sql') + migration('20261011140000_payments_overdue.sql') + migration('20261011160000_register_summary.sql')
     + migration('20261012100000_rate_card.sql') + migration('20261012101000_rate_card_hardening.sql') + migration('20261012110000_client_engagements.sql') + migration('20261012111000_client_engagements_hardening.sql')
     + migration('20261012120000_billing_documents.sql') + migration('20261012121000_billing_documents_hardening.sql') + migration('20261012130000_final_review_fixes.sql') + migration('20261012140000_document_rate_card_lines.sql') + migration('20261012141000_document_rate_card_lines_hardening.sql') + migration('20261012160000_commercial_terms.sql') + migration('20261012161000_commercial_terms_seed.sql') + migration('20261012221817_offerings_on_documents.sql') + migration('20261013100000_document_terms.sql')
+    + migration('20261018101000_quote_portal_links.sql') + migration('20261018101500_quote_portal_links_fixes.sql')
   const raised = new Set([...sendIssue.matchAll(/raise exception '([A-Z_]+)'/g)].map((match) => match[1]))
   assert.ok(raised.size >= 20, `expected to find the raised tokens, found ${raised.size}`)
   for (const token of raised) {
@@ -65,6 +82,10 @@ test('database tokens become plain messages, and anything else is left to the ca
   assert.match(documentErrorMessage('INVOICE_NEEDS_CLIENT')!, /client/i)
   assert.match(documentErrorMessage('COMPANY_DETAILS_MISSING')!, /company details/i)
   assert.match(documentErrorMessage('new row violates QUOTE_FROZEN (23514)')!, /already been sent/i)
+  // Ruling 33: a sent quote is changed with Revise this quote; only an accepted one (which cannot be revised) is duplicated.
+  const revise = 'Use Revise this quote if it is Sent, Declined or Expired (the revision replaces it once sent); an accepted quote cannot be revised, so use Duplicate as new draft.'
+  assert.equal(documentErrorMessage('QUOTE_FROZEN'), `This quote has already been sent and can no longer be edited. ${revise}`)
+  assert.equal(documentErrorMessage('QUOTE_CANNOT_REOPEN'), `A sent quote cannot go back to a draft. ${revise}`)
   assert.match(documentErrorMessage('INVOICE_FROZEN')!, /cancel it/i)
   assert.match(documentErrorMessage('QUOTE_NOT_FOUND')!, /not found/i)
   assert.match(documentErrorMessage('QUOTE_NOT_ACCEPTED')!, /accepted quote/i)
@@ -82,6 +103,8 @@ test('database tokens become plain messages, and anything else is left to the ca
   assert.match(documentErrorMessage('FIRST_INVOICE_EXISTS')!, /Discard the draft, or cancel the issued invoice, first\./)
   assert.match(documentErrorMessage('MONTH_ALREADY_BILLED')!, /Discard the draft, or cancel the issued invoice, first\./)
   assert.equal(documentErrorMessage('FIRST_INVOICE_MISSING'), "Build the retainer's first invoice before the monthly ones.")
+  assert.equal(documentErrorMessage('QUOTE_ARCHIVED_LINK'), 'An archived quote cannot be sent with a secure link.', 'not the shorter QUOTE_ARCHIVED it contains')
+  assert.equal(documentErrorMessage('QUOTE_ARCHIVED'), 'An archived quote cannot be invoiced.')
   assert.equal(documentErrorMessage('permission denied for table quotes'), null)
   assert.equal(documentErrorMessage(null), null)
   assert.equal(documentErrorMessage(undefined), null)

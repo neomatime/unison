@@ -63,6 +63,9 @@ export const SERVICE_ROLE_REQUEST_PATHS = [
   // The signed website webhook has no user session. It writes only validated
   // lead fields into the fixed HIMARK tenant and is idempotent by delivery key.
   'app/api/integrations/website-leads/route.ts',
+  // The quote portal has no session: the link token is the credential, and its functions are granted to service_role
+  // only so the database API cannot be called with the public key.
+  'lib/quote-portal/portal-client.ts',
 ]
 
 test('only allowlisted request paths import the service-role client', () => {
@@ -84,12 +87,13 @@ test('the allowlist names files that exist', () => {
 
 test('the allowlist is exactly the known request-path callers', () => {
   // Pinned by value so widening it is a visible diff in this file rather than a
-  // silent pass. A third service-role request path may well be legitimate; it
-  // must be argued for here, next to the reasons the other two carry.
+  // silent pass. A further service-role request path may well be legitimate; it
+  // must be argued for here, next to the reasons the existing entries carry.
   assert.deepEqual([...SERVICE_ROLE_REQUEST_PATHS].sort(), [
     'app/api/integrations/website-leads/route.ts',
     'features/internal-provisioning/actions/provision-organization.ts',
     'lib/invitations/create-invited-account.ts',
+    'lib/quote-portal/portal-client.ts',
   ])
 })
 

@@ -2,6 +2,8 @@
 
 import { createHash } from 'node:crypto'
 
+import { abandonPortalLink, preparePortalEmail } from '@/features/quote-portal/prepare-portal-email'
+import { resolveDisplayName } from '@/lib/auth/display-name'
 import { sendEmail } from '@/lib/email/send-email'
 import { MissingEnvError } from '@/lib/env'
 import { isUuid } from '@/lib/utils'
@@ -44,28 +46,44 @@ export async function emailDocumentAction(kind: string, id: string, _previous: A
     return { error: `This PDF is ${megabytes} MB, which is too large to email. Download it and send it yourself. For future documents, a lighter header image under Settings, Company details keeps the PDF small enough to email.` }
   }
 
+  // Quote portal (Ruling 2): a Sent quote of an organisation that has switched the portal on goes out as the branded
+  // email with a secure link, minted here, after every check and before the send. Every other document, and every
+  // quote while the switch is off, is the plain email exactly as before. A link that cannot be made stops the send.
+  const portal =
+    kind === 'quote' && bundle.record.status === 'Sent' && bundle.settings?.quote_portal_enabled === true
+      ? await preparePortalEmail({ db, quoteId: id, bundle, fields, senderName: resolveDisplayName(user), senderUserId: user.id, organizationId: organization.id })
+      : null
+  if (portal && 'error' in portal) return { error: portal.error }
+
   let delivered: boolean
   try {
     ;({ delivered } = await sendEmail({
       to: fields.to,
-      template: { subject: fields.subject, text: fields.body, html: emailHtml(fields.body) },
+      template: portal ? portal.template : { subject: fields.subject, text: fields.body, html: emailHtml(fields.body) },
       replyTo: user.email ?? undefined,
       attachments: [{ filename: made.filename, contentType: 'application/pdf', content: made.bytes }],
     }))
   } catch (error) {
     console.error('[documents:email]', error)
+    // The link the message would have carried is revoked; the sender sees the same message as before.
+    if (portal) await abandonPortalLink(db, portal.linkId)
     if (error instanceof MissingEnvError) return { error: 'Email sending is not set up on this server yet.' }
     return { error: 'The mail server did not accept the message. It may not have been sent; check Emails sent and your mailbox before trying again.' }
   }
-  // Log mode (set up in the transport, not read here) logs the message and sends nothing: there is nothing to record.
-  if (!delivered) return { error: 'Email is in log mode (EMAIL_TRANSPORT=log): the message was logged, not sent, and nothing was recorded.' }
+  // Log mode (set up in the transport, not read here) logs the message and sends nothing: there is nothing to record,
+  // and a link minted for it is revoked.
+  if (!delivered) {
+    if (portal) await abandonPortalLink(db, portal.linkId)
+    return { error: 'Email is in log mode (EMAIL_TRANSPORT=log): the message was logged, not sent, and nothing was recorded.' }
+  }
 
-  // Only now, with the message accepted, is the send recorded.
+  // Only now, with the message accepted, is the send recorded, with the subject actually sent: the branded template
+  // tidies it (one line, runs of spaces collapsed, 200 characters at most); the plain email sends it as typed.
   const recorded = await db.rpc('record_document_email', {
     p_kind: kind,
     p_id: id,
     p_to: fields.to,
-    p_subject: fields.subject,
+    p_subject: portal ? portal.template.subject : fields.subject,
     p_body: fields.body,
     p_sha256: createHash('sha256').update(made.bytes).digest('hex'),
     p_bytes: made.bytes.length,

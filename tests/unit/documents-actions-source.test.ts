@@ -96,6 +96,8 @@ test('the email action checks everything cheap first, sends once, and records on
     '>= HOURLY_EMAIL_CAP',
     'makeDocumentPdf(',
     '> MAX_EMAIL_PDF_BYTES',
+    // Quote portal (slice 1): the secure link is minted after every check and before the one send.
+    'preparePortalEmail(',
     'await sendEmail(',
     '!delivered',
     "rpc('record_document_email'",
@@ -112,7 +114,8 @@ test('the email action checks everything cheap first, sends once, and records on
   const afterSend = source.slice(source.indexOf('await sendEmail('), source.indexOf("rpc('record_document_email'"))
   assert.doesNotMatch(afterSend, /record_document_email/, 'a send failure records nothing')
   assert.match(afterSend, /return \{ error: 'The mail server did not accept/, 'a failed send returns before the record')
-  assert.match(afterSend, /if \(!delivered\) return \{ error: 'Email is in log mode \(EMAIL_TRANSPORT=log\): the message was logged, not sent, and nothing was recorded\.' \}/, 'log mode returns before the record')
+  // Log mode may first revoke a secure link the message would have carried (quote portal, slice 1); the message is unchanged.
+  assert.match(afterSend, /if \(!delivered\) (?:\{\s+(?:if \(portal\) )?await abandonPortalLink\([^)]*\)\s+)?return \{ error: 'Email is in log mode \(EMAIL_TRANSPORT=log\): the message was logged, not sent, and nothing was recorded\.' \}/, 'log mode returns before the record')
   assert.doesNotMatch(source, /process\.env|GRAPH_|MAIL_FROM|createClient\(|SUPABASE_SECRET/, 'no secrets and no service client in the action')
 })
 

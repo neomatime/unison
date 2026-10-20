@@ -3,6 +3,7 @@
 import { fetchHiveOfferings } from '@/lib/integrations/hive-offerings'
 import { isUuid } from '@/lib/utils'
 import { documentErrorMessage } from '../errors'
+import { lineColumns } from '../fields'
 import { hiveOfferingToLine } from '../hive-offerings'
 import { revalidateDocumentPages } from '../revalidate'
 import { documentContext } from '../server-context'
@@ -42,7 +43,7 @@ export async function addHiveOfferingLineAction(kind: string, documentId: string
   const last = await db.from(info.lines).select('position').eq(info.parentColumn, documentId).eq('organization_id', organization.id).order('position', { ascending: false }).limit(1)
   if (last.error) return { error: lineError(last.error) }
   const position = Number(last.data?.[0]?.position ?? 0) + 1
-  const saved = await db.from(info.lines).insert({ organization_id: organization.id, [info.parentColumn]: documentId, position, ...line }).select('id').single()
+  const saved = await db.from(info.lines).insert({ organization_id: organization.id, [info.parentColumn]: documentId, position, ...lineColumns(kind, line) }).select('id').single()
   if (saved.error || !saved.data) return { error: lineError(saved.error) }
   revalidateDocumentPages()
   return { success: 'Line added from HIVE.' }

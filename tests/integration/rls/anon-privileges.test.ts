@@ -47,6 +47,8 @@ const TABLES = [
   'document_emails',
   // Payments: members read, only record_payment and void_payment write.
   'payments',
+  // Quote portal links: members read, only the portal functions write.
+  'quote_access_links',
 ] as const
 
 for (const table of TABLES) {

@@ -2,7 +2,7 @@
 
 import { isUuid } from '@/lib/utils'
 import { documentErrorMessage } from '../errors'
-import { readLineFields } from '../fields'
+import { lineColumns, readLineFields } from '../fields'
 import { revalidateDocumentPages } from '../revalidate'
 import { documentContext } from '../server-context'
 import type { ActionState } from '../types'
@@ -35,7 +35,7 @@ export async function addLineAction(kind: string, documentId: string, _previous:
   const position = Number(last.data?.[0]?.position ?? 0) + 1
   const saved = await db
     .from(info.lines)
-    .insert({ organization_id: organization.id, [info.parentColumn]: documentId, position, ...fields })
+    .insert({ organization_id: organization.id, [info.parentColumn]: documentId, position, ...lineColumns(kind, fields) })
     .select('id')
     .single()
   if (saved.error || !saved.data) return { error: lineError(saved.error) }
@@ -50,7 +50,7 @@ export async function updateLineAction(kind: string, lineId: string, _previous: 
   const { organization, db } = await documentContext()
   const saved = await db
     .from(DOCUMENTS[kind].lines)
-    .update(fields)
+    .update(lineColumns(kind, fields))
     .eq('id', lineId)
     .eq('organization_id', organization.id)
     .select('id')

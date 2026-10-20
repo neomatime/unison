@@ -2,6 +2,7 @@ import Link from 'next/link'
 
 import { ActionButton } from '@/features/crm-workspace/components/action-button'
 import { cancelInvoiceAction } from '../../payments/actions/payments'
+import { reviseQuoteAction } from '../../quote-portal/actions/links'
 import { createInvoiceFromQuoteAction } from '../actions/invoice-from-quote'
 import { duplicateQuoteAction, issueInvoiceAction, sendQuoteAction } from '../actions/send'
 import { DOCUMENTS, isDraftStatus, type DocumentKind } from '../vocabulary'
@@ -9,8 +10,9 @@ import { DOCUMENTS, isDraftStatus, type DocumentKind } from '../vocabulary'
 const LINK = 'border border-border px-4 py-2 text-sm font-medium text-foreground'
 
 /**
- * The buttons in a quote or invoice page header: view the document, and send, issue, download, email, invoice or duplicate it.
+ * The buttons in a quote or invoice page header: view the document, and send, issue, download, email, invoice, duplicate or revise it.
  * A cancelled invoice keeps its PDF but is not offered for emailing; an archived quote is not offered for invoicing.
+ * Only a quote that is Sent, Declined or Expired can be revised (the database checks it too); the revision opens as a new draft.
  * An issued invoice can be cancelled only while it has no unvoided payment (the database checks it too).
  */
 export function DocumentActions({ kind, id, status, archived = false, hasPayments = false }: { kind: DocumentKind; id: string; status: string; archived?: boolean; hasPayments?: boolean }) {
@@ -42,6 +44,13 @@ export function DocumentActions({ kind, id, status, archived = false, hasPayment
       ) : null}
       {kind === 'quote' && !draft ? (
         <ActionButton action={duplicateQuoteAction.bind(null, id)} label="Duplicate as new draft" />
+      ) : null}
+      {kind === 'quote' && (status === 'Sent' || status === 'Declined' || status === 'Expired') ? (
+        <ActionButton
+          action={reviseQuoteAction.bind(null, id)}
+          label="Revise this quote"
+          confirmText="Revise this quote? It opens as a new draft. When you send the revision it replaces this quote, if this one is still awaiting a response, and the old client links stop working."
+        />
       ) : null}
       {kind === 'invoice' && draft ? (
         <ActionButton action={issueInvoiceAction.bind(null, id)} label="Issue invoice" confirmText="Issue this invoice? It gets its number now and can no longer be edited." />

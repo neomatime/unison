@@ -27,7 +27,17 @@ test('the quote and invoice forms no longer ask for a number or any total', () =
   assert.doesNotMatch(form, /name="issueDate"/, 'an invoice is dated the day it is issued; the draft form has no issue date to type')
   assert.match(form, /isDraftStatus\(/, 'the form behaves differently for a sent or issued document')
   assert.match(form, /QUOTE_SENT_STATUSES/)
+  assert.match(form, /QUOTE_SENT_STATUSES\.filter\(\(status\) => status !== "Superseded" \|\| record\.status === "Superseded"\)/, 'staff never pick Superseded by hand: the select leaves it out unless the quote already is')
+  // Ruling 33: the notice on a sent quote points at Revise this quote, and at Duplicate as new draft only for an accepted one.
+  assert.ok(form.includes('This quote has been sent, so its lines, prices and details are frozen; you can still change its status and notes. To change the rest, use Revise this quote on its page if it is Sent, Declined or Expired (the revision replaces it once sent); an accepted quote cannot be revised, so use Duplicate as new draft.'), 'the sent-quote notice')
+  assert.doesNotMatch(form, /duplicate it as a new draft/i, 'no longer tells staff to duplicate a quote to revise it')
   assert.doesNotMatch(form, /INVOICE_ISSUED_STATUSES/, 'an issued invoice has no status to pick: it comes from the payments')
+})
+
+test('the save action refuses to set a sent quote to Superseded by hand', () => {
+  const action = read('features', 'commercial-finance', 'actions', 'phase-six.ts')
+  const quote = between(action, QUOTE_OPENER, INVOICE_OPENER, 'quote branch')
+  assert.match(quote, /status === "Superseded" && state\.status !== "Superseded"/, 'only the database moves a quote to Superseded; a form post that leaves it as it is stays fine')
 })
 
 test('the save action never writes a number, a total or a milestone for a quote or an invoice', () => {
@@ -166,7 +176,9 @@ test('the line editor is a client module whose forms keep typed values and whose
   assert.match(source, /editing && !locked/, 'a locked line never opens its edit form')
   assert.match(source, /\{locked \? null : \(/, 'a locked line shows no controls')
   assert.match(source, /sent or issued, so its lines are frozen/, 'the locked note covers invoices as well as quotes')
-  assert.match(source, /To revise it, duplicate it as a new draft\./, 'a locked quote says how to revise it')
+  // Ruling 33: a locked quote points at Revise this quote, and at Duplicate as new draft only for an accepted one.
+  assert.ok(source.includes("quote: 'This document has been sent or issued, so its lines are frozen. Use Revise this quote if it is Sent, Declined or Expired (the revision replaces it once sent); an accepted quote cannot be revised, so use Duplicate as new draft.',"), 'a locked quote says how to revise it')
+  assert.doesNotMatch(source, /duplicate it as a new draft/i, 'no longer tells staff to duplicate a quote to revise it')
   assert.match(source, /To correct it, cancel it and raise a new one\./, 'a locked invoice says how to correct it')
   assert.match(source, /locked \? LOCKED_NOTE\[kind\]/, 'the note depends on the kind of document')
 })

@@ -124,9 +124,9 @@ function Fields({
       return (
         <>
           <Notice>
-            This quote has been sent, so its lines, prices and details are frozen. You can still change its status and notes. To revise it, duplicate it as a new draft from its page.
+            This quote has been sent, so its lines, prices and details are frozen; you can still change its status and notes. To change the rest, use Revise this quote on its page if it is Sent, Declined or Expired (the revision replaces it once sent); an accepted quote cannot be revised, so use Duplicate as new draft.
           </Notice>
-          <Select name="status" label="Status" options={[...QUOTE_SENT_STATUSES]} value={value("status", "Sent")} />
+          <Select name="status" label="Status" options={QUOTE_SENT_STATUSES.filter((status) => status !== "Superseded" || record.status === "Superseded")} value={value("status", "Sent")} />
           <TextArea name="notes" label="Commercial notes" value={value("notes")} />
         </>
       );

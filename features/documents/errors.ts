@@ -15,11 +15,11 @@ const MESSAGES: ReadonlyArray<readonly [token: string, message: string]> = [
   ['INVOICE_DUE_BEFORE_ISSUE', 'The due date cannot be before the issue date.'],
   ['QUOTE_USE_SEND', 'Use Send quote to send a quote.'],
   ['INVOICE_USE_ISSUE', 'Use Issue invoice to issue an invoice.'],
-  ['QUOTE_CANNOT_REOPEN', 'A sent quote cannot go back to a draft. Duplicate it as a new draft to revise it.'],
+  ['QUOTE_CANNOT_REOPEN', 'A sent quote cannot go back to a draft. Use Revise this quote if it is Sent, Declined or Expired (the revision replaces it once sent); an accepted quote cannot be revised, so use Duplicate as new draft.'],
   ['INVOICE_CANNOT_REOPEN', 'An issued invoice cannot go back to a draft. Cancel it and raise a new one.'],
   ['INVOICE_CANCELLED', 'A cancelled invoice cannot be changed. Raise a new invoice instead.'],
   ['DOCUMENT_NUMBER_EXHAUSTED', 'This year\'s numbers for this kind of document have run out. Contact support.'],
-  ['QUOTE_FROZEN', 'This quote has already been sent and can no longer be edited. To revise it, duplicate it as a new draft.'],
+  ['QUOTE_FROZEN', 'This quote has already been sent and can no longer be edited. Use Revise this quote if it is Sent, Declined or Expired (the revision replaces it once sent); an accepted quote cannot be revised, so use Duplicate as new draft.'],
   ['INVOICE_FROZEN', 'This invoice has already been issued and can no longer be edited. To correct it, cancel it and raise a new one.'],
   ['DOCUMENT_NUMBER_GENERATED', 'Numbers are generated automatically when a document is sent or issued.'],
   ['DOCUMENT_SNAPSHOT_GENERATED', 'The client and company details on a document are copied automatically when it is sent or issued.'],
@@ -29,6 +29,8 @@ const MESSAGES: ReadonlyArray<readonly [token: string, message: string]> = [
   ['EMAIL_BODY_TOO_LONG', 'The message is too long (10,000 characters at most).'],
   ['EMAIL_RECORD_INVALID', 'The email record was incomplete, so it was not saved.'],
   ['QUOTE_NOT_ACCEPTED', 'Only an accepted quote can be invoiced.'],
+  // Before QUOTE_ARCHIVED, which it contains: the first token found in the text wins.
+  ['QUOTE_ARCHIVED_LINK', 'An archived quote cannot be sent with a secure link.'],
   ['QUOTE_ARCHIVED', 'An archived quote cannot be invoiced.'],
   ['INVOICE_NOT_PAYABLE', 'Only an issued invoice that still has a balance can be paid.'],
   ['PAYMENT_AMOUNT_INVALID', 'Enter an amount above zero, with at most two decimals.'],
@@ -96,6 +98,13 @@ const MESSAGES: ReadonlyArray<readonly [token: string, message: string]> = [
   ['TERMS_SOURCE_INVALID', 'The terms could not be matched to approved versions. Refresh the page and fill the terms again.'],
   ['TERMS_COLUMNS_GENERATED', 'The template details of a document are set by Fill terms and cannot be typed.'],
   ['TERMS_VERSION_IMMUTABLE', 'An approved version cannot be edited. Write a new version instead.'],
+  ['QUOTE_PORTAL_OFF', 'The client portal is switched off. An owner or admin can turn it on under Settings, Company details.'],
+  ['QUOTE_NOT_SENT', 'The secure link can only be added to a quote that is still awaiting a response.'],
+  ['RECIPIENT_INVALID', 'Enter one valid email address.'],
+  ['QUOTE_EXPIRED', 'This quote has passed its valid-until date.'],
+  ['LINK_NOT_FOUND', 'That link was not found.'],
+  ['QUOTE_CANNOT_REVISE', 'Only a sent, declined or expired quote can be revised.'],
+  ['QUOTE_SUPERSEDED_AUTOMATIC', 'A superseded quote is set automatically when its revision is sent.'],
 ]
 
 export const DOCUMENT_ERROR_TOKENS: readonly string[] = MESSAGES.map(([token]) => token)

@@ -10,9 +10,10 @@ import type { DocumentKind } from '../vocabulary'
 /**
  * One recipient, a subject and a message; the PDF is attached by the server. The action is called by hand so a
  * failed send keeps what was typed (React resets a form after its action), and a second send is possible after a
- * success: each one is recorded.
+ * success: each one is recorded. When `defaults.portal` is true the server sends the branded email with a secure
+ * link, and the message is the personal note inside it.
  */
-export function EmailDocumentForm({ kind, id, defaults }: { kind: DocumentKind; id: string; defaults: { to: string; subject: string; body: string } }) {
+export function EmailDocumentForm({ kind, id, defaults }: { kind: DocumentKind; id: string; defaults: { to: string; subject: string; body: string; portal: boolean } }) {
   const [state, run, pending] = useActionState(emailDocumentAction.bind(null, kind, id), undefined)
   const [, startTransition] = useTransition()
   return (
@@ -28,8 +29,12 @@ export function EmailDocumentForm({ kind, id, defaults }: { kind: DocumentKind; 
         <TextField name="to" label="To" type="email" required defaultValue={defaults.to} placeholder="client@example.com" />
         <TextField name="subject" label="Subject" required defaultValue={defaults.subject} />
       </div>
-      <TextAreaField name="body" label="Message" rows={10} defaultValue={defaults.body} />
-      <p className="text-xs text-muted-foreground">The PDF is attached. Replies go to your own email address.</p>
+      <TextAreaField name="body" label={defaults.portal ? 'Personal note' : 'Message'} rows={10} defaultValue={defaults.body} />
+      <p className="text-xs text-muted-foreground">
+        {defaults.portal
+          ? 'The secure quotation link and the PDF are added for you. Replies go to your own email address.'
+          : 'The PDF is attached. Replies go to your own email address.'}
+      </p>
       <FormError message={state?.error} />
       {state?.success && !pending ? (
         <p role="status" className="border border-success/25 bg-success-soft/45 px-4 py-3 text-sm text-success">{state.success}</p>
