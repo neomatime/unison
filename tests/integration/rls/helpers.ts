@@ -166,16 +166,15 @@ async function allRows(build: () => any): Promise<{ data: Array<{ id: string }>;
 // touch a row still legitimately attached to a live organization (HIMARK's
 // or anyone else's).
 //
-// Coverage as of Task 12's fix round 1: this accounts for clients_audit
-// (resource = 'clients', via the JSONB-snapshot technique above) and for
-// public.accept_invitation()'s own audit write (resource = 'memberships',
-// see below). Those are the only two audit-writing paths that can attach a
-// row to a fixture organization today. The rule stands: any new
-// audit-writing path (a trigger on another child table, another
+// Coverage: the resource lists in the queries below are the source of truth
+// for what is swept -- clients_audit (resource = 'clients', via the
+// JSONB-snapshot technique above), every audited child table in the long
+// resource list (traced the same way), and public.accept_invitation()'s own
+// audit write (resource = 'memberships', see below). The rule stands: any
+// new audit-writing path (a trigger on another child table, another
 // SECURITY DEFINER function that inserts into audit_events) needs its
-// resource type added here, with a way to trace an orphaned row back to
-// this fixture, or its rows leak into the shared database exactly like
-// these did.
+// resource type added below, with a way to trace an orphaned row back to
+// this fixture, or its rows leak into the shared database.
 //
 // memberships-resource rows need a different tracing strategy than
 // clients_audit's, because their provenance isn't shaped the same way.

@@ -1340,21 +1340,32 @@ switch on under Settings > Company details and email one real quote to your own 
   It is not a kill switch: revoke links from the quote's Client portal panel.
 - **A send that throws after the mail service accepted the message** (for example the connection drops after the hand-over) revokes its link, so the
   client's emailed link reads "not valid" until staff resend. A resend mints a fresh link. The error message tells staff to check and resend.
-- **The nightly job expires Sent quotes past their valid-until date in every organisation** from the first night, whether or not the switch is on.
-  Zero were due when this was built. A member who reopens an expired quote sees it expire again the next night.
+- **The nightly job expires Sent quotes past their valid-until date in every organisation,** whether or not the switch is on. The job
+  `unison-mark-expired-quotes` has been live since the migrations were applied on 2026-10-18; its first run, at 00:10 SAST, expired nothing. The
+  owner's only Sent quote, HMK-Q-2026-00001, is valid until 2026-11-12 and becomes Expired at 00:10 SAST on 13 November if it is still Sent.
+  Reopening an expired quote by hand makes it expire again the next night, because its valid-until date is frozen.
 - **Old quotes have no charge kind on their lines,** so the portal shows a flat commercial list for them; only quotes whose lines are marked
   once-off or monthly are grouped.
 - **The token appears in platform request logs** (the path `/q/<token>` is logged by the host). Our own code never logs it, and the mail log mode
   replaces it with `/q/redacted`. A link is a bearer credential: anyone with it can read the quote until it expires or is revoked.
 - **Quote ids are not in the portal payload, but the line ids are.** Nothing accepts a line id without a signed-in membership.
 - **A revision's `replaces_number` is hidden** when the original belongs to another client, is still a draft, or the revision has no client (a lead-only
-  quote). The supersede trigger itself does not check that the two quotes share a client.
+  quote). A revision whose client was changed before sending supersedes nothing: the original stays Sent and its links stay active
+  (`20261018103000_quote_portal_supersede_same_client.sql`).
 - **Statuses can still be set by hand** (Accepted, Declined, Expired). The portal follows the quote's status, so a hand-set status changes the page the
   client sees, with no decision record behind it until slice 2. Superseded cannot be set or cleared by hand; it is set when a revision is sent.
 - **The Client portal panel reads a link's own state only.** A link on an archived quote or a hand-Expired quote reads Active there, while the portal
   shows "not valid" or "expired".
-- **Stale wording:** the `QUOTE_FROZEN` message and the locked-lines note on the line editor still say "duplicate it to revise"; they should point to
-  Revise this quote.
+- **The greeting and the link's recipient name always use the quote's contact name,** even when the email goes to someone else.
+- **Links have no `revoked_by` column and no audit record,** so who revoked a link is not recorded.
+- **Revise this quote is allowed on an archived quote.**
+- **Emails sent stores only the personal note for a branded send,** not the branded email itself.
+- **The expired card says "an updated one"** even after a revision has been issued.
+- **The portal header loads the 227 KB wordmark** (`public/brand/himark-wordmark.png`).
+- **The email sign-off uses the frozen issuer name** from Company details (production quotes say "HIMARK"; the references show "HIMARK Strategic Growth
+  Consulting"). Set it in Company details before switching the portal on.
+- **The add-line charge kind defaults to Once-off,** so a monthly line added by hand is mis-tagged unless it is changed.
+- **A bare `/q` shows the not-found page.**
 - **`types/database.ts` is stale.** It predates the portal tables and functions, so the portal code uses untyped (`as any`) database clients, like
   the rest of the document code. Regenerate it (Supabase `generate_typescript_types`) before relying on it.
 
@@ -1386,15 +1397,11 @@ switch on under Settings > Company details and email one real quote to your own 
   Superseded), so the panel's "Replaced by" line and the Revise confirmation can disagree. Settle the wording when the decision record exists.
 - **The accepted and declined cards must stay reachable after valid-until:** the quote's status decides the page, before any date check.
 
-### Test debt found by the final run (2026-10-19, not caused by this slice)
+### Test debt found and fixed by the final run (2026-10-19, not caused by this slice)
 
-The full `pnpm test:rls` run against production passed 449 of 451. The two failures and one leak below are older than this slice.
+The full `pnpm test:rls` run against production passed 449 of 451. The two failures and one leak it found were older than this slice and are fixed.
 
-- **`tests/integration/rls/documents-foundation.test.ts` still writes to `price_list_items`,** a table dropped by `20261013240000_drop_retired_billing_columns.sql`.
-  Two of its 16 tests fail with "Could not find the table 'public.price_list_items' in the schema cache": "a line cannot point at another organisation's
-  document or price list item" and "the price list: any member manages it ...". The file was untouched by this slice and fails the same way on the
-  branch base. `documents-delivery.test.ts` had the same cause and was fixed in this slice's final task; this file was left alone. Repair: delete the two
-  price-list tests and the `price_list_item_id` assertions.
-- **`cleanup()` in `tests/integration/rls/helpers.ts` does not trace `invoice_offerings` audit rows.** `document-terms.test.ts` leaves four
-  `audit_events` rows with no organisation behind it on every full run (two inserts, two deletes). They were deleted by id after this run; the count of such rows
-  is back at 1,320. Add `'invoice_offerings'` to the resource list in `cleanup()`, and fix its stale "Coverage as of Task 12's fix round 1" comment.
+- **`tests/integration/rls/documents-foundation.test.ts` wrote to `price_list_items`,** a table dropped by
+  `20261013240000_drop_retired_billing_columns.sql`, so two of its 16 tests failed. Fixed in 23978cc.
+- **`cleanup()` in `tests/integration/rls/helpers.ts` did not trace `invoice_offerings` audit rows,** so `document-terms.test.ts` left four
+  `audit_events` rows with no organisation on every full run. They were deleted by id, and `'invoice_offerings'` was added to the sweep in 641b1a4.
