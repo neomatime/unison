@@ -1,9 +1,10 @@
-// What public.portal_get_quote returns, as the portal page reads it. Pure types and two small guards: no directive,
-// no imports, so unit tests can load it.
+// What public.portal_get_quote returns, as the portal page reads it, and (further down) what the client's decision sends
+// and gets back. Pure types, the decline reasons and two small guards: no directive, no imports, so unit tests can load it.
 //
-// The shapes mirror the function as the read-fixes migration (20261018102500_quote_portal_read_fixes.sql) leaves it,
-// key for key. Numbers that come from numeric columns can arrive as JSON numbers or as strings, so every amount is
-// typed number | string and read with Number(). Dates are 'YYYY-MM-DD', timestamps are ISO text in UTC.
+// The shapes mirror the function as the latest migration that redefines it leaves it (the snapshot hash and the link's
+// response arrive with 20261020102000_quote_portal_code_functions.sql), key for key. Numbers that come from numeric
+// columns can arrive as JSON numbers or as strings, so every amount is typed number | string and read with Number().
+// Dates are 'YYYY-MM-DD', timestamps are ISO text in UTC.
 
 /** The six answers the database can give. The first three carry the whole quote; expired and superseded a short card. */
 export const PORTAL_STATES = ['open', 'accepted', 'declined', 'expired', 'superseded', 'invalid'] as const
@@ -89,6 +90,10 @@ export type PortalQuoteFull = {
   /** The number of the quote this one replaced, when it is the same client's and numbered. */
   replaces_number: string | null
   owner: PortalOwner | null
+  /** The hash of the quote as this page shows it (64 lower-case hex characters). A decision sends it back as proof of what was seen. */
+  snapshot_hash: string
+  /** What this link decided, or null when it has decided nothing. */
+  response: { decision: DecisionKind; decided_at: string } | null
 }
 
 /** Expired and superseded: no lines, no recipient and no link expiry. */
@@ -101,6 +106,84 @@ export type PortalQuoteShort = {
 }
 
 export type PortalQuote = PortalQuoteInvalid | PortalQuoteFull | PortalQuoteShort
+
+// ---------------------------------------------------------------------------------------------------------------
+// Slice 2: the client's decision. What the two service-role functions (portal_issue_code, portal_decide) take and give.
+// ---------------------------------------------------------------------------------------------------------------
+
+/**
+ * The six reasons a client can give for declining, in the order the quote_responses decline_reason check lists them
+ * (20261020100000_quote_portal_decisions_schema.sql). A unit test reads the SQL to keep the two the same.
+ */
+export const DECLINE_REASONS = [
+  'Budget considerations',
+  'Timing is not right',
+  'Scope does not meet our requirements',
+  'Internal approval pending',
+  'Chose another provider',
+  'Other',
+] as const
+export type DeclineReason = (typeof DECLINE_REASONS)[number]
+
+export type DecisionKind = 'accepted' | 'declined'
+
+/** What portal_decide is given, after features/quote-portal/decision.ts has checked and tidied it. */
+export type DecideInput = {
+  token: string
+  code: string
+  decision: DecisionKind
+  signatoryName: string
+  signatoryPosition: string
+  signatoryOrganisation: string
+  /** The wording the client saw next to the tick-box, word for word. */
+  consentText: string
+  consent: true
+  snapshotHash: string
+  declineReason: DeclineReason | null
+  declineComments: string | null
+}
+
+/**
+ * The success answer of portal_decide in camel case, without `ok` and `replay`. For a repeated request it is the outcome
+ * recorded the first time. The owner's name and the address to tell are null when the quote has no owner or sender.
+ */
+export type DecisionOutcome = {
+  decision: DecisionKind
+  decidedAt: string
+  quoteId: string
+  quoteNumber: string
+  clientName: string
+  recipientEmail: string
+  signatoryName: string
+  signatoryPosition: string
+  declineReason: string | null
+  declineComments: string | null
+  ownerName: string | null
+  notifyEmail: string | null
+}
+
+/** Why portal_issue_code gave no code. */
+export type IssueCodeRefusal = 'invalid' | 'not_open' | 'already_decided' | 'throttled'
+
+export type IssueCodeResult =
+  | { ok: true; code: string; expiresAt: string; recipientEmail: string; quoteNumber: string; clientName: string | null }
+  | { ok: false; reason: IssueCodeRefusal }
+
+/** Why portal_decide wrote nothing. `attemptsLeft` comes with code_wrong only. */
+export type DecideRefusal =
+  | 'invalid'
+  | 'not_open'
+  | 'incomplete'
+  | 'stale'
+  | 'code_missing'
+  | 'code_wrong'
+  | 'code_expired'
+  | 'code_locked'
+  | 'throttled'
+
+export type DecideResult =
+  | { ok: true; replay: boolean; outcome: DecisionOutcome }
+  | { ok: false; reason: DecideRefusal; attemptsLeft?: number }
 
 /** True for open, accepted and declined, and for nothing else, whatever it is given. */
 export function isViewableState(state: unknown): state is ViewableState {

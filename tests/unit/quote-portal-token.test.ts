@@ -158,7 +158,7 @@ const fullRecord = {
 }
 const fullQuote = (state: 'open' | 'accepted' | 'declined'): PortalQuote => ({
   state, expires_at: '2026-11-17T22:00:00+00:00', recipient_email: 'pat.client@example.test', recipient_name: 'Pat Client',
-  record: fullRecord, lines: [], version: 1, replaces_number: null, owner,
+  record: fullRecord, lines: [], version: 1, replaces_number: null, owner, snapshot_hash: 'ab12'.repeat(16), response: null,
 })
 const shortQuote = (state: 'expired' | 'superseded'): PortalQuote => ({
   state, record: { quote_number: 'HMK-Q-2026-00046', client_name: 'Portal Client', valid_until: '2026-11-17' },

@@ -111,10 +111,12 @@ const full = (overrides: Partial<PortalQuoteFull> = {}, recordOverrides: Partial
   version: 1,
   replaces_number: null,
   owner: { name: 'Neo Matime', email: 'neo@himark.co.za', job_title: 'Founder' },
+  snapshot_hash: 'ab12'.repeat(16),
+  response: null,
   ...overrides,
 })
 
-const short = (state: 'expired' | 'superseded', overrides: Partial<PortalQuoteShort> = {}): PortalQuoteShort => ({
+const short =(state: 'expired' | 'superseded', overrides: Partial<PortalQuoteShort> = {}): PortalQuoteShort => ({
   state,
   record: { quote_number: 'HMK-Q-2026-00001', client_name: 'TEST Company', valid_until: '2026-10-25' },
   version: 1,
