@@ -1,7 +1,8 @@
 import 'server-only'
 import { createAdminSupabase } from '@/lib/supabase/admin'
+import { readDecideAnswer, readIssueCodeAnswer } from '@/lib/quote-portal/decision-answers'
 import { isPortalToken } from '@/lib/quote-portal/token'
-import { PORTAL_STATES, type PortalQuote } from '@/lib/quote-portal/types'
+import { PORTAL_STATES, type DecideInput, type DecideResult, type IssueCodeResult, type PortalQuote } from '@/lib/quote-portal/types'
 
 /**
  * The only way the quote portal reaches the database, and the only file of the portal that holds the service role.
@@ -17,6 +18,9 @@ import { PORTAL_STATES, type PortalQuote } from '@/lib/quote-portal/types'
  *   message, detail or hint could quote the parameter it failed on) and no cause is attached.
  * - Opening the page only reads. "Viewed" is stamped by recordPortalView, which the page calls from the browser once it
  *   has loaded, so a mail scanner that fetches the link changes nothing.
+ * - A code is issued and a decision recorded only by issuePortalCode and submitPortalDecision, which only the two server
+ *   actions call (features/quote-portal/actions), on a button press. Their refusals come back as values; an answer of
+ *   any other shape fails with a fixed sentence (decision-answers.ts), since it holds the code or the addresses.
  */
 
 /** The database error as far as this file is willing to repeat it. */
@@ -47,4 +51,48 @@ export async function recordPortalView(token: string): Promise<void> {
   const admin = createAdminSupabase() as any
   const { error } = await admin.rpc('portal_record_view', { p_token: token })
   if (error) throw failure('portal_record_view', error)
+}
+
+/**
+ * Issues a confirmation code for an open link that has decided nothing, for the caller to email to the link's own
+ * address (which the answer carries). A malformed token is the invalid refusal with no database call; the database's
+ * refusals (not open, already decided, throttled) come back as they are; a database error fails, by its code only.
+ */
+export async function issuePortalCode(token: string): Promise<IssueCodeResult> {
+  if (!isPortalToken(token)) return { ok: false, reason: 'invalid' }
+  const admin = createAdminSupabase() as any
+  const { data, error } = await admin.rpc('portal_issue_code', { p_token: token })
+  if (error) throw failure('portal_issue_code', error)
+  return readIssueCodeAnswer(data)
+}
+
+/**
+ * Records the client's decision, given input already checked by normaliseDecisionInput and the request's evidence.
+ * A malformed token is the invalid refusal with no database call. A refusal, a wrong code among them, comes back as a
+ * value, so the attempt the database counted stays counted; a repeated request comes back as the recorded outcome with
+ * replay set. A database error fails, by its code only.
+ */
+export async function submitPortalDecision(
+  input: DecideInput,
+  evidence: { ip: string | null; userAgent: string | null },
+): Promise<DecideResult> {
+  if (!isPortalToken(input.token)) return { ok: false, reason: 'invalid' }
+  const admin = createAdminSupabase() as any
+  const { data, error } = await admin.rpc('portal_decide', {
+    p_token: input.token,
+    p_code: input.code,
+    p_decision: input.decision,
+    p_signatory_name: input.signatoryName,
+    p_signatory_position: input.signatoryPosition,
+    p_signatory_organisation: input.signatoryOrganisation,
+    p_consent_text: input.consentText,
+    p_consent: input.consent,
+    p_snapshot_hash: input.snapshotHash,
+    p_decline_reason: input.declineReason,
+    p_decline_comments: input.declineComments,
+    p_ip: evidence.ip,
+    p_user_agent: evidence.userAgent,
+  })
+  if (error) throw failure('portal_decide', error)
+  return readDecideAnswer(data)
 }

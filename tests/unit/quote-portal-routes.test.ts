@@ -163,7 +163,8 @@ function bodyOf(source: string, name: string): string {
 
 test('the portal client checks the token shape before it reads the environment or calls the database', () => {
   const portalClient = portalClientSource()
-  assert.equal((portalClient.match(/\.rpc\(/g) ?? []).length, 2, 'exactly two database calls')
+  // Slice 2 adds the code and the decision (issuePortalCode, submitPortalDecision), guarded in quote-portal-decision-actions.test.ts.
+  assert.equal((portalClient.match(/\.rpc\(/g) ?? []).length, 4, 'exactly four database calls: the read, the view, the code and the decision')
   for (const [name, rpc] of [['getPortalQuote', 'portal_get_quote'], ['recordPortalView', 'portal_record_view']]) {
     const body = bodyOf(portalClient, name)
     const guard = body.indexOf('isPortalToken(')
@@ -213,6 +214,9 @@ test('the token never reaches an error message or a log line', () => {
       .replace(/isPortalToken\(token\)/g, '')
       .replace(/recordPortalView\(token\)/g, '')
       .replace(/\{ p_token: token \}/g, '')
+      // The decision carries its token inside the checked input.
+      .replace(/isPortalToken\(input\.token\)/g, '')
+      .replace(/p_token: input\.token,/g, '')
     assert.doesNotMatch(residue, /\btoken\b|\bp_token\b/i, `${name}: the token is used only to check it and to hand it on`)
   }
   // The one log line carries a tag and the message of an error this module built.
