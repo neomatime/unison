@@ -20,7 +20,7 @@ const FORM_LAYOUT: Record<DocumentKind, { grid: string; span: string }> = {
 }
 
 const LOCKED_NOTE: Record<DocumentKind, string> = {
-  quote: 'This document has been sent or issued, so its lines are frozen. To revise it, duplicate it as a new draft.',
+  quote: 'This document has been sent or issued, so its lines are frozen. Use Revise this quote if it is Sent, Declined or Expired (the revision replaces it once sent); an accepted quote cannot be revised, so use Duplicate as new draft.',
   invoice: 'This document has been sent or issued, so its lines are frozen. To correct it, cancel it and raise a new one.',
 }
 

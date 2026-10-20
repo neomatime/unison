@@ -82,6 +82,10 @@ test('database tokens become plain messages, and anything else is left to the ca
   assert.match(documentErrorMessage('INVOICE_NEEDS_CLIENT')!, /client/i)
   assert.match(documentErrorMessage('COMPANY_DETAILS_MISSING')!, /company details/i)
   assert.match(documentErrorMessage('new row violates QUOTE_FROZEN (23514)')!, /already been sent/i)
+  // Ruling 33: a sent quote is changed with Revise this quote; only an accepted one (which cannot be revised) is duplicated.
+  const revise = 'Use Revise this quote if it is Sent, Declined or Expired (the revision replaces it once sent); an accepted quote cannot be revised, so use Duplicate as new draft.'
+  assert.equal(documentErrorMessage('QUOTE_FROZEN'), `This quote has already been sent and can no longer be edited. ${revise}`)
+  assert.equal(documentErrorMessage('QUOTE_CANNOT_REOPEN'), `A sent quote cannot go back to a draft. ${revise}`)
   assert.match(documentErrorMessage('INVOICE_FROZEN')!, /cancel it/i)
   assert.match(documentErrorMessage('QUOTE_NOT_FOUND')!, /not found/i)
   assert.match(documentErrorMessage('QUOTE_NOT_ACCEPTED')!, /accepted quote/i)
