@@ -51,7 +51,10 @@ const RECORD_KEYS = [
   'terms_sources', 'bill_to', 'issuer', 'sent_at', 'accepted_at',
 ].sort()
 const LINE_KEYS = ['id', 'position', 'title', 'description', 'quantity', 'unit_price', 'vat_code', 'line_amount', 'charge_kind'].sort()
-const RESULT_KEYS = ['state', 'expires_at', 'recipient_email', 'recipient_name', 'record', 'lines', 'version', 'replaces_number', 'owner'].sort()
+// Slice 2 (task 3) adds snapshot_hash and response to the three viewable states.
+const RESULT_KEYS = [
+  'state', 'expires_at', 'recipient_email', 'recipient_name', 'record', 'lines', 'version', 'replaces_number', 'owner', 'snapshot_hash', 'response',
+].sort()
 // Expired and superseded (Ruling 18): no lines, no recipient and no link expiry.
 const SHORT_RESULT_KEYS = ['state', 'record', 'version', 'replaces_number', 'owner'].sort()
 const SHORT_RECORD_KEYS = ['client_name', 'quote_number', 'valid_until']
