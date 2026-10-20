@@ -49,6 +49,9 @@ const TABLES = [
   'payments',
   // Quote portal links: members read, only the portal functions write.
   'quote_access_links',
+  // Quote portal decisions: codes are touched only by the portal functions; members read responses.
+  'quote_access_codes',
+  'quote_responses',
 ] as const
 
 for (const table of TABLES) {
