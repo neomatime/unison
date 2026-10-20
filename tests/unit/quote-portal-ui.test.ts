@@ -14,6 +14,7 @@ import {
 } from '../../features/quote-portal/portal-view-model.ts'
 import { buildCommercialSummary } from '../../features/quote-portal/summary.ts'
 import { toDocumentBundle } from '../../features/quote-portal/to-bundle.ts'
+import { isPortalToken } from '../../lib/quote-portal/token.ts'
 import type { PortalLine, PortalQuote, PortalQuoteFull, PortalQuoteInvalid, PortalQuoteShort, PortalRecord } from '../../lib/quote-portal/types.ts'
 
 // The quote portal's page, its PDF download and the components between them: the parts that are plain data (the bundle,
@@ -677,7 +678,9 @@ test('the state card has no controls, no script and no data of its own', () => {
 const ROUTE = 'app/(portal)/q/[token]/pdf/route.ts'
 const routeSource = () => read(...ROUTE.split('/'))
 
-test('the PDF route answers 404 JSON unless the quote is open, accepted or declined', () => {
+// Ruling 32: the email's DOWNLOAD PDF button must never show a client raw JSON. A malformed address is still the 404
+// JSON; a well-formed link whose quote cannot be read goes to its page, which shows the designed card for its state.
+test('the PDF route answers 404 JSON for a malformed token, and sends a well-formed link that cannot be read to its page', () => {
   const route = routeSource()
   assert.match(route, /export const runtime = 'nodejs'/)
   assert.match(route, /export const dynamic = 'force-dynamic'/)
@@ -693,15 +696,45 @@ test('the PDF route answers 404 JSON unless the quote is open, accepted or decli
   assert.ok(viewable > fetched, 'the state is checked after the read')
   assert.ok(made > viewable, 'the PDF is made only after the state check')
 
-  // Every refusal before the PDF is a 404 with a JSON message that says nothing about the quote.
-  const beforePdf = route.slice(0, made)
-  assert.ok((beforePdf.match(/status: 404/g) ?? []).length >= 2, 'a malformed token and a non-viewable quote are both 404')
-  assert.match(beforePdf, /NextResponse\.json\(NOT_FOUND, \{ status: 404/)
+  // A malformed token: the one 404, a JSON message that says nothing about the quote.
+  assert.match(route, /if \(!isPortalToken\(token\)\) return NextResponse\.json\(NOT_FOUND, \{ status: 404 \}\)/)
+  assert.equal((route.match(/status: 404/g) ?? []).length, 1, 'only a malformed token is a 404')
   const notFound = route.match(/const NOT_FOUND = (\{[^}]*\})/)?.[1] ?? ''
   assert.match(notFound, /message: '[^']+'/)
   assert.doesNotMatch(notFound, /expired|superseded|invalid|revoked|declined|accepted|token/i, 'the 404 says nothing about why')
+
+  // A well-formed token whose quote is expired, superseded or not valid: to the page, and nowhere else.
+  assert.match(route, /if \(!isViewableQuote\(quote\)\) return toPortalPage\(token\)/)
+  assert.equal((route.match(/toPortalPage\(token\)/g) ?? []).length, 1, 'the one place it is used')
+  assert.ok(route.indexOf('toPortalPage(token)') > shape, 'only after the token shape was accepted')
   assert.match(route, /isViewableQuote/, 'it uses the shared guard, not its own list of states')
   assert.doesNotMatch(route, /state === 'open'|state !== 'open'/, 'the states are not re-listed here')
+})
+
+test('the redirect is a 303 to the relative /q/<token> with the portal headers, and cannot point anywhere else', () => {
+  const route = routeSource()
+  const start = route.indexOf('function toPortalPage(token: string): NextResponse {')
+  assert.ok(start > -1, 'one helper builds the redirect')
+  const helper = route.slice(start, route.indexOf('\n}\n', start) + 2)
+  assert.match(helper, /status: 303/, 'See Other: the browser follows it with a GET')
+  assert.match(helper, /Location: `\/q\/\$\{token\}`/, 'relative, built from the token alone')
+  assert.match(helper, /'Cache-Control': 'no-store'/)
+  assert.match(helper, /'Referrer-Policy': 'no-referrer'/)
+  assert.doesNotMatch(helper, /request|new URL|nextUrl|host|searchParams|NextResponse\.redirect/i, 'nothing from the request (no host, no query) reaches the address')
+  assert.doesNotMatch(helper, /status: (301|302|307|308)/)
+  assert.doesNotMatch(route, /\bredirect\(/, 'no other redirect')
+
+  // What makes it safe: the token was accepted by isPortalToken, which admits only 43 base64url characters. Nothing it
+  // accepts can turn "/q/<token>" into another site, a path outside /q/ or an address with a query.
+  const accepts = isPortalToken
+  for (const hostile of [
+    `//evil.example/${'a'.repeat(28)}`, `/\\evil.example${'a'.repeat(28)}`, `https://evil.example/${'a'.repeat(21)}`,
+    `..%2F..%2Fevil${'a'.repeat(29)}`, `${'a'.repeat(42)}/`, `${'a'.repeat(42)}?`, `${'a'.repeat(42)}#`, `${'a'.repeat(42)} `, `${'a'.repeat(42)}.`,
+  ]) {
+    assert.equal(accepts(hostile), false, JSON.stringify(hostile))
+  }
+  assert.ok(accepts(TOKEN))
+  assert.ok(read('lib', 'quote-portal', 'token.ts').includes('/^[A-Za-z0-9_-]{43}$/'), 'isPortalToken admits exactly this shape')
 })
 
 test('the PDF is the frozen quote through the shared renderer, with the headers of the staff download and no referrer', () => {
@@ -722,7 +755,7 @@ test('the PDF is the frozen quote through the shared renderer, with the headers 
   assert.doesNotMatch(route, /console\.error\([^)]*\btoken\b/i, 'the token is never logged')
 })
 
-test('every failure after the 404 checks is the same generic 500 for the client, and the real token-free error goes to the log (Ruling 22e)', () => {
+test('every failure after the token and state checks is the same generic 500 for the client, and the real token-free error goes to the log (Ruling 22e)', () => {
   const route = routeSource()
   assert.equal(copy.PDF_FAILED_MESSAGE, 'The PDF could not be prepared. Please try again, or get in touch.')
   assert.match(route, /PDF_FAILED_MESSAGE/)
@@ -735,10 +768,11 @@ test('every failure after the 404 checks is the same generic 500 for the client,
   assert.ok(helper.length > 0, 'one helper answers every failure')
   assert.match(helper, /console\.error\('\[quote-portal:pdf\]', error instanceof Error \? error\.message : 'unknown error'\)/)
   assert.match(helper, /NextResponse\.json\(\{ message: PDF_FAILED_MESSAGE \}, \{ status: 500 \}\)/)
-  // Both the read and the render go through it, and the 404 answers are untouched.
+  // Both the read and the render go through it; the malformed-token 404 is untouched (Ruling 32 changed only the
+  // answer for a well-formed link that cannot be read).
   assert.equal((route.match(/return pdfFailed\(error\)/g) ?? []).length, 2, 'the read and the render')
   assert.match(route, /const NOT_FOUND = \{ message: 'That quotation was not found\.' \}/)
-  assert.equal((route.match(/NextResponse\.json\(NOT_FOUND, \{ status: 404 \}\)/g) ?? []).length, 2, 'a malformed token and a quote that cannot be read')
+  assert.equal((route.match(/NextResponse\.json\(NOT_FOUND, \{ status: 404 \}\)/g) ?? []).length, 1, 'a malformed token')
 })
 
 // ---------------------------------------------------------------------------------------------------------------

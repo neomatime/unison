@@ -11,8 +11,7 @@ export const runtime = 'nodejs'
 // Read live on every request: the answer depends on the quote's state right now.
 export const dynamic = 'force-dynamic'
 
-// One answer for everything that is not a readable quote (a malformed token, an unknown or revoked link, an expired or
-// replaced quote), so the response says nothing about why.
+// The answer for an address that is not shaped like a link at all, so the response says nothing about why.
 const NOT_FOUND = { message: 'That quotation was not found.' }
 
 /**
@@ -24,6 +23,20 @@ const NOT_FOUND = { message: 'That quotation was not found.' }
 function pdfFailed(error: unknown): NextResponse {
   console.error('[quote-portal:pdf]', error instanceof Error ? error.message : 'unknown error')
   return NextResponse.json({ message: PDF_FAILED_MESSAGE }, { status: 500 })
+}
+
+/**
+ * A well-formed link whose quote can no longer be read (expired, replaced, revoked or unknown) is sent to its own page,
+ * which shows the designed card for that state, so the email's DOWNLOAD PDF button never shows the client raw JSON.
+ * 303 makes the browser fetch the page with a GET. The address is relative and built only from a token isPortalToken
+ * has accepted (43 characters of A-Z, a-z, 0-9, - and _), so it can only ever be this site's /q/<token>: no host, no
+ * scheme, no "//". It carries the portal's no-store and no-referrer headers like every other portal answer.
+ */
+function toPortalPage(token: string): NextResponse {
+  return new NextResponse(null, {
+    status: 303,
+    headers: { Location: `/q/${token}`, 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' },
+  })
 }
 
 /**
@@ -40,7 +53,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ tok
   } catch (error) {
     return pdfFailed(error)
   }
-  if (!isViewableQuote(quote)) return NextResponse.json(NOT_FOUND, { status: 404 })
+  if (!isViewableQuote(quote)) return toPortalPage(token)
 
   try {
     const { bytes, filename } = await makeDocumentPdf('quote', toDocumentBundle(quote))
