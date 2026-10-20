@@ -410,10 +410,10 @@ test('the panel is a server component in a "Client portal" section that renders 
   assert.ok(draft < source.indexOf('listQuoteLinks('), 'the links are not even read for a draft')
 })
 
-test('with no links the panel says something only when the portal switch is on, and nothing at all when it is off', () => {
+test('with no links the panel says something only when the portal switch is on or a response is on record, and nothing at all otherwise', () => {
   const source = panel()
   assert.match(source, /quote_portal_enabled === true/, 'the switch is read from the same company settings the email action uses')
-  assert.match(source, /if \(links\.length === 0 && !switchOn\) return null/, 'switch off and no links: nothing')
+  assert.match(source, /if \(links\.length === 0 && responses\.length === 0 && !switchOn\) return null/, 'switch off, no links and no response: nothing; a quote with a response always shows the panel')
   assert.match(source, /links\.length === 0 \? \(/, 'switch on and no links: the one line')
 })
 
@@ -469,14 +469,20 @@ test('Revoke is offered only on a link that is Active, with its confirmation, an
   assert.equal(source.split('<ActionButton').length - 1, 1, 'one button, on the Active branch only')
 })
 
-test('the supersede chain says Replaces and Replaced by', () => {
+test('the supersede chain says Replaces, and Revised as until the quote itself is Superseded, when it says Replaced by', () => {
   const source = panel()
   assert.match(source, /Replaces \{replacesNumber\}/)
-  assert.match(source, /Replaced by \{replacedBy\.join\(', '\)\}/)
+  assert.match(source, /bundle\.record\.status === 'Superseded' \? 'Replaced by' : 'Revised as'/, "the wording depends on the quote's own status")
+  assert.match(source, /\{replacedByLabel\} \{replacedBy\.join\(', '\)\}/, 'and is the one used in the line')
+  assert.equal(source.split("'Replaced by'").length - 1, 1, 'each wording is written once')
+  assert.equal(source.split("'Revised as'").length - 1, 1)
+  assert.doesNotMatch(source, /Replaced by \{/, 'no fixed "Replaced by" line is left')
 })
 
 test('the panel never prints or links a portal address, a token or a hash, and uses no router link', () => {
-  const source = panel()
+  // The one hash the panel shows is the content hash of the quote as the client saw it (snapshot_hash); that is not the
+  // secret part of a link, which is the hash this guard is about.
+  const source = panel().replace(/snapshot_hash|Snapshot hash/g, '')
   assert.doesNotMatch(source, /token|hash/i, 'staff never see the secret part of a link')
   assert.doesNotMatch(source, /\/q\//, 'there is no staff-side link into the portal')
   assert.doesNotMatch(source, /next\/link|<Link\b/, 'the portal is not a page of the staff app: a plain anchor would be needed, and there is none')
@@ -509,4 +515,230 @@ test('Revise this quote is offered for a Sent, Declined or Expired quote and for
   assert.ok(source.indexOf('duplicateQuoteAction.bind(null, id)') < source.indexOf('reviseQuoteAction.bind(null, id)'), 'beside Duplicate as new draft, after it')
   assert.match(source, /duplicateQuoteAction\.bind\(null, id\)\} label="Duplicate as new draft" \/>/, 'Duplicate as new draft is still there')
   assert.doesNotMatch(source, /useState\(|useEffect\(|useActionState\(/, 'still a server component')
+})
+
+// ---- Quote portal, slice 2, task 10: the recorded response ----
+// responseAttribution and termsVersionLabels are pure and tested here. The query and the panel are server code that
+// node --test cannot load, so they get source guards.
+
+const loadAttribution = () => import('../../features/quote-portal/response-attribution.ts')
+const response = (decision: 'accepted' | 'declined', decided_at: string) => ({ decision, decided_at })
+
+test('responseAttribution is null unless the quote is Accepted or Declined, whatever responses exist', async () => {
+  const { responseAttribution } = await loadAttribution()
+  const some = [response('accepted', '2026-10-20T08:00:00Z')]
+  for (const status of ['Draft', 'Internal Review', 'Sent', 'Expired', 'Superseded', 'accepted', 'declined', '']) {
+    assert.equal(responseAttribution(status, []), null, `${status || '(empty)'} with no responses`)
+    assert.equal(responseAttribution(status, some), null, `${status || '(empty)'} with a response`)
+  }
+})
+
+test('an Accepted or Declined quote with no response on record was marked by staff', async () => {
+  const { responseAttribution } = await loadAttribution()
+  assert.equal(responseAttribution('Accepted', []), 'staff', 'a phone acceptance')
+  assert.equal(responseAttribution('Declined', []), 'staff')
+})
+
+test("a response that agrees with the status is the client's", async () => {
+  const { responseAttribution } = await loadAttribution()
+  assert.equal(responseAttribution('Accepted', [response('accepted', '2026-10-20T08:00:00Z')]), 'client')
+  assert.equal(responseAttribution('Declined', [response('declined', '2026-10-20T08:00:00Z')]), 'client')
+})
+
+test("a response that staff later contradicted by hand is not the status's: Marked by staff", async () => {
+  const { responseAttribution } = await loadAttribution()
+  assert.equal(responseAttribution('Accepted', [response('declined', '2026-10-20T08:00:00Z')]), 'staff', 'the client declined, staff set Accepted')
+  assert.equal(responseAttribution('Declined', [response('accepted', '2026-10-20T08:00:00Z')]), 'staff', 'the client accepted, staff set Declined')
+})
+
+test('only the newest response counts, wherever it sits in the list', async () => {
+  const { responseAttribution } = await loadAttribution()
+  const first = response('accepted', '2026-10-20T08:00:00Z')
+  const second = response('declined', '2026-10-21T08:00:00Z')
+  for (const responses of [[first, second], [second, first]]) {
+    assert.equal(responseAttribution('Declined', responses), 'client', 'the newest is the decline')
+    assert.equal(responseAttribution('Accepted', responses), 'staff', 'the older acceptance is no longer what the status says')
+  }
+})
+
+test('the newest response is found by instant, not by the text of the time or the order of the array', async () => {
+  const { responseAttribution } = await loadAttribution()
+  // 10:30+02:00 is 08:30Z: as text it sorts after 08:45Z, as an instant it is earlier.
+  const earlier = response('accepted', '2026-10-20T10:30:00+02:00')
+  const later = response('declined', '2026-10-20T08:45:00Z')
+  for (const responses of [[earlier, later], [later, earlier]]) {
+    assert.equal(responseAttribution('Declined', responses), 'client')
+    assert.equal(responseAttribution('Accepted', responses), 'staff')
+  }
+})
+
+test('two responses at the same instant: the one listed first (the query lists newest first) counts', async () => {
+  const { responseAttribution } = await loadAttribution()
+  const at = '2026-10-20T08:00:00Z'
+  assert.equal(responseAttribution('Accepted', [response('accepted', at), response('declined', at)]), 'client')
+  assert.equal(responseAttribution('Accepted', [response('declined', at), response('accepted', at)]), 'staff')
+  assert.equal(responseAttribution('Declined', [response('declined', at), response('accepted', '2026-10-20T10:00:00+02:00')]), 'client', 'the same instant written two ways is a tie')
+})
+
+test('a time that cannot be read never makes a response the newest', async () => {
+  const { responseAttribution } = await loadAttribution()
+  const good = response('declined', '2026-10-20T08:00:00Z')
+  const broken = response('accepted', 'not a time')
+  for (const responses of [[broken, good], [good, broken]]) assert.equal(responseAttribution('Declined', responses), 'client')
+  assert.equal(responseAttribution('Accepted', [broken]), 'client', 'on its own it is still the only response there is')
+})
+
+test('the attribution module is pure: no directive, no server-only, no alias import', () => {
+  const source = read('features', 'quote-portal', 'response-attribution.ts')
+  assert.doesNotMatch(source, /^\s*['"]use (server|client)['"]/m)
+  assert.doesNotMatch(source, /server-only/)
+  assert.doesNotMatch(source, /from\s+['"]@\//)
+  assert.match(source, /export function responseAttribution\(/)
+})
+
+// ---- termsVersionLabels ----
+
+test('termsVersionLabels turns each terms source into "layer v<version>", in order, ignoring the other keys', async () => {
+  const { termsVersionLabels } = await loadAttribution()
+  assert.deepEqual(
+    termsVersionLabels([
+      { layer: 'company', templateId: 'a', versionId: 'b', version: 3 },
+      { layer: 'offering', version: 1 },
+      { layer: 'category', version: 12 },
+    ]),
+    ['company v3', 'offering v1', 'category v12'],
+  )
+  assert.deepEqual(termsVersionLabels([]), [])
+})
+
+test('termsVersionLabels tolerates null, a non-array and malformed entries without throwing', async () => {
+  const { termsVersionLabels } = await loadAttribution()
+  for (const value of [null, undefined, {}, { layer: 'company', version: 1 }, 'company v1', 7, true]) assert.deepEqual(termsVersionLabels(value), [], `${JSON.stringify(value)} is not a list`)
+  const malformed = [
+    null,
+    undefined,
+    'company v1',
+    5,
+    [],
+    {},
+    { layer: 'company' },
+    { version: 1 },
+    { layer: '', version: 1 },
+    { layer: '   ', version: 1 },
+    { layer: 5, version: 1 },
+    { layer: 'company', version: 'x' },
+    { layer: 'company', version: null },
+    { layer: 'company', version: Number.NaN },
+    { layer: 'company', version: Number.POSITIVE_INFINITY },
+  ]
+  assert.deepEqual(termsVersionLabels(malformed), [], 'every malformed entry is left out')
+  assert.deepEqual(termsVersionLabels([null, { layer: 'company', version: 2 }, 'junk', { layer: 'offering', version: 4 }]), ['company v2', 'offering v4'], 'and the good ones around them stay')
+})
+
+// ---- the query ----
+
+test("listQuoteResponses reads the quote's responses through the member session, newest first, scoped to the organisation", () => {
+  const source = query()
+  assert.match(source, /export async function listQuoteResponses\(quoteId: string\): Promise<QuoteResponseRow\[\]>/)
+  const body = source.slice(source.indexOf('export async function listQuoteResponses('))
+  assert.match(body, /documentContext\(\)/, 'the signed-in member, not the service role')
+  assert.match(body, /from\('quote_responses'\)/)
+  assert.match(body, /\.eq\('quote_id', quoteId\)\s*\.eq\('organization_id', organization\.id\)\s*\.order\('decided_at', \{ ascending: false \}\)/, 'this quote, this organisation, newest first')
+  assert.match(body, /if \(responses\.error\) throw responses\.error/)
+  assert.doesNotMatch(source, /supabase\/admin|portal-client|createAdminSupabase/)
+})
+
+test('the responses query selects exactly the fields the panel shows: never the address, the browser or the consent wording', () => {
+  const source = query()
+  const body = source.slice(source.indexOf('export async function listQuoteResponses('))
+  const select = body.match(/\.select\('([^']*)'\)/)
+  assert.ok(select, 'a literal column list')
+  const columns = select[1].split(',')
+  assert.deepEqual(columns, [
+    'id',
+    'link_id',
+    'decision',
+    'decided_at',
+    'signatory_name',
+    'signatory_position',
+    'signatory_organisation',
+    'verified_email',
+    'quote_number',
+    'quote_version',
+    'terms_sources',
+    'snapshot_hash',
+    'decline_reason',
+    'decline_comments',
+  ])
+  for (const evidence of ['ip_address', 'user_agent', 'consent_text']) assert.ok(!columns.includes(evidence), `${evidence} is stored as evidence only`)
+  assert.doesNotMatch(body, /select\('\*'\)|select\(\)/, 'no select-all')
+  // The row type has the same fields and none of the evidence.
+  const start = source.indexOf('export type QuoteResponseRow')
+  assert.ok(start > -1, 'the row type is exported')
+  const type = source.slice(start, source.indexOf('\n}', start))
+  for (const evidence of ['ip_address', 'user_agent', 'consent_text']) assert.ok(!type.includes(evidence), `${evidence} is not on the row type`)
+  assert.match(type, /decision: 'accepted' \| 'declined'/)
+})
+
+// ---- the panel, the recorded response ----
+
+test('the panel never mentions the evidence columns, and renders every client-supplied value as text', () => {
+  const source = panel()
+  assert.doesNotMatch(source, /ip_address|user_agent|consent/i, 'the address, the browser and the consent wording are not shown to staff')
+  assert.doesNotMatch(source, /dangerouslySetInnerHTML|innerHTML/, 'a signatory name or a comment is hostile text')
+  assert.doesNotMatch(source, /\.replace\(|\.split\(|<br\b/, 'line breaks come from CSS, not from rewriting the text')
+})
+
+test('the panel loads the responses with the links, after the draft check, and shows itself when a response exists', () => {
+  const source = panel()
+  assert.match(source, /import \{ listQuoteLinks, listQuoteResponses, listQuoteSends, type QuoteResponseRow \} from '\.\.\/queries\/list-quote-links'/)
+  assert.match(source, /import \{ responseAttribution, termsVersionLabels \} from '\.\.\/response-attribution'/)
+  assert.match(
+    source,
+    /const \[\{ links, replacesNumber, replacedBy \}, sends, responses\] = await Promise\.all\(\[listQuoteLinks\(quoteId\), listQuoteSends\(quoteId\), listQuoteResponses\(quoteId\)\]\)/,
+  )
+  assert.ok(source.indexOf("isDraftStatus('quote', bundle.record.status)") < source.indexOf('listQuoteResponses(quoteId)'), 'a draft reads nothing')
+})
+
+test('each response shows the decision, who decided, the time in South African time, the quote version, the terms versions and the whole snapshot hash', () => {
+  const source = panel()
+  assert.match(source, /responses\.map\(\(response\) =>/, 'newest first, as the query returns them')
+  assert.match(source, /<h3 [^>]*>Response<\/h3>/, 'a Response block')
+  assert.match(source, /<StatusBadge tone=\{DECISION_TONE\[response\.decision\]\}>\{DECISION_LABEL\[response\.decision\]\}<\/StatusBadge>/, 'the decision is a badge')
+  for (const field of ['signatory_name', 'signatory_position', 'signatory_organisation', 'verified_email']) assert.match(source, new RegExp(`\\{response\\.${field}\\}`), `${field} is shown`)
+  assert.match(source, /\{when\(response\.decided_at\)\}/, 'the time goes through the South African time helper')
+  assert.match(source, /Quote version \{response\.quote_version\}/)
+  assert.match(source, /termsVersionLabels\(response\.terms_sources\)/)
+  assert.match(source, /Terms \{termsVersions\.join\(', '\)\}/, 'the terms versions are listed together')
+  assert.match(source, /<code className="[^"]*\bbreak-all\b[^"]*\bfont-mono\b[^"]*">\{response\.snapshot_hash\}<\/code>/, 'the whole hash, in monospace, wrapping rather than overflowing')
+  assert.doesNotMatch(source, /snapshot_hash\.(slice|substring|substr)\(/, 'never cut short')
+})
+
+test('a decline shows its reason and its comments as text with the line breaks kept, and an accept shows neither', () => {
+  const source = panel()
+  const gate = source.indexOf("response.decision === 'declined' ? (")
+  assert.ok(gate > -1, 'the decline details sit behind the decision')
+  assert.ok(source.indexOf('{response.decline_reason', gate) > gate, 'the reason is inside it')
+  assert.ok(source.indexOf('{response.decline_comments}', gate) > gate, 'and so are the comments')
+  assert.equal(source.split('response.decline_reason').length - 1, 1, 'the reason is shown once, behind the gate')
+  assert.equal(source.split('response.decline_comments').length - 1, 2, 'the comments are tested for and shown, behind the gate')
+  assert.match(source, /<p className="[^"]*\bwhitespace-pre-wrap\b[^"]*">\{response\.decline_comments\}<\/p>/, 'a text node in a paragraph that keeps its line breaks')
+  assert.match(source, /<p className="[^"]*\bbreak-words\b[^"]*\bwhitespace-pre-wrap\b|<p className="[^"]*\bwhitespace-pre-wrap\b[^"]*\bbreak-words\b/, 'and a very long comment wraps')
+})
+
+test('a link that carries a decision shows when it was responded to, matched by link id', () => {
+  const source = panel()
+  assert.match(source, /new Map<string, QuoteResponseRow>\(responses\.map\(\(response\) => \[response\.link_id, response\]\)\)/, 'one response per link, found by the id of the link')
+  assert.match(source, /responseByLink\.get\(link\.id\)/)
+  assert.match(source, /Responded \{when\(responded\.decided_at\)\}/)
+})
+
+test('a status the client did not set shows "Marked by staff" and the sentence that no client response is on record', () => {
+  const source = panel()
+  assert.match(source, /const attribution = responseAttribution\(bundle\.record\.status, responses\)/)
+  assert.match(source, /attribution === 'staff' \? \(/, 'only when the attribution says staff')
+  assert.match(source, /'Marked by staff'/)
+  assert.match(source, /'No client response is on record for this status\.'/)
+  assert.equal(source.split('Marked by staff').length - 1, 1, 'written once')
+  assert.equal(source.split('No client response is on record for this status.').length - 1, 1)
 })

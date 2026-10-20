@@ -70,6 +70,47 @@ export async function listQuoteLinks(quoteId: string): Promise<QuoteLinks> {
   }
 }
 
+/**
+ * One recorded client response as the staff panel shows it. The address, the browser and the exact consent wording of a
+ * response are stored as evidence only: they are not in this type and the query below does not select them.
+ */
+export type QuoteResponseRow = {
+  id: string
+  link_id: string
+  decision: 'accepted' | 'declined'
+  decided_at: string
+  /** Client-supplied text: show it as text, never as markup. */
+  signatory_name: string
+  signatory_position: string
+  signatory_organisation: string
+  verified_email: string
+  quote_number: string
+  quote_version: number
+  /** The jsonb the quote carried when it went out: an array of `{ layer, version, ... }`, or null. Not trusted to be either. */
+  terms_sources: unknown
+  snapshot_hash: string
+  decline_reason: string | null
+  /** Client-supplied text, line breaks included. */
+  decline_comments: string | null
+}
+
+/**
+ * The responses recorded for one quote, newest first, read through the signed-in member's own session (row level security
+ * limits the rows to their organisation; the filter on it is for the reader). A link holds at most one, so at most 100.
+ */
+export async function listQuoteResponses(quoteId: string): Promise<QuoteResponseRow[]> {
+  const { organization, db } = await documentContext()
+  const responses = await db
+    .from('quote_responses')
+    .select('id,link_id,decision,decided_at,signatory_name,signatory_position,signatory_organisation,verified_email,quote_number,quote_version,terms_sources,snapshot_hash,decline_reason,decline_comments')
+    .eq('quote_id', quoteId)
+    .eq('organization_id', organization.id)
+    .order('decided_at', { ascending: false })
+    .limit(100)
+  if (responses.error) throw responses.error
+  return (responses.data ?? []) as QuoteResponseRow[]
+}
+
 /** The address and time of each email recorded for this quote, newest first (at most 50): what the panel checks a link against. */
 export async function listQuoteSends(quoteId: string): Promise<Array<{ to_address: string; sent_at: string }>> {
   const { organization, db } = await documentContext()
