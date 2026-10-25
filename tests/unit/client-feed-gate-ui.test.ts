@@ -57,6 +57,8 @@ const harness = {
   revalidated: [] as string[],
   updateResult: { data: [{ id: 'settings-1' }], error: null } as Result,
   rpcResult: { data: null, error: null } as Result,
+  // An answer for one function by name (a thrown value makes that call reject); any other call gets rpcResult.
+  rpcByName: {} as Record<string, Result | { throws: unknown }>,
   session() {
     harness.order.push('session')
     if (harness.sessionError) throw harness.sessionError
@@ -87,7 +89,9 @@ const harness = {
       rpc(name: string, args: unknown) {
         harness.calls.push({ kind: 'rpc', name, args, filters: [] })
         harness.order.push('rpc')
-        return Promise.resolve(harness.rpcResult)
+        const named = harness.rpcByName[name]
+        if (named && 'throws' in named) return Promise.reject(named.throws)
+        return Promise.resolve(named ?? harness.rpcResult)
       },
     }
   },
@@ -103,19 +107,36 @@ beforeEach(() => {
   harness.revalidated = []
   harness.updateResult = { data: [{ id: 'settings-1' }], error: null }
   harness.rpcResult = { data: null, error: null }
+  harness.rpcByName = {}
 })
 
+const NO_SERVER = "async function noServer() { throw new Error('no server in a unit test') }"
 installComponentLoader({
   'next/cache': 'export function revalidatePath(path) { globalThis.__clientFeedGateHarness.revalidated.push(path) }',
   '@/lib/auth/get-session-context': 'export async function getSessionContext() { return globalThis.__clientFeedGateHarness.session() }',
   '@/lib/supabase/server': 'export async function createServerSupabase() { return globalThis.__clientFeedGateHarness.client() }',
-  // What the component imports; the real action is loaded below by its own path.
-  '../client-feed-actions': "export async function setClientFeedGateAction() { throw new Error('no server in a unit test') }",
+  // What the components import; the real action is loaded below by its own path.
+  '../client-feed-actions': `${NO_SERVER}\nexport const setClientFeedGateAction = noServer\nexport const createClientFeedKeyAction = noServer\nexport const revokeClientFeedKeyAction = noServer`,
+  // What the Integrations page imports besides the two feed components and the feed queries, which are the real ones.
+  '../queries': `
+    export async function getPlatformAutomationAccess() { return { canManage: ['owner', 'admin'].includes(globalThis.__clientFeedGateHarness.role.toLowerCase()) } }
+    export async function listIntegrationConnections() { return [] }
+    export async function getAutomationMetrics() { return {} }
+    export async function listAutomationRules() { return [] }
+    export async function listAutomationRuns() { return [] }
+    export async function listAutomationSchedules() { return [] }`,
+  './automation-nav': 'export function AutomationSettingsNav() { return null }',
+  './platform-forms': 'export function AutomationControls() { return null }\nexport function IntegrationControls() { return null }\nexport function IntegrationSecretControl() { return null }',
+  '@/components/shared/workspace-header': 'export function WorkspaceHeader() { return null }',
+  '@/components/ui/content-panel': 'export function ContentPanel() { return null }',
+  '@/components/ui/status-badge': 'export function StatusBadge() { return null }',
+  'next/link': 'export default function Link(props) { return props.children ?? null }',
 })
 const actions = await import('../../features/platform-automation/client-feed-actions.ts')
 const queries = await import('../../features/platform-automation/client-feed-queries.ts')
 // Loaded when a test needs it, so that a missing component fails its own tests and not the whole file.
 const loadComponent = () => import('../../features/platform-automation/components/client-feed-gate.tsx')
+const loadPage = () => import('../../features/platform-automation/components/platform-pages.tsx')
 
 const formOf = (entries: Record<string, string> = {}) => {
   const form = new FormData()
@@ -320,11 +341,61 @@ test('the gate query keeps a feed that has never been read, and an organisation 
   assert.deepEqual(await queries.getClientFeedGate(), { enabled: false, hasLiveKey: false, lastReadAt: null, totalClients: 0, withAcceptedQuote: 0 })
 })
 
-test('the gate query returns nothing without the counts, and raises a database error as the key list does', async () => {
+test('the gate query returns nothing without the counts, and says nothing about it', async () => {
   harness.rpcResult = { data: { ...STATUS, summary: null }, error: null }
-  assert.equal(await queries.getClientFeedGate(), null, 'the counts are for owners and admins only')
-  harness.rpcResult = { data: null, error: { message: 'boom' } }
-  await assert.rejects(() => queries.getClientFeedGate())
+  const log = mock.method(console, 'error', () => {})
+  try {
+    assert.equal(await queries.getClientFeedGate(), null, 'the counts are for owners and admins only')
+    assert.equal(log.mock.callCount(), 0, 'not an error')
+  } finally {
+    log.mock.restore()
+  }
+})
+
+// A failure of the status read must not take the Integrations page down with it: that page is where an administrator
+// revokes a compromised feed key. So the query gives nothing (the page then leaves the gate section out), logs one line
+// with the error CODE alone, and never the message, an address or any data.
+const GATE_STATUS_TAG = '[client-feed:gate-status]'
+const failureLog = async (failure: Result | { throws: unknown }) => {
+  harness.rpcByName = { get_hive_feed_status: failure }
+  const log = mock.method(console, 'error', () => {})
+  try {
+    assert.equal(await queries.getClientFeedGate(), null, 'no gate, and no throw')
+    return log.mock.calls.map((call) => call.arguments)
+  } finally {
+    log.mock.restore()
+  }
+}
+
+test('a failing status read gives no gate and logs one line with the error code alone', async () => {
+  const error = { message: 'permission denied for table organization_settings (client 10 Main Street)', code: '42501', details: 'Key (organization_id)=(org-own) is not present', hint: 'ask a@b.co' }
+  assert.deepEqual(await failureLog({ data: null, error }), [[GATE_STATUS_TAG, '42501']])
+  assert.deepEqual(await failureLog({ data: STATUS, error }), [[GATE_STATUS_TAG, '42501']], 'an error wins over any data that came with it')
+})
+
+test('a status read that throws gives no gate too, and logs only a code it carries', async () => {
+  assert.deepEqual(await failureLog({ throws: Object.assign(new Error('fetch failed: connect ECONNREFUSED 10.0.0.5:443'), { code: 'ECONNREFUSED' }) }), [[GATE_STATUS_TAG, 'ECONNREFUSED']])
+  assert.deepEqual(await failureLog({ throws: new Error('fetch failed: connect ECONNREFUSED 10.0.0.5:443') }), [[GATE_STATUS_TAG, 'unknown']])
+  assert.deepEqual(await failureLog({ throws: null }), [[GATE_STATUS_TAG, 'unknown']])
+  assert.deepEqual(await failureLog({ throws: 'a plain string with the address 10.0.0.5' }), [[GATE_STATUS_TAG, 'unknown']])
+})
+
+test('an error code is logged only when it is a short plain code; anything else is logged as unknown', async () => {
+  for (const code of [undefined, null, 42501, { toString: () => '42501' }, '', 'has a space', 'a@b.co', '10 Main Street', 'x'.repeat(33), `${'x'.repeat(40)} 10 Main Street`]) {
+    assert.deepEqual(await failureLog({ data: null, error: { message: 'boom', code } }), [[GATE_STATUS_TAG, 'unknown']], `code ${JSON.stringify(code)}`)
+  }
+  for (const code of ['42501', 'PGRST202', 'ECONNRESET', 'UND_ERR_CONNECT_TIMEOUT']) {
+    assert.deepEqual(await failureLog({ data: null, error: { message: 'boom', code } }), [[GATE_STATUS_TAG, code]], `code ${code}`)
+  }
+})
+
+test('the failure line is one console.error of the tag and a short string, and the guard sits inside the query', () => {
+  const source = querySource()
+  const body = source.slice(source.indexOf('export async function getClientFeedGate'))
+  assert.equal((body.match(/console\.error/g) ?? []).length, 1, 'one log line')
+  assert.match(body, /console\.error\('\[client-feed:gate-status\]', errorCode\(error\)\)/)
+  assert.doesNotMatch(body, /console\.error\([^)]*(\.message|JSON\.stringify|String\(error|data)/, 'neither the message nor any data is logged')
+  assert.ok(body.indexOf('try {') > body.indexOf("['owner', 'admin'].includes(role.toLowerCase())") && body.indexOf('try {') < body.indexOf('.rpc('), 'the guard wraps the database read, after the role rule')
 })
 
 test('the gate query source uses the signed-in client, applies the owner/admin rule first and returns no key detail', () => {
@@ -496,5 +567,35 @@ test('the integrations page loads and renders the gate only for a viewer who can
   const keys = source.indexOf('<ClientFeedKeys ')
   assert.ok(register > -1 && gate > register && keys > gate, 'the register, then the gate, then the keys')
   assert.equal((source.match(/<ClientFeedGate /g) ?? []).length, 1)
-  assert.match(source, /\{access\.canManage \? <ClientFeedKeys keys=\{feedKeys\} \/> : null\}/, 'the key table is as it was')
+  assert.match(source, /\{access\.canManage \? <ClientFeedKeys keys=\{feedKeys\} \/> : null\}/, 'the key table is as it was: it does not depend on the gate value')
+})
+
+test('a failure of the status read does not take down the Integrations page: the key table renders, the gate section is left out', async () => {
+  harness.rpcByName = {
+    list_client_feed_keys: {
+      data: [{ id: 'key-1', name: 'HIVE production feed', created_at: '2026-10-01T08:00:00+00:00', last_used_at: null, revoked_at: null }],
+      error: null,
+    },
+    get_hive_feed_status: { data: null, error: { message: 'function get_hive_feed_status does not exist', code: '42883' } },
+  }
+  const { IntegrationsPage } = await loadPage()
+  const log = mock.method(console, 'error', () => {})
+  let html: string
+  try {
+    html = plain(renderToStaticMarkup(await IntegrationsPage()))
+    assert.deepEqual(log.mock.calls.map((call) => call.arguments), [[GATE_STATUS_TAG, '42883']], 'one line, with the code alone')
+  } finally {
+    log.mock.restore()
+  }
+  assert.ok(html.includes('Client feed keys') && html.includes('HIVE production feed'), 'the key table is there, with the key')
+  assert.match(html, /<button[^>]*>[^]*Revoke<\/button>/, 'and the administrator can still revoke a key')
+  assert.ok(!html.includes('HIVE client feed'), 'only the gate section is left out')
+  assert.ok(!html.includes('name="enabled"'))
+
+  // The same page when the status read works, so the absence above is the failure and nothing else.
+  harness.rpcByName.get_hive_feed_status = { data: STATUS, error: null }
+  const healthy = plain(renderToStaticMarkup(await IntegrationsPage()))
+  assert.ok(healthy.includes('HIVE client feed') && healthy.includes('name="enabled"'), 'the gate section is there')
+  assert.ok(healthy.includes('Client feed keys') && healthy.includes('HIVE production feed'), 'beside the key table')
+  assert.ok(healthy.indexOf('HIVE client feed') < healthy.indexOf('Client feed keys'), 'above it, as before')
 })
