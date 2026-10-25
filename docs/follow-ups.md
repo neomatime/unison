@@ -1569,3 +1569,141 @@ the database recorded the versions given here.
 - The "Replaced by" line on the staff panel now reads "Revised as" unless the quote's own status is Superseded.
 - Decided quotes stay reachable after their valid-until date, because the quote's status decides the page before any date check. This is slice 1's
   page logic, which slice 2 did not change; the ledger records no separate slice 2 test of a decided quote past its valid-until date.
+
+## From the quote portal, slice 3 (2026-10-25)
+
+Slice 3 of 3 is built, which completes the quote portal: a setting that makes the HIVE client feed (`GET /api/v1/clients`) return only clients with an
+accepted quote, off by default; a switch with an impact preview in Settings > Integrations; and a status line on the quote page. UNISON can say only
+whether a client would appear in the feed and when HIVE last read it. It cannot see what HIVE did with it, so nothing in the app says "sent", "handed
+off" or "completed". Spec: `docs/superpowers/specs/2026-10-18-quote-portal-design.md` ("Slice 3: HIVE feed gate"). Plan:
+`docs/superpowers/plans/2026-10-25-quote-portal-slice-3.md`. Boundary spec: `docs/superpowers/specs/2026-10-13-client-focused-boundary-design.md`
+("Narrowing the feed" under "The API for HIVE"). The work is built on the branch `claude/gallant-dewdney-af21e8`: 8 commits, `6dfd461..3fce74b` (the
+plan, the build and the final review fixes), plus the docs commit `docs: record quote portal slice 3`. It is merged into `main` when the owner asks. The
+database changes below are already live, though. **Next step for the owner:** read the next block before anything else.
+
+### Read before you switch the feed gate on
+
+The setting (Settings > Integrations, "HIVE client feed") is off by default. While it is off, HIVE sees exactly what it saw before.
+
+1. **Turning it on narrows a live contract.** HIVE reads `GET /api/v1/clients` with the key named "HIVE"; its last recorded read was 2026-10-25 05:46
+   UTC. With the gate on, the feed returns a client only while it has a non-archived Accepted quote.
+2. **With today's data, turning it on empties the feed.** On 2026-10-25 production had 2 active clients and none had a non-archived Accepted quote;
+   your quote HMK-Q-2026-00001 is Sent. Every pull would return an empty list until a quote is accepted. The Integrations page says so before you
+   switch it on: "Today none of your 2 clients have an accepted quote, so turning this on would leave the feed empty."
+3. **Tell HIVE's maintainers first.** Tell them:
+   - the rule: a client is returned only while it has a non-archived Accepted quote, whether it was accepted on the portal or marked Accepted by staff;
+   - the response shape is unchanged, and nothing about quotes is added to it;
+   - a client missing from a full pull is not deleted in UNISON. Ask how HIVE treats a client that is absent from the feed before you switch on.
+     UNISON cannot take back what HIVE has already read, and what HIVE does with a client that leaves the feed is up to HIVE;
+   - `updatedAt` changes meaning while the gate is on: it is the later of the client's own `updated_at` and its latest `accepted_at`, so an acceptance
+     reaches an incremental pull. It can also move backwards, if a later acceptance is moved back or archived while an earlier one remains;
+   - while the gate is on, edits to clients outside the feed do not reach HIVE;
+   - after you switch the gate off, HIVE should read the whole feed once without `updated_since`. The clients that were left out keep their own,
+     older `updated_at`, so an incremental pull would skip them.
+4. **Who can switch it.** Only an owner or admin. Switching on needs a tick confirming that HIVE's maintainers have been told, and the page's action
+   refuses without it. Who changed the setting and when is in the audit log. Switching off needs no tick and applies on the next pull.
+5. **The message after switching off is true for a full pull only.** It reads "The HIVE client feed includes every client again." HIVE's incremental
+   pulls will not bring back the clients that were left out (see 3). See the first item under Owner decisions.
+
+### Production changes already live
+
+Two migrations were applied to the live database (`unison-uat`, which is production) during this build. The repo files keep their planned timestamps;
+the database recorded the versions given here.
+
+- **`hive_feed_gate` (20261025160445; repo file `20261025100000_hive_feed_gate.sql`):** the setting column
+  `organization_settings.hive_feed_requires_accepted_quote` (`boolean not null default false`), the private helper `private.client_accepted_quotes`
+  (the one definition of "has an accepted quote", granted to no one), and a replaced `get_clients_for_api_key`.
+- **`hive_feed_status` (20261025161648; repo file `20261025101000_hive_feed_status.sql`):** `get_hive_feed_status`, which any member of the organisation
+  can call for the quote-page line and the last-read time. Only owners and admins also get the client counts.
+
+- **Both are additive.** A new column, a new helper and a new function, plus the replaced feed function.
+- **The setting is false for every organisation, so HIVE sees exactly what it saw before.** The replaced feed function was compared section by section
+  with the previous one: the same keys, values, order, paging and filtering. A characterisation test of the old behaviour was written and passed
+  before the migration, and passed again after it. The function keeps its security settings and its permissions.
+- **The real HIVE key was never used by any test.** Every test made its own organisation and its own key. The real key's last-used time was checked
+  after every database run and is unchanged by this work (2026-10-25 05:46 UTC).
+
+### Verified
+
+- **Typecheck** (`pnpm typecheck`) is clean, before and after the final review fixes.
+- **Unit tests.** `pnpm test` (unit and tenancy tests) passed 1196 of 1196 on 2026-10-25 before the final review fixes. After them, the whole unit suite
+  passed 1234 of 1234.
+- **Build.** `pnpm build` succeeded with no warnings (run once, before the final review fixes; the ledger records no build after them). The feed route
+  (`/api/v1/clients`), the Integrations page and the quote page are dynamic.
+- **Database tests against production.** `pnpm test:rls` passed 539 of 539 on 2026-10-25 (about 32 minutes), before the final review fixes, including the
+  two new files: `client-feed-gate.test.ts` 11 of 11 and `client-feed-status.test.ts` 10 of 10. The final review fixes changed TypeScript and unit tests
+  only.
+- **Browser walk-through, 2026-10-25,** on a throwaway organisation with an owner who signs in, two clients (one with an Accepted quote, one without)
+  and its own feed key, with the dev server's mail transport in log mode.
+  - **Settings > Integrations:** the "HIVE client feed" section sits between the connection register and the key table, with the preview of how many
+    clients have an accepted quote and the last-read time. Ticking the switch shows the acknowledgement box, unticked, and the form cannot be submitted
+    without it. With it ticked, Save gave "Only clients with an accepted quote are now included in the HIVE client feed."; in the database only the
+    throwaway organisation's setting became true. After a reload the page showed the saved-on state with the acknowledgement already ticked.
+  - **Quote page:** the client with an Accepted quote read "Included in the HIVE client feed since 23 Oct 2026." with the last-read line; the client
+    without one read "Not included in the HIVE client feed (no accepted quote)."; with the setting off, the page read "The HIVE client feed currently
+    includes every client." The new section sits between "Email to client" and the timeline.
+- **The fixture was created and removed in the live database,** because the project has no other database. Production residue was checked after every
+  run and after the walk-through: audit rows with no organisation stayed at their starting value of 1320, test organisations and users were 0, the
+  fixtures were removed, the real organisation's setting is still false, the real HIVE key's last-used time is unchanged, and HMK-Q-2026-00001 is
+  still Sent.
+
+### Not verified
+
+- **Switching the gate off through the page.** Unit tests cover it, with the exact sentence. In the walk-through the page stopped hydrating in a hidden
+  browser pane after a submit made before it had finished loading, so the click was not seen.
+- **The final review fixes in a browser.** The walk-through ran before them. The reworded sentence about what HIVE has already read, the plain "would
+  leave the feed empty" sentence, and the Integrations page keeping its key table when the status read fails are covered by unit tests and server rendering only.
+- **The tablet and phone layout** of the new section and of the quote-page line.
+- **HIVE's own behaviour** when a client leaves the feed, and on a pull after the gate is switched off. This repo does not show it.
+- **A real HIVE pull with the gate on.** Do not test this on the real organisation: switching on would empty its feed today.
+
+### Known limits
+
+- **The helper that decides eligibility runs once per client on every pull, even while the gate is off.** The results are identical, and at 2 clients
+  the cost is negligible. The final review chose not to touch the live feed function again before release. If it ever matters, fix it in this order:
+  first an additive `alter function private.client_accepted_quotes(uuid, uuid) rows 1` and a re-run of the characterisation tests; then, if still
+  needed, make the feed run the old query verbatim (from `20261014120000_client_feed_primary_contact.sql`) when the gate is off.
+- **"Included since" is the earliest current acceptance,** the earliest `accepted_at` among the client's non-archived Accepted quotes. It is not the
+  moment the gate was switched on.
+- **The counts include archived clients,** because the feed returns them (with `archived: true`). A filter for active clients only would be a one-line
+  change in the status function plus its test.
+- **The last-read time ignores revoked keys.** It is the latest read over keys that are not revoked, so when the only key has been revoked the page can
+  say that HIVE has not read the feed yet.
+- **A hand-written `accepted_at` affects the feed time.** The feed's `updatedAt` takes the latest `accepted_at`. A back-dated value can make a newly
+  eligible client miss an incremental pull, and a future one makes the client appear in every pull until that time passes. A future feed migration
+  should cap it at now (`least(..., now())`).
+- **`updatedAt` can move backwards** while the gate is on, when a later acceptance is moved back or archived while an earlier one remains.
+- **The acknowledgement tick is a deliberate-click guard in the page's action only.** A stale tab that was loaded while the gate was on can switch it
+  back on, after another admin switched it off, without a fresh tick; and an owner or admin calling the database API directly can bypass the tick.
+  Both are recorded in the audit log.
+- **The quote-page status line appears only when a live feed key exists** and the quote has a client. With no key, nothing reads the feed.
+- **Owners and admins pay for an organisation summary the quote page does not use,** on every quote page visit: the status function computes the
+  counts for them. An optional skip-summary parameter on the function would fix it.
+- **If the status read fails, the gate section is hidden** on the Integrations page, and the key table still shows. One log line with the error code
+  only is written. The quote-page line is left out in the same way.
+- **A submit before the page has finished loading** does a plain GET with the checkbox values in the address (the walk-through saw
+  `?acknowledged=on`). It is harmless and changes nothing; the portal switch from slice 1 does the same.
+- **Several slice 3 tests are source-text checks tied to exact formatting,** so they will need touching when those files are reformatted.
+- **Smaller items the reviews left open:** with exactly one client, and that client accepted, the preview reads "Today all 1 client has an accepted
+  quote ..."; a signed-out session that submits the switch gets the generic save error; and the plan file still carries the superseded wording about
+  what HIVE keeps (the plan is a record; the page uses the final sentence).
+
+### Owner decisions
+
+- **The success sentence after switching off.** "The HIVE client feed includes every client again." is true for a full pull only (see "Read before you
+  switch the feed gate on"). The final review ruled that the plan-pinned sentence stays and the caveat is recorded in these notes and in the boundary
+  spec. Should the sentence also say that HIVE needs one full pull? Until then, someone who switches the gate off may believe HIVE already has every
+  client again.
+- **Who tells HIVE's maintainers, and when the gate is switched on.** The spec leaves both with you. Until you say, it stays off.
+- **The eight calls the plan made where the spec is silent** (all built as written; confirm or change each):
+  1. The switch lives in Settings > Integrations, beside the feed keys, and is for owners and admins only. The spec says only "behind its own setting".
+  2. Switching on needs a tick confirming that HIVE's maintainers have been told, and the server enforces it. The tick shows whenever the switch is
+     ticked and starts ticked only when the saved setting is already on, so saving an already-on gate does not ask again.
+  3. The page shows the effect before the switch is turned on (how many clients have an accepted quote today, counted whatever the gate is set to),
+     because switching on with today's data would empty the feed.
+  4. The quote-page line appears only when a live feed key exists and the quote has a client.
+  5. "Included since" means the earliest `accepted_at` among the client's non-archived Accepted quotes.
+  6. Any member can read the client line and the last-read time; only owners and admins get the organisation counts.
+  7. One private helper defines "has an accepted quote" for both the feed and the status, so they cannot drift.
+  8. No route or proxy changes: no new endpoint, and still no `GET /api/v1/clients/{id}`, which the boundary spec mentioned but the repo has never
+     had. The boundary spec now says so.

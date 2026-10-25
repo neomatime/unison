@@ -1,7 +1,7 @@
 # Quote portal: branded email, secure client link, electronic acceptance, HIVE feed gate
 
 **Date:** 2026-10-18
-**Status:** Slices 1 and 2 built (2026-10-25); slice 3 not started
+**Status:** All three slices built (2026-10-25)
 **Origin:** The owner's brief of 2026-10-18 ("Premium Quotation Email, Digital Quotation Portal & HIVE Integration"), with two
 reference images, kept in this repo so the design can be checked against them:
 `assets/2026-10-18-quote-portal-reference-email.webp` (the branded email) and

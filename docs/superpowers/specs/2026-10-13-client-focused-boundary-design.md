@@ -42,12 +42,31 @@ Keep as they are:
 
 ## The API for HIVE
 
-- Read-only, versioned: `GET /api/v1/clients` (list, with `updated_since` and cursor paging) and `GET /api/v1/clients/{id}`.
+- Read-only, versioned: `GET /api/v1/clients` (list, with `updated_since` and cursor paging) and `GET /api/v1/clients/{id}` (the single-client route has not been built).
 - Fields: id, name, status, billing details (address, VAT number, billing email), owner, primary contact and contacts, timestamps.
   Nothing about quotes or invoices unless asked for later.
 - Authentication: one API key per organisation, shown once at creation, stored hashed, revocable, with a last-used time and an audit entry;
   created and revoked by an owner or admin in Settings. Calls are rate limited and always scoped to the key's organisation.
 - No writes, no webhooks in this version (HIVE pulls).
+
+### Narrowing the feed (optional, added with quote portal slice 3)
+
+By default the feed returns every client of the key's organisation, as described above. Quote portal slice 3 adds a setting that can narrow it
+(`2026-10-18-quote-portal-design.md`, "Slice 3: HIVE feed gate").
+
+- **The setting.** `organization_settings.hive_feed_requires_accepted_quote`, default false. An owner or admin changes it in Settings > Integrations,
+  with an acknowledgement that HIVE's maintainers have been told. It stays off until they have been told. While it is off, the feed is unchanged.
+- **The rule when on.** A client is returned only while the organisation has at least one non-archived quote for it with status Accepted, whether it
+  was accepted on the portal or marked Accepted by staff.
+- **`updatedAt` and `updated_since`.** When the setting is on, both use the later of the client's own `updated_at` and its latest `accepted_at`, so an
+  acceptance reaches an incremental pull at the acceptance time. The value can also move backwards: if a later acceptance is moved back or archived
+  while an earlier one remains, the latest `accepted_at` is the earlier one.
+- **The response shape does not change,** on or off, and nothing about quotes is added to it.
+- **Leaving the feed.** A client whose last non-archived Accepted quote is moved back (or archived) leaves the feed. UNISON cannot take back what HIVE
+  has already read, and what HIVE does with a client that leaves the feed is up to HIVE.
+- **Edits outside the feed.** While the setting is on, clients outside the feed, and their edits, do not reach HIVE. After the setting is switched off,
+  HIVE should read the whole feed once without `updated_since`: the clients that were left out have their own, older `updated_at` as `updatedAt`, so an
+  incremental pull would skip them.
 
 ## Offerings from HIVE
 
