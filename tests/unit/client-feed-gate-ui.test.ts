@@ -36,6 +36,8 @@ const FIRST_LABEL = 'Only include clients with an accepted quote'
 const ACKNOWLEDGEMENT = "I have told HIVE's maintainers that the feed will include only clients with an accepted quote"
 const NO_LIVE_KEY = 'No feed key is active yet, so nothing is reading the feed.'
 const NEVER_READ = 'HIVE has not read the feed yet'
+// What HIVE does with a client that leaves the feed is HIVE's behaviour, which this repository does not show.
+const HIVE_NOTE = 'UNISON cannot take back what HIVE has already read; what HIVE does with a client that leaves the feed is up to HIVE.'
 // What UNISON may never say about the feed: it cannot see what HIVE did with it.
 const FORBIDDEN_WORDING = /handed off|\bsynced\b|\bsynchron|\bcompleted\b|\bfailed\b|\bsent\b/i
 
@@ -359,7 +361,7 @@ test('the section explains the default, previews the effect and shows the first 
   const html = await renderGate()
   assert.match(html, /<h2[^>]*>HIVE client feed<\/h2>/)
   assert.ok(html.includes(EXPLANATION), 'the explanation, word for word')
-  assert.ok(html.includes('Today 5 of 12 clients have an accepted quote. Turning this on removes the other 7 from the feed. HIVE keeps anything it has already read.'))
+  assert.ok(html.includes(`Today 5 of 12 clients have an accepted quote. Turning this on removes the other 7 from the feed. ${HIVE_NOTE}`))
   const first = input(html, 'enabled')
   assert.ok(first, 'a checkbox named enabled')
   assert.equal(attr(first, 'type'), 'checkbox')
@@ -374,7 +376,7 @@ test('while the setting is on, the first checkbox is ticked and the acknowledgem
   const acknowledged = input(html, 'acknowledged')
   assert.ok(acknowledged, 'the acknowledgement is shown while the first box is ticked')
   assert.equal(hasAttr(acknowledged, 'checked'), true, 'it was acknowledged when the setting was switched on')
-  assert.ok(html.includes('Today 5 of 12 clients have an accepted quote. The other 7 are not in the feed. HIVE keeps anything it has already read.'), 'once on, it no longer says turning it on will remove them')
+  assert.ok(html.includes(`Today 5 of 12 clients have an accepted quote. The other 7 are not in the feed. ${HIVE_NOTE}`), 'once on, it no longer says turning it on will remove them')
   assert.doesNotMatch(html, /Turning this on removes/)
 })
 
@@ -417,6 +419,15 @@ test('the section says when no key is active and when HIVE last read the feed, i
   assert.ok(keyed.includes('HIVE last read the feed 25 Oct 2026, 00:30'), 'UTC 22:30 is half past midnight the next day in Johannesburg')
   const keyedNever = await renderGate()
   assert.ok(keyedNever.includes(NEVER_READ) && !keyedNever.includes(NO_LIVE_KEY))
+})
+
+test('no effect line claims what HIVE keeps: what HIVE does with a client that leaves the feed is up to HIVE', async () => {
+  for (const gate of [GATE, { ...GATE, enabled: true }, { ...GATE, hasLiveKey: false }, { ...GATE, lastReadAt: '2026-10-24T08:30:00+00:00' }]) {
+    const html = await renderGate(gate)
+    assert.doesNotMatch(html, /HIVE keeps/, 'UNISON does not say what HIVE keeps')
+    assert.equal(html.split(HIVE_NOTE).length - 1, 1, 'the one sentence that says UNISON cannot take it back, once')
+  }
+  assert.doesNotMatch(componentSource(), /HIVE keeps/, 'nor does the source')
 })
 
 test('the form has a button that submits, and a polite status region that is always in the page for the result', async () => {

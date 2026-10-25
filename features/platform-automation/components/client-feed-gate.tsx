@@ -7,6 +7,8 @@ import { setClientFeedGateAction } from '../client-feed-actions'
 import type { ClientFeedGateStatus } from '../client-feed-queries'
 
 const ACKNOWLEDGEMENT = "I have told HIVE's maintainers that the feed will include only clients with an accepted quote"
+// What HIVE does with a client that leaves the feed is HIVE's behaviour; UNISON cannot see it and does not describe it.
+const HIVE_NOTE = 'UNISON cannot take back what HIVE has already read; what HIVE does with a client that leaves the feed is up to HIVE.'
 
 function dateTime(value: string) {
   return new Intl.DateTimeFormat('en-ZA', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Africa/Johannesburg' }).format(new Date(value))
@@ -83,8 +85,8 @@ export function FeedGateFields({ gate, wanted, onWanted }: { gate: ClientFeedGat
       <div id={effectId} className="space-y-1 text-sm text-muted-foreground">
         <p>
           {gate.enabled
-            ? `${counts} The other ${others} are not in the feed. HIVE keeps anything it has already read.`
-            : `${counts} Turning this on removes the other ${others} from the feed. HIVE keeps anything it has already read.`}
+            ? `${counts} The other ${others} are not in the feed. ${HIVE_NOTE}`
+            : `${counts} Turning this on removes the other ${others} from the feed. ${HIVE_NOTE}`}
         </p>
         {gate.hasLiveKey ? null : <p>No feed key is active yet, so nothing is reading the feed.</p>}
         <p>{gate.lastReadAt ? `HIVE last read the feed ${dateTime(gate.lastReadAt)}` : 'HIVE has not read the feed yet'}</p>
