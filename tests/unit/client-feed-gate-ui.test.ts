@@ -24,6 +24,7 @@ const actionSource = () => read('features', 'platform-automation', 'client-feed-
 const querySource = () => read('features', 'platform-automation', 'client-feed-queries.ts')
 const componentSource = () => read('features', 'platform-automation', 'components', 'client-feed-gate.tsx')
 const pageSource = () => read('features', 'platform-automation', 'components', 'platform-pages.tsx')
+const effectSource = () => read('features', 'platform-automation', 'feed-effect.ts')
 
 const NOT_ADMINISTRATOR = 'Only an organization administrator can manage the client feed.'
 const ACKNOWLEDGE_FIRST = "Tick the box to confirm that HIVE's maintainers have been told."
@@ -136,6 +137,7 @@ const actions = await import('../../features/platform-automation/client-feed-act
 const queries = await import('../../features/platform-automation/client-feed-queries.ts')
 // Loaded when a test needs it, so that a missing component fails its own tests and not the whole file.
 const loadComponent = () => import('../../features/platform-automation/components/client-feed-gate.tsx')
+const loadEffect = () => import('../../features/platform-automation/feed-effect.ts')
 const loadPage = () => import('../../features/platform-automation/components/platform-pages.tsx')
 
 const formOf = (entries: Record<string, string> = {}) => {
@@ -492,13 +494,53 @@ test('the section says when no key is active and when HIVE last read the feed, i
   assert.ok(keyedNever.includes(NEVER_READ) && !keyedNever.includes(NO_LIVE_KEY))
 })
 
+// Every state the section can be in: the saved setting, the key, the last read, and each way the clients can divide.
+const EVERY_STATE = [
+  GATE,
+  { ...GATE, enabled: true },
+  { ...GATE, hasLiveKey: false },
+  { ...GATE, lastReadAt: '2026-10-24T08:30:00+00:00' },
+  ...[false, true].flatMap((enabled) =>
+    [[0, 0], [1, 0], [1, 1], [2, 0], [2, 1], [2, 2], [3, 2]].map(([totalClients, withAcceptedQuote]) => ({ ...GATE, enabled, totalClients, withAcceptedQuote })),
+  ),
+]
+
 test('no effect line claims what HIVE keeps: what HIVE does with a client that leaves the feed is up to HIVE', async () => {
-  for (const gate of [GATE, { ...GATE, enabled: true }, { ...GATE, hasLiveKey: false }, { ...GATE, lastReadAt: '2026-10-24T08:30:00+00:00' }]) {
+  for (const gate of EVERY_STATE) {
     const html = await renderGate(gate)
     assert.doesNotMatch(html, /HIVE keeps/, 'UNISON does not say what HIVE keeps')
-    assert.equal(html.split(HIVE_NOTE).length - 1, 1, 'the one sentence that says UNISON cannot take it back, once')
+    assert.equal(html.split(HIVE_NOTE).length - 1, gate.totalClients === 0 ? 0 : 1, 'the one sentence that says UNISON cannot take it back, once, unless there are no clients')
   }
   assert.doesNotMatch(componentSource(), /HIVE keeps/, 'nor does the source')
+})
+
+test('the effect line is the helper sentence followed by the HIVE sentence, and with no clients it is the helper sentence alone', async () => {
+  const { feedEffectSentence } = await loadEffect()
+  for (const gate of EVERY_STATE) {
+    const sentence = feedEffectSentence({ enabled: gate.enabled, total: gate.totalClients, accepted: gate.withAcceptedQuote })
+    const html = await renderGate(gate)
+    assert.ok(html.includes(`<p>${sentence}${gate.totalClients === 0 ? '' : ` ${HIVE_NOTE}`}</p>`), `the effect paragraph for ${JSON.stringify(gate)}`)
+  }
+})
+
+test('the section says the feed would be empty when no client has an accepted quote, as it does today for 2 clients and none accepted', async () => {
+  const off = await renderGate({ ...GATE, totalClients: 2, withAcceptedQuote: 0 })
+  assert.ok(off.includes(`Today none of your 2 clients have an accepted quote, so turning this on would leave the feed empty. ${HIVE_NOTE}`))
+  assert.doesNotMatch(off, /Turning this on removes/, 'not the line that hides it')
+  const on = await renderGate({ ...GATE, enabled: true, totalClients: 2, withAcceptedQuote: 0 })
+  assert.ok(on.includes(`The feed is empty: none of your 2 clients have an accepted quote. ${HIVE_NOTE}`))
+})
+
+test('the section with no clients says so and leaves the HIVE sentence out; with every client accepted it says nothing is removed', async () => {
+  for (const enabled of [false, true]) {
+    const none = await renderGate({ ...GATE, enabled, totalClients: 0, withAcceptedQuote: 0 })
+    assert.ok(none.includes('<p>There are no clients yet.</p>'))
+    assert.ok(!none.includes(HIVE_NOTE), 'the HIVE sentence is for lines about who is in the feed')
+  }
+  const all = await renderGate({ ...GATE, totalClients: 3, withAcceptedQuote: 3 })
+  assert.ok(all.includes(`Today all 3 clients have an accepted quote, so turning this on would not change who is in the feed. ${HIVE_NOTE}`))
+  const every = await renderGate({ ...GATE, enabled: true, totalClients: 3, withAcceptedQuote: 3 })
+  assert.ok(every.includes(`<p>Every client is in the feed. ${HIVE_NOTE}</p>`))
 })
 
 test('the form has a button that submits, and a polite status region that is always in the page for the result', async () => {
@@ -514,11 +556,12 @@ test('the form has a button that submits, and a polite status region that is alw
 })
 
 test('nothing the component says claims a hand-off, a sync, a completion or a failure', async () => {
-  for (const gate of [GATE, { ...GATE, enabled: true }, { ...GATE, hasLiveKey: false }, { ...GATE, lastReadAt: '2026-10-24T08:30:00+00:00' }]) {
+  for (const gate of EVERY_STATE) {
     assert.doesNotMatch(await renderGate(gate), FORBIDDEN_WORDING)
   }
   assert.doesNotMatch(await renderFields(GATE, true), FORBIDDEN_WORDING)
   assert.doesNotMatch(componentSource(), FORBIDDEN_WORDING, 'nor does its source')
+  assert.doesNotMatch(effectSource(), FORBIDDEN_WORDING, 'nor does the effect sentence module')
 })
 
 test('the component is a client form that calls the action by hand, so React does not reset the checkboxes, and renders no raw HTML', () => {
@@ -533,6 +576,13 @@ test('the component is a client form that calls the action by hand, so React doe
   assert.match(source, /event\.preventDefault\(\)/)
   assert.match(source, /startTransition\(\(\) => run\(data\)\)/)
   assert.doesNotMatch(source, /server-only|lib\/supabase|lib\/auth/, 'a client component imports no server code')
+})
+
+test('the component takes its effect sentence from the pure helper and no longer builds one itself', () => {
+  const source = componentSource()
+  assert.match(source, /import \{ FEED_HIVE_NOTE, feedEffectSentence \} from '\.\.\/feed-effect'/)
+  assert.match(source, /feedEffectSentence\(\{ enabled: gate\.enabled, total: gate\.totalClients, accepted: gate\.withAcceptedQuote \}\)/)
+  assert.doesNotMatch(source, /Turning this on removes|are not in the feed|Today /, 'the sentences live in the helper')
 })
 
 test('the acknowledgement defaults to the saved setting and is asked for in the browser as well as on the server', () => {
@@ -598,4 +648,82 @@ test('a failure of the status read does not take down the Integrations page: the
   assert.ok(healthy.includes('HIVE client feed') && healthy.includes('name="enabled"'), 'the gate section is there')
   assert.ok(healthy.includes('Client feed keys') && healthy.includes('HIVE production feed'), 'beside the key table')
   assert.ok(healthy.indexOf('HIVE client feed') < healthy.indexOf('Client feed keys'), 'above it, as before')
+})
+
+// ---------------------------------------------------------------------------------------------------------------
+// The effect sentence
+// ---------------------------------------------------------------------------------------------------------------
+
+// What the section says about who is in the feed, for every way the clients can divide, written out in full: [saved
+// setting, clients, clients with an accepted quote, the sentence]. A fixed table, not a copy of the helper's rules.
+const NO_CLIENTS = 'There are no clients yet.'
+const EFFECT_TABLE: Array<[boolean, number, number, string]> = [
+  [false, 0, 0, NO_CLIENTS],
+  [true, 0, 0, NO_CLIENTS],
+
+  [false, 1, 0, 'Today none of your 1 client has an accepted quote, so turning this on would leave the feed empty.'],
+  [false, 1, 1, 'Today all 1 client has an accepted quote, so turning this on would not change who is in the feed.'],
+  [true, 1, 0, 'The feed is empty: none of your 1 client has an accepted quote.'],
+  [true, 1, 1, 'Every client is in the feed.'],
+
+  [false, 2, 0, 'Today none of your 2 clients have an accepted quote, so turning this on would leave the feed empty.'],
+  [false, 2, 1, 'Today 1 of 2 clients have an accepted quote. Turning this on removes the other 1 from the feed.'],
+  [false, 2, 2, 'Today all 2 clients have an accepted quote, so turning this on would not change who is in the feed.'],
+  [true, 2, 0, 'The feed is empty: none of your 2 clients have an accepted quote.'],
+  [true, 2, 1, 'Today 1 of 2 clients have an accepted quote. The other 1 is not in the feed.'],
+  [true, 2, 2, 'Every client is in the feed.'],
+
+  [false, 3, 0, 'Today none of your 3 clients have an accepted quote, so turning this on would leave the feed empty.'],
+  [false, 3, 1, 'Today 1 of 3 clients have an accepted quote. Turning this on removes the other 2 from the feed.'],
+  [false, 3, 2, 'Today 2 of 3 clients have an accepted quote. Turning this on removes the other 1 from the feed.'],
+  [false, 3, 3, 'Today all 3 clients have an accepted quote, so turning this on would not change who is in the feed.'],
+  [true, 3, 0, 'The feed is empty: none of your 3 clients have an accepted quote.'],
+  [true, 3, 1, 'Today 1 of 3 clients have an accepted quote. The other 2 are not in the feed.'],
+  [true, 3, 2, 'Today 2 of 3 clients have an accepted quote. The other 1 is not in the feed.'],
+  [true, 3, 3, 'Every client is in the feed.'],
+
+  // Larger organisations, including the one the section is previewed with elsewhere in this file.
+  [false, 12, 5, 'Today 5 of 12 clients have an accepted quote. Turning this on removes the other 7 from the feed.'],
+  [true, 12, 5, 'Today 5 of 12 clients have an accepted quote. The other 7 are not in the feed.'],
+  [true, 12, 11, 'Today 11 of 12 clients have an accepted quote. The other 1 is not in the feed.'],
+  [false, 12, 0, 'Today none of your 12 clients have an accepted quote, so turning this on would leave the feed empty.'],
+  [true, 12, 12, 'Every client is in the feed.'],
+]
+
+for (const [enabled, total, accepted, sentence] of EFFECT_TABLE) {
+  test(`the effect sentence, setting ${enabled ? 'on' : 'off'}, ${accepted} of ${total} clients accepted: ${sentence}`, async () => {
+    const { feedEffectSentence } = await loadEffect()
+    assert.equal(feedEffectSentence({ enabled, total, accepted }), sentence)
+  })
+}
+
+test('the effect sentence module is pure (no directive, no import) and its HIVE sentence is word for word', async () => {
+  const source = effectSource()
+  assert.doesNotMatch(source, /^\s*['"]use (client|server)['"]/m, 'no directive: it is imported by a client component and tested by node')
+  assert.doesNotMatch(source, /^import /m, 'it imports nothing')
+  const { FEED_HIVE_NOTE } = await loadEffect()
+  assert.equal(FEED_HIVE_NOTE, HIVE_NOTE)
+  assert.doesNotMatch(source, /HIVE keeps/)
+})
+
+test('no effect sentence says handed off, sent, synced, completed or failed, or what HIVE keeps, for any count', async () => {
+  const { feedEffectSentence, FEED_HIVE_NOTE } = await loadEffect()
+  for (const enabled of [false, true]) {
+    for (let total = 0; total <= 6; total += 1) {
+      for (let accepted = 0; accepted <= total; accepted += 1) {
+        const sentence = feedEffectSentence({ enabled, total, accepted })
+        assert.doesNotMatch(sentence, FORBIDDEN_WORDING, sentence)
+        assert.doesNotMatch(sentence, /HIVE keeps/, sentence)
+      }
+    }
+  }
+  assert.doesNotMatch(FEED_HIVE_NOTE, FORBIDDEN_WORDING)
+})
+
+test('a feed that would be empty, or is, is always said plainly, whatever the number of clients', async () => {
+  const { feedEffectSentence } = await loadEffect()
+  for (let total = 1; total <= 6; total += 1) {
+    assert.match(feedEffectSentence({ enabled: false, total, accepted: 0 }), /so turning this on would leave the feed empty\.$/, `${total} clients, none accepted, turning it on`)
+    assert.match(feedEffectSentence({ enabled: true, total, accepted: 0 }), /^The feed is empty: /, `${total} clients, none accepted, already on`)
+  }
 })

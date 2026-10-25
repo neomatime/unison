@@ -5,10 +5,9 @@ import { useActionState, useId, useState, useTransition } from 'react'
 
 import { setClientFeedGateAction } from '../client-feed-actions'
 import type { ClientFeedGateStatus } from '../client-feed-queries'
+import { FEED_HIVE_NOTE, feedEffectSentence } from '../feed-effect'
 
 const ACKNOWLEDGEMENT = "I have told HIVE's maintainers that the feed will include only clients with an accepted quote"
-// What HIVE does with a client that leaves the feed is HIVE's behaviour; UNISON cannot see it and does not describe it.
-const HIVE_NOTE = 'UNISON cannot take back what HIVE has already read; what HIVE does with a client that leaves the feed is up to HIVE.'
 
 function dateTime(value: string) {
   return new Intl.DateTimeFormat('en-ZA', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Africa/Johannesburg' }).format(new Date(value))
@@ -74,8 +73,7 @@ export function FeedGateFields({ gate, wanted, onWanted }: { gate: ClientFeedGat
   const id = useId()
   const helpId = `${id}-help`
   const effectId = `${id}-effect`
-  const counts = `Today ${gate.withAcceptedQuote} of ${gate.totalClients} clients have an accepted quote.`
-  const others = gate.totalClients - gate.withAcceptedQuote
+  const effect = feedEffectSentence({ enabled: gate.enabled, total: gate.totalClients, accepted: gate.withAcceptedQuote })
 
   return (
     <>
@@ -83,11 +81,7 @@ export function FeedGateFields({ gate, wanted, onWanted }: { gate: ClientFeedGat
         By default HIVE reads every client of this organisation. Turn this on to include only clients with an accepted quote.
       </p>
       <div id={effectId} className="space-y-1 text-sm text-muted-foreground">
-        <p>
-          {gate.enabled
-            ? `${counts} The other ${others} are not in the feed. ${HIVE_NOTE}`
-            : `${counts} Turning this on removes the other ${others} from the feed. ${HIVE_NOTE}`}
-        </p>
+        <p>{gate.totalClients === 0 ? effect : `${effect} ${FEED_HIVE_NOTE}`}</p>
         {gate.hasLiveKey ? null : <p>No feed key is active yet, so nothing is reading the feed.</p>}
         <p>{gate.lastReadAt ? `HIVE last read the feed ${dateTime(gate.lastReadAt)}` : 'HIVE has not read the feed yet'}</p>
       </div>
