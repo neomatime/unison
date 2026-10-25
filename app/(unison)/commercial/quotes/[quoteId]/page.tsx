@@ -8,6 +8,7 @@ import { QuoteInvoices } from '@/features/documents/components/quote-invoices'
 import { getDocument } from '@/features/documents/queries/get-document'
 import { listHiveOfferings } from '@/features/documents/queries/list-hive-offerings'
 import { isDraftStatus } from '@/features/documents/vocabulary'
+import { HiveFeedStatus } from '@/features/platform-automation/components/hive-feed-status'
 import { ClientResponsePanel } from '@/features/quote-portal/components/client-response-panel'
 import { DocumentTermsPanel } from '@/features/terms/components/document-terms-panel'
 
@@ -45,6 +46,7 @@ async function QuoteWorkspace({ quoteId }: { quoteId: string }) {
       <DocumentTermsPanel kind="quote" id={quoteId} />
       <EmailSection kind="quote" id={quoteId} />
       <ClientResponsePanel quoteId={quoteId} />
+      <HiveFeedStatus quoteId={quoteId} />
       <QuoteInvoices quoteId={quoteId} />
       <RecordWorkspaceSections workspace={workspace} sections={['timeline']} />
     </>
