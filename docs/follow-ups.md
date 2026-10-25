@@ -1402,7 +1402,7 @@ The full `pnpm test:rls` run against production passed 449 of 451. The two failu
 
 Slice 2 of 3 is built: Accept and Decline on the client page, with a six-digit code emailed to the address the quote was sent to; an append-only record
 of every decision; the quote's status moving to Accepted or Declined; a notice in the app and an email to the quote's owner; an acknowledgement email
-to the client; a follow-up task when a client declines; and the recorded response on the staff quote page. Slice 3 (the HIVE feed gate) is not started.
+to the client; a follow-up task when a client declines; and the recorded response on the staff quote page. Slice 3 (the HIVE feed gate) is built; see the next section.
 Spec: `docs/superpowers/specs/2026-10-18-quote-portal-design.md`. Plan: `docs/superpowers/plans/2026-10-20-quote-portal-slice-2.md`. The work is on the
 branch `claude/gallant-dewdney-af21e8`: 17 commits, `d7f5b96..9005b98` (the plan, its corrections, the build and the final review fixes), plus the docs
 commit `docs: record quote portal slice 2`. It is not merged into main and not pushed yet; that happens when the owner asks. The database changes below are
