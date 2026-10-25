@@ -4,7 +4,8 @@
 //
 //   idle --Accept/Decline--> confirm --"Email me a code"--> code --Confirm--> done
 //                              ^  <------------ Back ---------- |
-//   a stale page, or a quote no longer open, ends in refresh; from there (the page refreshed) Accept or Decline again.
+//   a stale page, a quote no longer open or a link no longer valid ends in refresh; from there (the page refreshed)
+//   Accept or Decline again.
 //
 // - One request at a time. While a code request or a decision is pending, every press and every edit is ignored (the
 //   same state comes back), so a double press of Confirm sends one decision. An answer arrives only for the request that
@@ -13,7 +14,7 @@
 //   by the server as incomplete. "Email me a code" needs the name, position and organisation valid and the box ticked.
 // - The consent box is unticked whenever a decision is opened: a tick given for one decision never carries to the other.
 import type { DecideRefusal, DecisionKind } from '../../lib/quote-portal/types.ts'
-import { CONSENT_ACCEPT, CONSENT_DECLINE, DECISION_RECORDED, REFUSAL_MESSAGES, codeSentMessage } from './copy.ts'
+import { CONSENT_ACCEPT, CONSENT_DECLINE, DECISION_RECORDED, REFUSAL_MESSAGES, codeSentMessage, replayedMessage } from './copy.ts'
 import { normaliseDecisionInput, type DecisionInputErrors } from './decision.ts'
 
 export type FlowStep = 'idle' | 'confirm' | 'code' | 'done' | 'refresh'
@@ -194,15 +195,23 @@ export function flowReducer(state: FlowState, action: FlowAction): FlowState {
     case 'submit': {
       if (state.pending || state.step !== 'code' || state.needsNewCode) return state
       const error = checkCode(state.code)
-      if (error) return { ...state, errors: { code: error }, message: null }
+      // Enter in the code field is not a press of a button, so focus does not move and nothing would be read out: the
+      // error goes to the live region too, as the confirm step's "incomplete" does.
+      if (error) return { ...state, errors: { code: error }, message: error }
       return { ...state, pending: 'decision', errors: {}, message: null }
     }
 
     case 'decision_answer': {
       if (state.pending !== 'decision') return state
       const { answer } = action
-      if (answer.ok) return { ...state, step: 'done', pending: null, errors: {}, message: DECISION_RECORDED }
-      if (answer.reason === 'stale' || answer.reason === 'not_open') return { ...state, step: 'refresh', pending: null, errors: {}, message: answer.message }
+      // A replay is a decision that was already on record (a second tab, a repeated press): nothing was written, and
+      // what is on record can differ from what was just tried, so say that, with the recorded outcome.
+      if (answer.ok) return { ...state, step: 'done', pending: null, errors: {}, message: answer.replay ? replayedMessage(answer.decision) : DECISION_RECORDED }
+      // The page is out of date, the quote is no longer open or the link is no longer valid (revoked, or the quote archived
+      // mid-flow): nothing more can be done from here, and the refreshed page shows what is true.
+      if (answer.reason === 'stale' || answer.reason === 'not_open' || answer.reason === 'invalid') {
+        return { ...state, step: 'refresh', pending: null, errors: {}, message: answer.message }
+      }
       const fieldErrors = confirmErrors(answer.errors)
       if (!isEmpty(fieldErrors)) return { ...state, step: 'confirm', pending: null, errors: fieldErrors, message: answer.message }
       const spent = codeSpent(answer)

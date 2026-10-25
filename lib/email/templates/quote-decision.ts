@@ -17,6 +17,7 @@
 // "> " so a comment can never pass for a line of the email itself.
 
 import {
+  CODE_EMAIL_LATEST_NOTE,
   CODE_EMAIL_SUBJECT,
   acknowledgementAccepted,
   acknowledgementDeclined,
@@ -27,6 +28,7 @@ import {
   codeEmailSentence,
   ownerNoticeTitle,
 } from '../../../features/quote-portal/copy.ts'
+import { COMMENTS_MAX } from '../../../features/quote-portal/decision.ts'
 import type { DecisionKind } from '../../quote-portal/types.ts'
 import type { EmailTemplate } from './invitation.ts'
 import { assertSafeUrl, escapeHtml, sanitizeLine } from './safe.ts'
@@ -78,8 +80,8 @@ const MONO = "'Courier New',Courier,monospace"
 
 const STRAPLINE = 'PEOPLE | STRATEGY | PROGRESS'
 
-/** The client's comments are cut to this many characters: the number the portal's own validator and the database allow. */
-const COMMENTS_MAX = 2000
+// The client's comments are cut to COMMENTS_MAX characters (features/quote-portal/decision.ts): the number the portal's
+// own validator and the database allow.
 
 // Owner-facing wording (the owner's notice is staff mail, not the client's). Nothing here is spliced with client text.
 const OPEN_LABEL = 'OPEN QUOTATION'
@@ -91,18 +93,30 @@ const NUMBER_MAX = 60
 const SUBJECT_NAME_MAX = 80
 
 const SIX_DIGITS = /^\d{6}$/
-// Bidi marks, embeddings, overrides and isolates, and every control character except the whitespace ones that
-// sanitizeLine already folds into a space (tab, line feed, vertical tab, form feed, carriage return).
+// The Arabic letter mark, bidi marks, embeddings, overrides and isolates, and every control character except the
+// whitespace ones that sanitizeLine already folds into a space (tab, line feed, vertical tab, form feed, carriage return).
 // eslint-disable-next-line no-control-regex
-const LINE_STRIP = /[\u0000-\u0008\u000e-\u001f\u007f-\u009f\u200e\u200f\u202a-\u202e\u2066-\u2069]/g
+const LINE_STRIP = /[\u0000-\u0008\u000e-\u001f\u007f-\u009f\u061c\u200e\u200f\u202a-\u202e\u2066-\u2069]/g
 // The same for comments, which also keep their line feed (and tab).
 // eslint-disable-next-line no-control-regex
-const COMMENT_STRIP = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f-\u009f\u200e\u200f\u202a-\u202e\u2066-\u2069]/g
+const COMMENT_STRIP = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f-\u009f\u061c\u200e\u200f\u202a-\u202e\u2066-\u2069]/g
 // eslint-disable-next-line no-control-regex
 const URL_FORBIDDEN = /[\s\u0000-\u001f\u007f]/
 
-/** A client-supplied single-line value: stripped of bidi and control characters, one line, trimmed and capped. */
-const line = (value: string, maxLength?: number) => sanitizeLine(value.replace(LINE_STRIP, ''), maxLength)
+/** The longest single-line value kept when a caller names no cap: sanitizeLine's own default. */
+const LINE_MAX = 200
+
+/**
+ * A client-supplied single-line value: stripped of bidi and control characters, one line, trimmed and capped at
+ * `maxLength` CHARACTERS, with an ellipsis after a cut. sanitizeLine counts UTF-16 units, so a cut by it can land between
+ * the two halves of an emoji and leave a lone surrogate (which is not text: a mail library may refuse the subject or
+ * print a replacement character). It is asked only to tidy the line, and the cap is applied here by characters.
+ */
+function line(value: string, maxLength = LINE_MAX): string {
+  const tidy = sanitizeLine(value.replace(LINE_STRIP, ''), Number.POSITIVE_INFINITY)
+  const characters = Array.from(tidy)
+  return characters.length > maxLength ? `${characters.slice(0, maxLength).join('')}\u2026` : tidy
+}
 
 function assertDecision(decision: unknown, label: string): DecisionKind {
   // Never echoes the value: whatever it is, it is not one of the two this email knows how to word.
@@ -288,10 +302,20 @@ export function quoteCodeEmailTemplate(data: QuoteCodeEmailData): EmailTemplate 
     heading(CODE_EMAIL_SUBJECT) +
       block(codeBlock, 22) +
       block(bodyText(sentence), 22) +
+      block(bodyText(CODE_EMAIL_LATEST_NOTE), 8) +
       block(reference(codeEmailQuoteLine(quoteNumber)) + (clientName ? reference(codeEmailClientLine(clientName)) : ''), 22),
   )
 
-  const text = [CODE_EMAIL_SUBJECT, '', sentence, '', codeEmailQuoteLine(quoteNumber), ...(clientName ? [codeEmailClientLine(clientName)] : [])].join('\n')
+  const text = [
+    CODE_EMAIL_SUBJECT,
+    '',
+    sentence,
+    '',
+    CODE_EMAIL_LATEST_NOTE,
+    '',
+    codeEmailQuoteLine(quoteNumber),
+    ...(clientName ? [codeEmailClientLine(clientName)] : []),
+  ].join('\n')
 
   return { subject: CODE_EMAIL_SUBJECT, html, text }
 }
@@ -336,8 +360,9 @@ export function quoteOwnerNoticeEmailTemplate(data: QuoteOwnerNoticeEmailData): 
   const reason = decision === 'declined' && data.declineReason ? line(data.declineReason) : ''
   const comments = decision === 'declined' ? tidyComments(data.declineComments) : null
 
-  // The subject keeps the client's name short so the number after it is never cut off; the body has the longer name.
-  const subject = sanitizeLine(ownerNoticeTitle(line(data.clientName, SUBJECT_NAME_MAX), decision, quoteNumber))
+  // The subject keeps the client's name short so the number after it is never cut off; the body has the longer name. The
+  // whole subject is capped by characters too, so a cut can never land in the middle of an emoji.
+  const subject = line(ownerNoticeTitle(line(data.clientName, SUBJECT_NAME_MAX), decision, quoteNumber))
   const title = ownerNoticeTitle(clientName, decision, quoteNumber)
 
   const details = table(

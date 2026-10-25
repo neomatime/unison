@@ -67,8 +67,19 @@ export function acceptedBanner(date: string | null): string {
   return date ? `This quotation was accepted on ${date}.` : 'This quotation has been accepted.'
 }
 
-/** The banner on a declined quote. The record keeps no decline date, so it states the fact and no date. */
+/**
+ * The banner on a declined quote that has no day to show: one declined by hand, or from another link, since the record
+ * keeps no decline date of its own. A quote this link declined has its day from the response (declinedBanner).
+ */
 export const DECLINED_BANNER = 'This quotation has been declined.'
+
+/**
+ * DRAFTED for the owner's approval: the banner on a quote this link declined, mirroring acceptedBanner. The date is the
+ * day it was declined, in South African time, or null when it is not known (then it is the plain banner).
+ */
+export function declinedBanner(date: string | null): string {
+  return date ? `This quotation was declined on ${date}.` : DECLINED_BANNER
+}
 
 /** The label of the retry button on the portal's error page. */
 export const RETRY_LABEL = 'Try again'
@@ -130,8 +141,8 @@ export function ownerNoticeTitle(client: string, decision: DecisionKind, number:
 // functions straight below (the client emails' subject, greeting and reference lines), which put the quotation number,
 // the client or the signatory's name in, and codeSentMessage, which puts in the masked address the code went to;
 // callers pass plain text, the page prints it as a text node, and the email templates escape it for HTML and strip
-// line breaks from anything that reaches a subject. The other numbers in this section are the count of attempts left
-// and the minutes a code lasts.
+// line breaks from anything that reaches a subject. replayedMessage puts in the recorded decision, one of two fixed
+// words. The other numbers in this section are the count of attempts left and the minutes a code lasts.
 // ---------------------------------------------------------------------------------------------------------------
 
 /** The subject of the client's acknowledgement. The appendix gives the sentence of that email, not its subject. */
@@ -153,6 +164,13 @@ export function codeEmailQuoteLine(number: string): string {
 export function codeEmailClientLine(client: string): string {
   return `Client: ${client}`
 }
+
+/**
+ * DRAFTED for the owner's approval: the plain line after the confirmation code email's sentence. A client who asks for a
+ * new code and then types the old one is told it is not correct and loses an attempt; this says which code works. It is
+ * a line of its own because the sentence above it is the appendix's, word for word.
+ */
+export const CODE_EMAIL_LATEST_NOTE = 'Only the most recent code works.'
 
 /** The consent wording of a decline: the appendix says only that decline has "its own, shorter, confirmation". */
 export const CONSENT_DECLINE = 'I confirm that I am authorised to decline this quotation on behalf of the organisation.'
@@ -200,13 +218,26 @@ export const FLOW_BUTTONS = {
   back: 'Back',
 } as const
 
-/** Where the code went, once it has been sent: the address is the masked one (j***@acme.co.za), the minutes the database's expiry. */
+/**
+ * Where the code went, once it has been sent: the address is the masked one (j***@acme.co.za), the minutes the database's
+ * expiry. The last sentence is for the client who asks for a new code and then types the old one (CODE_EMAIL_LATEST_NOTE
+ * says the same in the email).
+ */
 export function codeSentMessage(maskedEmail: string, minutes: number): string {
-  return `We have emailed a six-digit code to ${maskedEmail}. It expires in ${minutes} minutes.`
+  return `We have emailed a six-digit code to ${maskedEmail}. It expires in ${minutes} minutes. ${CODE_EMAIL_LATEST_NOTE}`
 }
 
 /** Shown for the moment between a recorded decision and the refreshed page that shows it. */
 export const DECISION_RECORDED = 'Thank you. Your response has been recorded.'
+
+/**
+ * DRAFTED for the owner's approval: shown instead of DECISION_RECORDED when the answer was a replay, which is to say when
+ * this link had already responded and nothing was written (a second tab, a repeated press). It states what is on
+ * record, which can differ from what the client just tried: accept in one tab, decline in the other.
+ */
+export function replayedMessage(decision: DecisionKind): string {
+  return `This quotation was already responded to: your response is recorded as ${decision}.`
+}
 
 /** What the client is told when a field of the decision form is not valid. One message per field; none repeats what was typed. */
 export const FIELD_ERRORS = {
@@ -235,7 +266,8 @@ export const REFUSAL_MESSAGES = {
   code_missing: 'There is no active confirmation code for this link. Please request a new code.',
   code_expired: 'That code has expired. Please request a new code.',
   code_locked: 'Too many incorrect attempts were made with that code. Please request a new code.',
-  throttled: 'There have been too many attempts for now. Please wait a while and try again, or contact your HIMARK contact.',
+  // True of both limits: the one that passes with time and the cap on a link's failures, after which the link is dead for good.
+  throttled: 'There have been too many attempts for now. Please wait a while and try again. If it still does not work, please ask your HIMARK contact for a new link.',
   already_decided: 'A response has already been recorded for this quotation, so no code is needed. Please refresh the page.',
   send_failed: 'We could not send your confirmation code just now. Please try again in a moment.',
 } as const

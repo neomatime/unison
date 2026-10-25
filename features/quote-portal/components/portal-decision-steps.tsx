@@ -254,6 +254,7 @@ export function CodeStep({
   state,
   idBase,
   headingRef,
+  newCodeRef,
   onEdit,
   onConfirm,
   onRequestCode,
@@ -262,6 +263,8 @@ export function CodeStep({
   state: FlowState
   idBase: string
   headingRef: RefObject<HTMLHeadingElement | null>
+  /** On "Send a new code", which takes focus when a code is spent (Confirm is disabled by then). */
+  newCodeRef: RefObject<HTMLButtonElement | null>
   onEdit: (field: FlowText, value: string) => void
   onConfirm: (trigger: HTMLElement) => void
   onRequestCode: (trigger: HTMLElement) => void
@@ -303,7 +306,7 @@ export function CodeStep({
         <button type="button" disabled={busy || state.needsNewCode} onClick={(event) => onConfirm(event.currentTarget)} className={PRIMARY}>
           {state.pending === 'decision' ? FLOW_BUTTONS.confirming : FLOW_BUTTONS.confirm}
         </button>
-        <button type="button" disabled={busy} onClick={(event) => onRequestCode(event.currentTarget)} className={OUTLINE}>
+        <button ref={newCodeRef} type="button" disabled={busy} onClick={(event) => onRequestCode(event.currentTarget)} className={OUTLINE}>
           {state.pending === 'code' ? FLOW_BUTTONS.sending : FLOW_BUTTONS.newCode}
         </button>
         <button type="button" disabled={busy} onClick={onBack} className={cn(BUTTON, 'text-foreground underline-offset-2 hover:underline')}>

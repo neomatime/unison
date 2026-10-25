@@ -109,7 +109,7 @@ const PREFILL = { name: 'A. Client', organisation: 'TEST Company' }
 const run = (state: FlowState, ...actions: FlowAction[]) => actions.reduce(flowReducer, state)
 const edit = (field: Extract<FlowAction, { type: 'edit' }>['field'], value: string): FlowAction => ({ type: 'edit', field, value })
 const CODE_SENT: FlowAction = { type: 'code_answer', answer: { ok: true, maskedEmail: MASKED, expiresInMinutes: 10 } }
-const refused = (reason: Parameters<typeof refusalMessage>[0] & ('stale' | 'not_open' | 'code_wrong' | 'code_locked' | 'code_expired' | 'throttled'), attemptsLeft?: number): FlowAction => ({
+const refused = (reason: Parameters<typeof refusalMessage>[0] & ('invalid' | 'stale' | 'not_open' | 'code_wrong' | 'code_locked' | 'code_expired' | 'throttled'), attemptsLeft?: number): FlowAction => ({
   type: 'decision_answer',
   answer: { ok: false, reason, attemptsLeft, message: refusalMessage(reason, attemptsLeft) },
 })
@@ -167,8 +167,35 @@ test('the happy accept: Accept opens the confirm step, a code is emailed, the co
   assert.equal(done.step, 'done')
   assert.equal(done.pending, null)
   assert.equal(done.message, copy.DECISION_RECORDED)
-  // A replay (the same decision already recorded, from a second tab) is done too.
+  // A replay (the same decision already recorded, from a second tab) is done too; what it says is the next test's.
   assert.equal(flowReducer(deciding, { type: 'decision_answer', answer: { ok: true, decision: 'accepted', replay: true } }).step, 'done')
+})
+
+test('a replay is shown as what it is, the response already on record, and never as a new success', () => {
+  // Two tabs: the first accepted, the second (with a code it had been sent before) tries to decline and is answered with
+  // what is on record. The second tab must not say "Your response has been recorded" for a decision that was not recorded.
+  const declining = confirming('declined')
+  const replayed = flowReducer(declining, { type: 'decision_answer', answer: { ok: true, decision: 'accepted', replay: true } })
+  assert.equal(replayed.step, 'done')
+  assert.equal(replayed.pending, null)
+  assert.equal(replayed.message, copy.replayedMessage('accepted'), 'the recorded outcome, not the one just tried')
+  assert.notEqual(replayed.message, copy.DECISION_RECORDED)
+  assert.match(replayed.message ?? '', /already responded to/)
+  assert.match(replayed.message ?? '', /accepted/)
+  assert.doesNotMatch(replayed.message ?? '', /declined/)
+
+  const replayedDecline = flowReducer(confirming('accepted'), { type: 'decision_answer', answer: { ok: true, decision: 'declined', replay: true } })
+  assert.equal(replayedDecline.step, 'done')
+  assert.equal(replayedDecline.message, copy.replayedMessage('declined'))
+  assert.match(replayedDecline.message ?? '', /declined/)
+  assert.doesNotMatch(replayedDecline.message ?? '', /accepted/)
+
+  // A decision that was recorded just now keeps today's message, whichever it was.
+  for (const decision of ['accepted', 'declined'] as const) {
+    const fresh = flowReducer(confirming(decision), { type: 'decision_answer', answer: { ok: true, decision, replay: false } })
+    assert.equal(fresh.step, 'done', decision)
+    assert.equal(fresh.message, copy.DECISION_RECORDED, decision)
+  }
 })
 
 test('the happy decline: a reason and comments are optional, and the decline wording goes with it', () => {
@@ -277,12 +304,21 @@ test('a code that is not six digits is refused beside the field and never sent',
     const next = run(code, edit('code', typed), { type: 'submit' })
     assert.equal(next.pending, null, JSON.stringify(typed))
     assert.deepEqual(next.errors, { code: copy.FIELD_ERRORS.code })
+    // Enter in the field is not a press of a button, so focus does not move and nothing would be read out: the polite
+    // live region says it, as it does for the confirm step's "incomplete".
+    assert.equal(next.message, copy.FIELD_ERRORS.code, `${JSON.stringify(typed)}: the error is announced`)
   }
+  // A good code takes the announcement away again.
+  const retried = run(code, edit('code', '12'), { type: 'submit' }, edit('code', '204816'), { type: 'submit' })
+  assert.equal(retried.pending, 'decision')
+  assert.equal(retried.message, null)
   assert.equal(run(code, edit('code', ' 204816 '), { type: 'submit' }).pending, 'decision', 'spaces at the ends are trimmed, as on the server')
 })
 
-test('a stale page or a quote no longer open ends in the refresh state, from which the client can start again', () => {
-  for (const reason of ['stale', 'not_open'] as const) {
+test('a stale page, a quote no longer open or a link no longer valid ends in the refresh state, from which the client can start again', () => {
+  // `invalid` is a link revoked, or a quote archived, while the client was in the flow. Left on the code step, the client
+  // could go on pressing Confirm against a link that will never take a decision; the refreshed page shows what is true.
+  for (const reason of ['stale', 'not_open', 'invalid'] as const) {
     const ended = flowReducer(confirming(), refused(reason))
     assert.equal(ended.step, 'refresh', reason)
     assert.equal(ended.pending, null)
@@ -422,6 +458,7 @@ installComponentLoader({
 })
 const { PortalDecisionFlow } = await import('../../features/quote-portal/components/portal-decision-flow.tsx')
 const { CodeStep, ConfirmStep } = await import('../../features/quote-portal/components/portal-decision-steps.tsx')
+const { PortalQuoteView } = await import('../../features/quote-portal/components/portal-quote-view.tsx')
 
 const CONFIRMATION = buildPortalQuoteModel(full()).confirmation
 const noop = () => {}
@@ -442,7 +479,9 @@ const renderConfirm = (state: FlowState) =>
   )
 const renderCode = (state: FlowState) =>
   renderToStaticMarkup(
-    createElement(CodeStep, { state, idBase: 'flow', headingRef: { current: null }, onEdit: noop, onConfirm: noop, onRequestCode: noop, onBack: noop }),
+    createElement(CodeStep, {
+      state, idBase: 'flow', headingRef: { current: null }, newCodeRef: { current: null }, onEdit: noop, onConfirm: noop, onRequestCode: noop, onBack: noop,
+    }),
   )
 
 test('the panel opens with Accept and Decline as buttons of type button, a polite live region, and nothing to type', () => {
@@ -562,6 +601,49 @@ test('the code step has one numeric one-time-code field of six, Confirm, Send a 
 })
 
 // ---------------------------------------------------------------------------------------------------------------
+// The whole quote page, rendered: what the response panel says in each state
+// ---------------------------------------------------------------------------------------------------------------
+
+const renderPage = (quote: PortalQuoteFull) => renderToStaticMarkup(createElement(PortalQuoteView, { token: TOKEN, quote }))
+/** The label of the response panel, which is what a screen reader names it by. */
+const panelLabel = (html: string) => attr(tags(html, 'aside')[0], 'aria-label')
+
+test('an open quote that this link has not answered has the "Ready to respond?" heading, the flow and the panel named by it', () => {
+  const html = renderPage(full())
+  assert.equal(panelLabel(html), copy.READY_TO_RESPOND)
+  assert.equal((html.match(new RegExp(copy.READY_TO_RESPOND.replace('?', '\\?'), 'g')) ?? []).length, 2, 'the heading and the label')
+  assert.match(html, /id="portal-respond"/)
+  assert.ok(html.includes(copy.ACCEPT_QUOTATION) && html.includes(copy.DECLINE_QUOTATION), 'the buttons')
+  assert.ok(!html.includes(copy.ALREADY_RESPONDED_NOTE))
+})
+
+test('a reopened quote whose link has already responded has the note and no "Ready to respond?" heading above it', () => {
+  // Staff reopened the quote: it is open again, but this link decided before. The heading invites a response; the note
+  // says there is none to give, so the heading must not sit above it.
+  const html = renderPage(full({ response: { decision: 'accepted', decided_at: '2026-10-19T08:00:00+00:00' } }))
+  assert.ok(!html.includes(copy.READY_TO_RESPOND), 'no heading, and the panel is not labelled by it either')
+  assert.ok(!/id="portal-respond"/.test(html))
+  assert.equal(panelLabel(html), copy.DOWNLOAD_PDF, 'the panel falls back to its Download PDF label')
+  assert.ok(html.includes(copy.ALREADY_RESPONDED_NOTE), 'the note is there')
+  assert.ok(html.includes(copy.DOWNLOAD_PDF), 'and so is the download')
+  assert.ok(!html.includes(copy.ACCEPT_QUOTATION) && !html.includes(copy.DECLINE_QUOTATION), 'with nothing to press')
+  assert.equal(tags(html, 'button').length, 0)
+  // With no heading above it the note starts the panel, so it has no top margin of its own (the heading's gap was mt-4).
+  const at = html.indexOf(copy.ALREADY_RESPONDED_NOTE)
+  const opening = html.slice(html.lastIndexOf('<p ', at), at)
+  assert.match(opening, /^<p class="[^"]*">$/, 'the note is a paragraph of its own')
+  assert.doesNotMatch(opening, /\bmt-\d/)
+})
+
+test('a decided quote never carries the heading either', () => {
+  for (const state of ['accepted', 'declined'] as const) {
+    const html = renderPage(full({ state }, { status: state === 'accepted' ? 'Accepted' : 'Declined' }))
+    assert.ok(!html.includes(copy.READY_TO_RESPOND), state)
+    assert.equal(panelLabel(html), copy.DOWNLOAD_PDF, state)
+  }
+})
+
+// ---------------------------------------------------------------------------------------------------------------
 // Source guards: what a static render cannot show
 // ---------------------------------------------------------------------------------------------------------------
 
@@ -614,6 +696,25 @@ test('the flow is a client component that calls the two actions from ../actions/
   // Every request goes through the reducer first, which ignores a second press while one is pending.
   assert.match(flow, /flowReducer\(/)
   assert.doesNotMatch(read(...STEPS), /actions\/|useRouter|'use client'/, 'the steps only lay out what they are given')
+})
+
+// Rendered markup cannot show focus, so this one is a source guard. When a code is spent (locked, expired, out of
+// attempts) Confirm is disabled by the very answer that spent it, so putting focus back on it would drop it on the page.
+test('when a code is spent, focus goes to "Send a new code" and not to the Confirm button the answer has just disabled', () => {
+  const flow = read(...FLOW)
+  const confirm = flow.slice(flow.indexOf('async function confirm('), flow.indexOf('const formOpen'))
+  assert.match(confirm, /\} else if \(after\.needsNewCode\) \{\n(?:\s+\/\/[^\n]*\n)*\s+newCodeRef\.current\?\.focus\(\)\n\s+\} else \{\n\s+restoreFocus\(trigger\)\n\s+\}/)
+  assert.match(flow, /const newCodeRef = useRef<HTMLButtonElement>\(null\)/)
+  assert.match(flow, /<CodeStep\b[^>]*\bnewCodeRef=\{newCodeRef\}/)
+  // The ref is on the "Send a new code" button of the code step, and on no other.
+  const steps = read(...STEPS)
+  assert.equal((steps.match(/ref=\{newCodeRef\}/g) ?? []).length, 1)
+  assert.match(steps, /<button ref=\{newCodeRef\} type="button" disabled=\{busy\} onClick=\{\(event\) => onRequestCode\(event\.currentTarget\)\}[^>]*>\s*\{state\.pending === 'code' \? FLOW_BUTTONS\.sending : FLOW_BUTTONS\.newCode\}/)
+  // And the spent code is what the model says it is, so that branch is reached: Confirm is disabled by it, and the same
+  // answer leaves the new-code button enabled.
+  const locked = run(ready('accepted'), { type: 'request_code' }, CODE_SENT, edit('code', '111111'), { type: 'submit' }, refused('code_locked'))
+  assert.equal(locked.needsNewCode, true)
+  assert.equal(locked.pending, null)
 })
 
 test('no file of the portal sets inner HTML, and the flow module is pure', () => {

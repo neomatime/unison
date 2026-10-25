@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import test from 'node:test'
 
 import * as copy from '../../features/quote-portal/copy.ts'
-import { maskEmail, normaliseDecisionInput, refusalMessage } from '../../features/quote-portal/decision.ts'
+import { COMMENTS_MAX, maskEmail, normaliseDecisionInput, refusalMessage } from '../../features/quote-portal/decision.ts'
 import { DECLINE_REASONS } from '../../lib/quote-portal/types.ts'
 import type { DecideRefusal, IssueCodeRefusal } from '../../lib/quote-portal/types.ts'
 
@@ -283,6 +283,7 @@ for (const { field, key, max } of SINGLE_LINE) {
       'Pat \u2067Client',
       'Pat \u2068Client',
       'Pat \u2069Client',
+      'Pat \u061cClient', // the Arabic letter mark, which also reorders text
       'Pat \ud800 Client',
     ]
     for (const text of hostile) {
@@ -337,6 +338,7 @@ test('comments: a null byte, any other control character, a lone carriage return
     'a\u2067b',
     'a\u2068b',
     'a\u2069b',
+    'a\u061cb', // the Arabic letter mark
     'a\udc00b',
   ]
   for (const text of hostile) {
@@ -516,4 +518,56 @@ test('the drafted words other than the refusals are present', () => {
   assert.ok(copy.ALREADY_RESPONDED_NOTE.trim().length > 0)
   assert.ok(Object.keys(copy.STEP_LABELS).length >= 3)
   for (const label of Object.values(copy.STEP_LABELS)) assert.ok(label.trim().length > 0)
+})
+
+// ---------------------------------------------------------------------------------------------------------------
+// The final review's copy (all DRAFTED for the owner's approval)
+// ---------------------------------------------------------------------------------------------------------------
+
+test('the throttled message is true both for a short pause and for a link that is dead for good', () => {
+  // The hourly limit passes with time; the cap on a link's lifetime of failures does not. One message covers both: wait
+  // and try again, and if that does not help the link itself has to be replaced, which only the client's contact can do.
+  const message = refusalMessage('throttled')
+  assert.match(message, /\bwait\b/i, 'for the pause')
+  assert.match(message, /try again/i)
+  assert.match(message, /still does not work/i, 'and for the link that never will')
+  assert.match(message, /ask your HIMARK contact for a new link/i)
+  assert.doesNotMatch(message, /a while and try again, or contact/, 'the old wording, which offered contact only as an alternative to waiting')
+})
+
+test('"Send a new code" is told that only the most recent code works, in the page and in the email', () => {
+  assert.equal(copy.CODE_EMAIL_LATEST_NOTE, 'Only the most recent code works.')
+  const sent = copy.codeSentMessage('j***@acme.co.za', 10)
+  assert.ok(sent.includes('j***@acme.co.za') && sent.includes('10 minutes'), 'still says where the code went and for how long')
+  assert.ok(sent.endsWith(` ${copy.CODE_EMAIL_LATEST_NOTE}`), 'the same sentence, last')
+  // The appendix's sentence is untouched: it is pinned to the spec by value (quote-portal-decision.test.ts, above).
+  assert.ok(!copy.codeEmailSentence('123456').includes('most recent'))
+})
+
+test('a replay is worded as an earlier response, with the outcome on record, and a declined banner carries its date', () => {
+  assert.equal(copy.replayedMessage('accepted'), 'This quotation was already responded to: your response is recorded as accepted.')
+  assert.equal(copy.replayedMessage('declined'), 'This quotation was already responded to: your response is recorded as declined.')
+  assert.notEqual(copy.replayedMessage('accepted'), copy.DECISION_RECORDED)
+
+  assert.equal(copy.declinedBanner('19 October 2026'), 'This quotation was declined on 19 October 2026.')
+  assert.equal(copy.declinedBanner(null), copy.DECLINED_BANNER, 'no date, no clause: the plain banner')
+  assert.equal(copy.acceptedBanner('19 October 2026').replace('accepted', 'declined'), copy.declinedBanner('19 October 2026'), 'it mirrors the accepted one')
+})
+
+test('each word added by the final review is marked as drafted, and plain ASCII', () => {
+  const source = read('features', 'quote-portal', 'copy.ts')
+  for (const name of ['export const CODE_EMAIL_LATEST_NOTE', 'export function replayedMessage', 'export function declinedBanner']) {
+    const at = source.indexOf(name)
+    assert.ok(at > -1, `${name} is exported`)
+    const comment = source.slice(source.lastIndexOf('\n\n', at), at)
+    assert.match(comment, /DRAFTED for the owner's approval/, `${name} is marked as drafted in the comment above it`)
+  }
+  const added = [copy.CODE_EMAIL_LATEST_NOTE, copy.replayedMessage('accepted'), copy.replayedMessage('declined'), copy.declinedBanner('1 January 2026'), refusalMessage('throttled')]
+  for (const words of added) assert.match(words, /^[\x20-\x7e]+$/, 'plain ASCII, so the apostrophe is the straight one')
+})
+
+test('the comments limit is declared once, in decision.ts, and the message to the client states it', () => {
+  assert.equal(COMMENTS_MAX, 2000)
+  assert.ok(copy.FIELD_ERRORS.comments.includes(String(COMMENTS_MAX)), 'the message and the limit say the same number')
+  assert.match(read('features', 'quote-portal', 'decision.ts'), /^export const COMMENTS_MAX = 2000$/m)
 })

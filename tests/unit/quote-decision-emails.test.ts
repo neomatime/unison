@@ -8,6 +8,8 @@ import {
   quoteOwnerNoticeEmailTemplate,
 } from '../../lib/email/templates/quote-decision.ts'
 import { escapeHtml } from '../../lib/email/templates/safe.ts'
+import * as copy from '../../features/quote-portal/copy.ts'
+import { COMMENTS_MAX } from '../../features/quote-portal/decision.ts'
 
 // These tests prove STRUCTURE and ESCAPING only: that the markup is safe, that the words are the appendix's, and that no
 // client-supplied value can reach a header or break out of the document. They cannot show how a mail client draws it.
@@ -96,10 +98,30 @@ test('the code email has the appendix subject and the appendix sentence, with th
   assert.ok(plain(mail.html).includes(sentence), 'and so it is in the visible text')
   assert.deepEqual(headings(mail.html), ['Your HIMARK confirmation code'], 'the heading')
   assert.ok(mail.text.includes(sentence), 'the sentence in the text')
-  const block =mail.html.match(/<td\b[^>]*monospace[^>]*>\s*482913\s*<\/td>/i)
+  const block = mail.html.match(/<td\b[^>]*monospace[^>]*>\s*482913\s*<\/td>/i)
   assert.ok(block, 'the code alone in a monospaced cell')
   const fontSize = Number(block[0].match(/font-size:(\d+)px/)?.[1])
   assert.ok(fontSize >= 28, `the code is large (${fontSize}px)`)
+})
+
+// A client who asks for a new code and then types the old one is told it is not correct and loses an attempt. The email
+// says which code works. The appendix sentence above is pinned to the spec by value, so the line is a separate one.
+test('the code email says that only the most recent code works, in a line of its own after the appendix sentence', () => {
+  const mail = code()
+  const sentence = copy.codeEmailSentence('482913')
+  assert.equal(copy.CODE_EMAIL_LATEST_NOTE, 'Only the most recent code works.')
+  const visible = paragraphs(mail.html)
+  assert.ok(visible.includes(sentence), 'the appendix sentence is still a paragraph of its own, whole')
+  assert.ok(visible.includes(copy.CODE_EMAIL_LATEST_NOTE), 'and so is the new line')
+  assert.ok(visible.indexOf(copy.CODE_EMAIL_LATEST_NOTE) === visible.indexOf(sentence) + 1, 'right after it')
+  assert.ok(mail.text.includes(sentence) && mail.text.includes(copy.CODE_EMAIL_LATEST_NOTE))
+  assert.ok(mail.text.indexOf(copy.CODE_EMAIL_LATEST_NOTE) >= mail.text.indexOf(sentence) + sentence.length, 'after the sentence in the text too')
+  assert.ok(mail.text.indexOf(copy.CODE_EMAIL_LATEST_NOTE) < mail.text.indexOf('Quote number:'), 'and before the reference lines')
+  assert.ok(!sentence.includes('most recent'), 'the sentence itself is unchanged')
+  // The preheader (what an inbox shows after the subject) is still the sentence.
+  assert.ok(mail.html.includes(`${sentence}${'&zwnj;&nbsp;'.repeat(70)}`))
+  // Only the code email has it: the other two emails do not mention a code.
+  for (const other of [ack(), notice()]) assert.ok(!other.html.includes(copy.CODE_EMAIL_LATEST_NOTE) && !other.text.includes(copy.CODE_EMAIL_LATEST_NOTE))
 })
 
 test('the code email links nowhere: no anchor and no address, in the html or the text', () => {
@@ -346,6 +368,48 @@ test('a 5,000 character name is cut to one capped line in the subject, the html 
   assert.ok(notice({ clientName: long, quoteNumber: 'HMK-Q-2026-00001' }).subject.endsWith(' accepted quotation HMK-Q-2026-00001'), 'the number survives a long client name')
 })
 
+// The caps count characters, not UTF-16 units, so a cut never lands inside an emoji and leaves half of one before the
+// ellipsis (a lone surrogate is not text: a mail library may refuse the subject or print a replacement character).
+test('a cap never splits an emoji: the subject, html and text hold no lone surrogate', () => {
+  const emoji = '\u{1F600}'
+  const lone = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/
+  const wellFormed = (value: string) => (typeof value.isWellFormed === 'function' ? value.isWellFormed() : !lone.test(value))
+  // 79 letters and an emoji is 80 characters but 81 UTF-16 units: kept whole (80 is the cap), where cutting at 80 units
+  // would have kept half of it.
+  const edge = notice({ clientName: `${'a'.repeat(79)}${emoji}` })
+  assert.ok(wellFormed(edge.subject), JSON.stringify(edge.subject))
+  assert.equal(edge.subject, `${'a'.repeat(79)}${emoji} accepted quotation HMK-Q-2026-00001`, 'under the cap in characters, so not cut at all')
+  // One character over: cut after the 80th character, whole, and the ellipsis follows.
+  const over = notice({ clientName: `${'a'.repeat(79)}${emoji}${emoji}` })
+  assert.equal(over.subject, `${'a'.repeat(79)}${emoji}\u2026 accepted quotation HMK-Q-2026-00001`)
+  assert.ok(wellFormed(over.subject))
+  // A cut that falls between the two halves of an emoji in UTF-16 units, wherever the emoji starts.
+  for (const prefix of [78, 79, 80, 81]) {
+    const mail = notice({ clientName: `${'a'.repeat(prefix)}${emoji.repeat(5)}` })
+    assert.ok(wellFormed(mail.subject), `prefix ${prefix}: ${JSON.stringify(mail.subject)}`)
+    assert.ok(mail.subject.endsWith(' accepted quotation HMK-Q-2026-00001'))
+  }
+  // Every capped single-line value of every template, with emoji all the way along and far past every cap.
+  const long = emoji.repeat(500)
+  const mails = [
+    code({ quoteNumber: long, clientName: long }),
+    ack({ quoteNumber: long, signatoryName: long, ownerName: long, decidedOn: long }),
+    notice({ clientName: long, quoteNumber: long, signatoryName: long, signatoryPosition: long }),
+    declined({ clientName: long, quoteNumber: long, signatoryName: long, signatoryPosition: long, declineReason: long }),
+  ]
+  for (const mail of mails) {
+    for (const [part, value] of [['subject', mail.subject], ['html', mail.html], ['text', mail.text]] as const) assert.ok(wellFormed(value), part)
+  }
+  // The number stays at 60 characters and the name in a subject at 80, as before.
+  assert.ok(notice({ clientName: long, quoteNumber: 'HMK-Q-2026-00001' }).subject.startsWith(`${emoji.repeat(80)}\u2026 accepted`))
+  assert.ok(notice({ quoteNumber: long }).subject.endsWith(`quotation ${emoji.repeat(60)}\u2026`))
+  // A subject that is over 200 UTF-16 units but under 200 characters (80 + 20 + 60 here) is not cut at all, so it cannot
+  // be cut in the middle of an emoji: the whole subject is capped by characters, not only the name inside it.
+  const wide = notice({ clientName: `a${emoji.repeat(79)}`, quoteNumber: emoji.repeat(60) }).subject
+  assert.ok(wide.length > 200 && wellFormed(wide))
+  assert.ok(wide.endsWith(`quotation ${emoji.repeat(60)}`), 'the number is whole')
+})
+
 test('a name with an ampersand and quotes is escaped in the html and plain in the subject and text', () => {
   const name = 'Smith & "Sons" <Pty> Ltd'
   const mail = declined({ clientName: name, signatoryName: name, signatoryPosition: name, declineComments: name })
@@ -360,7 +424,8 @@ test('a name with an ampersand and quotes is escaped in the html and plain in th
 })
 
 test('bidi override and control characters are dropped from every value', () => {
-  const bad = `Acme${BIDI}gnos\u200f\u2066x\u2069\u0000\u0007`
+  // Including the Arabic letter mark (U+061C), which reorders text like the left-to-right and right-to-left marks do.
+  const bad = `Acme${BIDI}gnos\u200f\u2066x\u2069\u061c\u0000\u0007`
   const mails = [
     code({ quoteNumber: bad, clientName: bad }),
     ack({ signatoryName: bad, quoteNumber: bad, ownerName: bad }),
@@ -368,7 +433,7 @@ test('bidi override and control characters are dropped from every value', () => 
   ]
   for (const mail of mails) {
     for (const part of [mail.subject, mail.html, mail.text]) {
-      assert.ok(!/[\u200e\u200f\u202a-\u202e\u2066-\u2069\u0000-\u0008\u000e-\u001f\u007f-\u009f]/.test(part), 'no bidi or control character')
+      assert.ok(!/[\u061c\u200e\u200f\u202a-\u202e\u2066-\u2069\u0000-\u0008\u000e-\u001f\u007f-\u009f]/.test(part), 'no bidi or control character')
     }
   }
   assert.equal(notice({ clientName: bad }).subject, 'Acmegnosx accepted quotation HMK-Q-2026-00001')
@@ -418,8 +483,21 @@ test('the template file writes none of the client-facing words itself: they come
   const source = readFileSync(fileURLToPath(new URL('../../lib/email/templates/quote-decision.ts', import.meta.url)), 'utf8')
     .replace(/\/\*[\s\S]*?\*\//g, '')
     .replace(/^\s*\/\/.*$/gm, '')
-  for (const words of ['Hello', 'Thank you', 'Your response', 'Your HIMARK', 'Your confirmation', 'Quote number', 'expires in', 'recorded your']) {
+  for (const words of ['Hello', 'Thank you', 'Your response', 'Your HIMARK', 'Your confirmation', 'Quote number', 'expires in', 'recorded your', 'Only the most recent']) {
     assert.ok(!source.includes(words), `"${words}" is not written in the template`)
   }
   assert.match(source, /features\/quote-portal\/copy\.ts/, 'and the template imports copy.ts')
+  assert.match(source, /\bCODE_EMAIL_LATEST_NOTE,$/m, 'the new line is copy.ts\'s too')
+})
+
+test('the comments limit is the portal validator\'s own, imported and not declared a second time', () => {
+  const source = readFileSync(fileURLToPath(new URL('../../lib/email/templates/quote-decision.ts', import.meta.url)), 'utf8')
+  assert.match(source, /^import \{ COMMENTS_MAX \} from '\.\.\/\.\.\/\.\.\/features\/quote-portal\/decision\.ts'$/m)
+  assert.doesNotMatch(source, /\bconst COMMENTS_MAX\b/, 'one declaration, in decision.ts')
+  assert.doesNotMatch(source, /\b2000\b/, 'and no second number')
+  // The cap the email applies is that limit: 2,000 kept, the note names 2,000, and the validator accepts 2,000 and no more.
+  assert.equal(COMMENTS_MAX, 2000)
+  const mail = declined({ declineComments: 'y'.repeat(COMMENTS_MAX + 1) })
+  assert.ok(mail.text.includes('y'.repeat(COMMENTS_MAX)) && !mail.text.includes('y'.repeat(COMMENTS_MAX + 1)))
+  assert.ok(mail.text.includes(`first ${COMMENTS_MAX} characters`))
 })

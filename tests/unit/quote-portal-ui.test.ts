@@ -116,7 +116,7 @@ const full = (overrides: Partial<PortalQuoteFull> = {}, recordOverrides: Partial
   ...overrides,
 })
 
-const short =(state: 'expired' | 'superseded', overrides: Partial<PortalQuoteShort> = {}): PortalQuoteShort => ({
+const short = (state: 'expired' | 'superseded', overrides: Partial<PortalQuoteShort> = {}): PortalQuoteShort => ({
   state,
   record: { quote_number: 'HMK-Q-2026-00001', client_name: 'TEST Company', valid_until: '2026-10-25' },
   version: 1,
@@ -358,13 +358,36 @@ test('an accepted or declined quote gets a short banner with its date', () => {
   const unreadable = buildPortalQuoteModel(full({ state: 'accepted' }, { status: 'Accepted', accepted_at: 'not a time' }))
   assert.deepEqual(unreadable.banner, { tone: 'accepted', text: copy.acceptedBanner(null) })
 
-  // The record keeps no decline date, so a declined quote's banner states the fact and no date (Ruling 22b).
+  // A declined quote with no response from this link (declined by hand, or from another link) keeps the plain banner:
+  // the record keeps no decline date of its own (Ruling 22b), so it states the fact and no date.
   const declined = buildPortalQuoteModel(full({ state: 'declined' }, { status: 'Declined' }))
   assert.deepEqual(declined.banner, { tone: 'declined', text: copy.DECLINED_BANNER })
   assert.equal(copy.DECLINED_BANNER, 'This quotation has been declined.')
   assert.ok(!/sent on|\d{4}/.test(declined.banner?.text ?? ''), 'no date and no "sent on" clause')
   assert.equal(declined.facts.find((fact) => fact.label === 'Status')?.tone, 'declined')
   assert.deepEqual(buildPortalQuoteModel(full({ state: 'declined' }, { status: 'Declined', sent_at: null })).banner, { tone: 'declined', text: copy.DECLINED_BANNER })
+
+  // When this link made the decision, its response carries the day (the spec: the state page shows the date for an
+  // Accepted or Declined quote), in South African time like the accepted one: 22:30 UTC on the 18th is the 19th there.
+  const declinedHere = buildPortalQuoteModel(
+    full({ state: 'declined', response: { decision: 'declined', decided_at: '2026-10-18T22:30:00+00:00' } }, { status: 'Declined' }),
+  )
+  assert.deepEqual(declinedHere.banner, { tone: 'declined', text: copy.declinedBanner('19 October 2026') })
+  assert.equal(declinedHere.banner?.text, 'This quotation was declined on 19 October 2026.')
+
+  // A time that cannot be read has no day to show, and then the plain banner stands.
+  const unreadableDecline = buildPortalQuoteModel(full({ state: 'declined', response: { decision: 'declined', decided_at: 'not a time' } }, { status: 'Declined' }))
+  assert.deepEqual(unreadableDecline.banner, { tone: 'declined', text: copy.DECLINED_BANNER })
+
+  // A response that is not a decline never dates a declined banner (the quote was declined some other way afterwards).
+  const otherResponse = buildPortalQuoteModel(full({ state: 'declined', response: { decision: 'accepted', decided_at: '2026-10-18T22:30:00+00:00' } }, { status: 'Declined' }))
+  assert.deepEqual(otherResponse.banner, { tone: 'declined', text: copy.DECLINED_BANNER })
+
+  // The accepted banner is unchanged by a response of this link: it still reads the record's own accepted_at.
+  const acceptedHere = buildPortalQuoteModel(
+    full({ state: 'accepted', response: { decision: 'accepted', decided_at: '2026-10-17T10:00:00+00:00' } }, { status: 'Accepted', accepted_at: '2026-10-18T22:30:00+00:00' }),
+  )
+  assert.deepEqual(acceptedHere.banner, { tone: 'accepted', text: copy.acceptedBanner('19 October 2026') })
 })
 
 test('only an open quote invites a response: accepted, declined and the cards carry no respond heading or note (Ruling 21)', () => {
@@ -614,7 +637,11 @@ test('the respond heading, the flow and the already-responded note are printed o
   const view = viewSource()
   // An open quote speaks of responding: with the flow while this link has not responded, with a note once it has.
   assert.match(view, /const invitesResponse = model\.respondable \|\| model\.alreadyResponded/)
-  assert.match(view, /\{invitesResponse \? <SectionTitle [^>]*>\{READY_TO_RESPOND\}<\/SectionTitle> : null\}/, 'the "Ready to respond?" heading is conditional')
+  // Only the link that may still respond gets the heading (and is labelled by it); the note that says it has responded
+  // already is not an invitation, so the heading is not above it (the render tests in quote-portal-decision-flow.test.ts).
+  assert.match(view, /\{model\.respondable \? <SectionTitle [^>]*>\{READY_TO_RESPOND\}<\/SectionTitle> : null\}/, 'the "Ready to respond?" heading is conditional on the link being able to respond')
+  assert.match(view, /<aside aria-label=\{model\.respondable \? READY_TO_RESPOND : DOWNLOAD_PDF\}/, 'and so is the label of the panel')
+  assert.doesNotMatch(view, /invitesResponse \? <SectionTitle|aria-label=\{invitesResponse/, 'invitesResponse only spaces the download link from what is above it')
   assert.match(view, /\{model\.respondable \? \(\s*<PortalDecisionFlow\b[^>]*\/>\s*\) : null\}/, 'the flow only while this link may still respond')
   assert.match(view, /\{model\.alreadyResponded \? <p [^>]*>\{ALREADY_RESPONDED_NOTE\}<\/p> : null\}/, 'a link that has responded gets the note and no buttons')
   assert.equal((view.match(/\{READY_TO_RESPOND\}/g) ?? []).length, 1, 'the heading is printed in one place')

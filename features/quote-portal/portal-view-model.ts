@@ -14,7 +14,7 @@ import { buildDocumentView, formatAmount, formatDocumentDate, formatQuantity } f
 import { isDraftReference } from '../documents/vocabulary.ts'
 import {
   acceptedBanner,
-  DECLINED_BANNER,
+  declinedBanner,
   ERROR_HEADING,
   ERROR_SENTENCE,
   EXPIRED_HEADING,
@@ -213,12 +213,18 @@ export function buildPortalQuoteModel(quote: PortalQuoteFull): PortalQuoteModel 
   // Read off the stored tax: a quote that charges tax includes it in the amount; one that does not says so.
   addFact('VAT', Number.isFinite(tax) ? (tax > 0 ? `Includes ${view.totals.vatLabel}` : 'No VAT charged') : null)
 
-  // --- the banner on a decided quote
+  // --- the response: this link's own decision. decided_at is an instant that may be written in any time zone, so it is
+  // read as a Date, never compared or cut as text.
+  const response = quote.response ? { decision: quote.response.decision, decidedOn: formatInstantDate(quote.response.decided_at) } : null
+
+  // --- the banner on a decided quote. An accepted quote's day is the record's own accepted_at. The record keeps no decline
+  // date, so a declined quote has a day only when this link made the decision (the response's); declined by hand, or from
+  // another link, it states the fact and no date.
   const banner: PortalQuoteModel['banner'] =
     quote.state === 'accepted'
       ? { tone: 'accepted', text: acceptedBanner(formatInstantDate(record.accepted_at)) }
       : quote.state === 'declined'
-        ? { tone: 'declined', text: DECLINED_BANNER }
+        ? { tone: 'declined', text: declinedBanner(response?.decision === 'declined' ? response.decidedOn : null) }
         : null
 
   // --- scope: the project description, the inclusions, and each line's description as stored
@@ -259,9 +265,7 @@ export function buildPortalQuoteModel(quote: PortalQuoteFull): PortalQuoteModel 
   })
   const terms = view.terms.length ? { items: view.terms, sources } : null
 
-  // --- the response: this link's own decision, and what the confirm step shows before one is made. decided_at is an
-  // instant that may be written in any time zone, so it is read as a Date, never compared or cut as text.
-  const response = quote.response ? { decision: quote.response.decision, decidedOn: formatInstantDate(quote.response.decided_at) } : null
+  // --- what the confirm step shows before a decision is made
   const monthly = commercial.monthly
   const confirmation: ConfirmationModel = {
     numberAndVersion: view.number ? `${view.number} (${version})` : version,

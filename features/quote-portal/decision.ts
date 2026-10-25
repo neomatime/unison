@@ -22,8 +22,8 @@ export type NormalisedDecisionInput = { ok: true; value: DecideInput } | { ok: f
 
 // Any control character (U+0000 to U+001F and U+007F to U+009F): a line break, a tab and a null byte are all in it.
 const CONTROL = /\p{Cc}/u
-// The marks that reorder text: left-to-right and right-to-left marks, embeddings, overrides and isolates.
-const BIDI_CONTROL = /[\u200e\u200f\u202a-\u202e\u2066-\u2069]/
+// The marks that reorder text: the Arabic letter mark, left-to-right and right-to-left marks, embeddings, overrides and isolates.
+const BIDI_CONTROL = /[\u061c\u200e\u200f\u202a-\u202e\u2066-\u2069]/
 // With the u flag a surrogate matches only when it is unpaired, so a real emoji does not.
 const LONE_SURROGATE = /[\uD800-\uDFFF]/u
 const SIX_DIGITS = /^[0-9]{6}$/
@@ -32,7 +32,8 @@ const SNAPSHOT_HASH = /^[0-9a-f]{64}$/
 const NAME_BOUNDS = { min: 2, max: 120 }
 const POSITION_BOUNDS = { min: 2, max: 120 }
 const ORGANISATION_BOUNDS = { min: 2, max: 160 }
-const COMMENTS_MAX = 2000
+/** The most characters a decline's comments may have: the form's rule, the database's and the owner's email's (which cuts at this and says so). */
+export const COMMENTS_MAX = 2000
 
 const countCharacters = (text: string) => Array.from(text).length
 const isUnsafeText = (text: string) => BIDI_CONTROL.test(text) || LONE_SURROGATE.test(text)

@@ -64,6 +64,7 @@ export function PortalDecisionFlow({
   const headingRef = useRef<HTMLHeadingElement>(null)
   const acceptRef = useRef<HTMLButtonElement>(null)
   const declineRef = useRef<HTMLButtonElement>(null)
+  const newCodeRef = useRef<HTMLButtonElement>(null)
   const statusRef = useRef<HTMLDivElement>(null)
 
   /** Runs an action through the reducer and onto the page; the new state, or null when the reducer ignored it. */
@@ -120,6 +121,9 @@ export function PortalDecisionFlow({
       router.refresh()
     } else if (after.step === 'confirm') {
       focusFirstError(after.errors)
+    } else if (after.needsNewCode) {
+      // The answer that spent the code also disabled Confirm, the button that was pressed: focus the way forward instead.
+      newCodeRef.current?.focus()
     } else {
       restoreFocus(trigger)
     }
@@ -147,6 +151,7 @@ export function PortalDecisionFlow({
           state={state}
           idBase={idBase}
           headingRef={headingRef}
+          newCodeRef={newCodeRef}
           onEdit={(field, value) => apply({ type: 'edit', field, value })}
           onConfirm={confirm}
           onRequestCode={requestCode}

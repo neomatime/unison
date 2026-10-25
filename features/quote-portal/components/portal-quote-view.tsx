@@ -283,7 +283,8 @@ export function PortalQuoteView({ token, quote }: { token: string; quote: Portal
   if (!isViewableQuote(quote)) return null
   const model = buildPortalQuoteModel(quote)
   const { banner, scope, commercial, terms, contact } = model
-  // An open quote speaks of responding: with the flow while this link has not responded, with a note once it has.
+  // An open quote speaks of responding: with the heading and the flow while this link has not responded, with a note
+  // (and no heading) once it has. Either way something sits above Download PDF, which then keeps its distance from it.
   const invitesResponse = model.respondable || model.alreadyResponded
   // The decline message is for the client who declined from this link, not for a quote declined by hand or elsewhere.
   const declinedHere = banner?.tone === 'declined' && model.response?.decision === 'declined'
@@ -385,14 +386,14 @@ export function PortalQuoteView({ token, quote }: { token: string; quote: Portal
         </div>
 
         {/* Sticky beside the quote on a desktop, except while it holds the confirm or code step, which can be taller than the screen. */}
-        <aside aria-label={invitesResponse ? READY_TO_RESPOND : DOWNLOAD_PDF} className="border border-border bg-card lg:sticky lg:top-6 lg:has-[[data-decision-form]]:static">
+        <aside aria-label={model.respondable ? READY_TO_RESPOND : DOWNLOAD_PDF} className="border border-border bg-card lg:sticky lg:top-6 lg:has-[[data-decision-form]]:static">
           <div className="p-5 sm:p-6">
-            {/* Only an open quote is offered a response: an accepted or declined one has been answered, and the panel then says nothing about responding. */}
-            {invitesResponse ? <SectionTitle icon={PenLine} id="portal-respond">{READY_TO_RESPOND}</SectionTitle> : null}
+            {/* Only a link that may still respond is invited to: a decided quote has been answered, and a reopened one whose link already responded has the note below instead, so neither has the heading. */}
+            {model.respondable ? <SectionTitle icon={PenLine} id="portal-respond">{READY_TO_RESPOND}</SectionTitle> : null}
             {model.respondable ? (
               <PortalDecisionFlow token={token} snapshotHash={model.snapshotHash} verifiedEmail={maskEmail(model.recipientEmail)} confirmation={model.confirmation} />
             ) : null}
-            {model.alreadyResponded ? <p className={cn('mt-4 text-sm leading-relaxed', MUTED)}>{ALREADY_RESPONDED_NOTE}</p> : null}
+            {model.alreadyResponded ? <p className={cn('text-sm leading-relaxed', MUTED)}>{ALREADY_RESPONDED_NOTE}</p> : null}
             <a
               href={`/q/${token}/pdf`}
               className={cn('flex w-full items-center justify-center gap-2 border border-foreground px-4 py-3 text-sm font-medium text-foreground transition-colors hover:bg-accent', invitesResponse && 'mt-5')}
