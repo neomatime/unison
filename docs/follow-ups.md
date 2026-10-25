@@ -1309,8 +1309,10 @@ details are replaced by a link to Commercial terms and new documents no longer p
 
 Slice 1 of 3 is built: a branded quotation email with a secure link, the client page at `/q/<token>` with a PDF download, a per-organisation
 switch (Settings > Company details, off by default), a Client portal panel on the quote page, and Revise this quote. Accept and decline are
-slice 2; the HIVE feed gate is slice 3. Spec: `docs/superpowers/specs/2026-10-18-quote-portal-design.md`. **Next step for the owner:** turn the
-switch on under Settings > Company details and email one real quote to your own address, then open the link on a phone and a laptop.
+slice 2; the HIVE feed gate is slice 3. Spec: `docs/superpowers/specs/2026-10-18-quote-portal-design.md`.
+**Next step for the owner:** first read "Read before you switch the portal on" under "From the quote portal, slice 2" below, because slice 2 makes the
+switch launch electronic acceptance. Then turn the switch on under Settings > Company details, email one real quote to your own address, and open the
+link on a phone and a laptop.
 
 ### Not verified
 
@@ -1328,8 +1330,7 @@ switch on under Settings > Company details and email one real quote to your own 
 
 ### Not built
 
-- Accept and Decline, the emailed one-time code and the decision record (slice 2); the HIVE feed gate (slice 3); a "view needs a code" option.
-- The `quote.superseded` and `quote.declined` timeline entries (they arrive with slice 2).
+- The HIVE feed gate (slice 3), and a "view needs a code" option (the spec defers it; the link alone still shows the quotation).
 - Designed email images: `public/brand/email-wordmark.png` (480x67) and `email-banner.jpg` (1200x446) are derived from the existing
   `himark-wordmark.png` and `banner.png`, as approved on 2026-10-18; the reference email's banner carries overlay words ("Let's build what's next")
   that these do not. Replace them with supplied files if wanted (same names, same sizes).
@@ -1337,7 +1338,8 @@ switch on under Settings > Company details and email one real quote to your own 
 ### Known limitations
 
 - **The switch gates minting only.** Turning `quote_portal_enabled` off stops new links and branded emails; links already issued keep working.
-  It is not a kill switch: revoke links from the quote's Client portal panel.
+  It is not a kill switch: revoke links from the quote's Client portal panel. Since slice 2 a link that is still out can also accept and decline (see
+  "Read before you switch the portal on" under slice 2 below).
 - **A send that throws after the mail service accepted the message** (for example the connection drops after the hand-over) revokes its link, so the
   client's emailed link reads "not valid" until staff resend. A resend mints a fresh link. The error message tells staff to check and resend.
 - **The nightly job expires Sent quotes past their valid-until date in every organisation,** whether or not the switch is on. The job
@@ -1353,7 +1355,8 @@ switch on under Settings > Company details and email one real quote to your own 
   quote). A revision whose client was changed before sending supersedes nothing: the original stays Sent and its links stay active
   (`20261018103000_quote_portal_supersede_same_client.sql`).
 - **Statuses can still be set by hand** (Accepted, Declined, Expired). The portal follows the quote's status, so a hand-set status changes the page the
-  client sees, with no decision record behind it until slice 2. Superseded cannot be set or cleared by hand; it is set when a revision is sent.
+  client sees, with no decision record behind it. Slice 2 now shows such a quote as "Marked by staff" on the quote page (where the Client portal panel
+  is shown). Superseded cannot be set or cleared by hand; it is set when a revision is sent.
 - **The Client portal panel reads a link's own state only.** A link on an archived quote or a hand-Expired quote reads Active there, while the portal
   shows "not valid" or "expired".
 - **The greeting and the link's recipient name always use the quote's contact name,** even when the email goes to someone else.
@@ -1374,8 +1377,8 @@ switch on under Settings > Company details and email one real quote to your own 
 - **Client-facing copy drafted by the implementer, not in the spec appendix** (all in `features/quote-portal/copy.ts`; change the text there):
   the expired, replaced, "link is not valid" and "could not load" cards; the accepted and declined banners; the PDF-failed message; the
   "Try again" label; and `SLICE_ONE_RESPOND_NOTE` ("To accept or decline this quotation, reply to the email you received or contact your HIMARK
-  contact."), which goes when slice 2 adds the buttons. `TERMS_STRIP` (appendix wording, "before responding") also shows on accepted and declined quotes;
-  decide whether decided quotes need a different sentence.
+  contact."), which slice 2 has now removed because the buttons exist. `TERMS_STRIP` (appendix wording, "before responding") also shows on accepted and
+  declined quotes; decide whether decided quotes need a different sentence.
 - **Three visual departures in the email from the reference image:** a slim navy bar with the company name above the white logo row (the reference has
   none; `himark-wordmark-white.png` exists and could give a single navy header row); the banner is uncropped at 600x223 (about 2.7:1) where the
   reference strip is about 9:1 (a 4:1 crop, 1200x300, would shorten the header by about 100 px); no icons in the summary card.
@@ -1386,17 +1389,6 @@ switch on under Settings > Company details and email one real quote to your own 
   and the valid-until date over three ("18 / November / 2026"); the reference image was captured in a wide Gmail reading pane. Below 620 px the card
   stacks into rows and reads well. A two-row card on desktop would fix it.
 
-### For slice 2
-
-- **Hash what the database stores.** The accepted-quote hash must be taken over the database's jsonb text (`private.quote_snapshot`, fixed to UTC), never a
-  JavaScript re-serialisation: JavaScript turns `100.00` into `100`.
-- **Store the full `terms_sources`** (with ids) from `quotes.terms_sources`, not from the snapshot the portal reads.
-- **Treat the archived-quote rule on the accept path.** An archived quote already reads "not valid" in the portal and cannot be invoiced, so accepting
-  one must be refused the same way.
-- **"Replaced by" wording on Declined and Expired originals.** A Declined or Expired quote can be revised but keeps its status (only a Sent original becomes
-  Superseded), so the panel's "Replaced by" line and the Revise confirmation can disagree. Settle the wording when the decision record exists.
-- **The accepted and declined cards must stay reachable after valid-until:** the quote's status decides the page, before any date check.
-
 ### Test debt found and fixed by the final run (2026-10-19, not caused by this slice)
 
 The full `pnpm test:rls` run against production passed 449 of 451. The two failures and one leak it found were older than this slice and are fixed.
@@ -1405,3 +1397,175 @@ The full `pnpm test:rls` run against production passed 449 of 451. The two failu
   `20261013240000_drop_retired_billing_columns.sql`, so two of its 16 tests failed. Fixed in 23978cc.
 - **`cleanup()` in `tests/integration/rls/helpers.ts` did not trace `invoice_offerings` audit rows,** so `document-terms.test.ts` left four
   `audit_events` rows with no organisation on every full run. They were deleted by id, and `'invoice_offerings'` was added to the sweep in 641b1a4.
+
+## From the quote portal, slice 2 (2026-10-25)
+
+Slice 2 of 3 is built: Accept and Decline on the client page, with a six-digit code emailed to the address the quote was sent to; an append-only record
+of every decision; the quote's status moving to Accepted or Declined; a notice in the app and an email to the quote's owner; an acknowledgement email
+to the client; a follow-up task when a client declines; and the recorded response on the staff quote page. Slice 3 (the HIVE feed gate) is not started.
+Spec: `docs/superpowers/specs/2026-10-18-quote-portal-design.md`. Plan: `docs/superpowers/plans/2026-10-20-quote-portal-slice-2.md`. The work is on the
+branch `claude/gallant-dewdney-af21e8`: 17 commits, `d7f5b96..9005b98` (the plan, its corrections, the build and the final review fixes), plus the docs
+commit `docs: record quote portal slice 2`. It is not merged into main and not pushed yet; that happens when the owner asks. The database changes below are
+already live, though. **Next step for the owner:** read the next block before anything else.
+
+### Read before you switch the portal on
+
+The switch (Settings > Company details) is off by default. Slice 2 changes what turning it on means.
+
+1. **Turning the switch on now launches electronic acceptance.** Any client who holds an emailed link can accept or decline the quotation, using a
+   code sent to the email address the link was made for. Before slice 2 a link could only be read.
+2. **Turning the switch off does not stop links that are already sent.** It stops new links only. A link already in a client's inbox keeps working,
+   including accepting and declining, until staff revoke it from the quote's Client portal panel. This was a known limit of slice 1; it matters more now.
+3. **Legal and privacy review must come first.** The spec requires it before launch: whether click-to-accept with an emailed code satisfies ECTA and
+   HIMARK's contracts, and what the evidence record may keep under POPIA and for how long. The code cannot settle either. Nothing is retained or
+   deleted automatically.
+4. **One real end-to-end send is still owed.** No code, acknowledgement or owner email has gone out through Microsoft Graph. Before launch, email one
+   real quote to your own address and walk the whole flow: open the link, ask for a code, accept, and read the three emails.
+
+### Production changes already live
+
+Five migrations were applied to the live database (`unison-uat`, which is production) during this build. The repo files keep their planned timestamps;
+the database recorded the versions given here.
+
+- **`quote_portal_decisions_schema` (20261020063353):** two new tables. `quote_access_codes` holds the emailed codes, stored only as a salted hash, and no
+  signed-in user can read it. `quote_responses` is the decision record: staff of the organisation can read it, nobody can edit or delete a row (not
+  even the server), and rows go only when their quote or organisation is deleted.
+- **`quote_portal_timeline` (20261020064429):** `activities` gained the kinds `quote.declined` and `quote.superseded`, and the two functions that write
+  the quote timeline were replaced so that they write them.
+- **`quote_portal_code_functions` (20261020072714):** the fingerprint of a quote (`private.quote_snapshot_hash`), `portal_issue_code` (makes and stores a
+  code), and a new version of `portal_get_quote` that returns two more keys, `snapshot_hash` and `response`.
+- **`quote_portal_decide` (20261020105441):** `portal_decide`, which checks the code and the page the client saw and records the decision, and two helper
+  functions it uses (who to tell, and the follow-ups, which were empty at this point).
+- **`quote_portal_follow_ups` (20261020112451):** fills in the follow-ups (the notices to the owner and the sender, and the decline task or note) and
+  changes the "who to tell" helper to ignore archived team members.
+
+- **Everything is additive.** New tables, new functions and two new timeline kinds. The functions that were replaced keep what they did and only gain
+  the new lines.
+- **Only the server can call the new functions** (the service role). Signed-in staff and the public cannot call them, and the helper functions are
+  granted to no one and run only inside `portal_decide`.
+- **Timeline entries are now written for every organisation, not only ones using the portal.** The timeline functions are shared, so a hand-set
+  Declined and the superseding of an original when a revision is sent now write `quote.declined` and `quote.superseded` entries everywhere.
+- **Nothing is exposed today.** At the end of the work production had no client link at all (0 links, 0 codes, 0 responses), so no client can reach the
+  new functions. Your quote HMK-Q-2026-00001 was never touched; it is still Sent.
+
+### Verified
+
+- **Typecheck** (`pnpm typecheck`) is clean, before and after the final fix wave.
+- **Unit tests.** `pnpm test` (unit and tenancy tests) passed 1116 of 1116 before the final fix wave. After it, the whole unit suite passed 1127 of 1127.
+- **Build.** `pnpm build` succeeded (run once, before the final fix wave; the ledger records no build after it). `/q/[token]` and its PDF route are
+  dynamic, and the brand images are in the PDF route's file trace.
+- **Database tests against production.** `pnpm test:rls` passed 518 of 518 across 49 files (about 32 minutes) on 2026-10-20, before the final fix wave.
+  After that wave the three integration files it touched were run again and passed: decide 22 of 22, follow-ups 14 of 14, timeline 6 of 6. The two
+  multi-minute stalls seen in `quote-portal-links.test.ts` while the timeline migration was built did not recur in the full run.
+- **Browser walk-through, 2026-10-25,** against throwaway fixtures (a test organisation with quotes and links made by the test helpers, addresses at
+  `example.test`), with the dev server's mail transport in log mode, so no email was sent.
+  - **Accept, end to end:** field errors beside the fields, focus moving to each step's heading, the code email written to the log (link token
+    hidden), a wrong code answered with "4 attempts left", then the right code giving the accepted page and banner. In the database: status Accepted,
+    accepted time set, a `quote.accepted` timeline entry with no author, a complete response row, and an in-app notice for each of the owner and the
+    sender. The acknowledgement and the owner's email were written to the log.
+  - **Decline, end to end:** a reason chosen and a multi-line comment containing markup, stored word for word; the declined banner and decline
+    message; status Declined; a `quote.declined` entry; and the follow-up task "Follow up: <client> declined quotation <number>", due in three days,
+    assigned to the owner and attached to the client.
+  - **Phone, 375 px:** no sideways scroll, the summary and fields stack, and focus lands on the step's heading.
+- **The fixtures were created and removed in the live database,** because the project has no other database. Production residue was checked after the
+  test runs and after the walk-through: audit rows with no organisation stayed at their starting value of 1320, and test organisations, users, links,
+  codes, responses, follow-up tasks and notices were all 0. HMK-Q-2026-00001 is still Sent.
+
+### Not verified
+
+- **Outlook and Gmail rendering of the three new emails** (the code, the acknowledgement and the owner's notice). Unit tests check their structure and
+  escaping; none has been opened in a mail client.
+- **A real send through Microsoft Graph** of any of them. In the walk-through they were written to the log only.
+- **The signed-in staff screens** for the new "Response" block, "Marked by staff", "Responded" on a link and "Revised as". They need a signed-in
+  session and a quote with a real response; they are covered by unit and source tests and the typecheck only.
+- **The tablet layout between 768 and 1100 px.**
+- **A real phone.** Only a 375 px browser window was checked.
+- **Screen reader behaviour.**
+- **The focus change to "Send a new code"** after a code is spent. It was not seen in the walk-through, and the repo's tests cannot check focus, so
+  it is covered by source and state-logic tests only.
+- **The hosted Vercel behaviour** of the client's address, which is read from the `x-forwarded-for` header.
+
+### Not built / known limits
+
+- **The snapshot the client saw is stored only as a hash,** not the full frozen quotation. The hash cannot be re-derived from the quote after the
+  decision, because the frozen copy it was taken from includes the status and the accepted time, which the decision then changes. To re-derive it: take
+  the quote as it was while Sent (status Sent, accepted time empty), build its snapshot with `private.quote_snapshot` as defined in migration
+  `20261018102500`, and take the SHA-256 of that text. Keeping the snapshot itself next to each response is a "before launch" decision tied to the
+  POPIA question (see Owner decisions).
+- **Someone who holds only the link can lock it for good** with about 30 wrong guesses. The limit is 10 an hour, so that takes roughly three hours at
+  the least, and the client is emailed a code each time one is requested. Staff must then issue a new link, and the staff panel still shows the locked
+  link as Active.
+- **Only the newest code works.** Asking for a new code makes the older one useless. The code email and the page now say so.
+- **A code request whose email fails to send** still uses one of the 5 codes allowed per hour.
+- **There is no limit per email address.** The limits are per link.
+- **The IP address and browser string of a decision are stored as evidence.** They are not shown to staff, but any member of the organisation can read
+  them through the database.
+- **A follow-up task or notice that cannot be written** leaves only a database warning in the log. It never undoes the decision.
+- **If the answer to a committed decision is lost on its way to the client's browser,** a retry is answered from the record and sends no emails. The
+  owner's email and the client's acknowledgement for that decision are then never sent.
+- **The owner's email goes to their team-member address even if they have no login;** in-app notices need a login, so in that case only the person
+  who sent the link gets an in-app notice.
+- **A decline task can sit with someone who cannot open it.** An owner who has a team profile but no login is still the task's assignee, and nobody can
+  open it until they have a login. Changing this needs a new migration.
+- **"Marked by staff" is not shown everywhere.** The staff Client portal panel is hidden for an organisation with the switch off, no links and no
+  response, so a quote accepted by phone and marked Accepted by hand there shows no label. A one-line condition change would show it.
+- **After a staff reopen, older responses stay listed under the quote** without a "historical" mark.
+- **The declined banner takes its date from the link's own decision.** If staff reopen a declined quote and then mark it Declined by hand, the page
+  still shows the date of the earlier decision.
+- **The spec's "view needs a code" option is still not built.** The link alone still shows the quotation; the code is needed only to decide.
+- **The client's address is evidence only.** It comes from `x-forwarded-for`, which Vercel sets itself; behind any other proxy a client could set it.
+- **In local development with the log mail transport (`EMAIL_TRANSPORT=log`) the code email's text, with the code, is printed in the server log,** on
+  purpose, so the flow can be tried. The link token is still hidden there.
+- **Some of the server-action and component tests are source-text checks pinned to exact formatting,** so they will need touching when those files
+  are reformatted.
+- **Local development: after a production build the browser pane needs a fresh `.next` before `pnpm dev`.** Delete the gitignored `.next` folder;
+  otherwise `/q/<token>` answered 404 during the walk-through.
+- **Smaller items the reviews left open:** invisible characters such as a zero-width space are accepted in the name, position and organisation fields;
+  going Back from the code step needs a new code, which counts toward the 5 an hour; and when a code request is refused because the link is no longer
+  open, already decided or not valid, the page shows the message but does not refresh itself.
+
+### Owner decisions
+
+- **The ten calls the plan made where the spec is silent** (all built as written; confirm or change each):
+  1. Failed-code caps: 10 failed attempts per link per hour, and 30 for the life of the link. The spec says "capped per hour" with no number. A locked
+     link needs a fresh link from staff.
+  2. The decline confirmation wording is drafted: "I confirm that I am authorised to decline this quotation on behalf of the organisation." The spec
+     says only that a decline has "its own, shorter, confirmation".
+  3. The decline task: priority Medium, status Planned, due in three days, assigned to the quote's owner, else the person who sent the link. The
+     reason "Chose another provider" makes a timeline note and no task.
+  4. A follow-up that cannot be written never undoes the decision.
+  5. A repeat request from a link that has already decided returns the recorded outcome, even if staff have since reopened the quote. A fresh link is
+     needed to decide again.
+  6. Staff do not see the IP address and browser string.
+  7. `quote.declined` is logged for any move to Declined, including a hand-set one; `quote.superseded` is logged when a revision is sent.
+  8. The owner's email goes to their team-member address whether or not they have a login; in-app notices need a login.
+  9. Emails are sent before the action returns, not afterwards in the background, so nothing is lost if the server instance is frozen. The cost is
+     about a second of waiting after a decision.
+  10. The new client-facing messages are drafted, and need your approval (next item).
+- **New client-facing wording to approve.** All of it is in `features/quote-portal/copy.ts`, in the group marked "DRAFTED for the owner's approval"
+  (change the text there). Wording taken word for word from the spec appendix needs no new approval.
+  - The decline consent sentence (`CONSENT_DECLINE`) and the step headings (`STEP_LABELS`).
+  - The field errors (`FIELD_ERRORS`) and the refusal messages (`REFUSAL_MESSAGES`), including the throttled message, and the wrong-code message
+    (`codeWrongMessage`).
+  - `ALREADY_RESPONDED_NOTE`, the confirmation and form labels and the buttons (`CONFIRMATION_LABELS`, `FORM_LABELS`, `FLOW_BUTTONS`), and the
+    recorded message (`DECISION_RECORDED`).
+  - The code-sent message (`codeSentMessage`) and the line "Only the most recent code works." (`CODE_EMAIL_LATEST_NOTE`).
+  - The message for a repeated response (`replayedMessage`) and the declined banner with its date (`declinedBanner`).
+  - The acknowledgement email's subject "Your response to quotation <number>" and its greeting, the acknowledgement sentence used when a quote has no
+    owner, and the code email's "Quote number" and "Client" lines.
+- **The masked address.** The confirmation step shows the address the code goes to as, for example, "t***@example.test" under "Verified email". Keep it
+  masked (a forwarded link then does not reveal the recipient's address), or show it in full?
+- **Should switching the portal off also stop sent links from deciding?** Today it does not (see "Read before you switch the portal on"). A gate is a
+  one-migration change: the database would refuse to issue codes and record decisions while the switch is off. Until then, the answer is to revoke the
+  links.
+- **Should the snapshot itself be stored with each response?** Today only its hash is kept (see Not built). Production has no responses yet, so the
+  column can be added later with nothing lost. Decide it together with the POPIA review.
+
+### Settled from the slice 1 notes
+
+- The hash is taken over the database's own text of the snapshot, never a JavaScript re-serialisation (which would turn `100.00` into `100`).
+- The full terms sources, with their ids, are stored on each response, taken from the quote itself.
+- An archived quote cannot be accepted: it reads "not valid" on the page and a code or a decision for it is refused.
+- The "Replaced by" line on the staff panel now reads "Revised as" unless the quote's own status is Superseded.
+- Decided quotes stay reachable after their valid-until date, because the quote's status decides the page before any date check. This is slice 1's
+  page logic, which slice 2 did not change; the ledger records no separate slice 2 test of a decided quote past its valid-until date.
