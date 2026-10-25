@@ -372,7 +372,7 @@ test('listQuoteLinks reads the links through the member session, scoped and newe
   assert.match(source, /from\('quote_access_links'\)/)
   assert.match(source, /\.select\('id,recipient_email,recipient_name,created_at,expires_at,first_viewed_at,last_viewed_at,revoked_at,revoked_reason'\)/, 'an explicit column list')
   assert.doesNotMatch(source, /select\('\*'\)/, 'no select-all on a table that has a hash column')
-  assert.doesNotMatch(source, /token/i, 'the query never names a token or a hash column')
+  assert.doesNotMatch(source, /token/i, 'the query never names a token column')
   assert.match(source, /\.eq\('quote_id', quoteId\)\s*\.eq\('organization_id', organization\.id\)\s*\.order\('created_at', \{ ascending: false \}\)/, 'this quote, this organisation, newest first')
   assert.match(source, /if \(links\.error\) throw links\.error/)
 })

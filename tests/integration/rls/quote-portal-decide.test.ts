@@ -613,7 +613,7 @@ test('hostile text is stored exactly as given and nothing in the result is alter
   const name = "O'Brien <b>"
   const position = 'Director & "Chief" </td><script>alert(1)</script>'
   const organisation = "Acme'); drop table public.quote_responses; --"
-  const opening = '<img src=x onerror=alert(1)>\nBcc: x@y.test\n‮gnp.exe\tend '
+  const opening = '<img src=x onerror=alert(1)>\nBcc: x@y.test\n\u202egnp.exe\tend '
   const comments = opening + 'z'.repeat(2000 - opening.length)
   assert.equal(comments.length, 2000)
   const userAgent = 'Mozilla/5.0 '.repeat(100)

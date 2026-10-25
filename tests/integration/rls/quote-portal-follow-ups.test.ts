@@ -365,7 +365,7 @@ test('hostile comments are stored verbatim in the task description', async () =>
   const name = "O'Brien <b>"
   const position = 'Director & "Chief" </td><script>alert(1)</script>'
   // Markup, a header injection on its own line, a right-to-left override, a tab and a quoted SQL fragment.
-  const opening = '<img src=x onerror=alert(1)>\nBcc: x@y.test\n‮gnp.exe\tend \'); drop table public.tasks; --'
+  const opening = '<img src=x onerror=alert(1)>\nBcc: x@y.test\n\u202egnp.exe\tend \'); drop table public.tasks; --'
   const comments = opening + 'z'.repeat(2000 - opening.length)
   assert.equal(comments.length, 2000)
 
@@ -388,7 +388,7 @@ test('the migration wraps each write group in an exception when others block tha
 
   // Every handler only warns, naming the response and the error code: no signatory text, no error message, no re-raise.
   const handlers = [...code.matchAll(/\bexception\s+when\s+others\s+then\s+([\s\S]*?)\bend;/gi)].map((match) => match[1].trim())
-  assert.ok(handlers.length >= 2, 'the notices and the recovery are guarded')
+  assert.equal(handlers.length, 3, 'the notices and the recovery are guarded')
   for (const handler of handlers) assert.match(handler, /^raise warning '[^']*'(?:,\s*(?:p_response_id|sqlstate))*;(?:\s*return;)?$/i, handler)
   assert.doesNotMatch(code, /\braise\s+exception\b|\bsqlerrm\b/i)
   assert.doesNotMatch(code, /\bupdate\s+public\.|\bdelete\s+from\b/i, 'the follow-ups only add rows')

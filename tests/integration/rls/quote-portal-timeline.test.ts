@@ -29,8 +29,8 @@ const quoteRow = async (id: string) => must(await admin.from('quotes').select('*
 const entries = async (quoteId: string, kind: string) =>
   must(await admin.from('activities').select('*').eq('quote_id', quoteId).eq('kind', kind).order('created_at')) as Array<Record<string, any>>
 const setStatus = async (id: string, status: string) => assert.equal((await memberAClient.from('quotes').update({ status }).eq('id', id)).error, null)
-/** An entry is dated when it was written, not left empty or back-dated. */
-const isRecent = (value: string) => Math.abs(new Date(value).getTime() - Date.now()) < 60_000
+/** An entry is dated when it was written, not left empty or back-dated: both stamps are the database's own clock, so the local one (which can be skewed) is not used. */
+const isDatedWhenWritten = (entry: Record<string, any>) => Math.abs(new Date(entry.occurred_at).getTime() - new Date(entry.created_at).getTime()) < 60_000
 
 /** A draft made by a signed-in member, with one line. */
 const draftQuote = async (clientId: string = clientA) => {
@@ -74,7 +74,7 @@ test('a hand-set Declined writes one quote.declined entry by the member', async 
   assert.equal(entry.created_by, memberA.id, 'the signed-in member is the author')
   assert.equal(entry.organization_id, orgA)
   assert.equal(entry.quote_id, quote)
-  assert.ok(isRecent(entry.occurred_at), 'dated when it was declined')
+  assert.ok(isDatedWhenWritten(entry), 'dated when it was declined')
 
   assert.equal((await memberAClient.from('quotes').update({ notes: 'an edit that keeps it Declined' }).eq('id', quote)).error, null)
   assert.equal((await entries(quote, 'quote.declined')).length, 1, 'an edit that keeps the status writes nothing')
@@ -132,7 +132,7 @@ test('sending a revision writes quote.superseded on the original, naming the rev
   assert.equal(entry.created_by, memberA.id)
   assert.equal(entry.organization_id, orgA)
   assert.equal(entry.quote_id, original, 'it sits on the original')
-  assert.ok(isRecent(entry.occurred_at))
+  assert.ok(isDatedWhenWritten(entry))
   assert.deepEqual(await entries(revision, 'quote.superseded'), [], 'the revision gets none')
   assert.deepEqual(await entries(original, 'quote.declined'), [], 'being superseded is not being declined')
 })
