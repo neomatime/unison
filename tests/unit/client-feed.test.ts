@@ -37,3 +37,15 @@ test('only the client feed path is opened in the proxy, and the migration never 
   assert.match(sql, /revoke all on public\.client_api_keys from anon, authenticated/)
   assert.match(sql, /grant execute on function public\.get_clients_for_api_key[^;]* to anon/)
 })
+
+test('the feed gate migration keeps the feed function secured and adds the setting off by default', () => {
+  const sql = readFileSync(join(process.cwd(), 'supabase/migrations/20261025100000_hive_feed_gate.sql'), 'utf8')
+  assert.match(sql, /add column hive_feed_requires_accepted_quote boolean not null default false;/)
+  assert.match(sql, /revoke execute on function public\.get_clients_for_api_key\(text, timestamptz, uuid, integer\) from public;/)
+  assert.match(sql, /grant execute on function public\.get_clients_for_api_key\(text, timestamptz, uuid, integer\) to anon;/)
+  const feed = sql.slice(sql.indexOf('create or replace function public.get_clients_for_api_key('))
+  const header = feed.slice(0, feed.indexOf('as $$'))
+  assert.match(header, /\bsecurity definer\b/)
+  assert.match(header, /\bvolatile\b/)
+  assert.match(header, /set search_path = ''/)
+})

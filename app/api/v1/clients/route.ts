@@ -13,6 +13,9 @@ type RpcResult = { data: { clients: unknown[]; nextCursor: string | null } | nul
 
 // Read-only client feed for HIVE. The bearer key is checked inside
 // get_clients_for_api_key, which scopes the result to the key's organisation.
+// The organisation's organization_settings.hive_feed_requires_accepted_quote
+// (off by default) may narrow it to clients with a non-archived Accepted quote;
+// the response shape is the same either way.
 export async function GET(request: NextRequest) {
   const auth = request.headers.get('authorization')
   if (!auth?.startsWith('Bearer ') || auth.length < 20) {
