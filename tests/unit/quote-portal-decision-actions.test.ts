@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import test from 'node:test'
 
 import { readEvidence } from '../../features/quote-portal/evidence.ts'
-import { readDecideAnswer, readIssueCodeAnswer } from '../../lib/quote-portal/decision-answers.ts'
+import { DECIDE_OK_UNREADABLE, readDecideAnswer, readIssueCodeAnswer } from '../../lib/quote-portal/decision-answers.ts'
 
 // Quote portal, slice 2, task 8: the two server actions that ask for a confirmation code and send a decision, the
 // emails that follow a decision, and the two portal-client calls behind them.
@@ -207,21 +207,6 @@ test('a decision answer outside the documented shapes throws, and the error repe
     { ok: false, reason: 'code_wrong', attempts_left: -1 },
     { ok: false, reason: 'code_wrong', attempts_left: 2.5 },
     { ok: false, reason: 'code_wrong', attempts_left: '3' },
-    decided({ replay: undefined }),
-    decided({ replay: 'false' }),
-    decided({ decision: 'maybe' }),
-    decided({ decision: 'Accepted' }),
-    decided({ decided_at: null }),
-    decided({ quote_id: null }),
-    decided({ quote_number: null }),
-    decided({ client_name: null }),
-    decided({ recipient_email: '' }),
-    decided({ signatory_name: null }),
-    decided({ signatory_position: 7 }),
-    decided({ decline_reason: 5 }),
-    decided({ decline_comments: ['x'] }),
-    decided({ owner_name: undefined }),
-    decided({ notify_email: false }),
   ]
   for (const answer of broken) {
     assert.throws(
@@ -234,6 +219,74 @@ test('a decision answer outside the documented shapes throws, and the error repe
       JSON.stringify(answer),
     )
   }
+})
+
+// An ok answer is a decision that has COMMITTED. One that cannot be read is a different fault from every other broken
+// answer (the decision stands, but no email can be sent and the client is told to try again), so its error says so, in
+// one fixed sentence the action can tell from the rest.
+test('an ok answer that cannot be read throws its own fixed error, which repeats nothing of it', () => {
+  const unreadable: unknown[] = [
+    decided({ replay: undefined }),
+    decided({ replay: 'false' }),
+    decided({ decision: 'maybe' }),
+    decided({ decision: 'Accepted' }),
+    decided({ decided_at: null }),
+    decided({ decided_at: '' }),
+    decided({ quote_id: null }),
+    decided({ quote_id: '' }),
+    decided({ quote_number: null }),
+    decided({ client_name: null }),
+    decided({ recipient_email: '' }),
+    decided({ recipient_email: null }),
+    decided({ signatory_name: null }),
+    decided({ signatory_position: 7 }),
+    decided({ decline_reason: 5 }),
+    decided({ decline_comments: ['x'] }),
+    decided({ owner_name: undefined }),
+    decided({ notify_email: false }),
+    { ok: true },
+  ]
+  assert.equal(DECIDE_OK_UNREADABLE, 'portal_decide answer: ok branch unreadable')
+  for (const answer of unreadable) {
+    assert.throws(
+      () => readDecideAnswer(answer),
+      (error: unknown) => {
+        assert.ok(error instanceof Error)
+        assert.equal(error.message, DECIDE_OK_UNREADABLE)
+        return true
+      },
+      JSON.stringify(answer),
+    )
+  }
+})
+
+// The database allows a client name that is empty (the column is `not null` only), and a quote number or a signatory
+// field the reader does not need for its own sake. Refusing one after the decision has committed would turn a recorded
+// decision into "try again", and every retry would replay into the same refusal: no email would ever be sent.
+test('a committed decision whose display fields are empty is still read, as long as the address the acknowledgement needs is there', () => {
+  const read = readDecideAnswer(decided({ client_name: '', quote_number: '', signatory_name: '', signatory_position: '' }))
+  assert.equal(read.ok, true)
+  if (!read.ok) return
+  assert.equal(read.outcome.clientName, '')
+  assert.equal(read.outcome.quoteNumber, '')
+  assert.equal(read.outcome.signatoryName, '')
+  assert.equal(read.outcome.signatoryPosition, '')
+  assert.equal(read.outcome.recipientEmail, ADDRESS)
+  assert.equal(read.outcome.decision, 'accepted')
+
+  // The same on a replay, and for a decline whose reason and comments are empty text rather than null.
+  const replayed = readDecideAnswer(decided({ replay: true, decision: 'declined', client_name: '', decline_reason: '', decline_comments: '' }))
+  assert.equal(replayed.ok, true)
+  if (!replayed.ok) return
+  assert.equal(replayed.replay, true)
+  assert.equal(replayed.outcome.clientName, '')
+  assert.equal(replayed.outcome.declineReason, '')
+
+  // What stays strict: no address, no acknowledgement, so no decision that can be told to anyone.
+  assert.throws(() => readDecideAnswer(decided({ client_name: '', quote_number: '', recipient_email: '' })), { message: DECIDE_OK_UNREADABLE })
+  // And the display fields must still be text (an empty string is text; null and numbers are not).
+  assert.throws(() => readDecideAnswer(decided({ client_name: null })), { message: DECIDE_OK_UNREADABLE })
+  assert.throws(() => readDecideAnswer(decided({ quote_number: 42 })), { message: DECIDE_OK_UNREADABLE })
 })
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -370,9 +423,17 @@ test('the answer reader is pure and its errors carry nothing of the answer', () 
   assert.doesNotMatch(source, /^\s*['"]use (server|client)['"]/m, 'no directive')
   assert.doesNotMatch(source, /server-only|from '@\//, 'relative imports only, so node --test can load it')
   assert.doesNotMatch(source, /supabase|console\./)
-  // Each error is one fixed sentence: nothing of the data is spliced into it.
-  for (const thrown of source.match(/new Error\([^)]*\)/g) ?? []) {
-    assert.match(thrown, /^new Error\('[^'$`]*'\)$/, `a fixed message: ${thrown}`)
+  // Each error is one fixed sentence: nothing of the data is spliced into it. A sentence may be named by a constant,
+  // as long as the constant is a plain string.
+  const errors = source.match(/new Error\([^)]*\)/g) ?? []
+  assert.ok(errors.length >= 3, 'the three errors of the two readers are found')
+  for (const thrown of errors) {
+    const named = thrown.match(/^new Error\(([A-Z_]+)\)$/)?.[1]
+    if (named) {
+      assert.match(source, new RegExp(`^export const ${named} = '[^'$\`]*'$`, 'm'), `${named} is a fixed message: ${thrown}`)
+    } else {
+      assert.match(thrown, /^new Error\('[^'$`]*'\)$/, `a fixed message: ${thrown}`)
+    }
   }
 })
 
@@ -477,10 +538,30 @@ test('the emails follow a new decision only, outside the try, and cannot change 
   assert.equal(count(body, 'try {'), 1)
   const caught = body.indexOf('} catch')
   assert.ok(caught > body.indexOf('submitPortalDecision(') && caught < body.indexOf('sendDecisionEmails('), 'the emails are not inside the try')
-  assert.match(body.slice(caught), /^\} catch \(error\) \{\n\s+console\.error\('\[quote-portal:decide\]', error instanceof Error \? error\.message : 'unknown error'\)\n\s+return \{ ok: false, message: REFUSAL_FALLBACK \}\n\s+\}/)
+  assert.match(
+    body.slice(caught),
+    /^\} catch \(error\) \{\n(?:\s+\/\/[^\n]*\n)*\s+const message = error instanceof Error \? error\.message : 'unknown error'\n\s+console\.error\(message === DECIDE_OK_UNREADABLE \? '\[quote-portal:decide:unreadable\]' : '\[quote-portal:decide\]', message\)\n\s+return \{ ok: false, message: REFUSAL_FALLBACK \}\n\s+\}/,
+  )
   assert.doesNotMatch(body, /\bthrow\b/)
   // A refusal is its message, its reason and, for a wrong code, the attempts left.
   assert.match(body, /message: refusalMessage\(result\.reason, result\.attemptsLeft\)/)
+})
+
+// A committed decision whose answer cannot be read must not look like a database error before the commit: the first
+// leaves a recorded decision with no emails sent, the second leaves nothing. Both give the browser the same message.
+// decide.ts cannot be loaded by node --test (a directive, next/headers, the @/ alias), so this is guarded by its source;
+// the message it compares with is the reader's own export, which the behaviour tests above pin by value.
+test('a decision answer that cannot be read is logged under its own tag, and the browser hears the same fallback either way', () => {
+  const source = decideSource()
+  assert.match(source, /^import \{ DECIDE_OK_UNREADABLE \} from '@\/lib\/quote-portal\/decision-answers'$/m)
+  const body = bodyOf(source, 'decideAction')
+  const caught = body.slice(body.indexOf('} catch'), body.indexOf('if (!result.ok)'))
+  assert.equal(count(caught, 'console.error('), 1, 'one log line, with its tag chosen by the message')
+  assert.match(caught, /message === DECIDE_OK_UNREADABLE \? '\[quote-portal:decide:unreadable\]' : '\[quote-portal:decide\]'/)
+  assert.equal(count(caught, 'return { ok: false, message: REFUSAL_FALLBACK }'), 1, 'and the browser hears the fallback')
+  // What is logged is the tag and the error's fixed message, never a thing of the answer (the reader's errors carry none).
+  assert.match(caught, /console\.error\([^\n]*, message\)/)
+  assert.doesNotMatch(caught, /result|outcome|input|raw|data/i)
 })
 
 test('the browser hears the decision and whether it was a replay, never the outcome', () => {
@@ -531,14 +612,34 @@ test('both emails run side by side under allSettled, the owner notice only when 
   assert.match(notice, /await sendEmail\(\{ to, template \}\)/)
 })
 
-test('a failed email is logged with the quote number only', () => {
-  const lines = logLines(emailsSource())
-  assert.ok(lines.length >= 1)
-  for (const line of lines) {
+// The log line names the email, the quote number and what the send failed with, so a failure that happens again can be
+// told apart (a refused template, a missing app address, a mail server) without the log holding anything of the people:
+// the error's message can quote an address and its stack the signatory, so only its name is printed, and only when the
+// name is a plain word. sendDecisionEmails cannot be loaded by node --test (server-only, the @/ alias), so this is a
+// source guard; the helper is small enough that its whole text is pinned.
+test('a failed email is logged with the quote number and the error name only', () => {
+  const source = emailsSource()
+  const lines = logLines(source)
+  assert.equal(lines.length, 2, 'one line for the acknowledgement, one for the notice')
+  const failures = ['acknowledgement', 'notice']
+  for (const [index, line] of lines.entries()) {
     const printed = line.replace(/^console\.\w+\(/, '').replace(/\)$/, '')
     const identifiers = printed.match(/[A-Za-z_$][\w$.]*/g) ?? []
-    assert.deepEqual([...new Set(identifiers)], ['outcome.quoteNumber'], line)
+    assert.deepEqual([...new Set(identifiers)], ['outcome.quoteNumber', 'errorName', `${failures[index]}.reason`], line)
   }
+  assert.match(source, /console\.error\('\[quote-portal:decision-email\]', 'acknowledgement not sent for', outcome\.quoteNumber, errorName\(acknowledgement\.reason\)\)/)
+  assert.match(source, /console\.error\('\[quote-portal:decision-email\]', 'owner notice not sent for', outcome\.quoteNumber, errorName\(notice\.reason\)\)/)
+
+  // Only the name, and only a plain word: nothing from the message or the stack, and nothing that could be an address.
+  const helper = source.match(/\nfunction errorName\(reason: unknown\): string \{\n([\s\S]*?)\n\}\n/)?.[1]
+  assert.ok(helper, 'errorName is a small private function')
+  assert.equal(helper.trim(), "return reason instanceof Error && /^\\w{1,40}$/.test(reason.name) ? reason.name : 'unknown'")
+  assert.doesNotMatch(helper, /\.message|\.stack|\.cause/)
+  assert.deepEqual(
+    [...source.matchAll(/^export\s+(.*)$/gm)].map((match) => match[1]),
+    ['async function sendDecisionEmails(outcome: DecisionOutcome): Promise<void> {'],
+    'the helper is not exported',
+  )
 })
 
 test('the acknowledgement date is the South African day, written out', () => {

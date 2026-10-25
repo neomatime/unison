@@ -32,8 +32,19 @@ const isDecision = (value: unknown): value is DecisionKind => value === 'accepte
 const isIssueCodeRefusal = (value: unknown): value is IssueCodeRefusal => typeof value === 'string' && Object.hasOwn(ISSUE_CODE_REFUSALS, value)
 const isDecideRefusal = (value: unknown): value is DecideRefusal => typeof value === 'string' && Object.hasOwn(DECIDE_REFUSALS, value)
 
+const isText = (value: unknown): value is string => typeof value === 'string'
+
 const codeAnswerError = () => new Error('portal_issue_code returned an unexpected answer')
 const decideAnswerError = () => new Error('portal_decide returned an unexpected answer')
+
+/**
+ * The fixed sentence of the error thrown when portal_decide answers ok but the answer cannot be read. An ok answer is a
+ * decision that has COMMITTED, so this is a different fault from every other broken answer: the decision stands, no
+ * email has been sent, and a retry replays into the same answer. decideAction tells it from the rest by this message and
+ * logs it under its own tag. Like the others it carries nothing of the answer.
+ */
+export const DECIDE_OK_UNREADABLE = 'portal_decide answer: ok branch unreadable'
+const decideCommittedAnswerError = () => new Error(DECIDE_OK_UNREADABLE)
 
 /**
  * portal_issue_code's answer: `{ ok: true, code, expires_at, recipient_email, quote_number, client_name }` or
@@ -59,8 +70,15 @@ export function readIssueCodeAnswer(data: unknown): IssueCodeResult {
 /**
  * portal_decide's answer: the recorded outcome with `replay` (true when this link had decided before and nothing was
  * written), or `{ ok: false, reason }` with one of the nine reasons; code_wrong also carries the attempts left, a whole
- * number of zero or more. Every key of the outcome must be there: the owner's name, the address to tell and the decline
- * reason and comments as text or null, the rest as text.
+ * number of zero or more.
+ *
+ * The ok branch is read after the decision has committed, so it is strict only about what the rest of the flow cannot do
+ * without: `ok`, `replay` (a boolean), `decision`, and `quote_id`, `decided_at` and `recipient_email` as text that is not
+ * empty (the acknowledgement goes to that address). The fields that are only shown in an email (the quote number, the
+ * client's name, the signatory's name and position) must be text but may be empty: the database allows an empty client
+ * name, and refusing one here would turn a recorded decision into "try again" with every retry refused the same way. The
+ * owner's name, the address to tell and the decline reason and comments are text or null. Anything else throws
+ * DECIDE_OK_UNREADABLE.
  */
 export function readDecideAnswer(data: unknown): DecideResult {
   if (!isAnswer(data)) throw decideAnswerError()
@@ -71,8 +89,8 @@ export function readDecideAnswer(data: unknown): DecideResult {
     if (typeof attemptsLeft !== 'number' || !Number.isInteger(attemptsLeft) || attemptsLeft < 0) throw decideAnswerError()
     return { ok: false, reason, attemptsLeft }
   }
+  if (data.ok !== true) throw decideAnswerError()
   const {
-    ok,
     replay,
     decision,
     decided_at: decidedAt,
@@ -88,12 +106,11 @@ export function readDecideAnswer(data: unknown): DecideResult {
     notify_email: notifyEmail,
   } = data
   if (
-    ok !== true || typeof replay !== 'boolean' || !isDecision(decision) || !isFilled(decidedAt) || !isFilled(quoteId) ||
-    !isFilled(quoteNumber) || !isFilled(clientName) || !isFilled(recipientEmail) || !isFilled(signatoryName) ||
-    !isFilled(signatoryPosition) || !isTextOrNull(declineReason) || !isTextOrNull(declineComments) ||
-    !isTextOrNull(ownerName) || !isTextOrNull(notifyEmail)
+    typeof replay !== 'boolean' || !isDecision(decision) || !isFilled(decidedAt) || !isFilled(quoteId) || !isFilled(recipientEmail) ||
+    !isText(quoteNumber) || !isText(clientName) || !isText(signatoryName) || !isText(signatoryPosition) ||
+    !isTextOrNull(declineReason) || !isTextOrNull(declineComments) || !isTextOrNull(ownerName) || !isTextOrNull(notifyEmail)
   ) {
-    throw decideAnswerError()
+    throw decideCommittedAnswerError()
   }
   return {
     ok: true,

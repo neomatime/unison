@@ -2,6 +2,7 @@
 
 import { headers } from 'next/headers'
 
+import { DECIDE_OK_UNREADABLE } from '@/lib/quote-portal/decision-answers'
 import { submitPortalDecision } from '@/lib/quote-portal/portal-client'
 import type { DecideRefusal, DecideResult, DecisionKind } from '@/lib/quote-portal/types'
 import { REFUSAL_FALLBACK } from '../copy'
@@ -35,7 +36,11 @@ export async function decideAction(raw: Record<string, unknown>): Promise<
   try {
     result = await submitPortalDecision(input.value, evidence)
   } catch (error) {
-    console.error('[quote-portal:decide]', error instanceof Error ? error.message : 'unknown error')
+    // An ok answer that cannot be read is a decision that HAS committed (and so has no emails, and a retry replays into
+    // the same answer); any other failure happened before the commit. The browser hears the same fallback for both, but
+    // the log tells them apart. The error's message is fixed and holds nothing of the answer.
+    const message = error instanceof Error ? error.message : 'unknown error'
+    console.error(message === DECIDE_OK_UNREADABLE ? '[quote-portal:decide:unreadable]' : '[quote-portal:decide]', message)
     return { ok: false, message: REFUSAL_FALLBACK }
   }
   if (!result.ok) return { ok: false, message: refusalMessage(result.reason, result.attemptsLeft), reason: result.reason, attemptsLeft: result.attemptsLeft }

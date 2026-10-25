@@ -14,8 +14,8 @@ import type { DecisionOutcome } from '@/lib/quote-portal/types'
  *   notice goes to outcome.notifyEmail (the owner's team email, else the sender's) and is skipped when there is none.
  * - Best effort: the two are sent side by side and both are waited for, so the action answers once they are done, but
  *   neither can undo or fail the decision. A template that refuses its data, a missing app address or a mail server
- *   that refuses the message is one log line naming the email and the quote number, and nothing else: a mail server's
- *   error can quote the address. This function never rejects.
+ *   that refuses the message is one log line naming the email, the quote number and the NAME of the failure ("TypeError"),
+ *   and nothing else: a mail server's error message can quote the address. This function never rejects.
  * - This module, not the action, reads the environment (the app's public address, for the owner's link).
  */
 
@@ -27,8 +27,21 @@ export async function sendDecisionEmails(outcome: DecisionOutcome): Promise<void
     sendAcknowledgement(outcome),
     outcome.notifyEmail ? sendOwnerNotice(outcome, outcome.notifyEmail) : null,
   ])
-  if (acknowledgement.status === 'rejected') console.error('[quote-portal:decision-email]', 'acknowledgement not sent for', outcome.quoteNumber)
-  if (notice.status === 'rejected') console.error('[quote-portal:decision-email]', 'owner notice not sent for', outcome.quoteNumber)
+  if (acknowledgement.status === 'rejected') {
+    console.error('[quote-portal:decision-email]', 'acknowledgement not sent for', outcome.quoteNumber, errorName(acknowledgement.reason))
+  }
+  if (notice.status === 'rejected') {
+    console.error('[quote-portal:decision-email]', 'owner notice not sent for', outcome.quoteNumber, errorName(notice.reason))
+  }
+}
+
+/**
+ * What a send failed with, as a name ("TypeError"), so a failure that repeats can be told from a one-off. Only the name, and
+ * only when it is a plain word: the message of a mail server's error can quote the address and the stack the signatory,
+ * so neither is ever printed.
+ */
+function errorName(reason: unknown): string {
+  return reason instanceof Error && /^\w{1,40}$/.test(reason.name) ? reason.name : 'unknown'
 }
 
 async function sendAcknowledgement(outcome: DecisionOutcome): Promise<void> {
