@@ -691,3 +691,91 @@ test('two clicks make one change, and a pause racing a month, an approval, an en
     assert.equal((await changesOf(moving.quote)).length, 1, `round ${round}: one entry`)
   }
 })
+
+// ---------------------------------------------------------------------------------------------------------------------------
+// Fix round 1 (20261026103500_billing_issue_guard_paused_plan.sql): nothing is invoiced while a plan is paused or ended.
+// ---------------------------------------------------------------------------------------------------------------------------
+
+const issue = (invoice: string, client: SupabaseClient = fx.sender.client) => client.rpc('issue_invoice', { p_id: invoice })
+/** The invoices issued so far in the organisation: the total of its invoice counter (a refused issue must leave it alone). */
+const invoiceCounter = async () =>
+  (must(await admin.from('document_counters').select('last_number').eq('organization_id', fx.orgId).eq('kind', 'invoice')) as Array<{ last_number: number }>)
+    .reduce((sum, row) => sum + row.last_number, 0)
+/** A plain Draft invoice (no plan link) written by a member, with one line. */
+const plainDraft = async () => {
+  const invoice = must(await fx.sender.client.from('invoices').insert({ organization_id: fx.orgId, client_id: fx.clientId, client_name: 'Portal Client' }).select('id').single())
+  ok(await fx.sender.client.from('invoice_lines').insert({ organization_id: fx.orgId, invoice_id: invoice.id, position: 1, title: 'Advisory', quantity: 1, unit_price: 100, vat_code: 'standard' }), 'the plain draft has a line')
+  return invoice.id as string
+}
+
+test('a paused or ended plan cannot be billed through the ordinary Issue button; an active plan and an unlinked invoice still issue', async () => {
+  const built = await planned({ startDate: '2031-05-01', termMonths: 4 })
+  const { plan, items } = built
+  for (const index of [1, 2, 3]) await makeDue(items[index].id)
+  const second = must(await create(items[1].id)) as string
+  const third = must(await create(items[2].id)) as string
+  const fourth = must(await create(items[3].id)) as string
+
+  // Active: a monthly Draft issues with the ordinary button, and takes a number.
+  let counter = await invoiceCounter()
+  ok(await issue(second), 'the monthly draft of an active plan is issued')
+  assert.equal((await invoiceOf(second)).status, 'Issued')
+  assert.equal(await invoiceCounter(), counter + 1, 'and is numbered')
+  counter += 1
+
+  // Paused: refused for a member and for an owner, nothing is numbered, the draft is as it was.
+  ok(await pause(plan.id, 'Waiting for the client'), 'the plan is paused')
+  refused((await issue(third)).error, 'BILLING_PLAN_NOT_ACTIVE')
+  refused((await issue(third, fxOwner.client)).error, 'BILLING_PLAN_NOT_ACTIVE')
+  const draft = await invoiceOf(third)
+  assert.equal(draft.status, 'Draft')
+  assert.match(draft.invoice_number, /^DRAFT-/, 'still a draft reference, not a number')
+  assert.equal(await invoiceCounter(), counter, 'nothing was numbered')
+  // The first invoice: the ordinary button still says approval, and the approval of a paused plan is refused as before.
+  refused((await issue(built.invoice)).error, 'INVOICE_USE_APPROVAL')
+  refused((await approve(items[0].id)).error, 'BILLING_PLAN_NOT_ACTIVE')
+  assert.equal((await invoiceOf(built.invoice)).status, 'Draft')
+  assert.equal(await invoiceCounter(), counter, 'still nothing numbered')
+  // An invoice with no billing link is not part of any plan: it issues while the plan is paused.
+  ok(await issue(await plainDraft()), 'a plain invoice is issued')
+  counter += 1
+  assert.equal(await invoiceCounter(), counter)
+
+  // Resumed: the same draft issues.
+  ok(await resume(plan.id), 'the plan is resumed')
+  ok(await issue(third), 'the monthly draft is issued after the resume')
+  assert.equal((await invoiceOf(third)).status, 'Issued')
+  counter += 1
+  assert.equal(await invoiceCounter(), counter)
+
+  // Ended: the draft that ending kept (its item has an invoice) is refused because the plan is ended.
+  ok(await end(plan.id, 'Client withdrew'), 'the plan is ended')
+  assert.equal((await itemRow(items[3].id)).status, 'open', 'the item with a draft was kept by the ending')
+  refused((await issue(fourth)).error, 'BILLING_PLAN_NOT_ACTIVE')
+  assert.equal((await invoiceOf(fourth)).status, 'Draft')
+  assert.equal(await invoiceCounter(), counter, 'nothing was numbered')
+
+  // A draft linked to a cancelled item: the ending cancels the item of a discarded (archived) draft; if that draft is brought
+  // back by the service role it is refused as a cancelled month, the more specific answer, though the plan is ended too.
+  const other = await planned({ startDate: '2031-05-01', termMonths: 4 })
+  for (const index of [1, 2]) await makeDue(other.items[index].id)
+  const kept = must(await create(other.items[1].id)) as string
+  const discarded = must(await create(other.items[2].id)) as string
+  ok(await fx.sender.client.from('invoices').update({ archived_at: now() }).eq('id', discarded), 'a draft is discarded')
+  ok(await end(other.plan.id, 'Finished early'), 'the plan is ended')
+  assert.equal((await itemRow(other.items[1].id)).status, 'open')
+  assert.equal((await itemRow(other.items[2].id)).status, 'cancelled', 'the item of the discarded draft was cancelled')
+  ok(await admin.from('invoices').update({ archived_at: null }).eq('id', discarded), 'the discarded draft is brought back by the service role')
+  refused((await issue(discarded)).error, 'BILLING_ITEM_CANCELLED')
+  refused((await issue(kept)).error, 'BILLING_PLAN_NOT_ACTIVE')
+  assert.equal(await invoiceCounter(), counter, 'nothing was numbered')
+
+  // The cancelled-item check on its own, with the plan still active.
+  const single = await planned({ startDate: '2031-05-01', termMonths: 4 })
+  await makeDue(single.items[1].id)
+  const month = must(await create(single.items[1].id)) as string
+  ok(await admin.from('billing_plan_items').update({ status: 'cancelled', cancelled_reason: 'Cancelled by hand' }).eq('id', single.items[1].id), 'the item is cancelled')
+  assert.equal((await planOf(single.quote))?.status, 'active')
+  refused((await issue(month)).error, 'BILLING_ITEM_CANCELLED')
+  assert.equal(await invoiceCounter(), counter, 'nothing was numbered')
+})
