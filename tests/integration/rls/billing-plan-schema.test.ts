@@ -362,7 +362,11 @@ test('the billing fixtures: the switch is on by default, a quote is sent with it
   // Terms and lines as asked, including none.
   const custom = await other.sentBillingQuote({ startDate: '2031-02-28', termMonths: 24, lines: [{ title: 'Audit', unitPrice: 750, chargeKind: null }] })
   assert.deepEqual(await quoteTerms(custom), { start_date: '2031-02-28', term_months: 24 })
-  assert.deepEqual(await quoteTerms(await other.sentBillingQuote({ startDate: null, termMonths: null })), { start_date: null, term_months: null })
+  // No terms and the default lines (one is monthly) would be refused by send_quote with the switch on, so this quote is once-off.
+  assert.deepEqual(
+    await quoteTerms(await other.sentBillingQuote({ startDate: null, termMonths: null, lines: [{ title: 'Audit', unitPrice: 750, chargeKind: 'once_off' }] })),
+    { start_date: null, term_months: null },
+  )
 
   // An acceptance through the real portal functions.
   const { responseId, linkId } = await other.acceptedOnPortal(quote)

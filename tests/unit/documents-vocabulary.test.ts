@@ -60,9 +60,16 @@ test('every database error token the app maps is raised by the send and issue mi
   const sendIssue = migration('20261011110000_documents_send_issue.sql') + migration('20261011120000_documents_hardening.sql') + migration('20261011130000_documents_delivery.sql') + migration('20261011140000_payments_overdue.sql') + migration('20261011160000_register_summary.sql')
     + migration('20261012100000_rate_card.sql') + migration('20261012101000_rate_card_hardening.sql') + migration('20261012110000_client_engagements.sql') + migration('20261012111000_client_engagements_hardening.sql')
     + migration('20261012120000_billing_documents.sql') + migration('20261012121000_billing_documents_hardening.sql') + migration('20261012130000_final_review_fixes.sql') + migration('20261012140000_document_rate_card_lines.sql') + migration('20261012141000_document_rate_card_lines_hardening.sql') + migration('20261012160000_commercial_terms.sql') + migration('20261012161000_commercial_terms_seed.sql') + migration('20261012221817_offerings_on_documents.sql') + migration('20261013100000_document_terms.sql')
-    + migration('20261018101000_quote_portal_links.sql') + migration('20261018101500_quote_portal_links_fixes.sql') + migration('20261026101000_billing_plan_invoices.sql') + migration('20261026102000_billing_first_invoice_approval.sql') + migration('20261026103000_billing_plan_state.sql') + migration('20261026103500_billing_issue_guard_paused_plan.sql')
+    + migration('20261018101000_quote_portal_links.sql') + migration('20261018101500_quote_portal_links_fixes.sql') + migration('20261026101000_billing_plan_invoices.sql') + migration('20261026102000_billing_first_invoice_approval.sql') + migration('20261026103000_billing_plan_state.sql') + migration('20261026103500_billing_issue_guard_paused_plan.sql') + migration('20261026105000_quote_billing_terms_send.sql')
   // BILLING_CHECKS_FAILED is the one token raised with something after it ("BILLING_CHECKS_FAILED: CODE,CODE").
-  for (const token of DOCUMENT_ERROR_TOKENS) assert.ok(sendIssue.includes(`'${token}'`) || sendIssue.includes(`'${token}: `), `${token} must be raised by the migration`)
+  // The two table checks of a quote's terms are not raised by a function: the database names the constraint in its own message,
+  // so the token is the constraint's name and the schema migration is where it is defined.
+  const constraints = ['quotes_billing_terms_check', 'quotes_term_months_range']
+  const schema = migration('20261026100000_billing_plan_schema.sql')
+  for (const token of constraints) assert.ok(schema.includes(`add constraint ${token} check (`), `${token} is a table check of the schema migration`)
+  for (const token of DOCUMENT_ERROR_TOKENS.filter((candidate) => !constraints.includes(candidate))) {
+    assert.ok(sendIssue.includes(`'${token}'`) || sendIssue.includes(`'${token}: `), `${token} must be raised by the migration`)
+  }
 })
 
 test('every token the send and issue migrations raise is either mapped or knowingly left unmapped', () => {
@@ -70,7 +77,7 @@ test('every token the send and issue migrations raise is either mapped or knowin
   const sendIssue = migration('20261011110000_documents_send_issue.sql') + migration('20261011120000_documents_hardening.sql') + migration('20261011130000_documents_delivery.sql') + migration('20261011140000_payments_overdue.sql') + migration('20261011160000_register_summary.sql')
     + migration('20261012100000_rate_card.sql') + migration('20261012101000_rate_card_hardening.sql') + migration('20261012110000_client_engagements.sql') + migration('20261012111000_client_engagements_hardening.sql')
     + migration('20261012120000_billing_documents.sql') + migration('20261012121000_billing_documents_hardening.sql') + migration('20261012130000_final_review_fixes.sql') + migration('20261012140000_document_rate_card_lines.sql') + migration('20261012141000_document_rate_card_lines_hardening.sql') + migration('20261012160000_commercial_terms.sql') + migration('20261012161000_commercial_terms_seed.sql') + migration('20261012221817_offerings_on_documents.sql') + migration('20261013100000_document_terms.sql')
-    + migration('20261018101000_quote_portal_links.sql') + migration('20261018101500_quote_portal_links_fixes.sql') + migration('20261026101000_billing_plan_invoices.sql') + migration('20261026102000_billing_first_invoice_approval.sql') + migration('20261026103000_billing_plan_state.sql') + migration('20261026103500_billing_issue_guard_paused_plan.sql')
+    + migration('20261018101000_quote_portal_links.sql') + migration('20261018101500_quote_portal_links_fixes.sql') + migration('20261026101000_billing_plan_invoices.sql') + migration('20261026102000_billing_first_invoice_approval.sql') + migration('20261026103000_billing_plan_state.sql') + migration('20261026103500_billing_issue_guard_paused_plan.sql') + migration('20261026105000_quote_billing_terms_send.sql')
   const raised = new Set([...sendIssue.matchAll(/raise exception '([A-Z_]+)'/g)].map((match) => match[1]))
   assert.ok(raised.size >= 20, `expected to find the raised tokens, found ${raised.size}`)
   for (const token of raised) {
@@ -177,4 +184,21 @@ test('the billing plan state tokens have their plain messages, and no token swal
   const sql = migration('20261026103000_billing_plan_state.sql')
   for (const [token] of messages) assert.ok(sql.includes(`raise exception '${token}' using errcode = `), `${token} is raised with an errcode`)
   assert.ok(sql.includes("raise exception 'BILLING_PLAN_NOT_FOUND' using errcode = '42501'"), 'a plan that is not found or not yours is a 42501')
+})
+
+test('the quote terms tokens have their plain messages, and no token swallows another', () => {
+  const messages: Array<[string, string]> = [
+    ['QUOTE_BILLING_TERMS_REQUIRED', 'Add a start date and a term in months before sending: this quote has a monthly charge.'],
+    ['QUOTE_CHARGE_KINDS_INCOMPLETE', 'Give every line a charge kind, once-off or monthly, before sending: this quote has a monthly charge.'],
+    ['quotes_billing_terms_check', 'Enter both a start date and a term in months, or leave both blank.'],
+    ['quotes_term_months_range', 'The term must be a whole number of months from 1 to 120.'],
+  ]
+  for (const [token, message] of messages) {
+    assert.equal(documentErrorMessage(token), message, token)
+    assert.equal(documentErrorMessage(`new row violates ${token} (23514)`), message, `${token} inside a database message`)
+    assert.ok(DOCUMENT_ERROR_TOKENS.includes(token), `${token} is in the token list`)
+  }
+  // The send raises the first two with an errcode, in the quoted form the pin above looks for.
+  const sql = migration('20261026105000_quote_billing_terms_send.sql')
+  for (const [token] of messages.slice(0, 2)) assert.ok(sql.includes(`raise exception '${token}' using errcode = '23514'`), `${token} is raised as a 23514`)
 })

@@ -133,6 +133,14 @@ const MESSAGES: ReadonlyArray<readonly [token: string, message: string]> = [
   ['BILLING_REASON_REQUIRED', 'Give a reason (500 characters at most).'],
   ['BILLING_PLAN_CANNOT_RESUME', 'This plan cannot resume while its quote is not accepted, its client is archived or billing is switched off.'],
   ['BILLING_PLAN_ENDED', 'An ended plan cannot be resumed. Make a new quote.'],
+  // The start date and term of a quote (20261026105000_quote_billing_terms_send.sql raises the first two when a quote with a monthly
+  // charge is sent without them; the last two are the names of the table checks from 20261026100000_billing_plan_schema.sql, which
+  // reach the page inside Postgres's own message). None of these contains another token of this list, so their order among
+  // themselves does not matter.
+  ['QUOTE_BILLING_TERMS_REQUIRED', 'Add a start date and a term in months before sending: this quote has a monthly charge.'],
+  ['QUOTE_CHARGE_KINDS_INCOMPLETE', 'Give every line a charge kind, once-off or monthly, before sending: this quote has a monthly charge.'],
+  ['quotes_billing_terms_check', 'Enter both a start date and a term in months, or leave both blank.'],
+  ['quotes_term_months_range', 'The term must be a whole number of months from 1 to 120.'],
 ]
 
 export const DOCUMENT_ERROR_TOKENS: readonly string[] = MESSAGES.map(([token]) => token)

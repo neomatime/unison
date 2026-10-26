@@ -7,6 +7,7 @@ import { getSessionContext } from "@/lib/auth/get-session-context";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { isUuid } from "@/lib/utils";
 import type { PhaseSixKind } from "../queries/phase-six";
+import { readBillingTerms } from "@/features/documents/billing-terms";
 import { documentErrorMessage } from "@/features/documents/errors";
 import { readDocumentExtras } from "@/features/documents/fields";
 import {
@@ -163,6 +164,9 @@ export async function savePhaseSixRecordAction(
       if (!resolvedClient.name) return { error: "Choose a client or enter a prospect name." };
       const contact = optional(form, "contactName");
       if (contact && contact.length > 200) return { error: "The client contact is too long (200 characters at most)." };
+      // The start date and term of the monthly charge: both or neither, and only a draft carries them (a sent quote's are frozen).
+      const terms = readBillingTerms(form);
+      if ("error" in terms) return { error: terms.error };
       values = {
         organization_id: organization.id,
         client_id: resolvedClient.clientId,
@@ -177,6 +181,7 @@ export async function savePhaseSixRecordAction(
         terms: optional(form, "terms"),
         notes: optional(form, "notes"),
         ...extras,
+        ...terms,
       };
     }
   } else if (kind === "invoice") {

@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 
 import { WorkPage } from "@/components/shared/work-page";
 import { formatCurrency } from "@/lib/utils/format-money";
+import { BILLING_TERMS_COPY, formatTermMonths } from "@/features/documents/billing-terms";
 import { isDraftReference } from "@/features/documents/vocabulary";
 import { formatSouthAfricanDate } from "@/features/payments/fields";
 import {
@@ -39,6 +40,7 @@ const fields: Record<PhaseSixKind, Array<[string, string]>> = {
   quote: [
     ["Number", "quoteNumber"], ["Client", "clientName"], ["Client contact", "contactName"], ["Lead", "lead"],
     ["Opportunity", "opportunity"], ["Owner", "owner"], ["Issue date", "issueDate"], ["Valid until", "validUntil"],
+    [BILLING_TERMS_COPY.detailStartDate, "startDate"], [BILLING_TERMS_COPY.detailTerm, "termMonths"],
     ["Project", "projectName"], ["Project reference", "projectRef"], ["Client reference", "clientRef"],
     ["Subtotal", "subtotal"], ["VAT rate", "vatRate"], ["Tax", "taxAmount"], ["Total", "totalAmount"],
     ["Status", "status"], ["Sent", "sentAt"], ["Accepted", "acceptedAt"],
@@ -155,6 +157,7 @@ function formatValue(key: string, value: unknown, record: PhaseSixRecord) {
     return formatCurrency(Number(value), String(record.currency ?? "ZAR"));
   }
   if (key === "vatRate") return `${Number(value)}%`;
+  if (key === "termMonths") return formatTermMonths(Number(value));
   if (key === "probabilityPercent" || key === "confidencePercent") return `${value}%`;
   // The paid date is midnight South African time; shown in UTC it would read as the day before.
   if (key === "paidAt") return formatSouthAfricanDate(String(value));

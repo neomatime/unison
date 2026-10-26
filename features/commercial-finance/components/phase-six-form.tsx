@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useActionState, useState, type ChangeEvent, type ReactNode } from "react";
 
 import { WorkspaceHeader } from "@/components/shared/workspace-header";
+import { BILLING_TERMS_COPY } from "@/features/documents/billing-terms";
 import { QUOTE_SENT_STATUSES, isDraftStatus } from "@/features/documents/vocabulary";
 import { savePhaseSixRecordAction } from "../actions/phase-six";
 import { NameCombobox } from "./name-combobox";
@@ -140,6 +141,8 @@ function Fields({
         <OptionSelect name="opportunityId" label="Related opportunity" options={options.opportunities} value={value("opportunityId")} optional />
         <OptionSelect name="ownerId" label="Quote owner" options={options.members} value={value("ownerId")} optional />
         <Field name="validUntil" label="Valid until (default 30 days after it is sent)" type="date" value={value("validUntil")} />
+        <Field name="startDate" label={BILLING_TERMS_COPY.startDateLabel} type="date" value={value("startDate")} hint={BILLING_TERMS_COPY.helper} />
+        <Field name="termMonths" label={BILLING_TERMS_COPY.termLabel} type="number" min={1} max={120} step="1" value={value("termMonths")} hint={BILLING_TERMS_COPY.helper} />
         <Currency value={value("currency", "ZAR")} />
         <ProjectIdentityFields kind="quote" identity={identity} />
         <Select name="status" label="Status" options={["Draft", "Internal Review"]} value={value("status", "Draft")} />

@@ -105,6 +105,8 @@ export function mapPhaseSixRow(kind: Kind, row: any, names: NameMaps): PhaseSixR
         owner: nameFor(names.members, row.owner_id),
         validUntil: row.valid_until,
         issueDate: row.issue_date,
+        startDate: row.start_date,
+        termMonths: row.term_months,
         projectName: row.project_name,
         projectDescription: row.project_description,
         projectRef: row.project_ref,

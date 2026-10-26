@@ -58,6 +58,8 @@ const approvalBody = (quoteNumber: string) =>
   `Check the draft invoice for quotation ${quoteNumber}, then press Approve and send. Only an owner or admin can approve it.`
 const BY_HAND = ' Its monthly invoices have to be created by hand.'
 const TERMLESS = { startDate: null, termMonths: null } as const
+/** A quote the send rule refuses with the switch on (a monthly line without terms, a line without a charge kind): sent as it was before the switch was turned on. */
+const LOOSELY = { loosely: true } as const
 
 const time = (value: string) => new Date(value).getTime()
 const ago = (ms: number) => new Date(Date.now() - ms).toISOString()
@@ -65,20 +67,30 @@ const sorted = (...ids: string[]) => [...ids].sort()
 const users = (rows: Row[]) => rows.map((row) => row.user_id as string).sort()
 const without = (row: Row, keys: string[]) => Object.fromEntries(Object.entries(row).filter(([key]) => !keys.includes(key)))
 
-/** A sent quote owned by the given team profile (Olive, who has a login, unless said otherwise); the owner is set before the client opens the page. */
-const sentQuote = async (org: BillingOrg, { owner = org.owner.teamMemberId, ...options }: BillingQuoteOptions & { owner?: string | null } = {}) => {
-  const quote = await org.sentBillingQuote(options)
+type SentOptions = BillingQuoteOptions & { owner?: string | null; loosely?: boolean }
+/**
+ * A sent quote owned by the given team profile (Olive, who has a login, unless said otherwise); the owner is set before the client opens the page.
+ * With loosely it is sent with the switch off and the switch is put back on, for the shapes send_quote refuses with the switch on.
+ */
+const sentQuote = async (org: BillingOrg, { owner = org.owner.teamMemberId, loosely = false, ...options }: SentOptions = {}) => {
+  if (loosely) await org.setBilling(false)
+  let quote: string
+  try {
+    quote = await org.sentBillingQuote(options)
+  } finally {
+    if (loosely) await org.setBilling(true)
+  }
   ok(await admin.from('quotes').update({ owner_id: owner }).eq('id', quote), 'the quote has its owner')
   return quote
 }
 /** A quote the client accepted on the portal (the real portal functions). */
-const acceptedQuote = async (org: BillingOrg, options: BillingQuoteOptions & { owner?: string | null } = {}) => {
+const acceptedQuote = async (org: BillingOrg, options: SentOptions = {}) => {
   const quote = await sentQuote(org, options)
   await org.acceptedOnPortal(quote)
   return quote
 }
 /** An acceptance whose billing step fails because the quote has no client at that moment: accepted, no plan. The client is not put back. */
-const strandedQuote = async (org: BillingOrg, options: BillingQuoteOptions & { owner?: string | null } = {}) => {
+const strandedQuote = async (org: BillingOrg, options: SentOptions = {}) => {
   const quote = await sentQuote(org, options)
   ok(await admin.from('quotes').update({ client_id: null }).eq('id', quote), 'the quote has no client')
   await org.acceptedOnPortal(quote)
@@ -198,7 +210,7 @@ test('switch on: a quote linked to an opportunity moves it to Won with won_at, t
 
   // A Lost opportunity becomes Won, its reason cleared. No terms: the monthly line counts once, 10 000 + 1 500 = 11 500.
   const lost = await opportunity(fx, { stage: 'Lost', lost_reason: 'Chose another provider', probability_percent: 10 })
-  await acceptedQuote(fx, { opportunityId: lost.id, ...TERMLESS })
+  await acceptedQuote(fx, { opportunityId: lost.id, ...TERMLESS, ...LOOSELY })
   const revived = await opportunityRow(lost.id)
   assert.equal(revived.stage, 'Won')
   assert.equal(revived.lost_reason, null, 'the lost reason is cleared')
@@ -210,7 +222,7 @@ test('switch on: a quote linked to an opportunity moves it to Won with won_at, t
   // A line with no kind is once-off: 750 + 200 x 6 = 1 950.
   const mixed = await opportunity(fx, { stage: 'Qualified', probability_percent: 30 })
   await acceptedQuote(fx, {
-    opportunityId: mixed.id, startDate: '2031-05-01', termMonths: 6,
+    opportunityId: mixed.id, startDate: '2031-05-01', termMonths: 6, ...LOOSELY,
     lines: [{ title: 'Audit', unitPrice: 750, chargeKind: null }, { title: 'Hosting', unitPrice: 200, chargeKind: 'monthly' }],
   })
   assert.equal(Number((await opportunityRow(mixed.id)).expected_value), 1950)
@@ -245,7 +257,7 @@ test('a quote with no opportunity gets one, linked to the quote; a second accept
   assert.equal(await opportunityCount(fx), opportunitiesBefore + 1)
 
   // Otherwise "Quotation <number>", with the quote's owner (none here) and a quote without terms.
-  const plain = await sentQuote(fx, { owner: null, ...TERMLESS })
+  const plain = await sentQuote(fx, { owner: null, ...TERMLESS, ...LOOSELY })
   await fx.acceptedOnPortal(plain)
   const plainQuote = await quoteRow(plain)
   const plainOpportunity = await opportunityRow(plainQuote.opportunity_id)
@@ -312,7 +324,7 @@ test("a plan, item 1 and a draft first invoice with the quote's lines are made; 
   }
 
   // A monthly quote with no terms: item 1 only, and the notice says the monthly invoices are made by hand.
-  const handMade = await acceptedQuote(fx, TERMLESS)
+  const handMade = await acceptedQuote(fx, { ...TERMLESS, ...LOOSELY })
   const handState = await billed(fx, handMade)
   assert.ok(handState.plan)
   assert.equal(handState.plan.start_date, null)
@@ -400,7 +412,7 @@ test('a client that is archived at the time: the acceptance holds and bills noth
 
 test('a quote staff have already invoiced by hand is not billed again by the sweep; a discarded draft is not an invoice', async () => {
   // No terms, so the Create invoice button makes a plain invoice with no plan (the way it always did).
-  const quote = await strandedQuote(fx, TERMLESS)
+  const quote = await strandedQuote(fx, { ...TERMLESS, ...LOOSELY })
   await restoreClient(fx, quote)
   const invoice = must(await fx.sender.client.rpc('create_invoice_from_quote', { p_quote_id: quote })) as string
   assert.equal(await planCount(quote), 0, 'a plain invoice has no plan')
