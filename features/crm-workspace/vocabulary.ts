@@ -25,6 +25,9 @@ export const SYSTEM_ACTIVITY_KINDS = [
   'billing.document_built',
   'quote.declined',
   'quote.superseded',
+  'billing.plan_created',
+  'billing.invoice_approved',
+  'billing.plan_changed',
 ] as const
 
 /** Matches sales_opportunities_stage_check. */
@@ -56,4 +59,7 @@ export const ACTIVITY_LABELS: Record<string, string> = {
   'billing.document_built': 'Billing document built',
   'quote.declined': 'Quote declined',
   'quote.superseded': 'Quote superseded',
+  'billing.plan_created': 'Billing plan created',
+  'billing.invoice_approved': 'Invoice approved',
+  'billing.plan_changed': 'Billing plan changed',
 }
