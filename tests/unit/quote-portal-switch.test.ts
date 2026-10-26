@@ -79,7 +79,7 @@ test('the settings page renders the switch after the company form and passes the
   const toggle = source.indexOf('<QuotePortalSwitch ')
   assert.ok(form > -1 && toggle > form, 'the switch is a sibling below the company form')
   assert.match(source, /<QuotePortalSwitch enabled=\{settings\?\.quote_portal_enabled \?\? false\} canEdit=\{canEdit\} \/>/)
-  assert.match(source, /return \(\s*<>\s*<CompanyDetailsForm [^>]*\/>\s*<QuotePortalSwitch [^>]*\/>\s*<\/>\s*\)/, 'both are children of one fragment')
+  assert.match(source, /return \(\s*<>\s*<CompanyDetailsForm [^>]*\/>\s*<QuotePortalSwitch [^>]*\/>\s*(<BillingPlansSwitch [^>]*\/>\s*)?<\/>\s*\)/, 'both are children of one fragment (the billing plans switch may follow, task 8)')
   assert.match(source, /<CompanyDetailsForm settings=\{settings\} canEdit=\{canEdit\} termsManaged=\{managed\} \/>/, 'the company form is wired as before')
 })
 

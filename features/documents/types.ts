@@ -33,6 +33,8 @@ export type CompanySettings = {
   header_image_path: string | null
   /** The quote portal switch (default false): when on, an emailed Sent quote carries a secure link. Anything but true is off. */
   quote_portal_enabled?: boolean
+  /** The billing plans switch (default false): when on, a quote accepted on the portal gets a billing plan and a draft first invoice. Anything but true is off. */
+  billing_plans_enabled?: boolean
 }
 
 export type DocumentLine = {
