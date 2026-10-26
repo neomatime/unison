@@ -263,7 +263,7 @@ Where the design is silent or leaves it to the builder. Say if any should change
 5. **Approve and send emails with the approver's session** (Reply-To is the approver); the quote owner as Reply-To comes with Stage 2.
 6. **The first invoice's due date is left blank** on the draft; `issue_invoice` then sets issue day plus the company's payment days, and the owner may type a date.
 7. **Every line needs a charge kind** when a quote has a monthly line while the switch is on, so the portal's grouped view and the plan can never disagree.
-8. **The existing "Create invoice" button** allows one live invoice per quote (not cancelled, not archived); with a plan it points to the plan; with the switch on and terms on the quote it builds the plan and item 1 instead.
+8. **The existing "Create invoice" button** allows one live invoice per quote (live = not cancelled, and not an archived draft); with a plan it points to the plan; with the switch on and terms on the quote it builds the plan and item 1 instead.
 9. **A monthly item can be invoiced by hand only once its date has arrived;** the draft is issued with the normal Issue button, the first invoice only through approval.
 10. **An archived draft frees its item; a cancelled issued invoice does not** (the month stays billed; a replacement is raised by hand).
 11. **Sales:** probability and other fields are untouched; a Lost opportunity becomes Won with its lost reason cleared; the value rule is the design's decision 12.
