@@ -272,3 +272,4 @@ Where the design is silent or leaves it to the builder. Say if any should change
 14. **The term is 1 to 120 months;** the start date may be any real date from 2020 to 2100.
 15. **Item 1's `bill_on` is the acceptance day** (informational; the first invoice is released by approval, not by date).
 16. **The Invoices list is not changed;** the invoice page carries the "waiting for approval" banner instead. The onboarding record and task of the design's §2 are Stage 4.
+17. **Filling terms and offerings stays available on a plan draft.** The design locks the amounts (lines, prices, quantities) and the header fields, not the wording: `set_document_terms` and `set_document_offerings` (definer functions, draft-only) may still write `payment_terms`, `terms_sources` and the offerings of a plan draft. They carry no money, and the payment terms text falls back to the company default at issue.
