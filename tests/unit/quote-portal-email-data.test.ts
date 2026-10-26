@@ -60,6 +60,7 @@ test('a sent quote maps to the whole summary card and sign-off', () => {
     totalLabel: 'ZAR 230,000.00',
     vatNote: 'Incl. VAT (15%)',
     validUntil: '6 November 2026',
+    agreement: null, // this quote has no start date and term (billing-terms-display.test.ts covers one that has)
     statusLabel: 'Awaiting response',
     recipientName: 'Thandi Nkosi',
     personalNote: NOTE,

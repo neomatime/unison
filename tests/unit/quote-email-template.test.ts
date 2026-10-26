@@ -22,6 +22,7 @@ function data(overrides: Partial<QuoteEmailData> = {}): QuoteEmailData {
     totalLabel: 'ZAR 230,000.00',
     vatNote: 'Excl. VAT',
     validUntil: '25 October 2026',
+    agreement: null,
     statusLabel: 'Awaiting response',
     recipientName: 'Thandi Nkosi',
     personalNote: EMAIL_DEFAULT_NOTE,

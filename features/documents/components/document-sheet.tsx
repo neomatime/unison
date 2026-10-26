@@ -228,6 +228,14 @@ export function DocumentSheet({ view }: { view: DocumentView }) {
           </dl>
         </section>
 
+        {view.agreement ? (
+          <section className="mt-[3mm] break-inside-avoid px-[12mm]">
+            <p className="break-words text-[9pt]">
+              <span className="font-semibold">Monthly agreement:</span> {view.agreement}
+            </p>
+          </section>
+        ) : null}
+
         {view.terms.length ? (
           <section className="sheet-terms mt-[4mm] px-[12mm]">
             <div className={RULE} />

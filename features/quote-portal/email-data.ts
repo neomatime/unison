@@ -31,6 +31,8 @@ export function buildQuoteEmailData(input: {
     // "Incl. VAT (15%)", with the rate the view prints from record.vat_rate; a quote with no VAT does not claim a rate.
     vatNote: Number(record.tax_amount) > 0 ? `Incl. ${view.totals.vatLabel}` : 'No VAT charged',
     validUntil: formatDocumentDate(record.valid_until),
+    // The one sentence the portal and the PDF print, from the same view; null (no row, no line) for a quote without a start date and term.
+    agreement: view.agreement,
     statusLabel: clientStatusLabel(String(record.status)),
     recipientName: record.contact_name ?? null,
     personalNote: input.personalNote,

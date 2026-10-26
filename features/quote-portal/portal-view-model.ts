@@ -126,6 +126,12 @@ export type PortalCommercial = {
   totalLabel: string
   /** The note that monthly charges recur; present only with a grouped summary. */
   recurringNote: string | null
+  /**
+   * What the client agrees to pay each month, as one sentence ("ZAR 1,725.00 per month for 12 months from 15 December 2026"; "12
+   * monthly payments from ..." when the summary is flat and has no monthly figure). Null unless the quote has a start date and term
+   * and a monthly line. It is the document view's sentence, so the page and the PDF cannot say different things.
+   */
+  agreement: string | null
 }
 
 export type PortalContact = {
@@ -146,7 +152,10 @@ export type ConfirmationModel = {
   services: string[]
   /** The stored total, as the page prints it: "ZAR 230,000.00". */
   initialTotal: string
-  /** The monthly figure (including VAT when the monthly lines carry it) "per month"; null unless the summary is grouped. */
+  /**
+   * The monthly figure (including VAT when the monthly lines carry it) "per month", followed by "for 12 months from 15 December 2026"
+   * when the quote has a start date and term; null unless the summary is grouped.
+   */
   recurring: string | null
   /** The first three terms. */
   keyTerms: string[]
@@ -252,9 +261,10 @@ export function buildPortalQuoteModel(quote: PortalQuoteFull): PortalQuoteModel 
       totals,
       totalLabel: 'Total initial amount',
       recurringNote: RECURRING_NOTE,
+      agreement: view.agreement,
     }
   } else {
-    commercial = { currency, grouped: false, rows: summary.lines.map(lineRow), onceOff: null, monthly: null, totals, totalLabel: 'Total quoted amount', recurringNote: null }
+    commercial = { currency, grouped: false, rows: summary.lines.map(lineRow), onceOff: null, monthly: null, totals, totalLabel: 'Total quoted amount', recurringNote: null, agreement: view.agreement }
   }
 
   // --- the frozen terms, with the template versions they were filled from
@@ -272,7 +282,9 @@ export function buildPortalQuoteModel(quote: PortalQuoteFull): PortalQuoteModel 
     organisation: text(record.client_name) ?? '',
     services: (services.length ? services.map((service) => service.title) : view.lines.map((row) => row.title)).filter(Boolean),
     initialTotal: `${currency} ${view.totals.total}`,
-    recurring: monthly ? `${currency} ${monthly.includingVat ?? monthly.subtotal} per month` : null,
+    // The monthly figure alone, or (with a start date and term) the whole agreement: it begins with that same figure, so the sentence
+    // is made in one place (agreementSentence, through the document view) and this step cannot word it differently from the page.
+    recurring: monthly ? (commercial.agreement ?? `${currency} ${monthly.includingVat ?? monthly.subtotal} per month`) : null,
     keyTerms: view.terms.slice(0, 3),
     prefill: { name: text(quote.recipient_name) ?? '', organisation: text(record.client_name) ?? '' },
   }

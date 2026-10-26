@@ -1,6 +1,9 @@
 // Turns database rows into the document the sheet prints. Pure: the sheet component only lays it out.
 // A draft is built from the live client and company details; a document that has gone out is built only
 // from the copies frozen onto it, so what the client received can never change.
+import type { PortalLine } from '../../lib/quote-portal/types.ts'
+import { buildCommercialSummary } from '../quote-portal/summary.ts'
+import { agreementSentence, quoteHasMonthlyLine } from './billing-terms.ts'
 import { DOCUMENTS, isDraftReference, isDraftStatus, type DocumentKind } from './vocabulary.ts'
 
 type Row = Record<string, unknown>
@@ -54,6 +57,25 @@ function termItems(raw: unknown): string[] {
     .filter(Boolean)
 }
 
+/**
+ * What the client agrees to pay each month, as one sentence: "ZAR 1,725.00 per month for 12 months from 15 December 2026". The
+ * words are agreementSentence's (billing-terms.ts); this supplies the three pieces, so the portal page, the confirmation step, the
+ * sheet, the PDF and the email can only ever say the same thing. The monthly figure is the one the portal shows (the monthly total
+ * including VAT of buildCommercialSummary) with the currency; when the lines cannot be grouped it is null and the sentence counts
+ * the payments instead. Null when the quote has no start date and term, or no monthly line: a quote that bills nothing monthly
+ * agrees to no monthly payments, whatever was typed on it.
+ */
+function quoteAgreement(record: Row, lines: Row[], currency: string): string | null {
+  const startDateLabel = formatDocumentDate(record.start_date)
+  const rawTerm = record.term_months
+  // A numeric column arrives as a number; read it like every other amount, and let a blank or unreadable one give no sentence.
+  const termMonths = rawTerm === null || rawTerm === undefined || String(rawTerm).trim() === '' ? null : Number(rawTerm)
+  if (!startDateLabel || termMonths === null || !quoteHasMonthlyLine(lines)) return null
+  const summary = buildCommercialSummary(lines as unknown as PortalLine[], Number(record.vat_rate ?? 15))
+  const monthly = summary.grouped ? `${currency} ${formatAmount(summary.monthlyIncludingVat)}` : null
+  return agreementSentence({ monthly, termMonths, startDateLabel })
+}
+
 export type DocumentView = {
   kind: DocumentKind
   title: 'QUOTE' | 'INVOICE'
@@ -72,6 +94,8 @@ export type DocumentView = {
   currency: string
   lines: Array<{ title: string; description: string | null; quantity: string; unitPrice: string; amount: string }>
   totals: { subtotal: string; vatLabel: string; vat: string; total: string }
+  /** The monthly agreement of a quote that has a start date and term and a monthly line; null for every other quote and for every invoice. */
+  agreement: string | null
   termsHeading: string
   inclusions: string[]
   terms: string[]
@@ -149,6 +173,8 @@ export function buildDocumentView(input: { kind: DocumentKind; record: Row; line
         amount: formatAmount(line.line_amount),
       })),
     totals: { subtotal: formatAmount(record.subtotal), vatLabel, vat: formatAmount(record.tax_amount), total: formatAmount(record.total_amount) },
+    // Only a quote has an agreement: an invoice bills one month, and its record holds no start date or term.
+    agreement: quote ? quoteAgreement(record, input.lines, currency) : null,
     termsHeading: quote ? 'Terms & conditions' : 'Payment terms',
     // Service inclusions are part of what a client accepts, so only a quote prints them (an invoice carries them for reference).
     inclusions: quote ? termItems(record.service_inclusions) : [],

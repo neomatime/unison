@@ -62,6 +62,13 @@ export type PortalRecord = {
   issuer: Record<string, unknown> | null
   sent_at: string | null
   accepted_at: string | null
+  /**
+   * The day the monthly charge starts ('YYYY-MM-DD') and the term in months. private.quote_snapshot adds both keys ONLY for a quote
+   * that has them (20261026106000_quote_billing_terms_snapshot.sql), so a quote without terms, and an answer from before they
+   * existed, lack the keys altogether.
+   */
+  start_date?: string | null
+  term_months?: number | null
 }
 
 /** What an expired or superseded link carries of the quote. */

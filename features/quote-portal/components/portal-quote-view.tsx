@@ -230,6 +230,8 @@ function CommercialTable({ commercial }: { commercial: PortalCommercial }) {
           <SumRow label={commercial.totalLabel} amount={totals.total} strong />
         </div>
       </div>
+      {/* The agreement, as the model worded it: one quiet line under the figures, only for a quote with a start date and term. */}
+      {commercial.agreement ? <p className={cn('mt-4 text-sm leading-relaxed', WRAP)}>{commercial.agreement}</p> : null}
       {commercial.recurringNote ? (
         <p className="mt-4 flex items-start gap-3 border border-border bg-accent/60 p-4 text-sm leading-relaxed">
           <Info aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-brand" />

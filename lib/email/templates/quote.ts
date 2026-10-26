@@ -26,6 +26,8 @@ export type QuoteEmailData = {
   totalLabel: string
   vatNote: string
   validUntil: string | null
+  /** "ZAR 1,725.00 per month for 12 months from 15 December 2026"; null for a quote without a start date and term, whose email has no agreement row. */
+  agreement: string | null
   statusLabel: string
   recipientName: string | null
   personalNote: string
@@ -176,6 +178,8 @@ export function quoteEmailTemplate(data: QuoteEmailData, subject: string): Email
   const totalLabel = line(data.totalLabel)
   const vatNote = line(data.vatNote)
   const validUntil = data.validUntil ? line(data.validUntil) : ''
+  // Null, blank or missing (a caller from before the field existed does not pass it) means no cell and no line at all.
+  const agreement = data.agreement ? line(data.agreement) : ''
   const statusLabel = line(data.statusLabel)
   const recipientName = data.recipientName ? line(data.recipientName) : ''
   const senderName = line(data.sender.name)
@@ -243,6 +247,7 @@ export function quoteEmailTemplate(data: QuoteEmailData, subject: string): Email
         value(escapeHtml(totalLabel)) + (vatNote ? note(escapeHtml(vatNote)) : ''),
     },
     ...(validUntil ? [{ label: 'VALID UNTIL', weight: 17, render: () => value(escapeHtml(validUntil)) }] : []),
+    ...(agreement ? [{ label: 'AGREEMENT', weight: 17, render: () => value(escapeHtml(agreement)) }] : []),
     ...(statusLabel
       ? [{
           label: 'STATUS',
@@ -391,6 +396,7 @@ export function quoteEmailTemplate(data: QuoteEmailData, subject: string): Email
     ...(projectName ? [`Project: ${projectName}`] : []),
     `Amount: ${totalLabel}${vatNote ? ` (${vatNote})` : ''}`,
     ...(validUntil ? [`Valid until: ${validUntil}`] : []),
+    ...(agreement ? [`Agreement: ${agreement}`] : []),
     ...(statusLabel ? [`Status: ${statusLabel}`] : []),
     '',
     'Review quotation:',

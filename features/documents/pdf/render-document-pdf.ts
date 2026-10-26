@@ -201,6 +201,16 @@ function inclusionsAndTotals(view: DocumentView) {
   )
 }
 
+/** The monthly agreement of a quote, as one line under the totals: "Monthly agreement: ZAR 1,725.00 per month for 12 months from 15 December 2026". Nothing for a quote without one, and for an invoice. */
+function agreementLine(view: DocumentView) {
+  if (!view.agreement) return null
+  return h(
+    View,
+    { wrap: false, style: s({ marginTop: mm(3), paddingHorizontal: mm(12) }) },
+    h(Text, { style: s({ fontSize: 9 }) }, h(Text, { style: s({ fontFamily: 'Helvetica-Bold' }) }, 'Monthly agreement: '), t(view.agreement)),
+  )
+}
+
 /** The terms run the full width of the page, right below the totals and above the bank details and next steps. */
 function termsBlock(view: DocumentView) {
   if (!view.terms.length) return null
@@ -305,6 +315,7 @@ export function buildDocumentPdfElement(view: DocumentView, images: PdfImages) {
       parties(view),
       table(view),
       inclusionsAndTotals(view),
+      agreementLine(view),
       termsBlock(view),
       bankAndClosing(view),
       footer(view),
