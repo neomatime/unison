@@ -74,11 +74,21 @@ const planned = async (options: BillingQuoteOptions = {}, org: BillingOrg = fx):
   return built as Built
 }
 
-/** A plan for a quote the client accepted on the portal: its owner is Olive (a login), the link was made by Sam (a login). */
+/**
+ * A plan for a quote the client accepted on the portal: its owner is Olive (a login), the link was made by Sam (a login). The
+ * acceptance is made with the switch off, so that it does only what it always did (an accepted response whose link Sam made) and
+ * the plan is built here, by staff, as in the other tests; with the switch on, the acceptance builds the plan and tells the
+ * people itself (billing-acceptance.test.ts).
+ */
 const portalPlanned = async (owner: string | null = fx.owner.teamMemberId, options: BillingQuoteOptions = {}): Promise<Built> => {
   const quote = await fx.sentBillingQuote({ startDate: '2031-05-01', termMonths: 4, ...options })
   ok(await admin.from('quotes').update({ owner_id: owner }).eq('id', quote), 'the quote has its owner')
-  await fx.acceptedOnPortal(quote)
+  await fx.setBilling(false)
+  try {
+    await fx.acceptedOnPortal(quote)
+  } finally {
+    await fx.setBilling(true)
+  }
   assert.equal((await quoteRow(quote)).status, 'Accepted', 'the client accepted on the portal')
   const invoice = must(await fx.sender.client.rpc('create_invoice_from_quote', { p_quote_id: quote })) as string
   const plan = await planOf(quote)
