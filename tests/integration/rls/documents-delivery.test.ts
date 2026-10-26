@@ -253,12 +253,12 @@ test('an accepted quote becomes a draft invoice with the same header and every l
   assert.equal(entries[0].created_by, member.id)
 })
 
-test('the draft can be issued like any other, and two calls make two invoices', async () => {
+test('the draft can be issued like any other, and a second call is refused while that invoice stands', async () => {
   const quote = await acceptedQuote()
   const first = must(await memberClient.rpc('create_invoice_from_quote', { p_quote_id: quote }))
-  const second = must(await memberClient.rpc('create_invoice_from_quote', { p_quote_id: quote }))
-  assert.notEqual(first, second)
-  assert.equal((await admin.from('invoices').select('id').eq('quote_id', quote)).data!.length, 2)
+  // Accept to invoice, stage 1: one live invoice per quote (a draft that is archived or an invoice that is cancelled no longer counts).
+  refused((await memberClient.rpc('create_invoice_from_quote', { p_quote_id: quote })).error, 'QUOTE_ALREADY_INVOICED')
+  assert.equal((await admin.from('invoices').select('id').eq('quote_id', quote)).data!.length, 1)
   const issued = await memberClient.rpc('issue_invoice', { p_id: first })
   assert.equal(issued.error, null)
   assert.match(issued.data.number, /^TST-I-\d{4}-\d{5}$/)

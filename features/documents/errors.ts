@@ -105,6 +105,17 @@ const MESSAGES: ReadonlyArray<readonly [token: string, message: string]> = [
   ['LINK_NOT_FOUND', 'That link was not found.'],
   ['QUOTE_CANNOT_REVISE', 'Only a sent, declined or expired quote can be revised.'],
   ['QUOTE_SUPERSEDED_AUTOMATIC', 'A superseded quote is set automatically when its revision is sent.'],
+  // Billing plans (20261026101000_billing_plan_invoices.sql). None of these contains another token of this list, so their order
+  // among themselves does not matter.
+  ['BILLING_QUOTE_NOT_ELIGIBLE', 'Only an accepted quote with a client can have a billing plan.'],
+  ['BILLING_ITEM_NOT_FOUND', 'That billing item was not found.'],
+  ['BILLING_ITEM_CANCELLED', 'That billing item was cancelled.'],
+  ['BILLING_PLAN_NOT_ACTIVE', 'This billing plan is paused or ended.'],
+  ['BILLING_ITEM_ALREADY_INVOICED', 'That month already has an invoice. Discard the draft, or cancel the issued invoice, first.'],
+  ['BILLING_ITEM_NOT_DUE', 'That month is not due yet.'],
+  ['BILLING_NOT_ENABLED', 'Billing plans are switched off. An owner or admin can turn them on under Settings, Company details.'],
+  ['QUOTE_HAS_BILLING_PLAN', 'This quote is billed through its billing plan. Use the plan on this page.'],
+  ['QUOTE_ALREADY_INVOICED', 'This quote already has an invoice. Open it from the list below, or discard or cancel it first.'],
 ]
 
 export const DOCUMENT_ERROR_TOKENS: readonly string[] = MESSAGES.map(([token]) => token)
