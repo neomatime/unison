@@ -6,6 +6,7 @@ import {
   acceptQuote, activitiesOf, buildPlan, invoiceOf, itemsOf, linkedTo, makeDue, ok, refused, saToday, setupBillingOrg,
   type BillingOrg, type BillingQuoteOptions,
 } from './billing-fixtures.ts'
+import { isValidEmailAddress } from '../../../features/documents/email.ts'
 import { admin, cleanup, createFixtureUser, signedInClient } from './helpers.ts'
 import { anonymous, must } from './portal-fixtures.ts'
 
@@ -417,6 +418,66 @@ test("billing_invoice_blockers names each missing item, asks for the VAT number 
   assert.deepEqual(await blockers(invoice), [], 'the first invoice of a plan, as built')
   assert.ok((await member().rpc('billing_invoice_blockers', { p_invoice_id: invoice })).error, 'not callable by a member')
   assert.ok((await admin.rpc('billing_invoice_blockers', { p_invoice_id: invoice })).error, 'nor by the service role')
+})
+
+test("billing_invoice_readiness counts an address as an email only when the app can send to it: the pattern and rules of isValidEmailAddress and record_document_email", async () => {
+  const nbsp = String.fromCharCode(0xa0)
+  const accent = String.fromCharCode(0xf1)
+  /** A valid address of 254 characters (255 with extra = 1): a 64-character name and labels no longer than 63. */
+  const longest = (extra: number) => `${'a'.repeat(64)}@${'b'.repeat(63)}.${'c'.repeat(63)}.${'d'.repeat(57 + extra)}.com`
+  assert.equal(longest(0).length, 254)
+  assert.equal(longest(1).length, 255)
+  const cases: Array<[label: string, address: string, valid: boolean]> = [
+    ['two dots in a row in the name', 'a..b@client.test', false],
+    ['a leading dot', '.a@client.test', false],
+    ['a dot before the @', 'a.@client.test', false],
+    ['two dots in a row in the domain', 'a@client..test', false],
+    ['a one-letter top level', 'a@client.c', false],
+    ['no top level', 'a@client', false],
+    ['an accented letter in the name', `${accent}@client.test`, false],
+    ['a trailing dot', 'a@client.test.', false],
+    ['a space inside', 'a b@client.test', false],
+    ['a label that starts with a hyphen', 'a@-client.test', false],
+    ['two @', 'a@@client.test', false],
+    ['a display name', 'Pat <a@client.test>', false],
+    ['two addresses', 'a@client.test, b@client.test', false],
+    ['255 characters', longest(1), false],
+    ['a plain address', 'a@client.test', true],
+    ['plus tag and subdomains', 'first.last+tag@sub.client.test', true],
+    ['an apostrophe in the name', "o'brien@client.test", true],
+    ['254 characters', longest(0), true],
+    ['spaces, a tab, a newline and non-breaking spaces round it, which the app trims', ` \t${nbsp}a@client.test${nbsp}\n `, true],
+  ]
+  // The table is the app's own answer first, so it cannot drift from isValidEmailAddress.
+  for (const [label, address, valid] of cases) assert.equal(isValidEmailAddress(address), valid, `the app: ${label}`)
+
+  const client = must(await admin.from('clients').insert({ organization_id: fx.orgId, name: 'Email Client', status: 'Active', address_line1: '5 Mail Street' }).select('id').single()).id as string
+  const contact = must(await admin.from('contacts').insert({ organization_id: fx.orgId, client_id: client, full_name: 'Casey Contact', is_primary: true }).select('id').single()).id as string
+  const invoice = await plainDraft({ client_id: client, client_name: 'Email Client' })
+  const readinessWith = async (billing: string | null, contactEmail: string | null) => {
+    ok(await admin.from('clients').update({ billing_email: billing }).eq('id', client), 'the billing email is set')
+    ok(await admin.from('contacts').update({ email: contactEmail }).eq('id', contact), "the primary contact's email is set")
+    return must(await readiness(invoice)) as string[]
+  }
+  const missing = ['CLIENT_EMAIL_MISSING']
+  assert.deepEqual(await readinessWith(null, null), missing, 'no address anywhere')
+
+  for (const [label, address, valid] of cases) {
+    const expected = valid ? [] : missing
+    assert.deepEqual(await readinessWith(address, null), expected, `as the billing email: ${label}`)
+    assert.deepEqual(await readinessWith(null, address), expected, `as the primary contact's email: ${label}`)
+  }
+
+  // As in getEmailDefaults: the billing email is used when it is valid, otherwise the primary contact's.
+  assert.deepEqual(await readinessWith('a..b@client.test', 'pat@client.test'), [], 'an unusable billing email falls back to a good contact')
+  assert.deepEqual(await readinessWith('accounts@client.test', '.a@client.test'), [], 'a good billing email needs no contact')
+  assert.deepEqual(await readinessWith('a..b@client.test', '.a@client.test'), missing, 'neither is usable')
+  assert.deepEqual(await readinessWith(' \t ', ` ${nbsp}pat@client.test `), [], 'a blank billing email and a good contact, with spaces round it')
+  // The old test was only "x@y.z": none of these is an address the app sends to.
+  for (const address of ['a..b@client.test', '.a@client.test', 'a@client.c', `${accent}@client.test`, 'a@client.test.']) {
+    assert.equal(isValidEmailAddress(address), false, address)
+    assert.deepEqual(await readinessWith(address, null), missing, `the five addresses that used to pass: ${address}`)
+  }
 })
 
 test('billing_invoice_readiness is readable by a member, refused to another organisation and to anon', async () => {
