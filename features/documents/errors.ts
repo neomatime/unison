@@ -124,6 +124,15 @@ const MESSAGES: ReadonlyArray<readonly [token: string, message: string]> = [
   ['BILLING_APPROVAL_ADMIN_ONLY', 'Only an owner or admin can approve the first invoice.'],
   ['BILLING_ALREADY_APPROVED', 'The first invoice has already been approved.'],
   ['BILLING_CHECKS_FAILED', 'The invoice cannot go out yet. The page lists what needs attention.'],
+  // Pausing, resuming and ending a billing plan (20261026103000_billing_plan_state.sql). None of these contains another token of
+  // this list, so their order among themselves does not matter. BILLING_PLAN_NOT_FOUND is the one raised with errcode 42501 (not
+  // found, or not yours: the caller cannot tell which); the rest are 23514.
+  ['BILLING_PLAN_NOT_FOUND', 'That billing plan was not found.'],
+  ['BILLING_PLAN_ADMIN_ONLY', 'Only an owner or admin can change a billing plan.'],
+  ['BILLING_PLAN_ACTION_INVALID', 'Choose pause, resume or end.'],
+  ['BILLING_REASON_REQUIRED', 'Give a reason (500 characters at most).'],
+  ['BILLING_PLAN_CANNOT_RESUME', 'This plan cannot resume while its quote is not accepted, its client is archived or billing is switched off.'],
+  ['BILLING_PLAN_ENDED', 'An ended plan cannot be resumed. Make a new quote.'],
 ]
 
 export const DOCUMENT_ERROR_TOKENS: readonly string[] = MESSAGES.map(([token]) => token)
