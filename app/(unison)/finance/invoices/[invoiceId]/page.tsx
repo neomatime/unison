@@ -1,10 +1,14 @@
+import Link from 'next/link'
+
 import { PhaseSixDetail } from '@/features/commercial-finance/components/phase-six-detail'
+import { FIRST_INVOICE_BANNER, isFirstPlanDraft } from '@/features/documents/billing-plan-view'
 import { DocumentActions } from '@/features/documents/components/document-actions'
 import { EmailSection } from '@/features/documents/components/email-section'
 import { LineEditor } from '@/features/documents/components/line-editor'
 import { getDocument } from '@/features/documents/queries/get-document'
+import { getPlanLink } from '@/features/documents/queries/get-plan-link'
 import { listHiveOfferings } from '@/features/documents/queries/list-hive-offerings'
-import { isDraftStatus } from '@/features/documents/vocabulary'
+import { DOCUMENTS, isDraftStatus } from '@/features/documents/vocabulary'
 import { DocumentTermsPanel } from '@/features/terms/components/document-terms-panel'
 import { PaymentsSection } from '@/features/payments/components/payments-section'
 import { listPayments } from '@/features/payments/queries/list-payments'
@@ -14,7 +18,26 @@ async function InvoiceHeaderActions({ invoiceId }: { invoiceId: string }) {
   const bundle = await getDocument('invoice', invoiceId)
   if (!bundle) return null
   const hasPayments = (await listPayments(invoiceId)).some((payment) => !payment.voided)
-  return <DocumentActions kind="invoice" id={invoiceId} status={String(bundle.record.status)} hasPayments={hasPayments} />
+  // The first invoice of a billing plan is approved and sent from its quote page, so it has no Issue invoice button.
+  const planLink = await getPlanLink(invoiceId)
+  const planFirstDraft = isFirstPlanDraft(planLink?.kind, String(bundle.record.status))
+  return <DocumentActions kind="invoice" id={invoiceId} status={String(bundle.record.status)} hasPayments={hasPayments} planFirstDraft={planFirstDraft} />
+}
+
+// Above the lines of the first invoice of a billing plan, while it is a Draft: where to review and approve it.
+async function PlanBanner({ invoiceId }: { invoiceId: string }) {
+  const bundle = await getDocument('invoice', invoiceId)
+  const planLink = await getPlanLink(invoiceId)
+  if (!bundle || !planLink || !isFirstPlanDraft(planLink.kind, String(bundle.record.status))) return null
+  return (
+    <p role="note" className="border border-border bg-muted/40 px-4 py-3 text-sm text-foreground">
+      {FIRST_INVOICE_BANNER.before}
+      <Link href={`${DOCUMENTS.quote.base}/${planLink.quoteId}`} className="font-semibold text-brand hover:underline">
+        {planLink.quoteNumber}
+      </Link>
+      {FIRST_INVOICE_BANNER.after}
+    </p>
+  )
 }
 
 async function InvoiceLines({ invoiceId }: { invoiceId: string }) {
@@ -39,6 +62,7 @@ async function InvoiceLines({ invoiceId }: { invoiceId: string }) {
 async function InvoiceWorkspace({ invoiceId }: { invoiceId: string }) {
   return (
     <>
+      <PlanBanner invoiceId={invoiceId} />
       <InvoiceLines invoiceId={invoiceId} />
       <DocumentTermsPanel kind="invoice" id={invoiceId} />
       <PaymentsSection invoiceId={invoiceId} />

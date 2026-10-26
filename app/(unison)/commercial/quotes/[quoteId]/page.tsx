@@ -1,6 +1,7 @@
 import { PhaseSixDetail } from '@/features/commercial-finance/components/phase-six-detail'
 import { RecordWorkspaceSections } from '@/features/crm-workspace/components/record-workspace'
 import { getRecordWorkspace } from '@/features/crm-workspace/queries/get-record-workspace'
+import { BillingPlanPanel } from '@/features/documents/components/billing-plan-panel'
 import { DocumentActions } from '@/features/documents/components/document-actions'
 import { EmailSection } from '@/features/documents/components/email-section'
 import { LineEditor } from '@/features/documents/components/line-editor'
@@ -46,6 +47,7 @@ async function QuoteWorkspace({ quoteId }: { quoteId: string }) {
       <DocumentTermsPanel kind="quote" id={quoteId} />
       <EmailSection kind="quote" id={quoteId} />
       <ClientResponsePanel quoteId={quoteId} />
+      <BillingPlanPanel quoteId={quoteId} />
       <HiveFeedStatus quoteId={quoteId} />
       <QuoteInvoices quoteId={quoteId} />
       <RecordWorkspaceSections workspace={workspace} sections={['timeline']} />

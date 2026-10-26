@@ -329,5 +329,6 @@ test('the quote page mounts the feed status directly after the client portal pan
   const source = pageSource()
   assert.match(source, /import \{ HiveFeedStatus \} from '@\/features\/platform-automation\/components\/hive-feed-status'/)
   assert.equal((source.match(/<HiveFeedStatus /g) ?? []).length, 1)
-  assert.match(source, /<ClientResponsePanel quoteId=\{quoteId\} \/>\n\s*<HiveFeedStatus quoteId=\{quoteId\} \/>\n\s*<QuoteInvoices quoteId=\{quoteId\} \/>/, 'after ClientResponsePanel and before QuoteInvoices, as the brief puts it')
+  // The billing plan panel (accept to invoice, stage 1, task 9) sits between the client portal panel and the feed status.
+  assert.match(source, /<ClientResponsePanel quoteId=\{quoteId\} \/>\n\s*(<BillingPlanPanel quoteId=\{quoteId\} \/>\n\s*)?<HiveFeedStatus quoteId=\{quoteId\} \/>\n\s*<QuoteInvoices quoteId=\{quoteId\} \/>/, 'after ClientResponsePanel (and the billing plan panel) and before QuoteInvoices, as the brief puts it')
 })
