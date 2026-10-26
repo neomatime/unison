@@ -60,8 +60,9 @@ test('every database error token the app maps is raised by the send and issue mi
   const sendIssue = migration('20261011110000_documents_send_issue.sql') + migration('20261011120000_documents_hardening.sql') + migration('20261011130000_documents_delivery.sql') + migration('20261011140000_payments_overdue.sql') + migration('20261011160000_register_summary.sql')
     + migration('20261012100000_rate_card.sql') + migration('20261012101000_rate_card_hardening.sql') + migration('20261012110000_client_engagements.sql') + migration('20261012111000_client_engagements_hardening.sql')
     + migration('20261012120000_billing_documents.sql') + migration('20261012121000_billing_documents_hardening.sql') + migration('20261012130000_final_review_fixes.sql') + migration('20261012140000_document_rate_card_lines.sql') + migration('20261012141000_document_rate_card_lines_hardening.sql') + migration('20261012160000_commercial_terms.sql') + migration('20261012161000_commercial_terms_seed.sql') + migration('20261012221817_offerings_on_documents.sql') + migration('20261013100000_document_terms.sql')
-    + migration('20261018101000_quote_portal_links.sql') + migration('20261018101500_quote_portal_links_fixes.sql') + migration('20261026101000_billing_plan_invoices.sql')
-  for (const token of DOCUMENT_ERROR_TOKENS) assert.ok(sendIssue.includes(`'${token}'`), `${token} must be raised by the migration`)
+    + migration('20261018101000_quote_portal_links.sql') + migration('20261018101500_quote_portal_links_fixes.sql') + migration('20261026101000_billing_plan_invoices.sql') + migration('20261026102000_billing_first_invoice_approval.sql')
+  // BILLING_CHECKS_FAILED is the one token raised with something after it ("BILLING_CHECKS_FAILED: CODE,CODE").
+  for (const token of DOCUMENT_ERROR_TOKENS) assert.ok(sendIssue.includes(`'${token}'`) || sendIssue.includes(`'${token}: `), `${token} must be raised by the migration`)
 })
 
 test('every token the send and issue migrations raise is either mapped or knowingly left unmapped', () => {
@@ -69,7 +70,7 @@ test('every token the send and issue migrations raise is either mapped or knowin
   const sendIssue = migration('20261011110000_documents_send_issue.sql') + migration('20261011120000_documents_hardening.sql') + migration('20261011130000_documents_delivery.sql') + migration('20261011140000_payments_overdue.sql') + migration('20261011160000_register_summary.sql')
     + migration('20261012100000_rate_card.sql') + migration('20261012101000_rate_card_hardening.sql') + migration('20261012110000_client_engagements.sql') + migration('20261012111000_client_engagements_hardening.sql')
     + migration('20261012120000_billing_documents.sql') + migration('20261012121000_billing_documents_hardening.sql') + migration('20261012130000_final_review_fixes.sql') + migration('20261012140000_document_rate_card_lines.sql') + migration('20261012141000_document_rate_card_lines_hardening.sql') + migration('20261012160000_commercial_terms.sql') + migration('20261012161000_commercial_terms_seed.sql') + migration('20261012221817_offerings_on_documents.sql') + migration('20261013100000_document_terms.sql')
-    + migration('20261018101000_quote_portal_links.sql') + migration('20261018101500_quote_portal_links_fixes.sql') + migration('20261026101000_billing_plan_invoices.sql')
+    + migration('20261018101000_quote_portal_links.sql') + migration('20261018101500_quote_portal_links_fixes.sql') + migration('20261026101000_billing_plan_invoices.sql') + migration('20261026102000_billing_first_invoice_approval.sql')
   const raised = new Set([...sendIssue.matchAll(/raise exception '([A-Z_]+)'/g)].map((match) => match[1]))
   assert.ok(raised.size >= 20, `expected to find the raised tokens, found ${raised.size}`)
   for (const token of raised) {
@@ -126,4 +127,32 @@ test('the billing plan tokens have their plain messages, and no token swallows a
     assert.equal(documentErrorMessage(token), message, token)
     assert.equal(documentErrorMessage(`new row violates ${token} (23514)`), message, `${token} inside a database message`)
   }
+})
+
+test('the first-invoice approval tokens have their plain messages, and the failed-check sentence is the same whatever codes follow it', () => {
+  const messages: Array<[string, string]> = [
+    ['INVOICE_USE_APPROVAL', 'The first invoice of a billing plan is approved and sent from its quote page.'],
+    ['INVOICE_PLAN_LOCKED', 'This invoice follows its accepted quote. Only the due date and the notes can be changed.'],
+    ['BILLING_APPROVAL_ADMIN_ONLY', 'Only an owner or admin can approve the first invoice.'],
+    ['BILLING_ALREADY_APPROVED', 'The first invoice has already been approved.'],
+    ['BILLING_CHECKS_FAILED', 'The invoice cannot go out yet. The page lists what needs attention.'],
+  ]
+  for (const [token, message] of messages) {
+    assert.equal(documentErrorMessage(token), message, token)
+    assert.equal(documentErrorMessage(`new row violates ${token} (23514)`), message, `${token} inside a database message`)
+    assert.ok(DOCUMENT_ERROR_TOKENS.includes(token), `${token} is in the token list`)
+  }
+  // The codes billing_invoice_blockers returns follow the colon. They are codes for the page to list, not tokens: none may be
+  // mapped (it would take over the sentence), and every list of them, short or long, keeps the one sentence.
+  const codes = [
+    'COMPANY_NAME_MISSING', 'COMPANY_PREFIX_MISSING', 'COMPANY_VAT_NUMBER_MISSING', 'BANK_DETAILS_MISSING', 'CLIENT_MISSING', 'CLIENT_EMAIL_MISSING',
+    'CLIENT_ADDRESS_MISSING', 'NO_LINES', 'TOTAL_NOT_POSITIVE',
+  ]
+  for (const code of codes) assert.equal(DOCUMENT_ERROR_TOKENS.includes(code), false, `${code} is a code, not a token`)
+  const sentence = 'The invoice cannot go out yet. The page lists what needs attention.'
+  assert.equal(documentErrorMessage('BILLING_CHECKS_FAILED: BANK_DETAILS_MISSING'), sentence)
+  assert.equal(documentErrorMessage(`BILLING_CHECKS_FAILED: ${codes.join(',')}`), sentence)
+  assert.equal(documentErrorMessage(`BILLING_CHECKS_FAILED: ${codes.join(',')} (23514)`), sentence)
+  // The migration raises it that way, with the codes after the colon.
+  assert.ok(migration('20261026102000_billing_first_invoice_approval.sql').includes("raise exception 'BILLING_CHECKS_FAILED: "), 'the codes follow the token')
 })

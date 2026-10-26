@@ -2,7 +2,10 @@ import assert from 'node:assert/strict'
 import test, { after, before } from 'node:test'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
-import { setupBillingOrg, type BillingLine, type BillingOrg, type BillingQuoteOptions } from './billing-fixtures.ts'
+import {
+  acceptQuote, activitiesOf, buildPlan, invoiceOf, itemsOf, linkedTo, makeDue, ok, planOf, refused, saToday, setupBillingOrg,
+  type BillingLine, type BillingOrg, type BillingQuoteOptions,
+} from './billing-fixtures.ts'
 import { admin, cleanup, createFixtureUser, signedInClient } from './helpers.ts'
 import { anonymous, must } from './portal-fixtures.ts'
 
@@ -36,17 +39,6 @@ after(async () => {
   }
 })
 
-/** A refusal by the named token, and by its SQLSTATE (23514 for a rule, 42501 for "not found" and "not yours"). */
-const refused = (error: { code?: string; message: string } | null, token: string, code = '23514') => {
-  assert.ok(error, `expected ${token}`)
-  assert.match(error.message, new RegExp(`\\b${token}\\b`), `expected ${token}, got: ${error.message}`)
-  assert.equal(error.code, code, `${token}: ${error.message}`)
-}
-const ok = (result: { error: { message: string } | null }, label: string) => assert.equal(result.error, null, `${label}: ${result.error?.message}`)
-
-const saToday = () =>
-  new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Johannesburg', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
-
 /** `start` plus `k` calendar months, the day clamped to the length of that month: worked out here, independently of the database. */
 const monthsFrom = (start: string, k: number) => {
   const [year, month, day] = start.split('-').map(Number)
@@ -59,11 +51,7 @@ const monthsFrom = (start: string, k: number) => {
 const cents = (value: number) => Math.round(value * 100) / 100
 
 /** An Accepted quote: written and sent by a member (the real send_quote), then set to Accepted by staff, as the quote page allows. */
-const accepted = async (options: BillingQuoteOptions = {}, org: BillingOrg = fx) => {
-  const id = await org.sentBillingQuote(options)
-  await org.setStatus(id, 'Accepted')
-  return id
-}
+const accepted = (options: BillingQuoteOptions = {}, org: BillingOrg = fx) => acceptQuote(org, options)
 /** The same, sent while the switch is off. For quotes the send rules of a later task refuse with the switch on (monthly lines
  *  without terms, lines without a charge kind): the plan is built, and everything after, with the switch back on. */
 const acceptedLoosely = async (options: BillingQuoteOptions = {}, org: BillingOrg = fx) => {
@@ -78,26 +66,14 @@ const acceptedLoosely = async (options: BillingQuoteOptions = {}, org: BillingOr
 const press = (quote: string, client: SupabaseClient = fx.sender.client) => client.rpc('create_invoice_from_quote', { p_quote_id: quote })
 const create = (item: string, client: SupabaseClient = fx.sender.client) => client.rpc('create_plan_item_invoice', { p_item_id: item })
 /** The plan, its items and the first invoice, built the way the quote page builds them. */
-const planned = async (options: BillingQuoteOptions = {}, org: BillingOrg = fx) => {
-  const quote = await accepted(options, org)
-  const invoice = must(await press(quote, org.sender.client)) as string
-  return { quote, invoice, plan: await planOf(quote), items: await itemsOf(quote) }
-}
+const planned = (options: BillingQuoteOptions = {}, org: BillingOrg = fx) => buildPlan(org, options)
 
-const planOf = async (quote: string) => (await admin.from('billing_plans').select('*').eq('quote_id', quote).maybeSingle()).data as Record<string, any> | null
-const itemsOf = async (quote: string) => must(await admin.from('billing_plan_items').select('*').eq('quote_id', quote).order('month_number')) as Array<Record<string, any>>
 const invoicesOf = async (quote: string) => must(await admin.from('invoices').select('*').eq('quote_id', quote).order('created_at')) as Array<Record<string, any>>
-const invoiceOf = async (id: string) => must(await admin.from('invoices').select('*').eq('id', id).single()) as Record<string, any>
-const linkedTo = async (item: string) => must(await admin.from('invoices').select('id,status,archived_at,billing_plan_item_id').eq('billing_plan_item_id', item)) as Array<Record<string, any>>
 const quoteRow = async (id: string) => must(await admin.from('quotes').select('*').eq('id', id).single()) as Record<string, any>
 const quoteLines = async (quote: string) => must(await admin.from('quote_lines').select('*').eq('quote_id', quote).order('position')) as Array<Record<string, any>>
 const invoiceLines = async (invoice: string) => must(await admin.from('invoice_lines').select('*').eq('invoice_id', invoice).order('position')) as Array<Record<string, any>>
-const activitiesOf = async (quote: string, kind: string) =>
-  must(await admin.from('activities').select('*').eq('quote_id', quote).eq('kind', kind).order('created_at')) as Array<Record<string, any>>
 const shape = (rows: Array<Record<string, any>>) =>
   rows.map((row) => ({ position: row.position, title: row.title, description: row.description, quantity: Number(row.quantity), unit_price: Number(row.unit_price), vat_code: row.vat_code }))
-/** Moves an item's date into the past, as the service role does when a test needs a month that is due. */
-const makeDue = async (item: string) => ok(await admin.from('billing_plan_items').update({ bill_on: '2020-01-01' }).eq('id', item), 'the item is due')
 
 test('a quote with a 12-month term gets item 1 as first and items 2 to 12 as monthly, dated on the start day of each month', async () => {
   const START = '2031-03-15'

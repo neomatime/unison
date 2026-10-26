@@ -116,6 +116,14 @@ const MESSAGES: ReadonlyArray<readonly [token: string, message: string]> = [
   ['BILLING_NOT_ENABLED', 'Billing plans are switched off. An owner or admin can turn them on under Settings, Company details.'],
   ['QUOTE_HAS_BILLING_PLAN', 'This quote is billed through its billing plan. Use the plan on this page.'],
   ['QUOTE_ALREADY_INVOICED', 'This quote already has an invoice. Open it from the list below, or discard or cancel it first.'],
+  // The first invoice of a billing plan (20261026102000_billing_first_invoice_approval.sql). BILLING_CHECKS_FAILED is raised as
+  // "BILLING_CHECKS_FAILED: CODE,CODE" and the codes are not tokens, so the sentence is the same whatever follows the colon. None
+  // of these contains another token of this list, so their order among themselves does not matter.
+  ['INVOICE_USE_APPROVAL', 'The first invoice of a billing plan is approved and sent from its quote page.'],
+  ['INVOICE_PLAN_LOCKED', 'This invoice follows its accepted quote. Only the due date and the notes can be changed.'],
+  ['BILLING_APPROVAL_ADMIN_ONLY', 'Only an owner or admin can approve the first invoice.'],
+  ['BILLING_ALREADY_APPROVED', 'The first invoice has already been approved.'],
+  ['BILLING_CHECKS_FAILED', 'The invoice cannot go out yet. The page lists what needs attention.'],
 ]
 
 export const DOCUMENT_ERROR_TOKENS: readonly string[] = MESSAGES.map(([token]) => token)

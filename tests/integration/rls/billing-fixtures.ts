@@ -109,3 +109,43 @@ export async function setupBillingOrg(label: string, options: { billing?: boolea
     throw error
   }
 }
+
+// ---------------------------------------------------------------------------------------------------------------------------
+// Helpers shared by the billing test files (moved out of billing-plan-invoices.test.ts when billing-approval.test.ts needed them).
+// Plans are built the way staff build them: an Accepted quote that carries terms, with the switch on, goes through the real
+// create_invoice_from_quote. Rows are read back through the service role.
+// ---------------------------------------------------------------------------------------------------------------------------
+
+/** A refusal by the named token, and by its SQLSTATE (23514 for a rule, 42501 for "not found" and "not yours"). */
+export const refused = (error: { code?: string; message: string } | null, token: string, code = '23514') => {
+  assert.ok(error, `expected ${token}`)
+  assert.match(error.message, new RegExp(`\\b${token}\\b`), `expected ${token}, got: ${error.message}`)
+  assert.equal(error.code, code, `${token}: ${error.message}`)
+}
+export const ok = (result: { error: { message: string } | null }, label: string) => assert.equal(result.error, null, `${label}: ${result.error?.message}`)
+
+export const saToday = () =>
+  new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Johannesburg', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
+
+/** An Accepted quote: written and sent by a member (the real send_quote), then set to Accepted by staff, as the quote page allows. */
+export const acceptQuote = async (org: BillingOrg, options: BillingQuoteOptions = {}) => {
+  const id = await org.sentBillingQuote(options)
+  await org.setStatus(id, 'Accepted')
+  return id
+}
+
+export const planOf = async (quote: string) => (await admin.from('billing_plans').select('*').eq('quote_id', quote).maybeSingle()).data as Record<string, any> | null
+export const itemsOf = async (quote: string) => must(await admin.from('billing_plan_items').select('*').eq('quote_id', quote).order('month_number')) as Array<Record<string, any>>
+export const invoiceOf = async (id: string) => must(await admin.from('invoices').select('*').eq('id', id).single()) as Record<string, any>
+export const linkedTo = async (item: string) => must(await admin.from('invoices').select('id,status,archived_at,billing_plan_item_id').eq('billing_plan_item_id', item)) as Array<Record<string, any>>
+export const activitiesOf = async (quote: string, kind: string) =>
+  must(await admin.from('activities').select('*').eq('quote_id', quote).eq('kind', kind).order('created_at')) as Array<Record<string, any>>
+/** Moves an item's date into the past, as the service role does when a test needs a month that is due. */
+export const makeDue = async (item: string) => ok(await admin.from('billing_plan_items').update({ bill_on: '2020-01-01' }).eq('id', item), 'the item is due')
+
+/** The plan, its items and the first invoice, built the way the quote page builds them. */
+export const buildPlan = async (org: BillingOrg, options: BillingQuoteOptions = {}) => {
+  const quote = await acceptQuote(org, options)
+  const invoice = must(await org.sender.client.rpc('create_invoice_from_quote', { p_quote_id: quote })) as string
+  return { quote, invoice, plan: await planOf(quote), items: await itemsOf(quote) }
+}
