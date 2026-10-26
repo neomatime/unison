@@ -425,8 +425,9 @@ test("create_invoice_from_quote: without a plan it makes one draft with the quot
   assert.equal((await invoicesOf(quote)).length, 1)
   assert.equal((await activitiesOf(quote, 'quote.invoiced')).length, 1, 'only the invoice that was made is on the timeline')
 
-  // Pressed at once: one invoice, one refusal.
-  const racing = await accepted({ startDate: null, termMonths: null })
+  // Pressed at once: one invoice, one refusal. (The default lines include a monthly one, which a later send rule refuses without
+  // terms while the switch is on: sent with the switch off.)
+  const racing = await acceptedLoosely({ startDate: null, termMonths: null })
   const race = await Promise.all([press(racing, fx.sender.client), press(racing, fx.owner.client)])
   assert.equal(race.filter((result) => !result.error).length, 1, 'exactly one call made the invoice')
   const lost = race.filter((result) => result.error)
@@ -446,7 +447,8 @@ test("create_invoice_from_quote: without a plan it makes one draft with the quot
   assert.equal((await invoicesOf(racingPlan)).length, 1, 'one invoice')
   assert.equal((await activitiesOf(racingPlan, 'billing.plan_created')).length, 1, 'one timeline entry')
 
-  // An archived draft no longer counts: the button works again, and the archived one stays as it was.
+  // An archived Draft no longer counts (an archived invoice that was issued does: see the test that follows): the button works
+  // again, and the archived draft stays as it was.
   ok(await fx.sender.client.from('invoices').update({ archived_at: new Date().toISOString() }).eq('id', draft), 'the draft is archived')
   const second = must(await press(quote)) as string
   assert.notEqual(second, draft)
@@ -509,6 +511,36 @@ test("create_invoice_from_quote: without a plan it makes one draft with the quot
   // The rest of the checks are as they were.
   refused((await press(await fx.sentBillingQuote())).error, 'QUOTE_NOT_ACCEPTED')
   refused((await press(quote, other.sender.client)).error, 'QUOTE_NOT_FOUND', '42501')
+})
+
+test("an archived invoice that was issued is still the quote's invoice: only an archived Draft or a Cancelled invoice frees the button", async () => {
+  const quote = await accepted({ startDate: null, termMonths: null, lines: [{ title: 'Setup', unitPrice: 4000, chargeKind: 'once_off' }, { title: 'Review', unitPrice: 600, chargeKind: 'once_off' }] })
+  const issued = must(await press(quote)) as string
+  ok(await fx.sender.client.rpc('issue_invoice', { p_id: issued }), 'the invoice is issued')
+
+  // Nothing in the schema stops a member archiving an issued invoice, so the guard cannot read "archived" as "discarded".
+  ok(await fx.sender.client.from('invoices').update({ archived_at: new Date().toISOString() }).eq('id', issued), 'a member archives the issued invoice')
+  const archived = await invoiceOf(issued)
+  assert.equal(archived.status, 'Issued')
+  assert.ok(archived.archived_at, 'it is archived')
+  refused((await press(quote)).error, 'QUOTE_ALREADY_INVOICED')
+  assert.equal((await invoicesOf(quote)).length, 1, 'no second invoice for the quote')
+  assert.equal((await activitiesOf(quote, 'quote.invoiced')).length, 1, 'and nothing more on the timeline')
+
+  // Cancelling it frees the button, archived or not.
+  ok(await fx.sender.client.rpc('cancel_invoice', { p_invoice: issued }), 'the issued invoice is cancelled')
+  assert.equal((await invoiceOf(issued)).status, 'Cancelled')
+  const draft = must(await press(quote)) as string
+  assert.equal((await invoiceOf(draft)).status, 'Draft')
+  refused((await press(quote)).error, 'QUOTE_ALREADY_INVOICED')
+
+  // An archived Draft frees it too.
+  ok(await fx.sender.client.from('invoices').update({ archived_at: new Date().toISOString() }).eq('id', draft), 'the draft is archived')
+  const again = must(await press(quote)) as string
+  assert.notEqual(again, draft)
+  assert.equal((await invoiceOf(again)).status, 'Draft')
+  assert.equal((await invoicesOf(quote)).length, 3, 'a cancelled invoice, an archived draft and the live draft')
+  refused((await press(quote)).error, 'QUOTE_ALREADY_INVOICED')
 })
 
 test('a plan cannot be built for an accepted quote whose client has since been removed', async () => {
