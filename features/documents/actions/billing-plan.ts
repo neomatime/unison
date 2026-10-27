@@ -10,6 +10,7 @@ import { getEmailDefaults } from '../queries/get-email-defaults'
 import { revalidateDocumentPages } from '../revalidate'
 import { documentContext } from '../server-context'
 import type { ActionState } from '../types'
+import { welcomeDocumentsProblem } from '../welcome-documents'
 import { emailDocumentAction } from './email'
 
 /**
@@ -17,6 +18,8 @@ import { emailDocumentAction } from './email'
  * the same (approve_first_invoice), so the check here only saves the trip and is made before any database call. The organisation's hourly
  * email cap is checked next, before the approval, because the approval is final: the invoice is numbered and issued for good. Then the invoice goes out through the existing email action, with the defaults the Email
  * to client form starts with, so the sender, the PDF, the limits and the record of the send are the ones every other invoice email has.
+ * That email is the HIMARK Welcome Email (the first invoice of a plan always is), with two fixed documents attached, so those are read
+ * before the approval too: if either cannot be read, nothing is approved and nothing is sent.
  *
  * Three outcomes, told apart: refused (nothing changed; the sentence says why), approved and emailed (only when the email action
  * itself returned success), and approved but not emailed (an error that says so and where to send it from). A refusal because a check
@@ -35,6 +38,12 @@ export async function approveFirstInvoiceAction(itemId: string, _previous: Actio
   if ((recent.count ?? 0) >= HOURLY_EMAIL_CAP) {
     return { error: `This organisation has sent ${HOURLY_EMAIL_CAP} document emails in the last hour; try again later.` }
   }
+
+  // The first invoice goes out as the HIMARK Welcome Email, which carries two fixed documents. They are read before the invoice is
+  // numbered, for the same reason as the cap above: an approval that could only fail at the send would leave an issued invoice
+  // that has not gone out. A missing, empty or unreadable file stops here: nothing is approved and nothing is sent.
+  const welcomeProblem = await welcomeDocumentsProblem()
+  if (welcomeProblem) return { error: `${welcomeProblem} Nothing was approved or sent.` }
 
   const approved = await db.rpc('approve_first_invoice', { p_item_id: itemId })
   if (approved.error) {

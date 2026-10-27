@@ -141,8 +141,9 @@ test('the action mints the link after every check and before the one send, and o
 
 test('with the switch off the action sends the plain email exactly as before', () => {
   const source = actionSource()
-  assert.match(source, /template: portal \? portal\.template : \{ subject: fields\.subject, text: fields\.body, html: emailHtml\(fields\.body\) \},/, 'the plain template is the one sent today')
-  assert.match(source, /to: fields\.to,\s+template:[^\n]+\s+replyTo: user\.email \?\? undefined,\s+attachments: \[\{ filename: made\.filename, contentType: 'application\/pdf', content: made\.bytes \}\],/, 'the PDF stays attached and replies still go to the sender')
+  // The HIMARK Welcome Email (the first invoice of a billing plan) is a third choice in the same expressions; the plain ones are as they were.
+  assert.match(source, /template: portal \? portal\.template : welcome \? welcome\.template : \{ subject: fields\.subject, text: fields\.body, html: emailHtml\(fields\.body\) \},/, 'the plain template is the one sent today')
+  assert.match(source, /to: fields\.to,\s+template:[^\n]+\s+replyTo: user\.email \?\? undefined,\s+attachments: welcome \? welcome\.attachments : \[\{ filename: made\.filename, contentType: 'application\/pdf', content: made\.bytes \}\],/, 'the PDF stays attached and replies still go to the sender')
 })
 
 test('the action abandons the link when the mail server refuses the message and in log mode', () => {
@@ -164,7 +165,7 @@ test('the send is recorded with the subject actually sent (the branded template 
   const source = actionSource()
   assert.equal(count(source, "rpc('record_document_email'"), 1)
   const record = source.slice(source.indexOf("rpc('record_document_email'"))
-  assert.match(record, /^rpc\('record_document_email', \{\s+p_kind: kind,\s+p_id: id,\s+p_to: fields\.to,\s+p_subject: portal \? portal\.template\.subject : fields\.subject,\s+p_body: fields\.body,/)
+  assert.match(record, /^rpc\('record_document_email', \{\s+p_kind: kind,\s+p_id: id,\s+p_to: fields\.to,\s+p_subject: portal \? portal\.template\.subject : welcome \? welcome\.template\.subject : fields\.subject,\s+p_body: welcome \? welcome\.recordBody : fields\.body,/)
 })
 
 // ---- the defaults and the form ----
@@ -177,12 +178,12 @@ test('the email section remounts the form when its mode changes, so a stale form
 
 test('the email defaults report portal under the same condition as the action, with the default note as the body', () => {
   const source = defaultsSource()
-  assert.match(source, /Promise<\{ to: string; subject: string; body: string; portal: boolean \}>/)
+  assert.match(source, /Promise<\{ to: string; subject: string; body: string; portal: boolean; welcome: boolean \}>/)
   assert.equal(count(source, SWITCH), 1, 'the same condition, written the same way')
   assert.match(source, /import \{ EMAIL_DEFAULT_NOTE \} from '\.\.\/\.\.\/quote-portal\/copy'/)
   assert.match(source, /body: portal \? EMAIL_DEFAULT_NOTE : defaultEmailMessage\(view, resolveDisplayName\(user\)\)/, 'the template adds the greeting and signature, so the note is the default wording alone')
   assert.match(source, /subject: defaultEmailSubject\(view\)/, 'the subject is unchanged')
-  assert.match(source, /return \{ to, subject: defaultEmailSubject\(view\), body: [^\n]+, portal \}/)
+  assert.match(source, /return \{ to, subject: defaultEmailSubject\(view\), body: [^\n]+, portal, welcome: false \}/)
 })
 
 test('the company settings type carries the optional portal switch', () => {
@@ -191,7 +192,7 @@ test('the company settings type carries the optional portal switch', () => {
 
 test('the form calls the message a personal note and says the link and the PDF are added when the portal is on', () => {
   const source = formSource()
-  assert.match(source, /defaults: \{ to: string; subject: string; body: string; portal: boolean \}/)
+  assert.match(source, /defaults: \{ to: string; subject: string; body: string; portal: boolean; welcome: boolean \}/)
   assert.match(source, /label=\{defaults\.portal \? 'Personal note' : 'Message'\}/)
   assert.match(source, /\{defaults\.portal\s*\? 'The secure quotation link and the PDF are added for you\. Replies go to your own email address\.'\s*: 'The PDF is attached\. Replies go to your own email address\.'\}/)
   assert.doesNotMatch(source, /server-only|lib\/email|quote-portal/, 'a client component imports no server code')

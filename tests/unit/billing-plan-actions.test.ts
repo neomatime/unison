@@ -103,6 +103,14 @@ test('approving counts the organisation\'s emails of the last hour after the per
   assert.doesNotMatch(block, /revalidateDocumentPages|rpc\(/)
 })
 
+test('approving also reads the two welcome documents from disk, after the cap and before the approval: a file read, not a database call, so the counts above stand', () => {
+  const text = body(actions(), APPROVE)
+  const loadAt = text.indexOf('await welcomeDocumentsProblem()')
+  assert.ok(loadAt > text.indexOf('>= HOURLY_EMAIL_CAP') && loadAt < text.indexOf("rpc('approve_first_invoice'"), 'the documents are checked before an invoice number is used')
+  assert.match(actions(), /import \{ welcomeDocumentsProblem \} from '\.\.\/welcome-documents'/)
+  assert.doesNotMatch(text.slice(loadAt, text.indexOf('const approved = ')), /\bdb\s*\./, 'no database call between the cap and the approval')
+})
+
 test('approving asks for company.manage before the first database call, in the words of the database', () => {
   const text = body(actions(), APPROVE)
   const context = text.indexOf('await documentContext()')

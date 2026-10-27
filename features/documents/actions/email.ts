@@ -9,6 +9,7 @@ import { MissingEnvError } from '@/lib/env'
 import { isUuid } from '@/lib/utils'
 import { HOURLY_EMAIL_CAP, MAX_EMAIL_PDF_BYTES, emailHtml, readEmailFields } from '../email'
 import { DocumentPdfError, makeDocumentPdf } from '../pdf/make-document-pdf'
+import { prepareWelcomeEmail } from '../prepare-welcome-email'
 import { getDocument } from '../queries/get-document'
 import { revalidateDocumentPages } from '../revalidate'
 import { documentContext } from '../server-context'
@@ -55,13 +56,20 @@ export async function emailDocumentAction(kind: string, id: string, _previous: A
       : null
   if (portal && 'error' in portal) return { error: portal.error }
 
+  // The HIMARK Welcome Email: the first invoice of a billing plan goes out as the branded welcome, with the invoice and the two
+  // approved documents attached, both on Approve and send and on every later resend. Prepared here for the same reason as the
+  // link above: after every check and before the send, so a document that cannot be read stops the send and nothing goes out.
+  // Every other invoice, and every quote, gets null here and is emailed exactly as before.
+  const welcome = kind === 'invoice' ? await prepareWelcomeEmail({ invoiceId: id, bundle, invoice: { filename: made.filename, bytes: made.bytes } }) : null
+  if (welcome && 'error' in welcome) return { error: welcome.error }
+
   let delivered: boolean
   try {
     ;({ delivered } = await sendEmail({
       to: fields.to,
-      template: portal ? portal.template : { subject: fields.subject, text: fields.body, html: emailHtml(fields.body) },
+      template: portal ? portal.template : welcome ? welcome.template : { subject: fields.subject, text: fields.body, html: emailHtml(fields.body) },
       replyTo: user.email ?? undefined,
-      attachments: [{ filename: made.filename, contentType: 'application/pdf', content: made.bytes }],
+      attachments: welcome ? welcome.attachments : [{ filename: made.filename, contentType: 'application/pdf', content: made.bytes }],
     }))
   } catch (error) {
     console.error('[documents:email]', error)
@@ -78,13 +86,15 @@ export async function emailDocumentAction(kind: string, id: string, _previous: A
   }
 
   // Only now, with the message accepted, is the send recorded, with the subject actually sent: the branded template
-  // tidies it (one line, runs of spaces collapsed, 200 characters at most); the plain email sends it as typed.
+  // tidies it (one line, runs of spaces collapsed, 200 characters at most); the plain email sends it as typed. The hash and
+  // the size are the invoice PDF's, as for every invoice; a welcome email's message is its text plus the list of attachments
+  // with their SHA-256, so the record shows which versions of the two documents went out.
   const recorded = await db.rpc('record_document_email', {
     p_kind: kind,
     p_id: id,
     p_to: fields.to,
-    p_subject: portal ? portal.template.subject : fields.subject,
-    p_body: fields.body,
+    p_subject: portal ? portal.template.subject : welcome ? welcome.template.subject : fields.subject,
+    p_body: welcome ? welcome.recordBody : fields.body,
     p_sha256: createHash('sha256').update(made.bytes).digest('hex'),
     p_bytes: made.bytes.length,
   })

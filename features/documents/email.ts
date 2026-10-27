@@ -3,6 +3,8 @@ import type { DocumentView } from './document-view.ts'
 
 /** The most a PDF may weigh to be emailed: the whole message is base64 twice over, and the mail server takes about 4 MB. */
 export const MAX_EMAIL_PDF_BYTES = 2_000_000
+/** The most all the attachments of one message may weigh together (the HIMARK Welcome Email carries three PDFs): well under the mail server's 4 MB. */
+export const MAX_EMAIL_TOTAL_ATTACHMENT_BYTES = 3_000_000
 /** Document emails one organisation may send in an hour: a guard against accidents and a runaway loop. */
 export const HOURLY_EMAIL_CAP = 50
 export const SUBJECT_MAX = 300
