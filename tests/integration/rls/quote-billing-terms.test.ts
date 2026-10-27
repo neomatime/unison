@@ -124,7 +124,7 @@ test('with the switch off every quote sends exactly as before', async () => {
   }
 })
 
-test('duplicate and revise copy the terms', async () => {
+test('a revision copies the terms; a duplicate does not (it is a new draft that staff give terms of its own)', async () => {
   const quote = await fx.sentBillingQuote({ startDate: '2031-05-15', termMonths: 18 })
   const expected = { start_date: '2031-05-15', term_months: 18 }
   assert.deepEqual(await terms(quote), expected)
@@ -132,7 +132,9 @@ test('duplicate and revise copy the terms', async () => {
   const copy = must(await fx.sender.client.rpc('duplicate_quote', { p_id: quote })) as string
   assert.notEqual(copy, quote)
   assert.equal((await quoteRow(copy)).status, 'Draft')
-  assert.deepEqual(await terms(copy), expected, 'a duplicate has the same start date and term')
+  assert.deepEqual(await terms(copy), { start_date: null, term_months: null }, 'a duplicate has no start date and no term: the dates of an old quote must not carry over')
+  const copied = must(await admin.from('quote_lines').select('title,charge_kind').eq('quote_id', copy).order('position')) as Array<{ title: string; charge_kind: string | null }>
+  assert.deepEqual(copied, [{ title: 'Setup', charge_kind: 'once_off' }, { title: 'Retainer', charge_kind: 'monthly' }], 'but it has the lines of the quote, with their charge kinds')
 
   const revision = must(await fx.sender.client.rpc('revise_quote', { p_id: quote })) as string
   const revised = await quoteRow(revision)
@@ -140,6 +142,7 @@ test('duplicate and revise copy the terms', async () => {
   assert.equal(revised.supersedes_quote_id, quote)
   assert.deepEqual(await terms(revision), expected, 'a revision has the same start date and term')
   assert.deepEqual(await terms(quote), expected, 'the original is unchanged')
+  assert.deepEqual(await terms(copy), { start_date: null, term_months: null }, 'revising did not touch the duplicate')
 
   // The copies are ordinary drafts: the terms can be changed on them, and a revision goes out as it is.
   ok(await fx.sender.client.from('quotes').update({ start_date: '2031-06-01', term_months: 24 }).eq('id', copy), 'a duplicate can be given other terms')

@@ -290,15 +290,14 @@ test('an item is invoiced once: a second call raises BILLING_ITEM_ALREADY_INVOIC
   assert.equal((await linkedTo(items[1].id)).length, 1, 'one invoice for the month')
   assert.equal(race.find((result) => !result.error)?.data, only.id)
 
-  // An archived draft frees the month: it stays, archived, with no link, and the month can be invoiced again. (Archived by the
-  // service role: a later task locks a plan draft against a member's edits.)
+  // An archived draft frees the month: it is deleted (it was never numbered, so no number is lost, and a restored copy could have been
+  // issued with no approval), and the month can be invoiced again. (Archived by the service role here; the member's own discard and
+  // restore are tested in billing-approval.)
   ok(await admin.from('invoices').update({ archived_at: new Date().toISOString() }).eq('id', only.id), 'the draft is archived')
   const again = must(await create(items[1].id)) as string
   assert.notEqual(again, only.id)
-  const freed = await invoiceOf(only.id)
-  assert.equal(freed.billing_plan_item_id, null, 'the archived draft let go of the month')
-  assert.ok(freed.archived_at, 'and is still archived')
-  assert.equal(freed.status, 'Draft')
+  assert.deepEqual(must(await admin.from('invoices').select('id').eq('id', only.id)), [], 'the archived draft was deleted when the month was built again')
+  assert.deepEqual(must(await admin.from('invoice_lines').select('id').eq('invoice_id', only.id)), [], 'with its lines')
   assert.deepEqual((await linkedTo(items[1].id)).map((row) => row.id), [again], 'the month points at the new draft')
 
   // A Cancelled invoice keeps the month: issued, then cancelled, it is still the invoice of that month.
@@ -309,7 +308,7 @@ test('an item is invoiced once: a second call raises BILLING_ITEM_ALREADY_INVOIC
   const [kept] = await linkedTo(items[1].id)
   assert.equal(kept.id, again)
   assert.equal(kept.status, 'Cancelled', 'the cancelled invoice still holds the month')
-  assert.equal((await invoicesOf(quote)).length, 3, 'the item-1 draft, the archived draft and the cancelled invoice: nothing else was made')
+  assert.equal((await invoicesOf(quote)).length, 2, 'the item-1 draft and the cancelled invoice: nothing else was made, and the discarded draft is gone')
 
   // A monthly invoice that is only a draft and not archived keeps the month too.
   await makeDue(items[2].id)
@@ -537,6 +536,48 @@ test('a plan cannot be built for an accepted quote whose client has since been r
   assert.deepEqual(await itemsOf(quote), [])
   assert.deepEqual(await invoicesOf(quote), [], 'and no invoice: the whole call was undone')
   assert.deepEqual(await activitiesOf(quote, 'billing.plan_created'), [])
+})
+
+test('the Create invoice button makes a plain draft and no plan for a quote whose client is archived; the same quote of a client that is not archived gets its plan', async () => {
+  const newClient = async (name: string) =>
+    must(await admin.from('clients').insert({
+      organization_id: fx.orgId, name, status: 'Active', billing_email: 'archived@portal-client.test', address_line1: '4 Test Lane', city: 'Cape Town', postal_code: '8001',
+    }).select('id').single()).id as string
+  const quoteFor = async (client: string, name: string) => {
+    const quote = must(await fx.sender.client.from('quotes').insert({
+      organization_id: fx.orgId, client_id: client, client_name: name, start_date: '2031-09-01', term_months: 3,
+    }).select('id').single()).id as string
+    ok(await fx.sender.client.from('quote_lines').insert({ organization_id: fx.orgId, quote_id: quote, position: 1, title: 'Setup', quantity: 1, unit_price: 700, charge_kind: 'once_off' }), 'the once-off line')
+    ok(await fx.sender.client.from('quote_lines').insert({ organization_id: fx.orgId, quote_id: quote, position: 2, title: 'Retainer', quantity: 1, unit_price: 900, charge_kind: 'monthly' }), 'the monthly line')
+    ok(await fx.sender.client.rpc('send_quote', { p_id: quote }), 'the quote is sent')
+    await fx.setStatus(quote, 'Accepted')
+    return quote
+  }
+  const client = await newClient('Archived Client')
+  const quote = await quoteFor(client, 'Archived Client')
+
+  // The client is archived after the quote was accepted (by the service role: the pause trigger fires on the act and finds no plan).
+  ok(await admin.from('clients').update({ archived_at: new Date().toISOString() }).eq('id', client), 'the client is archived')
+  const draft = must(await press(quote)) as string
+  const row = await invoiceOf(draft)
+  assert.equal(row.status, 'Draft')
+  assert.equal(row.quote_id, quote)
+  assert.equal(row.billing_plan_item_id, null, 'a plain draft, linked to no month')
+  assert.deepEqual(shape(await invoiceLines(draft)), shape(await quoteLines(quote)), 'every quote line, once-off and monthly, as the legacy copy makes it')
+  assert.equal(await planOf(quote), null, 'no plan')
+  assert.deepEqual(await itemsOf(quote), [], 'no items')
+  assert.deepEqual(await activitiesOf(quote, 'billing.plan_created'), [], 'and no plan on the timeline')
+  assert.equal((await activitiesOf(quote, 'quote.invoiced')).length, 1)
+  refused((await press(quote)).error, 'QUOTE_ALREADY_INVOICED')
+  assert.equal(await planOf(quote), null, 'pressed again: still no plan')
+
+  // The same terms and lines for a client that is not archived: the plan is built. (So it was the archived client that made the difference.)
+  ok(await admin.from('clients').update({ archived_at: null }).eq('id', client), 'the client is back')
+  const second = await quoteFor(client, 'Archived Client')
+  const first = must(await press(second)) as string
+  assert.ok((await invoiceOf(first)).billing_plan_item_id, 'linked to item 1')
+  assert.equal((await planOf(second))?.status, 'active')
+  assert.equal((await itemsOf(second)).length, 3, 'a plan with its three months')
 })
 
 test("a plan item cannot name a quote other than its plan's", async () => {

@@ -208,7 +208,7 @@ test("a plan draft's lines cannot be added, changed or removed by a member, its 
   assert.equal(archived.status, 'Draft')
   const rebuilt = must(await create(discarded.items[0].id)) as string
   assert.notEqual(rebuilt, discarded.invoice, 'a new draft')
-  assert.equal((await invoiceOf(discarded.invoice)).billing_plan_item_id, null, 'the archived draft let go of the month')
+  assert.deepEqual(must(await admin.from('invoices').select('id').eq('id', discarded.invoice)), [], 'the archived draft let go of the month: it was deleted (restoring it is tested below)')
   assert.deepEqual((await linkedTo(discarded.items[0].id)).map((row) => row.id), [rebuilt])
   refused((await member().from('invoice_lines').insert({ organization_id: fx.orgId, invoice_id: rebuilt, position: 3, title: 'Extra', quantity: 1, unit_price: 5 })).error, 'INVOICE_PLAN_LOCKED')
   // A draft archived and then restored before the month is built again is just a draft again.
@@ -217,6 +217,57 @@ test("a plan draft's lines cannot be added, changed or removed by a member, its 
   ok(await member().from('invoices').update({ archived_at: null }).eq('id', restored.invoice), 'and restored')
   assert.equal((await invoiceOf(restored.invoice)).archived_at, null)
   assert.equal((await invoiceOf(restored.invoice)).billing_plan_item_id, restored.items[0].id)
+})
+
+test('a discarded plan draft cannot come back as an issuable draft: building the month again deletes it, so a restore finds nothing and the item keeps exactly one live invoice (first and monthly)', async () => {
+  const invoicesOfQuote = async (quote: string) => must(await admin.from('invoices').select('id,status,archived_at,billing_plan_item_id,invoice_number').eq('quote_id', quote).order('created_at')) as Array<Record<string, any>>
+  const live = (rows: Array<Record<string, any>>) => rows.filter((row) => row.status !== 'Cancelled' && row.archived_at === null)
+  const exists = async (id: string) => (must(await admin.from('invoices').select('id').eq('id', id)) as unknown[]).length === 1
+  const counter = await invoiceCounter()
+
+  // The first invoice. A member discards the draft (archives it); the month is built again.
+  const { quote, invoice: discarded, items } = await plan({ startDate: '2031-07-01', termMonths: 3 })
+  ok(await member().from('invoices').update({ archived_at: new Date().toISOString() }).eq('id', discarded), 'a member archives the first draft')
+  assert.equal(await exists(discarded), true, 'until the month is built again it is only archived, as before')
+  const rebuilt = must(await create(items[0].id)) as string
+  assert.notEqual(rebuilt, discarded)
+  assert.equal(await exists(discarded), false, 'the discarded draft is gone: it was never numbered, so no number is lost')
+  assert.deepEqual(must(await admin.from('invoice_lines').select('id').eq('invoice_id', discarded)), [], 'and so are its lines')
+  assert.deepEqual((await linkedTo(items[0].id)).map((row) => row.id), [rebuilt], 'the month points at the new draft')
+
+  // The member presses Restore on it, as the Invoices register does (archived_at cleared): there is nothing to restore, so no
+  // ordinary unlinked Draft can come back, and nobody can issue it.
+  const restored = await member().from('invoices').update({ archived_at: null }).eq('id', discarded).select('id')
+  assert.equal(restored.error, null)
+  assert.deepEqual(restored.data, [], 'no row was restored')
+  for (const client of [member(), fxOwner.client, fxAdmin.client]) {
+    refused((await issue(discarded, client)).error, 'INVOICE_NOT_FOUND', '42501')
+  }
+  assert.equal(await invoiceCounter(), counter, 'no invoice number was used')
+
+  // The item has exactly one live invoice (not Cancelled, not archived), and it is the rebuilt one: only that one can be approved.
+  assert.deepEqual(live(await invoicesOfQuote(quote)).map((row) => row.id), [rebuilt])
+  ok(await approve(items[0].id), 'the rebuilt first invoice is approved')
+  assert.equal((await invoiceOf(rebuilt)).status, 'Issued')
+  assert.equal((await invoicesOfQuote(quote)).filter((row) => row.status === 'Issued').length, 1, 'one first invoice issued, not two')
+  assert.equal((await invoicesOfQuote(quote)).length, 1, 'and no other invoice of the quote exists')
+
+  // A monthly invoice, the same way. (The plan's first draft stays a draft.)
+  const monthly = await plan({ startDate: '2031-07-01', termMonths: 3 })
+  await makeDue(monthly.items[1].id)
+  const month = must(await create(monthly.items[1].id)) as string
+  ok(await member().from('invoices').update({ archived_at: new Date().toISOString() }).eq('id', month), 'a member archives the month draft')
+  const again = must(await create(monthly.items[1].id)) as string
+  assert.notEqual(again, month)
+  assert.equal(await exists(month), false, 'the discarded month draft is gone')
+  const restoredMonth = await member().from('invoices').update({ archived_at: null }).eq('id', month).select('id')
+  assert.equal(restoredMonth.error, null)
+  assert.deepEqual(restoredMonth.data, [], 'nothing to restore')
+  refused((await issue(month)).error, 'INVOICE_NOT_FOUND', '42501')
+  assert.deepEqual((await linkedTo(monthly.items[1].id)).map((row) => row.id), [again], 'the month has one invoice')
+  assert.deepEqual(live(await invoicesOfQuote(monthly.quote)).map((row) => row.id).sort(), [monthly.invoice, again].sort(), 'the first draft and the one live month draft: nothing else exists')
+  ok(await issue(again), 'the live month draft is issued as before')
+  assert.equal((await invoiceOf(again)).status, 'Issued')
 })
 
 test('an invoice with no plan link is edited exactly as before', async () => {
