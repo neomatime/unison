@@ -313,6 +313,75 @@ test('the table gives each month its label from describePlanItem and a link to i
   assert.match(source, /formatDocumentDate\(item\.billOn\)/)
 })
 
+test('the panel intro comes from the plan items, so it is true on a once-off quote and after approval', () => {
+  const source = panel()
+  assert.match(source, /description=\{billingPlanDescription\(view\.items\)\}/)
+  assert.doesNotMatch(source, /BILLING_PLAN_COPY\.description/, 'no fixed sentence')
+  assert.doesNotMatch(source, /approved and emailed here|Monthly invoices are made here/)
+  assert.match(view(), /export function billingPlanDescription\(/)
+})
+
+/** The class names of the first `<tag className="...">` in the text, as a list. */
+function classesOf(text: string, tag: string): string[] {
+  const match = new RegExp(`<${tag}\\b[^>]*?className="([^"]*)"`).exec(text)
+  assert.ok(match, `a <${tag}> with a className`)
+  return match[1].split(/\s+/).filter(Boolean)
+}
+
+test('the table scrolls inside a box that is positioned, so the screen-reader-only Actions label cannot land at the table width and widen the page', () => {
+  const source = panel()
+  // `sr-only` is position: absolute: without a positioned ancestor it is placed against the page and escapes overflow-x-auto.
+  const wrapper = /<div className="([^"]*)">\s*<table\b/.exec(source)
+  assert.ok(wrapper, 'the table sits directly in one wrapper')
+  const classes = wrapper[1].split(/\s+/)
+  assert.ok(classes.includes('overflow-x-auto'), 'it still scrolls a table that is too wide')
+  assert.ok(classes.includes('relative'), 'and it is the containing block of the absolutely placed label')
+  assert.match(source, /<th className="px-5 py-3">\s*<span className="sr-only">Actions<\/span>\s*<\/th>/, 'the accessible header label stays')
+})
+
+test('below md each month is a stacked block with its status and invoice link in view, and from md up it is the table row it was', () => {
+  const source = panel()
+  const head = source.indexOf('<thead')
+  const body = source.indexOf('<tbody')
+  assert.ok(head > -1 && body > head, 'a head and a body')
+
+  // The table elements become blocks on a phone and are tables again from md. Tailwind's md is 48rem; the sidebar only starts at lg, so
+  // the content is 592 to 720 px wide between sm and md, which is less than the table needs.
+  const table = classesOf(source, 'table')
+  assert.ok(table.includes('block') && table.includes('md:table') && table.includes('w-full'), 'the table is a block, then a table')
+  const thead = classesOf(source.slice(head), 'thead')
+  assert.ok(thead.includes('hidden') && thead.includes('md:table-header-group'), 'the column headings go away when the columns do')
+  const tbody = classesOf(source.slice(body), 'tbody')
+  assert.ok(tbody.includes('block') && tbody.includes('md:table-row-group') && tbody.includes('divide-y') && tbody.includes('divide-border'), 'the body is a block, with the row dividers kept')
+
+  const rows = source.slice(body)
+  const row = classesOf(rows, 'tr')
+  assert.ok(row.includes('flex') && row.includes('flex-wrap') && row.includes('md:table-row'), 'a row wraps on a phone and is a table row from md')
+
+  const cells = [...rows.matchAll(/<td className="([^"]*)"/g)].map((match) => match[1].split(/\s+/).filter(Boolean))
+  assert.equal(cells.length, 5, 'month, bill on, status, invoice, actions: nothing dropped')
+  for (const [index, cell] of cells.entries()) {
+    assert.ok(cell.includes('md:px-5') && cell.includes('md:py-3'), `cell ${index + 1} keeps its table padding from md; on a phone the row pads`)
+    assert.ok(!cell.includes('px-5') && !cell.includes('py-3'), `cell ${index + 1} has no padding of its own on a phone`)
+  }
+  assert.ok(row.includes('px-5') && row.includes('py-3'), 'the row pads on a phone')
+  assert.ok(cells[2].includes('basis-full'), 'the status takes a line of its own, under the month and the date')
+  assert.ok(cells[4].includes('md:text-right'), 'the action is still at the right of the table')
+  assert.ok(cells[4].includes('ml-auto'), 'and at the right of the last line on a phone')
+  assert.ok(cells[1].includes('whitespace-nowrap'), 'a date is not broken in two')
+})
+
+test('on a phone the month reads "Month N" and the status text may wrap, and every label, link and button is still there', () => {
+  const source = panel()
+  assert.match(source, /<span className="md:hidden">Month <\/span>\{item\.monthNumber\}/, 'the number is not left bare beside the date')
+  assert.match(source, /<StatusBadge tone=\{BADGE_TONE\[described\.tone\]\} className="whitespace-normal md:whitespace-nowrap">\{described\.label\}<\/StatusBadge>/, 'a long status is not cut off at the card edge')
+  // Nothing was taken out of the markup to make it fit.
+  assert.match(source, /\{item\.kind === 'first' \? <span className="ml-2 text-xs text-muted-foreground">First invoice<\/span> : null\}/)
+  assert.match(source, /<span className="text-muted-foreground">None yet<\/span>/)
+  assert.match(source, /ariaLabel=\{`Create invoice for month \$\{item\.monthNumber\}`\}/)
+  for (const heading of ['Month', 'Bill on', 'Status', 'Invoice']) assert.match(source, new RegExp(`<th className="px-5 py-3 font-medium">${heading}</th>`), `${heading} heading`)
+})
+
 test('the approve control is mounted in a fixed place for an owner or admin once the first invoice exists, not inside the awaiting-approval condition', () => {
   const source = panel()
   assert.equal((source.match(/<ApproveFirstInvoiceControl\b/g) ?? []).length, 1, 'one approve control')

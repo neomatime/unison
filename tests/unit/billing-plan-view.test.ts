@@ -8,6 +8,7 @@ import {
   FIRST_INVOICE_BANNER,
   PLAN_STATE_CONTROLS,
   approvedNotEmailedSentence,
+  billingPlanDescription,
   blockerSentence,
   canCreateItemInvoice,
   describePlanItem,
@@ -301,6 +302,25 @@ test('the panel wording: the brief sentences, word for word', () => {
   assert.equal(BILLING_PLAN_COPY.approvedNotEmailed, 'Approved, not yet emailed. Use Email to client on the invoice.')
   assert.equal(BILLING_PLAN_COPY.createLabel, 'Create invoice')
   assert.equal(BILLING_PLAN_COPY.approveAdminOnly, 'Only an owner or admin can approve the first invoice.')
+})
+
+test('the panel intro is true in every state: it promises months only when the plan has monthly items', () => {
+  const firstOnly = 'Approve and email the first invoice here.'
+  const withMonths = 'Approve and email the first invoice here. Later months are made here and issued by hand; none is sent automatically yet.'
+  // A once-off quote has the first invoice and nothing else.
+  assert.equal(billingPlanDescription([{ kind: 'first' }]), firstOnly)
+  // A monthly agreement has the first invoice and a monthly item for each later month.
+  assert.equal(billingPlanDescription([{ kind: 'first' }, { kind: 'monthly' }]), withMonths)
+  assert.equal(billingPlanDescription([{ kind: 'first' }, ...Array.from({ length: 11 }, () => ({ kind: 'monthly' as const }))]), withMonths)
+  // Nothing to bill later, nothing promised about later.
+  assert.equal(billingPlanDescription([]), firstOnly)
+  for (const text of [firstOnly, withMonths]) {
+    // The old sentence said "is approved and emailed here" (false once it is approved) and spoke of monthly invoices on a once-off quote.
+    assert.doesNotMatch(text, /is approved and emailed here|Monthly invoices are made here/)
+    assert.match(text, /^Approve and email the first invoice here\./)
+  }
+  // The intro comes from the items, not from a fixed sentence in the wording table.
+  assert.equal(Object.hasOwn(BILLING_PLAN_COPY, 'description'), false)
 })
 
 test('the action sentences: what was done, in plain words, with no claim of payment', () => {

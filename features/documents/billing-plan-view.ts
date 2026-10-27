@@ -27,7 +27,10 @@ export type BillingPlanView = {
 /** The sentences the panel and the actions say. One place, so the wording cannot drift between them. */
 export const BILLING_PLAN_COPY = {
   title: 'Billing plan',
-  description: 'The first invoice is approved and emailed here. Monthly invoices are made here and issued by hand; none is sent automatically yet.',
+  // The intro under the title, in two parts so it stays true in every state (see billingPlanDescription): it says what is done here,
+  // not what has been done, and it speaks of later months only when the plan has some.
+  descriptionFirstInvoice: 'Approve and email the first invoice here.',
+  descriptionLaterMonths: 'Later months are made here and issued by hand; none is sent automatically yet.',
   approveLabel: 'Approve and send',
   approvePendingLabel: 'Approving\u2026',
   approveConfirm: 'Approve this invoice and email it to the client? It gets its number now and can no longer be edited.',
@@ -46,6 +49,16 @@ export const BILLING_PLAN_COPY = {
   emailNotPrepared: 'The email could not be prepared.',
   emailDidNotGo: 'The email did not go.',
 } as const
+
+/**
+ * The intro under the panel title. A once-off quote has only the first invoice, so it says nothing about later months; a monthly
+ * agreement has a monthly item for each later month, so it adds how those are handled. It does not depend on the plan's state or on
+ * whether the first invoice has been approved: it says what can be done here, which stays true.
+ */
+export function billingPlanDescription(items: ReadonlyArray<{ kind: PlanItemKind }>): string {
+  const laterMonths = items.some((item) => item.kind === 'monthly')
+  return laterMonths ? `${BILLING_PLAN_COPY.descriptionFirstInvoice} ${BILLING_PLAN_COPY.descriptionLaterMonths}` : BILLING_PLAN_COPY.descriptionFirstInvoice
+}
 
 /** The three plan controls: the words on each, and whether a reason is required. Ending asks first, because it cannot be undone. */
 export const PLAN_STATE_CONTROLS = {

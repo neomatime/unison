@@ -5,7 +5,7 @@ import { ActionButton } from '@/features/crm-workspace/components/action-button'
 import { WorkspaceSection } from '@/features/crm-workspace/components/workspace-section'
 import { todayInJohannesburg } from '../../payments/fields'
 import { createPlanItemInvoiceAction } from '../actions/billing-plan'
-import { BILLING_PLAN_COPY, blockerSentence, canCreateItemInvoice, describePlanItem, isAwaitingApproval, planStatusLine, planStatusTone, type PlanTone } from '../billing-plan-view'
+import { BILLING_PLAN_COPY, billingPlanDescription, blockerSentence, canCreateItemInvoice, describePlanItem, isAwaitingApproval, planStatusLine, planStatusTone, type PlanTone } from '../billing-plan-view'
 import { agreementSentence } from '../billing-terms'
 import { formatDocumentDate } from '../document-view'
 import { getBillingPlan } from '../queries/get-billing-plan'
@@ -40,7 +40,7 @@ export async function BillingPlanPanel({ quoteId }: { quoteId: string }) {
   return (
     <WorkspaceSection
       title={BILLING_PLAN_COPY.title}
-      description={BILLING_PLAN_COPY.description}
+      description={billingPlanDescription(view.items)}
     >
       <div className="space-y-1 border-b border-border px-5 py-4 text-sm">
         <p className={`min-w-0 break-words font-medium ${STATUS_TEXT[planStatusTone(view.plan.status)]}`}>{planStatusLine(view.plan)}</p>
@@ -72,9 +72,18 @@ export async function BillingPlanPanel({ quoteId }: { quoteId: string }) {
         <p className="border-b border-border px-5 py-3 text-sm text-warning">{BILLING_PLAN_COPY.approvedNotEmailed}</p>
       ) : null}
 
-      <div className="overflow-x-auto">
-        <table className="w-full text-left text-sm">
-          <thead>
+      {/*
+        One markup, two layouts. From md up it is the table: five columns, scrolling sideways inside its card if it must. Below md the table
+        elements are blocks and each month is a stacked block: "Month N" and the date on the first line, the status on a line of its own, the
+        invoice link and the Create invoice button on the last. The sidebar only starts at lg, so between sm and md the content is 592 to
+        720 px wide, less than the table needs; that is why the switch is md. The wrapper is `relative` so that the screen-reader-only
+        "Actions" label (position: absolute) stays inside the scroll box instead of landing at the table's full width and widening the page.
+        Table cells are not flex items while the row is a table row, so basis-full and ml-auto do nothing from md, and the cells' padding
+        is the md: one; the row pads on a phone.
+      */}
+      <div className="relative overflow-x-auto">
+        <table className="block w-full text-left text-sm md:table">
+          <thead className="hidden md:table-header-group">
             <tr className="bg-muted/35 text-xs uppercase text-muted-foreground">
               <th className="px-5 py-3 font-medium">Month</th>
               <th className="px-5 py-3 font-medium">Bill on</th>
@@ -85,20 +94,20 @@ export async function BillingPlanPanel({ quoteId }: { quoteId: string }) {
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-border">
+          <tbody className="block divide-y divide-border md:table-row-group">
             {view.items.map((item) => {
               const described = describePlanItem(item, item.invoice, today, view.plan.status, firstApproved)
               return (
-                <tr key={item.id}>
-                  <td className="px-5 py-3 text-foreground">
-                    {item.monthNumber}
+                <tr key={item.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 px-5 py-3 md:table-row">
+                  <td className="text-foreground md:px-5 md:py-3">
+                    <span className="md:hidden">Month </span>{item.monthNumber}
                     {item.kind === 'first' ? <span className="ml-2 text-xs text-muted-foreground">First invoice</span> : null}
                   </td>
-                  <td className="whitespace-nowrap px-5 py-3 text-muted-foreground">{formatDocumentDate(item.billOn) ?? item.billOn}</td>
-                  <td className="px-5 py-3">
-                    <StatusBadge tone={BADGE_TONE[described.tone]}>{described.label}</StatusBadge>
+                  <td className="whitespace-nowrap text-muted-foreground md:px-5 md:py-3">{formatDocumentDate(item.billOn) ?? item.billOn}</td>
+                  <td className="basis-full md:px-5 md:py-3">
+                    <StatusBadge tone={BADGE_TONE[described.tone]} className="whitespace-normal md:whitespace-nowrap">{described.label}</StatusBadge>
                   </td>
-                  <td className="px-5 py-3">
+                  <td className="md:px-5 md:py-3">
                     {item.invoice ? (
                       <Link href={`${DOCUMENTS.invoice.base}/${item.invoice.id}`} className="font-semibold text-brand hover:underline">
                         {isDraftReference(item.invoice.number) ? 'Draft invoice' : item.invoice.number}
@@ -107,7 +116,7 @@ export async function BillingPlanPanel({ quoteId }: { quoteId: string }) {
                       <span className="text-muted-foreground">None yet</span>
                     )}
                   </td>
-                  <td className="px-5 py-3 text-right">
+                  <td className="ml-auto md:px-5 md:py-3 md:text-right">
                     {canCreateItemInvoice(item, item.invoice, view.plan.status, today, firstApproved) ? (
                       <ActionButton
                         action={createPlanItemInvoiceAction.bind(null, item.id)}
