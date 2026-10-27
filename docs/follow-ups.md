@@ -1707,3 +1707,138 @@ the database recorded the versions given here.
   7. One private helper defines "has an accepted quote" for both the feed and the status, so they cannot drift.
   8. No route or proxy changes: no new endpoint, and still no `GET /api/v1/clients/{id}`, which the boundary spec mentioned but the repo has never
      had. The boundary spec now says so.
+
+## From accept-to-invoice, Stage 1 (2026-10-27)
+
+Stage 1 of 4 is built: when a client accepts a quotation on the portal, UNISON can now move the Sales record to Won, make a billing plan and a
+draft first invoice, and tell the people who should check it. An owner or admin then presses "Approve and send", and the invoice is issued and
+emailed. All of this sits behind a new switch, Settings > Company details > "Billing plans". The switch is off by default, only an owner or admin
+can change it, and it is off for HIMARK. Stages 2 to 4 are not started: Stage 2 is automatic sending of the monthly invoices, Stage 3 is payment
+reminders and outstanding balances, and Stage 4 is the onboarding record, the readiness line and the override. Online payment, deposits,
+instalments and milestones come later still. Spec: `docs/superpowers/specs/2026-10-26-accept-to-invoice-to-payment-design.md`. Plan:
+`docs/superpowers/plans/2026-10-26-accept-to-invoice-stage-1.md`. It was built from 2026-10-26 to 2026-10-27 on the branch
+`claude/gallant-dewdney-af21e8`. The database changes below are already live. **Next step for the owner:** read the next block before anything else.
+
+### Read before you switch billing plans on
+
+The switch (Settings > Company details > "Billing plans") is off by default. Do not turn it on until you have read these seven points.
+
+1. **Stage 2 is not built.** After the first invoice, every month's invoice has to be made by hand from the quote page and emailed by hand. The design
+   says to switch this on only after Stage 2 ships.
+2. **Fill in the company VAT number first.** Go to Settings > Company details and type it in. It is blank today while 15% VAT is charged. While it is
+   blank, every approval is held with the message "The company VAT number is not set".
+3. **The switch changes what acceptance does for the whole organisation.** A client's acceptance then moves the Sales record to Won, makes a billing plan
+   and a draft invoice, and sends a notice. Quotes accepted before the switch is turned on are never billed by it.
+4. **Turning the switch off stops new work, not existing plans.** It stops the making of plans and invoices, and it stops approvals. Existing plans stay
+   visible. The first invoice of an existing plan cannot be approved until the switch is back on.
+5. **Running `pnpm test:rls` also runs the real nightly job** for every organisation that has the switch on. Once HIMARK is switched on, a test run
+   would run the job's sweep and reminders early. This is harmless and can be repeated, but know it.
+6. **Tell the person who may approve invoices** that only an owner or admin can press "Approve and send". Tell them too that the in-app notice goes to
+   the quote's owner and to the member who made the link. It does not go automatically to every owner and admin.
+7. **The legal and privacy review of the portal (ECTA, POPIA) is still owed.** This is unchanged from the portal work. The consent wording may need a
+   sentence saying that an invoice follows.
+
+### What Stage 1 does
+
+- **On the quote, with the switch on.** A quote carries a start date and a term in months (1 to 120). A quote with a monthly line cannot be sent
+  without a start date, a term and a charge kind (once-off or monthly) on every line. The start date and the term are fixed once the quote is sent.
+- **What the client sees.** One agreement sentence on the portal, for example "ZAR 1,725.00 per month for 12 months from 1 December 2026"; the same
+  as "Monthly agreement: ..." in the PDF and the document view; and in an AGREEMENT cell of the quotation email.
+- **When a client accepts on the portal:**
+  - **Sales.** The quote's Sales record is moved to Won, or one is created and linked to the quote. It is valued at the once-off lines plus the
+    monthly lines times the term, excluding VAT, but only if its value was 0.
+  - **The billing plan.** It has one item per invoice. Item 1 is the once-off lines plus the first month. Items 2 onward are the monthly lines, one per
+    month up to the term, each dated on the start-date day of its month and counted from the start date.
+  - **The draft first invoice.** It is made and locked to the quote. Only its due date and notes can be edited.
+  - **The notice.** The quote's owner and the member who sent the link get an in-app notice, "<client> accepted: first invoice ready to approve".
+    Only an owner or admin can approve.
+- **Approving the first invoice.** The "Billing plan" panel on the quote page lists the items. An owner or admin presses "Approve and send". These
+  checks run first: company name, document prefix, company VAT number (when VAT is charged), bank details, the client's billing or primary-contact
+  email, the client's address, the lines, and a total above zero. If they pass, the invoice is issued and emailed with its PDF, from the approver's own
+  session. The ordinary Issue button cannot issue it.
+- **Later months are made by hand.** Press "Create invoice" on a month's row, from that month's date and only after the first invoice is approved (the
+  panel prompts for it). Then issue it with the normal Issue button.
+- **Pausing and ending.** A plan pauses by itself when its quote leaves Accepted or is archived, or when its client is archived. An owner or admin can
+  pause a plan, resume it (resuming is manual) or end it, with a reason. A paused or ended plan cannot be billed with the Issue button.
+- **No double billing.** The same quote or month can never be invoiced twice (the database holds unique keys). The "Create invoice" button in the
+  quote's header now allows one live invoice per quote (live means not cancelled and not an archived draft), and it is hidden for a quote that has
+  a plan.
+- **The nightly job.** It makes plans for portal acceptances that missed one (only acceptances made after the switch was turned on), and it reminds,
+  in the app, every 2 days about a first invoice that is still waiting for approval.
+
+### Production changes already live
+
+Eleven migration files were applied to the live database (`unison-uat`, which is production) during this build: `supabase/migrations/20261026100000`
+to `20261026110000`. Production records 12 entries, because the last file was applied in two steps. As in earlier work, the versions the database
+recorded differ from the file names.
+
+- **The schema.** Two new tables, `billing_plans` and `billing_plan_items`. New columns: `quotes.start_date` and `quotes.term_months`,
+  `organization_settings.billing_plans_enabled` and `billing_plans_enabled_at`, and `invoices.billing_plan_item_id`. Three new timeline kinds:
+  `billing.plan_created`, `billing.invoice_approved` and `billing.plan_changed`.
+- **The functions and rules.** Building a plan and its invoices, approving the first invoice, pausing and ending a plan, the work done at acceptance,
+  the start date and term on sent quotes and on the client's page, and the one-live-invoice rule on "Create invoice".
+- **The nightly job** `unison-billing-nightly`, run by the database at 22:20 UTC, which is 00:20 South African time.
+- **Everything is additive, and all of it is behind the switch, which is OFF for HIMARK.** With the switch off nothing changes for HIMARK, with one
+  intended exception: the "Create invoice" button on an accepted quote now refuses a second live invoice for the same quote.
+- **The real organisation's data was never touched.** Your quote HMK-Q-2026-00001 is still Sent.
+
+### Verified
+
+- **Typecheck** is clean.
+- **Unit and tenancy tests** (`pnpm test`): 1369 tests passed.
+- **Build.** The production build succeeded.
+- **Database tests against production:**
+  - the full database suite on the finished code: FINAL_RLS_RESULT
+  - earlier, after the final migration, a targeted re-run of the 11 database test files it affects
+- **Reviews.** Every one of the nine tasks was reviewed twice (against the spec, and for quality), with fix rounds where the reviewers found real
+  problems. A final review of the whole branch, by the most capable reviewer, found two Important problems, and both were fixed and reviewed again:
+  a restored discarded draft could be issued without approval, and editing a plan draft's due date could fail.
+- **Browser walk-through** on a throwaway organisation, with email in log mode (so no email was sent):
+  - a portal acceptance showed the agreement line;
+  - the Sales record went to Won with value 28,000 for a quote of 10,000 once-off plus 1,500 a month for 12 months;
+  - the plan panel, the locked first draft, and the due date saving;
+  - the readiness blocker for a missing client email;
+  - pause and resume;
+  - Approve and send, and the member's view of the panel;
+  - a once-off quote, and ending a plan.
+
+### Not verified
+
+- **A real send of the first invoice email.** The walk-through used log mode. The approval, the numbering, the due date and the PDF were checked; the
+  mail transport was not.
+- **How the AGREEMENT cell of the quotation email looks in a real mail client.** The cell is narrow, and on a desktop the sentence wraps over several
+  lines. A full-width row would read better.
+- **The accountant's view on VAT** at the rate in force on the issue date for the later months (call 8 under "Calls settled after a builder check" in the spec).
+- **The phone layout after the final CSS fix.** It was not re-checked in a browser.
+- **HIVE is untouched,** so nothing was checked there.
+
+### Known limits
+
+- The "first invoice ready" notice is in the app only. The email notice needs Stage 2's system email path. The notice goes to the quote's owner and the
+  link's sender.
+- The Invoices list has no "waiting for approval" label. The invoice page carries a banner instead.
+- No onboarding record or owner task is made at acceptance yet (Stage 4).
+- The Sales record made at acceptance has probability 0%. It takes the quote's owner when the quote has one, and has no owner when the quote has none.
+  An archived Sales record linked to the quote is moved to Won but stays archived.
+- If a hand-made invoice already exists for a quote when it is accepted, no plan is built and the Sales record is not moved to Won.
+- The later months (2 onward) still show as "Scheduled" while a plan is paused.
+- Ending a plan leaves its first draft invoice without a discard button on the invoice page. It can be archived from the Invoices register.
+- "Fill terms" and the offerings picker stay available on a plan draft. They change wording only, never amounts.
+- When the first invoice is approved but the email did not go, the message shows in red, and the orange "Approved, not yet emailed" line repeats it.
+- The panel's "Approved, not yet emailed" line follows the email log. The message from a failed send is only shown until the page is left.
+- A duplicated quote starts without a start date and term, and staff set them. A revision keeps the terms of the quote it revises.
+- Approval does not re-check the PDF size before the invoice is numbered. The hourly email cap is checked first.
+- A discarded plan draft is deleted (it was never numbered, so no number is lost) when its month is rebuilt.
+
+### Owner decisions
+
+- **The seventeen calls the plan made where the spec is silent** are listed at the end of the plan, under "Calls made in this plan (for review)". All
+  were built as written. Confirm or change each. The decisions that need your answer are below.
+- **The wording of the agreement sentence** on the portal, the PDF and the email, and the wording for a flat quote ("12 monthly payments from ...").
+- **The confirm text and the red and orange messages** of Approve and send.
+- **Who may approve, and who is told.** Today only an owner or admin may approve, and the notice goes to the quote's owner and the member who sent the
+  link. The other choice is to tell every owner and admin.
+- **Whether a Won Sales record made at acceptance should get probability 100%.** Today it gets 0%.
+- **The email layout for the AGREEMENT cell** (see "Not verified").
+- **The company VAT number.** It has to be filled in before approvals can go through (see "Read before you switch billing plans on").
+- **The first invoice's due date.** Should it stay "issue day plus the company's payment days" (30 today)? It can be typed on the draft.

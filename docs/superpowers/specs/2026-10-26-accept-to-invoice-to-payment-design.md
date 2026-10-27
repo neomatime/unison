@@ -1,7 +1,7 @@
 # From acceptance to invoice to payment
 
 **Date:** 2026-10-26
-**Status:** Draft for the owner's approval (builder check done, owner decisions 1-12 recorded). Nothing is built.
+**Status:** Stage 1 built (2026-10-27); Stages 2 to 4 not started
 **Origin:** The owner's brief of 2026-10-26 ("when a client securely accepts a quotation ... generate and email the invoice ...
 track payment"), refined in conversation the same day. It completes the quote portal (slices 1 to 3 are built and live; see
 `docs/superpowers/specs/2026-10-18-quote-portal-design.md`). It **amends** the boundary decision of 2026-10-13
