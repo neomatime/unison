@@ -1,7 +1,7 @@
 import Link from 'next/link'
 
 import { PhaseSixDetail } from '@/features/commercial-finance/components/phase-six-detail'
-import { firstInvoiceBannerParts, isFirstPlanDraft } from '@/features/documents/billing-plan-view'
+import { PLAN_DRAFT_LOCKED_NOTE, firstInvoiceBannerParts, isFirstPlanDraft } from '@/features/documents/billing-plan-view'
 import { DocumentActions } from '@/features/documents/components/document-actions'
 import { EmailSection } from '@/features/documents/components/email-section'
 import { LineEditor } from '@/features/documents/components/line-editor'
@@ -45,7 +45,12 @@ async function PlanBanner({ invoiceId }: { invoiceId: string }) {
 async function InvoiceLines({ invoiceId }: { invoiceId: string }) {
   const bundle = await getDocument('invoice', invoiceId)
   if (!bundle) return null
-  const locked = !isDraftStatus('invoice', bundle.record.status)
+  // A Draft that follows an accepted quote (a first or a monthly invoice) has the quote's lines, which nobody changes here: the database
+  // refuses it, so the editor is locked rather than offering edits that fail. Its plan link is the one the header and the banner share.
+  const draft = isDraftStatus('invoice', bundle.record.status)
+  const planLink = await getPlanLink(invoiceId)
+  const planDraft = draft && planLink !== null
+  const locked = !draft || planDraft
   const hiveOfferings = locked ? { offerings: [], error: null } : await listHiveOfferings()
   const { record } = bundle
   return (
@@ -55,6 +60,7 @@ async function InvoiceLines({ invoiceId }: { invoiceId: string }) {
       lines={bundle.lines}
       hiveOfferings={hiveOfferings}
       locked={locked}
+      lockedNote={planDraft ? PLAN_DRAFT_LOCKED_NOTE : undefined}
       currency={String(record.currency ?? 'ZAR')}
       totals={{ subtotal: record.subtotal, tax: record.tax_amount, total: record.total_amount, vatRate: record.vat_rate }}
     />

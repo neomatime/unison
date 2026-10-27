@@ -8,6 +8,7 @@ import { LineEditor } from '@/features/documents/components/line-editor'
 import { QuoteInvoices } from '@/features/documents/components/quote-invoices'
 import { getDocument } from '@/features/documents/queries/get-document'
 import { listHiveOfferings } from '@/features/documents/queries/list-hive-offerings'
+import { quoteHasBillingPlan } from '@/features/documents/queries/quote-has-billing-plan'
 import { isDraftStatus } from '@/features/documents/vocabulary'
 import { HiveFeedStatus } from '@/features/platform-automation/components/hive-feed-status'
 import { ClientResponsePanel } from '@/features/quote-portal/components/client-response-panel'
@@ -17,7 +18,10 @@ import { DocumentTermsPanel } from '@/features/terms/components/document-terms-p
 // getRecordWorkspace returns empty facts for an id that does not exist rather than failing.
 async function QuoteHeaderActions({ quoteId }: { quoteId: string }) {
   const bundle = await getDocument('quote', quoteId)
-  return bundle ? <DocumentActions kind="quote" id={quoteId} status={String(bundle.record.status)} archived={Boolean(bundle.record.archived_at)} /> : null
+  if (!bundle) return null
+  // Only an Accepted quote is offered Create invoice, so only then is its plan looked for. A quote that has a plan is billed through it.
+  const hasBillingPlan = String(bundle.record.status) === 'Accepted' && (await quoteHasBillingPlan(quoteId))
+  return <DocumentActions kind="quote" id={quoteId} status={String(bundle.record.status)} archived={Boolean(bundle.record.archived_at)} hasBillingPlan={hasBillingPlan} />
 }
 
 async function QuoteLines({ quoteId }: { quoteId: string }) {

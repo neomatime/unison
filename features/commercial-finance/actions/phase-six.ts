@@ -62,16 +62,23 @@ async function clientName(
 
 const isOneOf = (options: readonly string[], candidate: string) => options.includes(candidate);
 
-/** The stored status and total of a quote or invoice, so a sent or issued document is saved differently. */
+/**
+ * The stored status and total of a quote or invoice, so a sent or issued document is saved differently. An invoice also returns the
+ * billing plan item it follows (null when it follows none), because a Draft that follows an accepted quote is saved differently too.
+ */
 async function readDocumentState(db: any, table: string, organizationId: string, id: string) {
   const result = await db
     .from(table)
-    .select("status,total_amount")
+    .select(table === "invoices" ? "status,total_amount,billing_plan_item_id" : "status,total_amount")
     .eq("id", id)
     .eq("organization_id", organizationId)
     .maybeSingle();
   if (result.error || !result.data) return null;
-  return { status: String(result.data.status), total: Number(result.data.total_amount) };
+  return {
+    status: String(result.data.status),
+    total: Number(result.data.total_amount),
+    planItemId: typeof result.data.billing_plan_item_id === "string" ? result.data.billing_plan_item_id : null,
+  };
 }
 
 export async function savePhaseSixRecordAction(
@@ -198,6 +205,10 @@ export async function savePhaseSixRecordAction(
         return { error: documentErrorMessage("INVOICE_FROZEN") ?? "This invoice has already been issued and can no longer be edited." };
       }
       values = { notes: optional(form, "notes") };
+    } else if (state?.planItemId) {
+      // A Draft that follows an accepted quote: the database refuses a change to anything but the due date and the notes, and a posted
+      // value often differs from the stored one in ordinary ways, so only these two are written and nothing else is read from the screen.
+      values = { due_date: optional(form, "dueDate"), notes: optional(form, "notes") };
     } else {
       const resolvedClient = await clientName(db, organization.id, form);
       if (resolvedClient.invalid) return { error: "The selected client could not be verified." };

@@ -49,6 +49,14 @@ test('the ids to look up are collected per kind, once each, and only real ids', 
   assert.deepEqual(collectNameIds('lead', []).members, [])
 })
 
+test('an invoice carries the billing plan item it follows, or null when it follows none', () => {
+  const names = emptyNameMaps()
+  const base = { id: 'i', invoice_number: 'DRAFT-1a2b3c4d', client_name: 'Acme', status: 'Draft', updated_at: 'x', archived_at: null }
+  assert.equal(mapPhaseSixRow('invoice', { ...base, billing_plan_item_id: ID_A }, names).billingPlanItemId, ID_A)
+  assert.equal(mapPhaseSixRow('invoice', { ...base, billing_plan_item_id: null }, names).billingPlanItemId, null)
+  assert.equal(mapPhaseSixRow('invoice', base, names).billingPlanItemId, null, 'a row with no such column reads as not linked')
+})
+
 test('the mapper file is pure: no leftover placeholder and no server-only import', () => {
   const source = readFileSync(join(process.cwd(), 'features', 'commercial-finance', 'phase-six-mappers.ts'), 'utf8').replace(/\r\n/g, '\n')
   assert.doesNotMatch(source, /\/\* MOVE/)

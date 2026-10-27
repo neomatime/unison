@@ -180,7 +180,7 @@ test('the line editor is a client module whose forms keep typed values and whose
   assert.ok(source.includes("quote: 'This document has been sent or issued, so its lines are frozen. Use Revise this quote if it is Sent, Declined or Expired (the revision replaces it once sent); an accepted quote cannot be revised, so use Duplicate as new draft.',"), 'a locked quote says how to revise it')
   assert.doesNotMatch(source, /duplicate it as a new draft/i, 'no longer tells staff to duplicate a quote to revise it')
   assert.match(source, /To correct it, cancel it and raise a new one\./, 'a locked invoice says how to correct it')
-  assert.match(source, /locked \? LOCKED_NOTE\[kind\]/, 'the note depends on the kind of document')
+  assert.match(source, /locked \? \(lockedNote \?\? LOCKED_NOTE\[kind\]\)/, 'the note depends on the kind of document, unless the page gives a reason of its own (a draft that follows an accepted quote)')
 })
 
 test('the line editor adds lines from HIVE offerings or by hand, with no price list', () => {

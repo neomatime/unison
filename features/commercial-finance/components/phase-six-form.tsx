@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useActionState, useState, type ChangeEvent, type ReactNode } from "react";
 
 import { WorkspaceHeader } from "@/components/shared/workspace-header";
+import { PLAN_DRAFT_LOCKED_NOTE } from "@/features/documents/billing-plan-view";
 import { BILLING_TERMS_COPY } from "@/features/documents/billing-terms";
 import { QUOTE_SENT_STATUSES, isDraftStatus } from "@/features/documents/vocabulary";
 import { savePhaseSixRecordAction } from "../actions/phase-six";
@@ -161,6 +162,16 @@ function Fields({
             This invoice has been issued, so its lines, prices and details are frozen. Its status and balance are worked out from the payments you record on the invoice page. You can still change the notes. To correct it, cancel it and raise a new one.
           </Notice>
           <TextArea name="notes" label="Payment notes" value={value("notes")} />
+        </>
+      );
+    }
+    if (record && typeof record.billingPlanItemId === "string") {
+      // A Draft that follows an accepted quote: the database allows only the due date and the notes to change, so nothing else is shown.
+      return (
+        <>
+          <Notice>{PLAN_DRAFT_LOCKED_NOTE}</Notice>
+          <Field name="dueDate" label="Due date (default 30 days after it is issued)" type="date" value={value("dueDate")} />
+          <TextArea name="notes" label="Payment notes (internal)" value={value("notes")} />
         </>
       );
     }

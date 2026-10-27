@@ -20,6 +20,7 @@ const FILES = {
   panel: ['features', 'documents', 'components', 'billing-plan-panel.tsx'],
   controls: ['features', 'documents', 'components', 'billing-plan-state-form.tsx'],
   approve: ['features', 'documents', 'components', 'approve-first-invoice-control.tsx'],
+  has: ['features', 'documents', 'queries', 'quote-has-billing-plan.ts'],
 } as const
 const NEW_FILES = Object.entries(FILES) as Array<[string, readonly string[]]>
 
@@ -64,19 +65,42 @@ test('the actions module is a server-action module that exports three async func
   assert.match(source, /import type \{ ActionState \} from '\.\.\/types'/)
 })
 
-test('each action checks the id, reads the session, then makes exactly one database call: the rpc it is named for', () => {
-  const expected: Array<[string, string]> = [[APPROVE, 'approve_first_invoice'], [CREATE, 'create_plan_item_invoice'], [STATE, 'billing_plan_set_state']]
-  for (const [name, rpc] of expected) {
+test('each action checks the id, reads the session, then makes one database write: the rpc it is named for (the approval also reads the hourly email count first)', () => {
+  const expected: Array<[string, string, number]> = [[APPROVE, 'approve_first_invoice', 2], [CREATE, 'create_plan_item_invoice', 1], [STATE, 'billing_plan_set_state', 1]]
+  for (const [name, rpc, databaseCalls] of expected) {
     const text = body(actions(), name)
     const calls = [...text.matchAll(RPC)].map((match) => match[1])
     assert.deepEqual(calls, [rpc], `${name} calls ${rpc} once`)
-    assert.equal((text.match(/\bdb\s*\.\s*(from|rpc)\(/g) ?? []).length, 1, `${name}: no other database call`)
+    assert.equal((text.match(/\bdb\s*\.\s*(from|rpc)\(/g) ?? []).length, databaseCalls, `${name}: no other database call`)
+    assert.equal((text.match(/\bdb\s*\.\s*from\(/g) ?? []).length, name === APPROVE ? 1 : 0, `${name}: only the approval reads (the email count)`)
     const uuid = text.search(/if \(!isUuid\((itemId|planId)\)\) return \{ error: '/)
     const context = text.indexOf('await documentContext()')
     const rpcAt = text.search(RPC)
     assert.ok(uuid > -1 && context > uuid && rpcAt > context, `${name}: the id check, then documentContext(), then the rpc`)
   }
   assert.doesNotMatch(actions(), /createClient\(|supabase\/admin|SUPABASE_SECRET|process\.env/, 'the actions use the signed-in client only')
+})
+
+test('approving counts the organisation\'s emails of the last hour after the permission check and before the approval, as the email action does', () => {
+  const text = body(actions(), APPROVE)
+  const permission = text.indexOf("roleHasPermission(role, 'company.manage')")
+  const count = text.indexOf("db.from('document_emails')")
+  const rpcAt = text.indexOf("rpc('approve_first_invoice'")
+  assert.ok(permission > -1 && count > permission && rpcAt > count, 'permission, then the count, then the approval: no number is used when the cap is reached')
+  const block = text.slice(permission, rpcAt)
+  assert.match(text, /const \{ organization, role, db \} = await documentContext\(\)/, 'the organisation comes with the session')
+  assert.match(block, /const since = new Date\(Date\.now\(\) - 60 \* 60 \* 1000\)\.toISOString\(\)/, 'the last hour')
+  assert.match(block, /db\.from\('document_emails'\)\.select\('id', \{ count: 'exact', head: true \}\)\.eq\('organization_id', organization\.id\)\.gte\('sent_at', since\)/, 'counted for the organisation, by sent_at')
+  assert.match(block, /if \(recent\.error\) return \{ error: 'The email limit could not be checked\. Please try again\.' \}/, 'a failed count stops the approval: nothing falls back to no limit')
+  assert.match(block, /if \(\(recent\.count \?\? 0\) >= HOURLY_EMAIL_CAP\) \{\s*return \{ error: `This organisation has sent \$\{HOURLY_EMAIL_CAP\} document emails in the last hour; try again later\.` \}\s*\}/, 'at or over the cap')
+  assert.match(actions(), /import \{ HOURLY_EMAIL_CAP \} from '\.\.\/email'/, 'the cap is the email action\'s own constant')
+  // The two sentences are the email action's, word for word.
+  const email = read('features', 'documents', 'actions', 'email.ts')
+  assert.ok(email.includes("return { error: 'The email limit could not be checked. Please try again.' }"), 'the email action still says exactly this')
+  assert.ok(email.includes('return { error: `This organisation has sent ${HOURLY_EMAIL_CAP} document emails in the last hour; try again later.` }'), 'and this')
+  assert.ok(email.includes("db.from('document_emails').select('id', { count: 'exact', head: true }).eq('organization_id', organization.id).gte('sent_at', since)"), 'and counts the same rows')
+  // The refusals neither call the rpc nor refresh the pages: nothing changed.
+  assert.doesNotMatch(block, /revalidateDocumentPages|rpc\(/)
 })
 
 test('approving asks for company.manage before the first database call, in the words of the database', () => {
@@ -283,7 +307,7 @@ test('the panel shows the status line and the agreement sentence without a month
 
 test('the table gives each month its label from describePlanItem and a link to its invoice', () => {
   const source = panel()
-  assert.match(source, /describePlanItem\(item, item\.invoice, today, view\.plan\.status\)/, 'a paused or ended plan is told to the label')
+  assert.match(source, /describePlanItem\(item, item\.invoice, today, view\.plan\.status, firstApproved\)/, 'a paused or ended plan, and a first invoice not yet approved, are told to the label')
   assert.match(source, /href=\{`\$\{DOCUMENTS\.invoice\.base\}\/\$\{item\.invoice\.id\}`\}/)
   assert.match(source, /isDraftReference\(item\.invoice\.number\) \? 'Draft invoice' : item\.invoice\.number/)
   assert.match(source, /formatDocumentDate\(item\.billOn\)/)
@@ -358,9 +382,18 @@ test('Approved, not yet emailed shows while the first invoice is Issued and no e
   assert.match(source, /BILLING_PLAN_COPY\.approvedNotEmailed/)
 })
 
+test('the panel tells the labels and the Create invoice gate whether the first invoice has been approved, so no month is prompted before it', () => {
+  const source = panel()
+  assert.equal((source.match(/const firstApproved = /g) ?? []).length, 1, 'worked out once')
+  assert.match(source, /const firstApproved = firstItem !== undefined && firstItem\.approvedAt !== null\n/, 'from the first item\'s approval stamp')
+  assert.ok(source.indexOf('const firstApproved = ') > source.indexOf('const firstItem = '), 'after the first item is found')
+  assert.equal((source.match(/\bfirstApproved\b/g) ?? []).length, 3, 'the definition, the label and the gate: nothing else uses it')
+  assert.match(source, /canCreateItemInvoice\(item, item\.invoice, view\.plan\.status, today, firstApproved\)/)
+})
+
 test('Create invoice is offered through canCreateItemInvoice, to any member, as a button that makes a draft', () => {
   const source = panel()
-  assert.match(source, /canCreateItemInvoice\(item, item\.invoice, view\.plan\.status, today\)/)
+  assert.match(source, /canCreateItemInvoice\(item, item\.invoice, view\.plan\.status, today, firstApproved\)/)
   assert.match(source, /createPlanItemInvoiceAction\.bind\(null, item\.id\)/)
   assert.match(source, /label=\{BILLING_PLAN_COPY\.createLabel\}/)
   const create = source.indexOf('createPlanItemInvoiceAction.bind')
@@ -430,6 +463,47 @@ test('the header buttons hide Issue invoice for the first invoice of a plan, and
   assert.match(source, /\{kind === 'invoice' && !draft && !cancelled && !hasPayments \? \(/, 'cancel is as before')
 })
 
+test('the header Create invoice button is hidden for a quote that has a billing plan: the flag defaults to false and nothing else about the button changes', () => {
+  const source = documentActions()
+  assert.match(source, /hasBillingPlan = false/, 'the flag defaults to false')
+  assert.match(source, /hasBillingPlan\?: boolean/)
+  assert.match(source, /\{kind === 'quote' && status === 'Accepted' && !archived && !hasBillingPlan \? \(\s*<ActionButton action=\{createInvoiceFromQuoteAction\.bind\(null, id\)\} label="Create invoice" confirmText="Create a draft invoice with the lines of this quote\?" \/>/)
+  assert.equal((source.match(/label="Create invoice"/g) ?? []).length, 1)
+})
+
+test('the quote page asks whether the quote has a plan only for an Accepted quote, through a small cached read, and passes the flag', () => {
+  const page = quotePage()
+  assert.match(page, /import \{ quoteHasBillingPlan \} from '@\/features\/documents\/queries\/quote-has-billing-plan'/)
+  assert.match(page, /const hasBillingPlan = String\(bundle\.record\.status\) === 'Accepted' && \(await quoteHasBillingPlan\(quoteId\)\)/)
+  assert.match(page, /<DocumentActions kind="quote" id=\{quoteId\} status=\{String\(bundle\.record\.status\)\} archived=\{Boolean\(bundle\.record\.archived_at\)\} hasBillingPlan=\{hasBillingPlan\} \/>/)
+  const source = read(...FILES.has)
+  assert.match(source, /^import 'server-only'/)
+  assert.match(source, /import \{ cache \} from 'react'/)
+  assert.match(source, /export const quoteHasBillingPlan = cache\(async \(quoteId: string\): Promise<boolean> =>/)
+  assert.match(source, /if \(!isUuid\(quoteId\)\) return false/)
+  assert.match(source, /await documentContext\(\)/)
+  assert.match(source, /\.from\('billing_plans'\)\s*\.select\('id'\)\s*\.eq\('quote_id', quoteId\)\s*\.eq\('organization_id', organization\.id\)\s*\.maybeSingle\(\)/, 'a plan of this quote in this organisation, through the member\'s own client')
+  assert.match(source, /if \(found\.error\) throw found\.error/)
+  assert.doesNotMatch(source, /\.(insert|update|upsert|delete|rpc)\(/, 'a read')
+  assert.doesNotMatch(source, /createClient\(|supabase\/admin|SUPABASE_SECRET|process\.env/)
+})
+
+test('the line editor of an invoice that has a plan link is locked, with a note that says why, and the editor takes the note', () => {
+  const page = invoicePage()
+  const lines = page.slice(page.indexOf('async function InvoiceLines('), page.indexOf('async function InvoiceWorkspace('))
+  assert.ok(lines.length > 200, 'the lines component was found')
+  assert.match(lines, /const planLink = await getPlanLink\(invoiceId\)/, 'the cached plan link, shared with the header and the banner')
+  assert.match(lines, /const planDraft = draft && planLink !== null/, 'a Draft that has a link: first or monthly, any kind')
+  assert.match(lines, /const locked = !draft \|\| planDraft/)
+  assert.match(lines, /lockedNote=\{planDraft \? PLAN_DRAFT_LOCKED_NOTE : undefined\}/)
+  assert.match(lines, /const hiveOfferings = locked \? \{ offerings: \[\], error: null \} : await listHiveOfferings\(\)/, 'a locked editor does not load the picker')
+  assert.match(page, /import \{ PLAN_DRAFT_LOCKED_NOTE, firstInvoiceBannerParts, isFirstPlanDraft \} from '@\/features\/documents\/billing-plan-view'/)
+  const editor = read('features', 'documents', 'components', 'line-editor.tsx')
+  assert.match(editor, /lockedNote\?: string/)
+  assert.match(editor, /description=\{locked \? \(lockedNote \?\? LOCKED_NOTE\[kind\]\) : /)
+  assert.match(editor, /\{locked \? null : <AddLineForm /, 'a locked editor still has no add form')
+})
+
 test('the invoice page passes the flag from the plan link and shows the banner linking to the quote', () => {
   const source = invoicePage()
   assert.match(source, /import \{ getPlanLink \} from '@\/features\/documents\/queries\/get-plan-link'/)
@@ -439,7 +513,7 @@ test('the invoice page passes the flag from the plan link and shows the banner l
   assert.match(source, /\{banner\.before\}/)
   assert.match(source, /\{banner\.after\}/)
   assert.doesNotMatch(source, /FIRST_INVOICE_BANNER/, 'the page takes the banner words from firstInvoiceBannerParts only')
-  assert.match(source, /import \{ firstInvoiceBannerParts, isFirstPlanDraft \} from '@\/features\/documents\/billing-plan-view'/)
+  assert.match(source, /import \{ PLAN_DRAFT_LOCKED_NOTE, firstInvoiceBannerParts, isFirstPlanDraft \} from '@\/features\/documents\/billing-plan-view'/)
   assert.match(source, /href=\{`\$\{DOCUMENTS\.quote\.base\}\/\$\{planLink\.quoteId\}`\}/, 'the banner links to the quote page')
   const banner = source.indexOf('<PlanBanner invoiceId={invoiceId} />')
   const lines = source.indexOf('<InvoiceLines invoiceId={invoiceId} />')
@@ -451,7 +525,7 @@ test('the new files are plain ASCII and the modified lines add no invisible char
   for (const [name, parts] of NEW_FILES) {
     assert.doesNotMatch(read(...parts), /[^\n -~]/, `${name} is plain ASCII (use \\u escapes)`)
   }
-  for (const source of [quotePage(), invoicePage(), documentActions()]) {
+  for (const source of [quotePage(), invoicePage(), documentActions(), read('features', 'documents', 'components', 'line-editor.tsx')]) {
     assert.deepEqual([...source].filter((ch) => isInvisible(ch.codePointAt(0) ?? 0)), [], 'no zero-width or bidi characters')
   }
 })

@@ -27,13 +27,15 @@ const LOCKED_NOTE: Record<DocumentKind, string> = {
 type Totals = { subtotal: number | string; tax: number | string; total: number | string; vatRate: number | string }
 
 export function LineEditor({
-  kind, documentId, lines, hiveOfferings, locked, currency, totals,
+  kind, documentId, lines, hiveOfferings, locked, lockedNote, currency, totals,
 }: {
   kind: DocumentKind
   documentId: string
   lines: DocumentLine[]
   hiveOfferings: HiveOfferingsResult
   locked: boolean
+  /** What to say instead of the usual note when the lines are locked for a reason other than the document having gone out. */
+  lockedNote?: string
   currency: string
   totals: Totals
 }) {
@@ -41,7 +43,7 @@ export function LineEditor({
   return (
     <WorkspaceSection
       title="Lines"
-      description={locked ? LOCKED_NOTE[kind] : 'What is being sold. The VAT and the total are calculated for you.'}
+      description={locked ? (lockedNote ?? LOCKED_NOTE[kind]) : 'What is being sold. The VAT and the total are calculated for you.'}
     >
       {lines.length ? (
         <ul className="divide-y divide-border">

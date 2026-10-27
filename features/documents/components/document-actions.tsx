@@ -15,8 +15,9 @@ const LINK = 'border border-border px-4 py-2 text-sm font-medium text-foreground
  * Only a quote that is Sent, Declined or Expired can be revised (the database checks it too); the revision opens as a new draft.
  * An issued invoice can be cancelled only while it has no unvoided payment (the database checks it too).
  * The first invoice of a billing plan (planFirstDraft) has no Issue invoice button: it is approved and sent from its quote page.
+ * A quote that has a billing plan (hasBillingPlan) has no Create invoice button: its invoices are made from the plan on its page.
  */
-export function DocumentActions({ kind, id, status, archived = false, hasPayments = false, planFirstDraft = false }: { kind: DocumentKind; id: string; status: string; archived?: boolean; hasPayments?: boolean; planFirstDraft?: boolean }) {
+export function DocumentActions({ kind, id, status, archived = false, hasPayments = false, planFirstDraft = false, hasBillingPlan = false }: { kind: DocumentKind; id: string; status: string; archived?: boolean; hasPayments?: boolean; planFirstDraft?: boolean; hasBillingPlan?: boolean }) {
   const draft = isDraftStatus(kind, status)
   const cancelled = kind === 'invoice' && status === 'Cancelled'
   return (
@@ -40,7 +41,7 @@ export function DocumentActions({ kind, id, status, archived = false, hasPayment
       {kind === 'quote' && draft ? (
         <ActionButton action={sendQuoteAction.bind(null, id)} label="Send quote" confirmText="Send this quote? It gets its number now and can no longer be edited." />
       ) : null}
-      {kind === 'quote' && status === 'Accepted' && !archived ? (
+      {kind === 'quote' && status === 'Accepted' && !archived && !hasBillingPlan ? (
         <ActionButton action={createInvoiceFromQuoteAction.bind(null, id)} label="Create invoice" confirmText="Create a draft invoice with the lines of this quote?" />
       ) : null}
       {kind === 'quote' && !draft ? (

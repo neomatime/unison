@@ -166,6 +166,37 @@ test('Create invoice is offered on the first month, or a due month, with no invo
   }
 })
 
+const WAITING_FOR_FIRST = { label: 'Waiting for the first invoice to be approved', tone: 'waiting' }
+
+test('a monthly month that is due waits for the first invoice to be approved, and says so, until it is', () => {
+  // Not approved: a due month (today or earlier) is not a prompt to invoice, it is a wait.
+  assert.deepEqual(describePlanItem(monthly({ billOn: '2026-10-27' }), null, TODAY, 'active', false), WAITING_FOR_FIRST, 'due today')
+  assert.deepEqual(describePlanItem(monthly({ billOn: '2026-09-01' }), null, TODAY, 'active', false), WAITING_FOR_FIRST, 'overdue to bill')
+  // Approved: the prompt is the one it always was. Left out: approved (the default), so nothing changes for a caller that does not say.
+  assert.deepEqual(describePlanItem(monthly({ billOn: '2026-09-01' }), null, TODAY, 'active', true), { label: "Due: create this month's invoice", tone: 'attention' })
+  assert.deepEqual(describePlanItem(monthly({ billOn: '2026-09-01' }), null, TODAY), { label: "Due: create this month's invoice", tone: 'attention' })
+  assert.deepEqual(describePlanItem(monthly({ billOn: '2026-09-01' }), null, TODAY, 'active'), { label: "Due: create this month's invoice", tone: 'attention' })
+  assert.deepEqual(describePlanItem(monthly({ billOn: '2026-09-01' }), null, TODAY, 'active', undefined), { label: "Due: create this month's invoice", tone: 'attention' })
+  // A month that is not due yet is scheduled either way, and an unreadable date stays muted either way.
+  assert.deepEqual(describePlanItem(monthly({ billOn: '2026-12-15' }), null, TODAY, 'active', false), { label: 'Scheduled for 15 December 2026', tone: 'muted' })
+  assert.deepEqual(describePlanItem(monthly({ billOn: 'not a date' }), null, TODAY, 'active', false), { label: 'Scheduled', tone: 'muted' })
+  // Only a month with no invoice waits: a monthly draft or issued invoice, a cancelled month and the first month read as before.
+  assert.deepEqual(describePlanItem(monthly({ billOn: '2026-09-01' }), invoice('Draft', 'DRAFT-1a2b3c4d'), TODAY, 'active', false), { label: 'Draft invoice', tone: 'waiting' })
+  assert.deepEqual(describePlanItem(monthly({ billOn: '2026-09-01', status: 'cancelled' }), null, TODAY, 'active', false), { label: 'Cancelled', tone: 'muted' })
+  assert.deepEqual(describePlanItem(first(), null, TODAY, 'active', false), { label: 'Draft invoice not made yet', tone: 'attention' })
+  assert.deepEqual(describePlanItem(first(), invoice('Draft', 'DRAFT-1a2b3c4d'), TODAY, 'active', false), { label: 'Waiting for your approval', tone: 'attention' })
+})
+
+test('Create invoice is not offered on a monthly month until the first invoice is approved; the first month is unchanged', () => {
+  assert.equal(canCreateItemInvoice(monthly({ billOn: '2026-09-01' }), null, 'active', TODAY, false), false, 'a due month waits for the approval')
+  assert.equal(canCreateItemInvoice(monthly({ billOn: '2026-10-27' }), null, 'active', TODAY, false), false, 'due today waits too')
+  assert.equal(canCreateItemInvoice(monthly({ billOn: '2026-09-01' }), null, 'active', TODAY, true), true, 'approved: offered')
+  assert.equal(canCreateItemInvoice(monthly({ billOn: '2026-09-01' }), null, 'active', TODAY), true, 'left out: approved, as before')
+  assert.equal(canCreateItemInvoice(monthly({ billOn: '2026-09-01' }), null, 'active', TODAY, undefined), true, 'undefined: approved, as before')
+  assert.equal(canCreateItemInvoice(first(), null, 'active', TODAY, false), true, 'item 1 is the first invoice itself: its Create invoice is unchanged')
+  assert.equal(canCreateItemInvoice(monthly({ billOn: '2026-12-15' }), null, 'active', TODAY, true), false, 'a month not yet due is still not offered')
+})
+
 test('the first invoice awaits approval only while it is an open Draft of an active plan that has not been approved', () => {
   assert.equal(isAwaitingApproval(first(), invoice('Draft'), 'active'), true)
   assert.equal(isAwaitingApproval(first(), invoice('Draft'), 'paused'), false)

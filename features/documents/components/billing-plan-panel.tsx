@@ -24,7 +24,8 @@ const STATUS_TEXT = { brand: 'text-brand', warning: 'text-warning', neutral: 'te
  * instead (read by the database from the same list the approval uses). The approve control is mounted in one fixed place for an owner
  * or admin as soon as the first invoice exists, not only while it awaits approval: it shows what the approval and the email came to,
  * and the refresh that follows an approval must not take that message away with the button. Any member can make the draft of a month
- * that is the first or is due. Pausing, resuming and ending are for owners and admins, with a reason.
+ * that is the first or is due, a monthly one only once the first invoice has been approved. Pausing, resuming and ending are for owners
+ * and admins, with a reason.
  */
 export async function BillingPlanPanel({ quoteId }: { quoteId: string }) {
   const view = await getBillingPlan(quoteId)
@@ -32,6 +33,8 @@ export async function BillingPlanPanel({ quoteId }: { quoteId: string }) {
   const today = todayInJohannesburg()
   const firstItem = view.items.find((item) => item.kind === 'first')
   const awaitingApproval = firstItem ? isAwaitingApproval(firstItem, firstItem.invoice, view.plan.status) : false
+  // No month is prompted, or offered Create invoice, until the first invoice has been approved by a person.
+  const firstApproved = firstItem !== undefined && firstItem.approvedAt !== null
   const agreement = agreementSentence({ monthly: null, termMonths: view.plan.termMonths, startDateLabel: formatDocumentDate(view.plan.startDate) })
 
   return (
@@ -84,7 +87,7 @@ export async function BillingPlanPanel({ quoteId }: { quoteId: string }) {
           </thead>
           <tbody className="divide-y divide-border">
             {view.items.map((item) => {
-              const described = describePlanItem(item, item.invoice, today, view.plan.status)
+              const described = describePlanItem(item, item.invoice, today, view.plan.status, firstApproved)
               return (
                 <tr key={item.id}>
                   <td className="px-5 py-3 text-foreground">
@@ -105,7 +108,7 @@ export async function BillingPlanPanel({ quoteId }: { quoteId: string }) {
                     )}
                   </td>
                   <td className="px-5 py-3 text-right">
-                    {canCreateItemInvoice(item, item.invoice, view.plan.status, today) ? (
+                    {canCreateItemInvoice(item, item.invoice, view.plan.status, today, firstApproved) ? (
                       <ActionButton
                         action={createPlanItemInvoiceAction.bind(null, item.id)}
                         label={BILLING_PLAN_COPY.createLabel}

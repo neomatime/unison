@@ -163,6 +163,8 @@ export function mapPhaseSixRow(kind: Kind, row: any, names: NameMaps): PhaseSixR
         opportunity: nameFor(names.opportunities, row.opportunity_id, '—'),
         ownerId: row.owner_id,
         owner: nameFor(names.members, row.owner_id),
+        // The billing plan month this invoice follows, or null: a Draft that follows one is edited by its due date and notes only.
+        billingPlanItemId: row.billing_plan_item_id ?? null,
         issueDate: row.issue_date,
         dueDate: row.due_date,
         projectName: row.project_name,

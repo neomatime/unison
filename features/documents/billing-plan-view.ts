@@ -61,6 +61,9 @@ export const PLAN_STATE_CONTROLS = {
   },
 } as const
 
+/** What the invoice Edit form and the line editor say about a Draft that follows an accepted quote: the database allows only the due date and the notes. */
+export const PLAN_DRAFT_LOCKED_NOTE = 'This invoice follows its accepted quote. Only the due date and the notes can be changed.'
+
 /** The banner on the first invoice of a plan, in two parts so the page can put the quote number in between as a link. */
 export const FIRST_INVOICE_BANNER = {
   before: 'This is the first invoice of the billing plan for quote ',
@@ -101,13 +104,18 @@ function isDue(billOn: string, today: string): boolean {
 /**
  * What to say about one month of a plan, and how loudly. `today` is the South African day, YYYY-MM-DD. The first month with no
  * invoice yet is "not made yet" whatever its date, because it is billed on the day the plan is made. A first invoice that is still a
- * Draft does not wait for approval when its plan is paused or ended: nobody can approve it, so it is just a draft.
+ * Draft does not wait for approval when its plan is paused or ended: nobody can approve it, so it is just a draft. A monthly month that
+ * is due, with no invoice, is not a prompt to invoice while the first invoice has not been approved (`firstApproved` false): it waits,
+ * because no monthly invoice goes out before the first one is approved. `firstApproved` is true when it is left out.
  */
-export function describePlanItem(item: PlanItemFacts, invoice: PlanItemInvoice | null, today: string, planStatus: PlanStatus = 'active'): { label: string; tone: PlanTone } {
+export function describePlanItem(item: PlanItemFacts, invoice: PlanItemInvoice | null, today: string, planStatus: PlanStatus = 'active', firstApproved = true): { label: string; tone: PlanTone } {
   if (item.status === 'cancelled') return { label: 'Cancelled', tone: 'muted' }
   if (!invoice) {
     if (item.kind === 'first') return { label: 'Draft invoice not made yet', tone: 'attention' }
-    if (isDue(item.billOn, today)) return { label: "Due: create this month's invoice", tone: 'attention' }
+    if (isDue(item.billOn, today)) {
+      if (!firstApproved) return { label: 'Waiting for the first invoice to be approved', tone: 'waiting' }
+      return { label: "Due: create this month's invoice", tone: 'attention' }
+    }
     if (!isRealDay(item.billOn)) return { label: 'Scheduled', tone: 'muted' }
     return { label: `Scheduled for ${formatDocumentDate(item.billOn) ?? item.billOn}`, tone: 'muted' }
   }
@@ -128,10 +136,14 @@ export function describePlanItem(item: PlanItemFacts, invoice: PlanItemInvoice |
   }
 }
 
-/** "Create invoice" is offered on the first month, or a month that is due, that has no invoice, while the plan is active. */
-export function canCreateItemInvoice(item: PlanItemFacts, invoice: PlanItemInvoice | null, planStatus: PlanStatus, today: string): boolean {
+/**
+ * "Create invoice" is offered on the first month, or a month that is due, that has no invoice, while the plan is active. A monthly month
+ * is not offered until the first invoice has been approved (`firstApproved`, true when left out); the first month is not held by it.
+ */
+export function canCreateItemInvoice(item: PlanItemFacts, invoice: PlanItemInvoice | null, planStatus: PlanStatus, today: string, firstApproved = true): boolean {
   if (planStatus !== 'active' || item.status !== 'open' || invoice) return false
-  return item.kind === 'first' || isDue(item.billOn, today)
+  if (item.kind === 'first') return true
+  return firstApproved && isDue(item.billOn, today)
 }
 
 /** The first invoice awaits an owner's or admin's approval while it is an open Draft of an active plan that has not been approved. */
