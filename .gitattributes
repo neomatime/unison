@@ -1,0 +1,3 @@
+# PDFs are binary: never normalise line endings, never diff or merge them as text.
+# The two HIMARK welcome documents in public/brand/documents are sent to clients byte for byte (a unit test pins their SHA-256).
+*.pdf binary
