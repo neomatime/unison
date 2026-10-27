@@ -19,6 +19,7 @@ const FILES = {
   actions: ['features', 'documents', 'actions', 'billing-plan.ts'],
   panel: ['features', 'documents', 'components', 'billing-plan-panel.tsx'],
   controls: ['features', 'documents', 'components', 'billing-plan-state-form.tsx'],
+  approve: ['features', 'documents', 'components', 'approve-first-invoice-control.tsx'],
 } as const
 const NEW_FILES = Object.entries(FILES) as Array<[string, readonly string[]]>
 
@@ -28,6 +29,7 @@ const link = () => read(...FILES.link)
 const actions = () => read(...FILES.actions)
 const panel = () => read(...FILES.panel)
 const controls = () => read(...FILES.controls)
+const approveControl = () => read(...FILES.approve)
 const quotePage = () => read('app', '(unison)', 'commercial', 'quotes', '[quoteId]', 'page.tsx')
 const invoicePage = () => read('app', '(unison)', 'finance', 'invoices', '[invoiceId]', 'page.tsx')
 const documentActions = () => read('features', 'documents', 'components', 'document-actions.tsx')
@@ -181,6 +183,12 @@ test('the sentence for an email that went out but was not recorded is pinned to 
   assert.ok(view().includes(`export const EMAIL_SENT_NOT_RECORDED = "Sent, but we couldn't record it."`))
 })
 
+test('the sentence for a mail server that did not accept the message is pinned to the email action\'s own too', () => {
+  const message = 'The mail server did not accept the message. It may not have been sent; check Emails sent and your mailbox before trying again.'
+  assert.ok(read('features', 'documents', 'actions', 'email.ts').includes(`return { error: '${message}' }`), 'the email action still says exactly this')
+  assert.ok(view().includes(`export const EMAIL_MAY_NOT_HAVE_SENT =\n  '${message}'`) || view().includes(`export const EMAIL_MAY_NOT_HAVE_SENT = '${message}'`))
+})
+
 test('no success sentence of the actions says paid, and the words handed off, synced and completed are nowhere in the new files', () => {
   const successes = [...actions().matchAll(/success: ([`'"])(.*?)\1/g)].map((match) => match[2])
   assert.equal(successes.length, 1, 'the one literal success sentence (the approval that was emailed) was found')
@@ -248,6 +256,8 @@ test('getPlanLink finds the plan item of an invoice and its quote, read only, on
   assert.match(source, /export const getPlanLink = cache\(async \(invoiceId: string\)/)
   assert.match(source, /\.from\('billing_plan_items'\)[\s\S]*?\.eq\('organization_id', organization\.id\)/)
   assert.match(source, /\.from\('quotes'\)[\s\S]*?\.select\('quote_number'\)[\s\S]*?\.eq\('organization_id', organization\.id\)/)
+  assert.match(source, /\.from\('billing_plans'\)[\s\S]*?\.select\('status'\)[\s\S]*?\.eq\('organization_id', organization\.id\)/, 'the plan status comes with the link')
+  assert.match(source, /export type PlanLink = \{ kind: PlanItemKind; planStatus: PlanStatus; quoteId: string; quoteNumber: string \}/)
   assert.doesNotMatch(source, /\.(insert|update|upsert|delete|rpc)\(/, 'a read')
   assert.doesNotMatch(source, /createClient\(|supabase\/admin|SUPABASE_SECRET|process\.env/)
 })
@@ -273,39 +283,73 @@ test('the panel shows the status line and the agreement sentence without a month
 
 test('the table gives each month its label from describePlanItem and a link to its invoice', () => {
   const source = panel()
-  assert.match(source, /describePlanItem\(item, item\.invoice, today\)/)
+  assert.match(source, /describePlanItem\(item, item\.invoice, today, view\.plan\.status\)/, 'a paused or ended plan is told to the label')
   assert.match(source, /href=\{`\$\{DOCUMENTS\.invoice\.base\}\/\$\{item\.invoice\.id\}`\}/)
   assert.match(source, /isDraftReference\(item\.invoice\.number\) \? 'Draft invoice' : item\.invoice\.number/)
   assert.match(source, /formatDocumentDate\(item\.billOn\)/)
 })
 
-test('Approve and send is rendered only inside a canManage branch, on the first invoice while it awaits approval and nothing blocks it', () => {
+test('the approve control is mounted in a fixed place for an owner or admin once the first invoice exists, not inside the awaiting-approval condition', () => {
   const source = panel()
-  assert.equal((source.match(/BILLING_PLAN_COPY\.approveLabel/g) ?? []).length, 1, 'one Approve and send button')
-  assert.equal((source.match(/approveFirstInvoiceAction/g) ?? []).length, 2, 'imported once, used once')
-  assert.doesNotMatch(source, /Approve and send/, 'the words come from the wording file, not a second copy')
-  const button = source.indexOf('BILLING_PLAN_COPY.approveLabel')
-  const manage = source.lastIndexOf('view.canManage ? (', button)
-  assert.ok(manage > -1, 'a canManage branch comes before the button')
-  assert.ok(button - manage < 600, 'and the button is inside it')
-  assert.doesNotMatch(source.slice(manage, button), /\) : \(/, 'not in the else branch')
-  assert.match(source.slice(manage, button), /approveFirstInvoiceAction\.bind\(null, firstItem\.id\)/)
-  assert.match(source.slice(button, button + 200), /confirmText=\{BILLING_PLAN_COPY\.approveConfirm\}/)
-  // Awaiting approval and no blockers decide whether the branch is reached at all.
-  const reached = source.lastIndexOf('awaiting', manage)
-  assert.ok(reached > -1 && source.slice(reached, manage).includes('blockers.length'), 'the awaiting-approval and blockers conditions come first')
-  // A person who cannot approve is told so instead of being shown a button that would be refused.
+  assert.equal((source.match(/<ApproveFirstInvoiceControl\b/g) ?? []).length, 1, 'one approve control')
+  assert.match(source, /import \{ ApproveFirstInvoiceControl \} from '\.\/approve-first-invoice-control'/)
+  assert.doesNotMatch(source, /approveFirstInvoiceAction/, 'the panel no longer binds the action itself: the control owns it')
+  assert.doesNotMatch(source, /Approve and send|BILLING_PLAN_COPY\.approveLabel|BILLING_PLAN_COPY\.approveConfirm/, 'the button and its confirm text are the control\'s')
+  const control = source.indexOf('<ApproveFirstInvoiceControl')
+  const gate = source.lastIndexOf('firstItem?.invoice && view.canManage ? (', control)
+  assert.ok(gate > -1, 'behind canManage, and only once the first invoice exists')
+  assert.ok(control - gate < 400, 'the control is directly inside that gate')
+  assert.doesNotMatch(source.slice(gate, control), /awaitingApproval|blockers|\) : \(/, 'not inside the awaiting-approval ternary, so React keeps its state through the refresh that follows an approval')
+  assert.match(source.slice(control, control + 200), /<ApproveFirstInvoiceControl itemId=\{firstItem\.id\} canApprove=\{awaitingApproval && view\.blockers\.length === 0\} \/>/)
+  // Nothing renders the control for a person who is not an owner or admin: they are told instead.
   assert.match(source, /BILLING_PLAN_COPY\.approveAdminOnly/)
+  const told = source.lastIndexOf('awaitingApproval', source.indexOf('BILLING_PLAN_COPY.approveAdminOnly'))
+  assert.ok(told > -1 && source.slice(told, source.indexOf('BILLING_PLAN_COPY.approveAdminOnly')).includes('!view.canManage'), 'the admin-only sentence is for a member who cannot approve')
 })
 
-test('with blockers the button is replaced by their sentences under the heading', () => {
+test('the approve control is a client component that always shows what the action said, and offers the button only when approval is possible', () => {
+  const source = approveControl()
+  assert.match(source, /^'use client'/)
+  assert.doesNotMatch(source, /server-only|lib\/supabase|lib\/email|server-context|next\/headers|\/queries\//, 'a client component imports no server code')
+  assert.doesNotMatch(source, /dangerouslySetInnerHTML/)
+  assert.match(source, /import \{ approveFirstInvoiceAction \} from '\.\.\/actions\/billing-plan'/)
+  assert.match(source, /export function ApproveFirstInvoiceControl\(\{ itemId, canApprove \}: \{ itemId: string; canApprove: boolean \}\)/)
+  assert.match(source, /useActionState\(approveFirstInvoiceAction\.bind\(null, itemId\), undefined\)/)
+  // Called by hand, after the confirm step, with the confirm text from the wording file word for word.
+  assert.doesNotMatch(source, /<form\s+action=/)
+  assert.match(source, /event\.preventDefault\(\)/)
+  assert.match(source, /if \(!window\.confirm\(BILLING_PLAN_COPY\.approveConfirm\)\) return/)
+  assert.match(source, /startTransition\(\(\) => run\(new FormData\(event\.currentTarget\)\)\)/)
+  // The button is inside the canApprove branch and nowhere else; the label comes from the wording file.
+  assert.equal((source.match(/BILLING_PLAN_COPY\.approveLabel/g) ?? []).length, 1, 'one Approve and send button')
+  const branch = source.indexOf('{canApprove ? (')
+  const closed = source.indexOf(') : null}', branch)
+  assert.ok(branch > -1 && closed > branch, 'a canApprove branch')
+  const button = source.indexOf('BILLING_PLAN_COPY.approveLabel')
+  assert.ok(button > branch && button < closed, 'the button is inside it')
+  const formAt = source.indexOf('<form', branch)
+  assert.ok(formAt > branch && formAt < closed && source.indexOf('</form>', branch) < closed, 'and so is the form')
+  // What the action said is shown outside that branch, so it stays after the button has gone.
+  const success = source.indexOf('state?.success')
+  const error = source.indexOf('<FormError message={state?.error} />')
+  assert.ok(success > closed && error > closed, 'the success and the error are outside the canApprove branch')
+  assert.match(source, /state\?\.success \? <p role="status"[^>]*>\{state\.success\}<\/p> : null/)
+  assert.match(source, /<FormError message=\{state\?\.error\} \/>/)
+})
+
+test('the approve control keeps its text while the action runs: it disables the button and says what it is doing', () => {
+  const source = approveControl()
+  assert.match(source, /disabled=\{pending\}/)
+  assert.match(source, /aria-busy=\{pending \|\| undefined\}/)
+})
+
+test('with blockers the approve control gets canApprove false and their sentences are listed under the heading', () => {
   const source = panel()
   assert.match(source, /view\.blockers\.length > 0/)
   assert.match(source, /BILLING_PLAN_COPY\.blockersHeading/)
   assert.match(source, /view\.blockers\.map\(\(code\) => \(\s*<li key=\{code\}[^>]*>\{blockerSentence\(code\)\}<\/li>/)
-  const blocked = source.indexOf('view.blockers.length > 0')
-  const button = source.indexOf('BILLING_PLAN_COPY.approveLabel')
-  assert.ok(blocked < button, 'the blockers branch is the first branch; the button is only reached when it is empty')
+  assert.match(source, /canApprove=\{awaitingApproval && view\.blockers\.length === 0\}/, 'no button while anything blocks the approval')
+  assert.match(source, /\{awaitingApproval && firstItem && view\.blockers\.length > 0 \? \(/, 'the list shows while the approval is awaited')
 })
 
 test('Approved, not yet emailed shows while the first invoice is Issued and no email is on record', () => {
@@ -391,8 +435,11 @@ test('the invoice page passes the flag from the plan link and shows the banner l
   assert.match(source, /import \{ getPlanLink \} from '@\/features\/documents\/queries\/get-plan-link'/)
   assert.match(source, /isFirstPlanDraft\(planLink\?\.kind, String\(bundle\.record\.status\)\)/)
   assert.match(source, /<DocumentActions kind="invoice" id=\{invoiceId\} status=\{String\(bundle\.record\.status\)\} hasPayments=\{hasPayments\} planFirstDraft=\{planFirstDraft\} \/>/)
-  assert.match(source, /FIRST_INVOICE_BANNER\.before/)
-  assert.match(source, /FIRST_INVOICE_BANNER\.after/)
+  assert.match(source, /const banner = firstInvoiceBannerParts\(planLink\.planStatus\)/, 'the words follow the state of the plan')
+  assert.match(source, /\{banner\.before\}/)
+  assert.match(source, /\{banner\.after\}/)
+  assert.doesNotMatch(source, /FIRST_INVOICE_BANNER/, 'the page takes the banner words from firstInvoiceBannerParts only')
+  assert.match(source, /import \{ firstInvoiceBannerParts, isFirstPlanDraft \} from '@\/features\/documents\/billing-plan-view'/)
   assert.match(source, /href=\{`\$\{DOCUMENTS\.quote\.base\}\/\$\{planLink\.quoteId\}`\}/, 'the banner links to the quote page')
   const banner = source.indexOf('<PlanBanner invoiceId={invoiceId} />')
   const lines = source.indexOf('<InvoiceLines invoiceId={invoiceId} />')

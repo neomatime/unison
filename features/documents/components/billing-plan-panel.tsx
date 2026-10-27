@@ -4,12 +4,13 @@ import { StatusBadge } from '@/components/ui/status-badge'
 import { ActionButton } from '@/features/crm-workspace/components/action-button'
 import { WorkspaceSection } from '@/features/crm-workspace/components/workspace-section'
 import { todayInJohannesburg } from '../../payments/fields'
-import { approveFirstInvoiceAction, createPlanItemInvoiceAction } from '../actions/billing-plan'
+import { createPlanItemInvoiceAction } from '../actions/billing-plan'
 import { BILLING_PLAN_COPY, blockerSentence, canCreateItemInvoice, describePlanItem, isAwaitingApproval, planStatusLine, planStatusTone, type PlanTone } from '../billing-plan-view'
 import { agreementSentence } from '../billing-terms'
 import { formatDocumentDate } from '../document-view'
 import { getBillingPlan } from '../queries/get-billing-plan'
 import { DOCUMENTS, isDraftReference } from '../vocabulary'
+import { ApproveFirstInvoiceControl } from './approve-first-invoice-control'
 import { BillingPlanStateForm } from './billing-plan-state-form'
 
 const BADGE_TONE: Record<PlanTone, 'info' | 'warning' | 'brand' | 'neutral'> = { waiting: 'info', attention: 'warning', done: 'brand', muted: 'neutral' }
@@ -20,8 +21,10 @@ const STATUS_TEXT = { brand: 'text-brand', warning: 'text-warning', neutral: 'te
  * what a person can do next. Nothing is shown for a quote with no plan.
  *
  * The first invoice is approved here by an owner or admin, and only when nothing is missing: otherwise what is missing is listed
- * instead (read by the database from the same list the approval uses). Any member can make the draft of a month that is the first or
- * is due. Pausing, resuming and ending are for owners and admins, with a reason.
+ * instead (read by the database from the same list the approval uses). The approve control is mounted in one fixed place for an owner
+ * or admin as soon as the first invoice exists, not only while it awaits approval: it shows what the approval and the email came to,
+ * and the refresh that follows an approval must not take that message away with the button. Any member can make the draft of a month
+ * that is the first or is due. Pausing, resuming and ending are for owners and admins, with a reason.
  */
 export async function BillingPlanPanel({ quoteId }: { quoteId: string }) {
   const view = await getBillingPlan(quoteId)
@@ -41,26 +44,24 @@ export async function BillingPlanPanel({ quoteId }: { quoteId: string }) {
         {agreement ? <p className="text-foreground">{agreement}</p> : null}
       </div>
 
-      {awaitingApproval && firstItem ? (
-        <div className="space-y-3 border-b border-border px-5 py-4 text-sm">
-          {view.blockers.length > 0 ? (
-            <div>
-              <h3 className="font-medium text-foreground">{BILLING_PLAN_COPY.blockersHeading}</h3>
-              <ul className="mt-2 list-disc space-y-1 pl-5 text-muted-foreground">
-                {view.blockers.map((code) => (
-                  <li key={code} className="break-words">{blockerSentence(code)}</li>
-                ))}
-              </ul>
-            </div>
-          ) : view.canManage ? (
-            <ActionButton
-              action={approveFirstInvoiceAction.bind(null, firstItem.id)}
-              label={BILLING_PLAN_COPY.approveLabel}
-              confirmText={BILLING_PLAN_COPY.approveConfirm}
-            />
-          ) : (
-            <p className="text-muted-foreground">{BILLING_PLAN_COPY.approveAdminOnly}</p>
-          )}
+      {awaitingApproval && firstItem && view.blockers.length > 0 ? (
+        <div className="border-b border-border px-5 py-4 text-sm">
+          <h3 className="font-medium text-foreground">{BILLING_PLAN_COPY.blockersHeading}</h3>
+          <ul className="mt-2 list-disc space-y-1 pl-5 text-muted-foreground">
+            {view.blockers.map((code) => (
+              <li key={code} className="break-words">{blockerSentence(code)}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {awaitingApproval && firstItem && view.blockers.length === 0 && !view.canManage ? (
+        <p className="border-b border-border px-5 py-4 text-sm text-muted-foreground">{BILLING_PLAN_COPY.approveAdminOnly}</p>
+      ) : null}
+
+      {firstItem?.invoice && view.canManage ? (
+        <div className="flex flex-col gap-3 border-b border-border px-5 py-4 text-sm empty:hidden">
+          <ApproveFirstInvoiceControl itemId={firstItem.id} canApprove={awaitingApproval && view.blockers.length === 0} />
         </div>
       ) : null}
 
@@ -83,7 +84,7 @@ export async function BillingPlanPanel({ quoteId }: { quoteId: string }) {
           </thead>
           <tbody className="divide-y divide-border">
             {view.items.map((item) => {
-              const described = describePlanItem(item, item.invoice, today)
+              const described = describePlanItem(item, item.invoice, today, view.plan.status)
               return (
                 <tr key={item.id}>
                   <td className="px-5 py-3 text-foreground">

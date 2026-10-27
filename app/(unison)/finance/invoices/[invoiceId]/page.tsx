@@ -1,7 +1,7 @@
 import Link from 'next/link'
 
 import { PhaseSixDetail } from '@/features/commercial-finance/components/phase-six-detail'
-import { FIRST_INVOICE_BANNER, isFirstPlanDraft } from '@/features/documents/billing-plan-view'
+import { firstInvoiceBannerParts, isFirstPlanDraft } from '@/features/documents/billing-plan-view'
 import { DocumentActions } from '@/features/documents/components/document-actions'
 import { EmailSection } from '@/features/documents/components/email-section'
 import { LineEditor } from '@/features/documents/components/line-editor'
@@ -24,18 +24,20 @@ async function InvoiceHeaderActions({ invoiceId }: { invoiceId: string }) {
   return <DocumentActions kind="invoice" id={invoiceId} status={String(bundle.record.status)} hasPayments={hasPayments} planFirstDraft={planFirstDraft} />
 }
 
-// Above the lines of the first invoice of a billing plan, while it is a Draft: where to review and approve it.
+// Above the lines of the first invoice of a billing plan, while it is a Draft: where to review and approve it, or, when the plan is
+// paused or ended, that it cannot be approved and where to see why.
 async function PlanBanner({ invoiceId }: { invoiceId: string }) {
   const bundle = await getDocument('invoice', invoiceId)
   const planLink = await getPlanLink(invoiceId)
   if (!bundle || !planLink || !isFirstPlanDraft(planLink.kind, String(bundle.record.status))) return null
+  const banner = firstInvoiceBannerParts(planLink.planStatus)
   return (
     <p role="note" className="border border-border bg-muted/40 px-4 py-3 text-sm text-foreground">
-      {FIRST_INVOICE_BANNER.before}
+      {banner.before}
       <Link href={`${DOCUMENTS.quote.base}/${planLink.quoteId}`} className="font-semibold text-brand hover:underline">
         {planLink.quoteNumber}
       </Link>
-      {FIRST_INVOICE_BANNER.after}
+      {banner.after}
     </p>
   )
 }

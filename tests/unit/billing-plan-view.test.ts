@@ -3,6 +3,7 @@ import test from 'node:test'
 
 import {
   BILLING_PLAN_COPY,
+  EMAIL_MAY_NOT_HAVE_SENT,
   EMAIL_SENT_NOT_RECORDED,
   FIRST_INVOICE_BANNER,
   PLAN_STATE_CONTROLS,
@@ -10,6 +11,7 @@ import {
   blockerSentence,
   canCreateItemInvoice,
   describePlanItem,
+  firstInvoiceBannerParts,
   firstInvoiceBannerText,
   isAwaitingApproval,
   isFirstPlanDraft,
@@ -210,6 +212,54 @@ test('the email action sent the message but could not record it: the sentence do
   assert.doesNotMatch(sentence, /did not go|Send it from the invoice page/)
   assert.match(sentence, /^Invoice HSGC-INV-2026-0007 is approved and issued and the email was sent, but it could not be recorded\./)
   assert.match(sentence, /Check Emails sent and your mailbox before sending it again\.$/)
+})
+
+test('the mail server did not accept the message: the invoice is approved, the message may not have gone, and nobody is told to just send it again', () => {
+  assert.equal(
+    EMAIL_MAY_NOT_HAVE_SENT,
+    'The mail server did not accept the message. It may not have been sent; check Emails sent and your mailbox before trying again.',
+  )
+  const sentence = approvedNotEmailedSentence('HSGC-INV-2026-0007', EMAIL_MAY_NOT_HAVE_SENT)
+  assert.equal(
+    sentence,
+    'Invoice HSGC-INV-2026-0007 is approved and issued. The mail server did not accept the message and it may not have been sent; check Emails sent and your mailbox before sending it again.',
+  )
+  assert.doesNotMatch(sentence, /did not go|Send it from the invoice page|\bemailed\b/)
+  // The same message with a different ending is a different message: it gets the general wrapper.
+  assert.match(approvedNotEmailedSentence('X', 'The mail server did not accept the message.'), /the email did not go: The mail server did not accept the message\. Send it from the invoice page\.$/)
+})
+
+test('a paused or ended plan does not ask for approval of its first draft; nothing else about the labels changes', () => {
+  for (const status of ['paused', 'ended'] as const) {
+    assert.deepEqual(describePlanItem(first(), invoice('Draft', 'DRAFT-1a2b3c4d'), TODAY, status), { label: `Draft invoice (plan ${status})`, tone: 'muted' })
+    assert.deepEqual(describePlanItem(monthly(), invoice('Draft', 'DRAFT-1a2b3c4d'), TODAY, status), { label: 'Draft invoice', tone: 'waiting' }, 'a monthly draft is as before')
+    assert.deepEqual(describePlanItem(first(), invoice('Issued'), TODAY, status), { label: 'Invoiced: HSGC-INV-2026-0007, Issued', tone: 'done' }, 'an issued invoice is as before')
+    assert.deepEqual(describePlanItem(first(), invoice('Paid'), TODAY, status), { label: 'Paid', tone: 'done' })
+    assert.deepEqual(describePlanItem(first(), null, TODAY, status), { label: 'Draft invoice not made yet', tone: 'attention' })
+    assert.deepEqual(describePlanItem(first({ status: 'cancelled' }), null, TODAY, status), { label: 'Cancelled', tone: 'muted' })
+  }
+  const waiting = { label: 'Waiting for your approval', tone: 'attention' }
+  assert.deepEqual(describePlanItem(first(), invoice('Draft'), TODAY, 'active'), waiting)
+  assert.deepEqual(describePlanItem(first(), invoice('Draft'), TODAY), waiting, 'the plan status defaults to active')
+})
+
+test('the banner on a first invoice of a paused or ended plan says it cannot be approved; the active wording is unchanged', () => {
+  assert.deepEqual(firstInvoiceBannerParts('active'), { before: FIRST_INVOICE_BANNER.before, after: FIRST_INVOICE_BANNER.after })
+  assert.deepEqual(firstInvoiceBannerParts(), firstInvoiceBannerParts('active'), 'the plan status defaults to active')
+  assert.equal(firstInvoiceBannerText('HSGC-QUO-2026-0012', 'active'), 'This is the first invoice of the billing plan for quote HSGC-QUO-2026-0012. Review and approve it on the quote page.')
+  assert.equal(
+    firstInvoiceBannerText('HSGC-QUO-2026-0012', 'paused'),
+    'This is the first invoice of the billing plan for quote HSGC-QUO-2026-0012. The plan is paused, so it cannot be approved. Open the quote to see why.',
+  )
+  assert.equal(
+    firstInvoiceBannerText('HSGC-QUO-2026-0012', 'ended'),
+    'This is the first invoice of the billing plan for quote HSGC-QUO-2026-0012. The plan is ended, so it cannot be approved. Open the quote to see why.',
+  )
+  for (const status of ['active', 'paused', 'ended'] as const) {
+    const parts = firstInvoiceBannerParts(status)
+    assert.equal(`${parts.before}Q${parts.after}`, firstInvoiceBannerText('Q', status), status)
+    assert.equal(parts.before, FIRST_INVOICE_BANNER.before, 'the number goes in the same place whatever the status')
+  }
 })
 
 test('the panel wording: the brief sentences, word for word', () => {

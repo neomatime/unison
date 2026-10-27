@@ -29,6 +29,7 @@ export const BILLING_PLAN_COPY = {
   title: 'Billing plan',
   description: 'The first invoice is approved and emailed here. Monthly invoices are made here and issued by hand; none is sent automatically yet.',
   approveLabel: 'Approve and send',
+  approvePendingLabel: 'Approving\u2026',
   approveConfirm: 'Approve this invoice and email it to the client? It gets its number now and can no longer be edited.',
   approveAdminOnly: 'Only an owner or admin can approve the first invoice.',
   blockersHeading: 'What needs attention before this can go out',
@@ -66,8 +67,18 @@ export const FIRST_INVOICE_BANNER = {
   after: '. Review and approve it on the quote page.',
 } as const
 
-export function firstInvoiceBannerText(quoteNumber: string): string {
-  return `${FIRST_INVOICE_BANNER.before}${quoteNumber}${FIRST_INVOICE_BANNER.after}`
+/**
+ * The words either side of the quote number. While the plan is active the first invoice is reviewed and approved on the quote page; a
+ * paused or ended plan cannot approve it, so the banner says so and sends the reader to the quote to see why.
+ */
+export function firstInvoiceBannerParts(planStatus: PlanStatus = 'active'): { before: string; after: string } {
+  if (planStatus === 'active') return { before: FIRST_INVOICE_BANNER.before, after: FIRST_INVOICE_BANNER.after }
+  return { before: FIRST_INVOICE_BANNER.before, after: `. The plan is ${planStatus}, so it cannot be approved. Open the quote to see why.` }
+}
+
+export function firstInvoiceBannerText(quoteNumber: string, planStatus: PlanStatus = 'active'): string {
+  const parts = firstInvoiceBannerParts(planStatus)
+  return `${parts.before}${quoteNumber}${parts.after}`
 }
 
 /** True for a real calendar day written YYYY-MM-DD ("2026-02-30" is not one). */
@@ -89,9 +100,10 @@ function isDue(billOn: string, today: string): boolean {
 
 /**
  * What to say about one month of a plan, and how loudly. `today` is the South African day, YYYY-MM-DD. The first month with no
- * invoice yet is "not made yet" whatever its date, because it is billed on the day the plan is made.
+ * invoice yet is "not made yet" whatever its date, because it is billed on the day the plan is made. A first invoice that is still a
+ * Draft does not wait for approval when its plan is paused or ended: nobody can approve it, so it is just a draft.
  */
-export function describePlanItem(item: PlanItemFacts, invoice: PlanItemInvoice | null, today: string): { label: string; tone: PlanTone } {
+export function describePlanItem(item: PlanItemFacts, invoice: PlanItemInvoice | null, today: string, planStatus: PlanStatus = 'active'): { label: string; tone: PlanTone } {
   if (item.status === 'cancelled') return { label: 'Cancelled', tone: 'muted' }
   if (!invoice) {
     if (item.kind === 'first') return { label: 'Draft invoice not made yet', tone: 'attention' }
@@ -101,7 +113,8 @@ export function describePlanItem(item: PlanItemFacts, invoice: PlanItemInvoice |
   }
   switch (invoice.status) {
     case 'Draft':
-      return item.kind === 'first' ? { label: 'Waiting for your approval', tone: 'attention' } : { label: 'Draft invoice', tone: 'waiting' }
+      if (item.kind !== 'first') return { label: 'Draft invoice', tone: 'waiting' }
+      return planStatus === 'active' ? { label: 'Waiting for your approval', tone: 'attention' } : { label: `Draft invoice (plan ${planStatus})`, tone: 'muted' }
     case 'Issued':
     case 'Partially Paid':
     case 'Overdue':
@@ -175,15 +188,22 @@ export function parseChecksFailed(message: string | null | undefined): string[] 
 /** What the email action says when it did send the message but could not write it down (features/documents/actions/email.ts). */
 export const EMAIL_SENT_NOT_RECORDED = "Sent, but we couldn't record it."
 
+/** What the email action says when the mail server did not accept the message and may or may not have kept it (actions/email.ts). */
+export const EMAIL_MAY_NOT_HAVE_SENT = 'The mail server did not accept the message. It may not have been sent; check Emails sent and your mailbox before trying again.'
+
 /**
  * The first invoice is approved and issued for good, but the email did not go: say so, with the email action's reason, and where to
- * send it from. The one exception is a message that did go out but could not be recorded: that must not say it did not go, or someone
- * sends it a second time.
+ * send it from. Two messages of the email action are not "did not go" and get a sentence of their own, because sending again could
+ * mean a second email to the client: one that did go out but could not be recorded, and one where the mail server did not accept the
+ * message but may still have sent it. Both tell the person to check what was sent first.
  */
 export function approvedNotEmailedSentence(number: string, reason: string): string {
   const text = reason.trim()
   if (text === EMAIL_SENT_NOT_RECORDED) {
     return `Invoice ${number} is approved and issued and the email was sent, but it could not be recorded. Check Emails sent and your mailbox before sending it again.`
+  }
+  if (text === EMAIL_MAY_NOT_HAVE_SENT) {
+    return `Invoice ${number} is approved and issued. The mail server did not accept the message and it may not have been sent; check Emails sent and your mailbox before sending it again.`
   }
   const why = /[.!?]$/.test(text) ? text : `${text}.`
   return `Invoice ${number} is approved and issued, but the email did not go: ${why} Send it from the invoice page.`
