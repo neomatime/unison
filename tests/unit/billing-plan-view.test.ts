@@ -341,3 +341,15 @@ test('the plan controls: a reason is required to pause and to end, optional to r
   assert.match(String(PLAN_STATE_CONTROLS.end.confirmText), /cannot be undone/i, 'the confirm step says it is final')
   assert.equal(PLAN_STATE_CONTROLS.end.tone, 'danger')
 })
+
+test('the welcome email being too large after an approval: the sentence gives the way forward once and never says to send it from the page that just refused', async () => {
+  const { tooLargeMessage } = await import('../../features/documents/welcome-documents.ts')
+  const reason = tooLargeMessage(2_300_000)
+  const sentence = approvedNotEmailedSentence('HSGC-INV-2026-0007', reason)
+  assert.equal(sentence, `Invoice HSGC-INV-2026-0007 is approved and issued, but the email did not go: ${reason}`)
+  assert.doesNotMatch(sentence, /Send it from the invoice page/, 'the form would refuse the same message')
+  assert.match(sentence, /Download the invoice PDF from the invoice page and send it yourself, together with the HIMARK Welcome Letter and HIMARK Your Next Steps\./)
+  assert.doesNotMatch(sentence, /\bemailed\b/)
+  // Any other reason, and the same words with a different ending, keep the general wrapper.
+  assert.match(approvedNotEmailedSentence('X', 'Nothing was sent. Download the invoice PDF from the invoice page.'), /Send it from the invoice page\.$/)
+})

@@ -67,7 +67,7 @@ test('the two committed PDFs are byte for byte the approved ones: size, SHA-256 
 test('the loader returns both documents in order, with the client-facing file names, the exact bytes and their SHA-256', async () => {
   const documents = await loadWelcomeDocuments()
   assert.deepEqual(documents.map((document) => document.filename), ['HIMARK Welcome Letter.pdf', 'HIMARK Your Next Steps.pdf'])
-  assert.deepEqual(documents.map((document) => document.name), ['HIMARK Welcome Letter', 'HIMARK Next Steps guide'])
+  assert.deepEqual(documents.map((document) => document.name), ['HIMARK Welcome Letter', 'HIMARK Your Next Steps'])
   for (const [index, pinned] of [LETTER, STEPS].entries()) {
     const document = documents[index]
     assert.deepEqual(Object.keys(document).sort(), ['bytes', 'filename', 'name', 'sha256'])
@@ -82,7 +82,7 @@ test('the documents are described once, as data: the file on disk, the plain-wor
     WELCOME_DOCUMENTS.map(({ file, name, filename }) => ({ file, name, filename })),
     [
       { file: 'Welcome Letter.pdf', name: 'HIMARK Welcome Letter', filename: 'HIMARK Welcome Letter.pdf' },
-      { file: 'Your Next Steps.pdf', name: 'HIMARK Next Steps guide', filename: 'HIMARK Your Next Steps.pdf' },
+      { file: 'Your Next Steps.pdf', name: 'HIMARK Your Next Steps', filename: 'HIMARK Your Next Steps.pdf' },
     ],
   )
 })
@@ -97,14 +97,14 @@ test('a missing file raises a typed error that names that document and the file 
   })
   await withRoot({ [LETTER.file]: PDF }, async (base) => {
     const error = await failure(base)
-    assert.equal(error.message, 'The HIMARK Next Steps guide could not be found. Ask support to restore public/brand/documents/Your Next Steps.pdf.')
+    assert.equal(error.message, 'The HIMARK Your Next Steps could not be found. Ask support to restore public/brand/documents/Your Next Steps.pdf.')
   })
 })
 
 test('an empty file raises the typed error, naming the document', async () => {
   await withRoot({ [LETTER.file]: PDF, [STEPS.file]: Buffer.alloc(0) }, async (base) => {
     const error = await failure(base)
-    assert.equal(error.message, 'The HIMARK Next Steps guide is empty. Ask support to restore public/brand/documents/Your Next Steps.pdf.')
+    assert.equal(error.message, 'The HIMARK Your Next Steps is empty. Ask support to restore public/brand/documents/Your Next Steps.pdf.')
   })
 })
 
@@ -121,7 +121,7 @@ test('a file that is not a PDF (it does not start with %PDF-) raises the typed e
 test('a file that cannot be read (a folder where the file should be) raises the typed error too, and never a raw system message', async () => {
   await withRoot({ [LETTER.file]: PDF, [STEPS.file]: 'directory' }, async (base) => {
     const error = await failure(base)
-    assert.equal(error.message, 'The HIMARK Next Steps guide could not be read. Ask support to restore public/brand/documents/Your Next Steps.pdf.')
+    assert.equal(error.message, 'The HIMARK Your Next Steps could not be read. Ask support to restore public/brand/documents/Your Next Steps.pdf.')
     assert.doesNotMatch(error.message, /EISDIR|ENOENT|errno|C:\\|\/tmp\//i)
   })
 })
@@ -162,26 +162,34 @@ test('the attachments are the invoice, then the Welcome Letter, then Your Next S
   assert.deepEqual(Object.keys(attachments[0]).sort(), ['content', 'contentType', 'filename'], 'the shape the mail transport takes')
 })
 
-test('the total cap is 3,000,000 bytes: exactly that fits, one byte more does not', () => {
-  assert.equal(MAX_EMAIL_TOTAL_ATTACHMENT_BYTES, 3_000_000)
+test('the total cap is 2,150,000 raw bytes (the message is base64 twice over): exactly that fits, one byte more does not', () => {
+  assert.equal(MAX_EMAIL_TOTAL_ATTACHMENT_BYTES, 2_150_000)
   const of = (...sizes: number[]) => sizes.map((size) => ({ content: { length: size } as Uint8Array }))
-  assert.equal(attachmentsTotalBytes(of(2_000_000, 500_000, 500_000)), 3_000_000)
-  assert.equal(attachmentsTooLarge(of(2_000_000, 500_000, 500_000)), false, 'at the cap')
-  assert.equal(attachmentsTooLarge(of(2_000_000, 500_000, 500_001)), true, 'one byte over')
+  assert.equal(attachmentsTotalBytes(of(2_000_000, 100_000, 50_000)), 2_150_000)
+  assert.equal(attachmentsTooLarge(of(2_000_000, 100_000, 50_000)), false, 'at the cap')
+  assert.equal(attachmentsTooLarge(of(2_000_000, 100_000, 50_001)), true, 'one byte over')
   assert.equal(attachmentsTooLarge(of(0)), false)
   assert.equal(attachmentsTooLarge(of()), false)
 })
 
-test('an invoice at the existing per-PDF cap still fits with the two approved documents, so the total cap only bites if a document grows', () => {
+test('the largest invoice that fits beside the two approved documents is 1,916,159 bytes, which is under the per-PDF cap: an invoice between the two is refused with the too-large sentence', () => {
   assert.equal(MAX_EMAIL_PDF_BYTES, 2_000_000, 'the per-PDF cap is unchanged')
-  assert.ok(MAX_EMAIL_PDF_BYTES + LETTER.bytes + STEPS.bytes <= MAX_EMAIL_TOTAL_ATTACHMENT_BYTES)
+  const room = MAX_EMAIL_TOTAL_ATTACHMENT_BYTES - LETTER.bytes - STEPS.bytes
+  assert.equal(room, 1_916_159)
+  assert.ok(room < MAX_EMAIL_PDF_BYTES, 'so the total cap, not the per-PDF cap, is what a large first invoice meets')
+  const fits = (invoiceBytes: number) => !attachmentsTooLarge([{ content: { length: invoiceBytes } as Uint8Array }, { content: { length: LETTER.bytes } as Uint8Array }, { content: { length: STEPS.bytes } as Uint8Array }])
+  assert.equal(fits(room), true)
+  assert.equal(fits(room + 1), false)
 })
 
-test('the too-large sentence is plain words, says nothing was sent and gives the size in MB', () => {
-  const message = tooLargeMessage(3_250_000)
-  assert.match(message, /3\.3 MB/)
+test('the too-large sentence is plain words, says nothing was sent, gives the size in MB and keeps a way forward', () => {
+  const message = tooLargeMessage(2_300_000)
+  assert.match(message, /2\.3 MB/)
   assert.match(message, /too large to email in one message\. Nothing was sent\./)
   assert.doesNotMatch(message, /undefined|NaN|bytes/)
+  // The way forward of the plain email ("Download it and send it yourself") adapted to the three files.
+  assert.ok(message.endsWith('Nothing was sent. Download the invoice PDF from the invoice page and send it yourself, together with the HIMARK Welcome Letter and HIMARK Your Next Steps. For future documents, a lighter header image under Settings, Company details keeps the PDF small enough to email.'))
+  assert.ok(!message.includes('Send it from the invoice page'), 'it never tells anyone to use the form that just refused')
 })
 
 // ---- the record ------------------------------------------------------------------------------------------------

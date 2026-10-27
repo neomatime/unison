@@ -38,7 +38,7 @@ export async function EmailSection({ kind, id }: { kind: DocumentKind; id: strin
   )
   return (
     <div id="email-client" className="scroll-mt-24">
-      <WorkspaceSection title="Email to client" description="Sends the PDF from the company mailbox. Every email sent is recorded below.">
+      <WorkspaceSection title="Email to client" description={defaults?.welcome ? 'Sends the invoice and the HIMARK welcome documents from the company mailbox. Every email sent is recorded below.' : 'Sends the PDF from the company mailbox. Every email sent is recorded below.'}>
         {draft ? (
           <p className="px-5 py-6 text-sm text-muted-foreground">Send or issue this document before emailing it.</p>
         ) : cancelled ? (

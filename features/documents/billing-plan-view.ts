@@ -3,6 +3,7 @@
 // all load it. Staff-facing wording lives here and in billing-terms.ts. UNISON says "approved" for a person's approval, "emailed"
 // only when the mail server accepted the message, and "paid" only for an invoice whose payments are on record.
 import { formatDocumentDate } from './document-view.ts'
+import { WELCOME_TOO_LARGE_WAY_FORWARD } from './welcome-email-copy.ts'
 
 export type PlanStatus = 'active' | 'paused' | 'ended'
 export type PlanItemKind = 'first' | 'monthly'
@@ -220,7 +221,9 @@ export const EMAIL_MAY_NOT_HAVE_SENT = 'The mail server did not accept the messa
  * The first invoice is approved and issued for good, but the email did not go: say so, with the email action's reason, and where to
  * send it from. Two messages of the email action are not "did not go" and get a sentence of their own, because sending again could
  * mean a second email to the client: one that did go out but could not be recorded, and one where the mail server did not accept the
- * message but may still have sent it. Both tell the person to check what was sent first.
+ * message but may still have sent it. Both tell the person to check what was sent first. A third is the Welcome Email being too large
+ * to send: its words already say what to do instead (download the invoice and send it by hand), and the email form would refuse the
+ * same message, so it is not followed by "Send it from the invoice page".
  */
 export function approvedNotEmailedSentence(number: string, reason: string): string {
   const text = reason.trim()
@@ -229,6 +232,9 @@ export function approvedNotEmailedSentence(number: string, reason: string): stri
   }
   if (text === EMAIL_MAY_NOT_HAVE_SENT) {
     return `Invoice ${number} is approved and issued. The mail server did not accept the message and it may not have been sent; check Emails sent and your mailbox before sending it again.`
+  }
+  if (text.endsWith(WELCOME_TOO_LARGE_WAY_FORWARD)) {
+    return `Invoice ${number} is approved and issued, but the email did not go: ${text}`
   }
   const why = /[.!?]$/.test(text) ? text : `${text}.`
   return `Invoice ${number} is approved and issued, but the email did not go: ${why} Send it from the invoice page.`

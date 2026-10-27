@@ -50,6 +50,13 @@ export const WELCOME_SIGN_OFF = {
 export const WELCOME_STRAPLINE = 'PEOPLE | STRATEGY | PROGRESS'
 export const WELCOME_WORDMARK_ALT = 'HIMARK'
 
+// The way forward in the refusal for a welcome email that is too large to send (welcome-documents.ts words the rest of it): the
+// plain email's "Download it and send it yourself", adapted to the three files. features/documents/billing-plan-view.ts matches
+// these words so that, after an approval, the sentence does not go on to say "Send it from the invoice page" for the very form
+// that has just refused. One constant, so the two cannot drift apart.
+export const WELCOME_TOO_LARGE_WAY_FORWARD =
+  'Nothing was sent. Download the invoice PDF from the invoice page and send it yourself, together with the HIMARK Welcome Letter and HIMARK Your Next Steps. For future documents, a lighter header image under Settings, Company details keeps the PDF small enough to email.'
+
 // What staff see on the Email to client form for this invoice (not sent to the client).
 export const WELCOME_EMAIL_TITLE = 'HIMARK Welcome Email'
 export const WELCOME_EMAIL_NOTE =

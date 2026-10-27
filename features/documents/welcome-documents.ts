@@ -14,6 +14,7 @@ import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
 import { MAX_EMAIL_TOTAL_ATTACHMENT_BYTES } from './email.ts'
+import { WELCOME_TOO_LARGE_WAY_FORWARD } from './welcome-email-copy.ts'
 
 export type WelcomeDocumentSpec = {
   key: 'welcome-letter' | 'next-steps'
@@ -28,7 +29,7 @@ export type WelcomeDocumentSpec = {
 /** In attachment order: the invoice comes first (it is not one of these), then these two. */
 export const WELCOME_DOCUMENTS: readonly WelcomeDocumentSpec[] = [
   { key: 'welcome-letter', file: 'Welcome Letter.pdf', name: 'HIMARK Welcome Letter', filename: 'HIMARK Welcome Letter.pdf' },
-  { key: 'next-steps', file: 'Your Next Steps.pdf', name: 'HIMARK Next Steps guide', filename: 'HIMARK Your Next Steps.pdf' },
+  { key: 'next-steps', file: 'Your Next Steps.pdf', name: 'HIMARK Your Next Steps', filename: 'HIMARK Your Next Steps.pdf' },
 ]
 
 const FOLDER = ['public', 'brand', 'documents'] as const
@@ -101,13 +102,13 @@ export function welcomeAttachments(invoice: { filename: string; bytes: Uint8Arra
 export const attachmentsTotalBytes = (attachments: ReadonlyArray<{ content: Uint8Array }>): number =>
   attachments.reduce((total, attachment) => total + attachment.content.length, 0)
 
-/** Over the cap, not at it: exactly 3,000,000 bytes in all still goes out. */
+/** Over the cap, not at it: exactly 2,150,000 raw bytes in all (see email.ts for why that number) still goes out. */
 export const attachmentsTooLarge = (attachments: ReadonlyArray<{ content: Uint8Array }>): boolean =>
   attachmentsTotalBytes(attachments) > MAX_EMAIL_TOTAL_ATTACHMENT_BYTES
 
 export function tooLargeMessage(totalBytes: number): string {
   const megabytes = (totalBytes / 1_000_000).toFixed(1)
-  return `The invoice and the two HIMARK welcome documents come to ${megabytes} MB together, which is too large to email in one message. Nothing was sent. For future documents, a lighter header image under Settings, Company details keeps the PDF small enough to email.`
+  return `The invoice and the two HIMARK welcome documents come to ${megabytes} MB together, which is too large to email in one message. ${WELCOME_TOO_LARGE_WAY_FORWARD}`
 }
 
 /**

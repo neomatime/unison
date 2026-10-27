@@ -3,6 +3,7 @@
 // features/documents/prepare-welcome-email.ts fetches the values and the action that owns the one send uses what this returns.
 import type { EmailTemplate } from '../../lib/email/templates/invitation.ts'
 import { welcomeEmailTemplate } from '../../lib/email/templates/welcome.ts'
+import { readAppUrl } from '../../lib/env.ts'
 import { BODY_MAX } from './email.ts'
 import {
   attachmentsTooLarge,
@@ -21,6 +22,32 @@ export type PreparedWelcomeEmail = {
   attachments: EmailAttachment[]
   /** What "Emails sent" keeps as the message: the text of the email and the list of attachments with their SHA-256. */
   recordBody: string
+}
+
+const ADDRESS_MISSING =
+  'The app address (NEXT_PUBLIC_APP_URL) is not set on this server, and the HIMARK Welcome Email needs it for its pictures. Ask support to set it.'
+const ADDRESS_UNUSABLE =
+  'The app address (NEXT_PUBLIC_APP_URL) on this server is not a web address starting with http:// or https://, and the HIMARK Welcome Email needs it for its pictures. Ask support to fix it.'
+
+/**
+ * The app's public address, which the two pictures of the email load from, read from the environment given (the real one is passed
+ * by prepare-welcome-email.ts, a test passes its own): the address without a trailing slash, or in plain words what is wrong with
+ * it. "Usable" is decided by the template's own check, so the approval's pre-flight and the send can never disagree. The value is
+ * never repeated in the sentence.
+ */
+export function readWelcomeAddress(source: Record<string, string | undefined>): { appUrl: string } | { problem: string } {
+  let appUrl: string
+  try {
+    appUrl = readAppUrl(source).replace(/\/+$/, '')
+  } catch {
+    return { problem: ADDRESS_MISSING }
+  }
+  try {
+    welcomeEmailTemplate({ recipientName: null, assetBaseUrl: appUrl })
+  } catch {
+    return { problem: ADDRESS_UNUSABLE }
+  }
+  return { appUrl }
 }
 
 const NOT_PREPARED = 'The HIMARK Welcome Email could not be prepared, so nothing was sent. Please try again.'

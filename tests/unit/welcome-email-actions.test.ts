@@ -1,9 +1,11 @@
 import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
-import { readFileSync, readdirSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import test from 'node:test'
-import { buildWelcomeEmail } from '../../features/documents/welcome-email.ts'
+import { MAX_EMAIL_TOTAL_ATTACHMENT_BYTES } from '../../features/documents/email.ts'
+import { buildMimeMessage } from '../../lib/email/mime.ts'
+import { buildWelcomeEmail, readWelcomeAddress } from '../../features/documents/welcome-email.ts'
 import { loadWelcomeDocuments, welcomeDocumentsFailure, welcomeDocumentsProblem } from '../../features/documents/welcome-documents.ts'
 
 // The HIMARK Welcome Email replaces the plain invoice email for the first invoice of a billing plan (accept to invoice, stage 1).
@@ -132,8 +134,9 @@ test('the preparation module is server-only, asks the rule first, then reads bot
   assert.ok(rule > -1 && nothing > rule && load > nothing && build > load, 'rule, null for any other document, load the files, build')
   assert.match(text, /isWelcomeInvoice\('invoice', input\.invoiceId\)/)
   assert.match(text, /contactName: input\.bundle\.record\.contact_name/, 'the greeting is the invoice\'s own contact name')
-  assert.match(text, /appUrl = readAppUrl\(process\.env\)\.replace\(\/\\\/\+\$\/, ''\)/, 'the module, not the action, reads the app address')
-  assert.match(text, /documents,\s+appUrl,\s+invoice: input\.invoice,/)
+  assert.match(text, /const address = readWelcomeAddress\(process\.env\)\n\s+if \('problem' in address\) return \{ error: `\$\{address\.problem\} Nothing was sent\.` \}/, 'the module, not the action, reads the app address, through the one reader the pre-flight also uses')
+  assert.ok(text.indexOf('readWelcomeAddress(') > load && text.indexOf('readWelcomeAddress(') < build, 'after the files, before the build')
+  assert.match(text, /documents,\s+appUrl: address\.appUrl,\s+invoice: input\.invoice,/)
   assert.doesNotMatch(source, /sendEmail|send-email|\.rpc\(|\.from\(|supabase/, 'it prepares; it sends and records nothing')
 })
 
@@ -144,8 +147,20 @@ test('a plan that cannot be checked and a document that cannot be read each retu
   assert.match(check, /return \{ error: 'The billing plan of this invoice could not be checked, so nothing was sent\. Please try again\.' \}/)
   const load = text.slice(text.indexOf('await loadWelcomeDocuments()') - 60, text.indexOf('buildWelcomeEmail('))
   assert.match(load, /catch \(error\) \{\s+console\.error\('\[documents:welcome:documents\]', error\)\s+return \{ error: `\$\{welcomeDocumentsFailure\(error\)\} Nothing was sent\.` \}\s+\}/, 'logged for support, then the plain words')
-  assert.match(text, /return \{ error: 'Email sending is not set up on this server yet\.' \}/, 'the email action\'s own sentence for a missing address')
   assert.match(text, /return built\b/, 'what buildWelcomeEmail says is returned as it is')
+})
+
+test('the pre-flight of the approval asks for everything the email needs that is not about one invoice: the two files, then the app address', () => {
+  const source = prepare()
+  const text = body(source, 'welcomeEmailProblem')
+  const documents = text.indexOf('await welcomeDocumentsProblem()')
+  const address = text.indexOf('readWelcomeAddress(process.env)')
+  assert.ok(documents > -1 && address > documents, 'the files, then the address')
+  assert.match(text, /if \(documents\) return documents/)
+  assert.match(text, /return 'problem' in address \? address\.problem : null/, 'null when both are ready, otherwise plain words')
+  assert.match(source, /import \{[^}]*\bwelcomeDocumentsProblem\b[^}]*\} from '\.\/welcome-documents'/)
+  assert.match(source, /import \{ buildWelcomeEmail, readWelcomeAddress, type PreparedWelcomeEmail \} from '\.\/welcome-email'/)
+  assert.doesNotMatch(source.replace(/^\s*(\/\/|\*|\/\*).*$/gm, ''), /readAppUrl|MissingEnvError/, 'the address is read in one place, the pure reader')
 })
 
 test('the pure builder makes the three attachments, the size check and the record text; it sends nothing', () => {
@@ -193,17 +208,59 @@ test('the builder returns the subject, three attachments in order and a record t
   assert.ok(built.recordBody.length < 10_000)
 })
 
-test('the builder refuses a total over 3,000,000 bytes with plain words, and a bad app address without throwing', async () => {
+test('the builder refuses a total over 2,150,000 raw bytes with plain words and a way forward, and a bad app address without throwing', async () => {
   const documents = await loadWelcomeDocuments()
-  const room = 3_000_000 - documents[0].bytes.length - documents[1].bytes.length
+  const room = 2_150_000 - documents[0].bytes.length - documents[1].bytes.length
   const fits = buildWelcomeEmail({ contactName: null, appUrl: 'https://unison.example', invoice: { filename: 'x.pdf', bytes: Buffer.alloc(room, 1) }, documents })
-  assert.ok(!('error' in fits), 'exactly 3,000,000 bytes in all fits')
+  assert.ok(!('error' in fits), 'exactly 2,150,000 bytes in all fits')
   const over = buildWelcomeEmail({ contactName: null, appUrl: 'https://unison.example', invoice: { filename: 'x.pdf', bytes: Buffer.alloc(room + 1, 1) }, documents })
   assert.ok('error' in over)
-  assert.match(over.error, /too large to email in one message\. Nothing was sent\./)
+  assert.match(over.error, /too large to email in one message\. Nothing was sent\. Download the invoice PDF from the invoice page and send it yourself/)
   const bad = buildWelcomeEmail({ contactName: null, appUrl: 'javascript:alert(1)', invoice: INVOICE, documents })
   assert.ok('error' in bad)
   assert.equal(bad.error, 'The HIMARK Welcome Email could not be prepared, so nothing was sent. Please try again.')
+})
+
+test('a welcome email at the cap is under 4,000,000 bytes on the wire: the message is base64 twice over (the MIME, then the Graph request)', async () => {
+  // The transport takes about 4 MB. lib/email/mime.ts base64-encodes each attachment (and wraps it at 76), and lib/email/graph.ts
+  // base64-encodes the whole MIME again, so the request is about 1.84 times the raw attachments plus the text and the HTML. The
+  // largest raw total that stays under 4,000,000 was measured at 2,179,737 with this template and these two documents; the cap
+  // keeps a margin under that. Worst case here: the longest contact name, a 254 character recipient and a long reply-to.
+  const documents = await loadWelcomeDocuments()
+  const invoiceBytes = MAX_EMAIL_TOTAL_ATTACHMENT_BYTES - documents[0].bytes.length - documents[1].bytes.length
+  const built = buildWelcomeEmail({ contactName: 'N'.repeat(500), appUrl: 'https://unison.himark.co.za', invoice: { filename: 'HMK-INV-2026-00007.pdf', bytes: Buffer.alloc(invoiceBytes, 7) }, documents })
+  assert.ok(!('error' in built))
+  assert.equal(built.attachments.reduce((total, attachment) => total + attachment.content.length, 0), MAX_EMAIL_TOTAL_ATTACHMENT_BYTES)
+  const mime = buildMimeMessage({
+    from: 'HIMARK Strategic Growth Consulting <accounts@himark.co.za>',
+    to: `${'a'.repeat(64)}@${'b'.repeat(63)}.${'c'.repeat(63)}.${'d'.repeat(60)}.co.za`,
+    replyTo: `${'r'.repeat(64)}@himark.co.za`,
+    subject: built.template.subject,
+    text: built.template.text,
+    html: built.template.html,
+    attachments: built.attachments,
+  })
+  const request = Buffer.from(mime, 'utf8').toString('base64')
+  assert.ok(request.length < 4_000_000, `the request is ${request.length} bytes`)
+  assert.ok(request.length > 3_800_000, 'and the cap is not set far below what the transport takes')
+  // The first cap, 3,000,000, would have made a request of more than 5 MB: the transport would have refused it long before the cap.
+  assert.ok(Math.round(3_000_000 * (request.length / MAX_EMAIL_TOTAL_ATTACHMENT_BYTES)) > 5_000_000)
+})
+
+test('the app address is read once, in plain words: set and usable gives the address without its trailing slash, anything else says what is wrong and never repeats the value', () => {
+  assert.deepEqual(readWelcomeAddress({ NEXT_PUBLIC_APP_URL: 'https://unison.himark.co.za/' }), { appUrl: 'https://unison.himark.co.za' })
+  assert.deepEqual(readWelcomeAddress({ NEXT_PUBLIC_APP_URL: 'http://localhost:3002' }), { appUrl: 'http://localhost:3002' })
+  for (const source of [{}, { NEXT_PUBLIC_APP_URL: '' }, { NEXT_PUBLIC_APP_URL: undefined }]) {
+    const found = readWelcomeAddress(source)
+    assert.ok('problem' in found)
+    assert.equal(found.problem, 'The app address (NEXT_PUBLIC_APP_URL) is not set on this server, and the HIMARK Welcome Email needs it for its pictures. Ask support to set it.')
+  }
+  for (const value of ['not a url', 'javascript:alert(1)', 'ftp://unison.example', 'https://unison.example/a b', 'file:///C:/brand']) {
+    const found = readWelcomeAddress({ NEXT_PUBLIC_APP_URL: value })
+    assert.ok('problem' in found, value)
+    assert.equal(found.problem, 'The app address (NEXT_PUBLIC_APP_URL) on this server is not a web address starting with http:// or https://, and the HIMARK Welcome Email needs it for its pictures. Ask support to fix it.', value)
+    assert.ok(!found.problem.includes(value), 'the value is never repeated')
+  }
 })
 
 test('the failure sentence of the document loader is its own words for a known fault and a safe sentence for anything else', async () => {
@@ -217,17 +274,18 @@ test('the failure sentence of the document loader is its own words for a known f
 
 // ---- the approval ----------------------------------------------------------------------------------------------
 
-test('approving reads the two documents after the permission and the hourly cap and before the invoice is numbered, and stops with plain words if it cannot', () => {
+test('approving runs the welcome pre-flight (the two files and the app address) after the permission and the hourly cap and before the invoice is numbered, and stops with plain words if it fails', () => {
   const text = body(approve(), 'approveFirstInvoiceAction')
   const permission = text.indexOf("roleHasPermission(role, 'company.manage')")
   const cap = text.indexOf('>= HOURLY_EMAIL_CAP')
-  const problem = text.indexOf('await welcomeDocumentsProblem()')
+  const problem = text.indexOf('await welcomeEmailProblem()')
   const rpcAt = text.indexOf("rpc('approve_first_invoice'")
-  assert.ok(permission > -1 && cap > permission && problem > cap && rpcAt > problem, 'permission, cap, documents, then the approval')
-  assert.match(text, /const welcomeProblem = await welcomeDocumentsProblem\(\)\n\s+if \(welcomeProblem\) return \{ error: `\$\{welcomeProblem\} Nothing was approved or sent\.` \}/)
-  assert.equal(count(text, 'welcomeDocumentsProblem('), 1)
+  assert.ok(permission > -1 && cap > permission && problem > cap && rpcAt > problem, 'permission, cap, pre-flight, then the approval')
+  assert.match(text, /const welcomeProblem = await welcomeEmailProblem\(\)\n\s+if \(welcomeProblem\) return \{ error: `\$\{welcomeProblem\} Nothing was approved or sent\.` \}/)
+  assert.equal(count(text, 'welcomeEmailProblem('), 1)
   assert.doesNotMatch(text.slice(problem, rpcAt), /revalidateDocumentPages|rpc\(/, 'nothing changed, so nothing is refreshed')
-  assert.match(approve(), /import \{ welcomeDocumentsProblem \} from '\.\.\/welcome-documents'/)
+  assert.match(approve(), /import \{ welcomeEmailProblem \} from '\.\.\/prepare-welcome-email'/)
+  assert.doesNotMatch(approve(), /process\.env|welcomeDocumentsProblem|readAppUrl/, 'the action reads neither the environment nor the files itself')
 })
 
 test('the approval still has one rpc, only the approval; its other sentences and the hand-over to the email action are as they were', () => {
@@ -289,18 +347,27 @@ test('the staff note names the three attachments and says the subject and messag
 
 // ---- what was not touched --------------------------------------------------------------------------------------
 
-test('no migration was added: the newest is still the billing final review fixes', () => {
-  const names = readdirSync(join(process.cwd(), 'supabase', 'migrations')).filter((name) => name.endsWith('.sql')).sort()
-  assert.equal(names.at(-1), '20261026110000_billing_final_review_fixes.sql', 'no file is newer')
+test('the welcome code does not reach into the database: no migration, no new rpc name, no service-role client', () => {
+  // A scope guard that does not age: it names no migration file, so a legitimate migration for another stage cannot fail it.
+  for (const name of [...NEW_FILES, 'action', 'approve', 'defaults', 'form'] as const) {
+    const source = read(...FILES[name])
+    assert.doesNotMatch(source, /supabase\/migrations|\.sql\b/, `${name}: no migration is referenced`)
+    assert.doesNotMatch(source, /lib\/supabase\/admin|supabase\/admin|createAdminSupabase|SUPABASE_SECRET|SERVICE_ROLE/i, `${name}: no service-role client`)
+  }
+  for (const name of NEW_FILES) assert.deepEqual(rpcNames(read(...FILES[name])), [], `${name}: no rpc`)
+  assert.deepEqual(rpcNames(action()), ['record_document_email'], 'the email action keeps its one rpc')
+  assert.deepEqual(rpcNames(approve()), ['approve_first_invoice', 'create_plan_item_invoice', 'billing_plan_set_state'], 'the plan actions keep theirs')
+  assert.deepEqual(rpcNames(read(...FILES.defaults)), [], 'the defaults call none')
 })
 
-test('no new database function is called, and no new module touches the service-role client', () => {
-  for (const name of NEW_FILES) {
-    const source = read(...FILES[name])
-    assert.deepEqual(rpcNames(source), [], `${name}: no rpc`)
-    assert.doesNotMatch(source, /supabase\/admin|createAdminSupabase|SUPABASE_SECRET|SERVICE_ROLE/i, `${name}: no service-role client`)
-  }
-  assert.deepEqual(rpcNames(action()), ['record_document_email'])
+test('the email section says the invoice and the HIMARK welcome documents are sent for a welcome invoice, and what it said before for everything else', () => {
+  const source = read('features', 'documents', 'components', 'email-section.tsx')
+  assert.match(
+    source,
+    /<WorkspaceSection title="Email to client" description=\{defaults\?\.welcome \? 'Sends the invoice and the HIMARK welcome documents from the company mailbox\. Every email sent is recorded below\.' : 'Sends the PDF from the company mailbox\. Every email sent is recorded below\.'\}>/,
+  )
+  assert.equal(count(source, 'Sends the PDF from the company mailbox. Every email sent is recorded below.'), 1, 'the old sentence is kept, word for word, for the others')
+  assert.equal(count(source, '<WorkspaceSection'), 1)
 })
 
 test('the pure new modules carry no directive, no server-only and no alias import, so node --test can load them', () => {

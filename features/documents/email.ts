@@ -3,8 +3,15 @@ import type { DocumentView } from './document-view.ts'
 
 /** The most a PDF may weigh to be emailed: the whole message is base64 twice over, and the mail server takes about 4 MB. */
 export const MAX_EMAIL_PDF_BYTES = 2_000_000
-/** The most all the attachments of one message may weigh together (the HIMARK Welcome Email carries three PDFs): well under the mail server's 4 MB. */
-export const MAX_EMAIL_TOTAL_ATTACHMENT_BYTES = 3_000_000
+/**
+ * The most the raw attachments of one HIMARK Welcome Email may weigh together (the invoice and the two documents). The limit that
+ * matters is the size of the request, about 4 MB, and the message is base64-encoded twice over: lib/email/mime.ts encodes each
+ * attachment (a third bigger, plus a line break every 76 characters) and lib/email/graph.ts encodes the whole MIME again (another
+ * third), so the request is about 1.84 times the raw attachments plus the text and the HTML (about 20 KB). Measured with the real
+ * template, the real two documents and buildMimeMessage: 2,150,000 raw bytes make a request of 3,945,740 bytes, and 2,179,737 is the
+ * most that stays under 4,000,000. The per-PDF cap above is for the plain email, a single attachment: 2,000,000 bytes make 3.67 MB.
+ */
+export const MAX_EMAIL_TOTAL_ATTACHMENT_BYTES = 2_150_000
 /** Document emails one organisation may send in an hour: a guard against accidents and a runaway loop. */
 export const HOURLY_EMAIL_CAP = 50
 export const SUBJECT_MAX = 300
