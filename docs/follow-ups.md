@@ -1788,7 +1788,7 @@ recorded differ from the file names.
 - **Unit and tenancy tests** (`pnpm test`): 1369 tests passed.
 - **Build.** The production build succeeded.
 - **Database tests against production:**
-  - the full database suite on the finished code: FINAL_RLS_RESULT
+  - the full database suite on the finished code: 603 tests, 602 passed. The one that did not pass lost its network connection to the database in the middle of the test ("read ECONNRESET"). It passed when run on its own straight afterwards, so it was a dropped connection, not a fault in the code
   - earlier, after the final migration, a targeted re-run of the 11 database test files it affects
 - **Reviews.** Every one of the nine tasks was reviewed twice (against the spec, and for quality), with fix rounds where the reviewers found real
   problems. A final review of the whole branch, by the most capable reviewer, found two Important problems, and both were fixed and reviewed again:
@@ -1800,7 +1800,8 @@ recorded differ from the file names.
   - the readiness blocker for a missing client email;
   - pause and resume;
   - Approve and send, and the member's view of the panel;
-  - a once-off quote, and ending a plan.
+  - a once-off quote, and ending a plan;
+  - the billing plan panel at phone width (375 px) after the final layout fix: the page no longer scrolls sideways, each month shows as a stacked block with its status wrapping, and on a desktop width the table is unchanged.
 
 ### Not verified
 
@@ -1809,7 +1810,6 @@ recorded differ from the file names.
 - **How the AGREEMENT cell of the quotation email looks in a real mail client.** The cell is narrow, and on a desktop the sentence wraps over several
   lines. A full-width row would read better.
 - **The accountant's view on VAT** at the rate in force on the issue date for the later months (call 8 under "Calls settled after a builder check" in the spec).
-- **The phone layout after the final CSS fix.** It was not re-checked in a browser.
 - **HIVE is untouched,** so nothing was checked there.
 
 ### Known limits
