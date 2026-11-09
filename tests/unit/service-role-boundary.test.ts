@@ -63,6 +63,9 @@ export const SERVICE_ROLE_REQUEST_PATHS = [
   // The signed website webhook has no user session. It writes only validated
   // lead fields into the fixed HIMARK tenant and is idempotent by delivery key.
   'app/api/integrations/website-leads/route.ts',
+  // The signed-out prospect form cannot use tenant RLS. Its DAL exposes only
+  // published wording and three narrowly scoped service-role RPCs.
+  'features/prospect-engagement/public-data.ts',
   // The quote portal has no session: the link token is the credential, and its functions are granted to service_role
   // only so the database API cannot be called with the public key.
   'lib/quote-portal/portal-client.ts',
@@ -92,6 +95,7 @@ test('the allowlist is exactly the known request-path callers', () => {
   assert.deepEqual([...SERVICE_ROLE_REQUEST_PATHS].sort(), [
     'app/api/integrations/website-leads/route.ts',
     'features/internal-provisioning/actions/provision-organization.ts',
+    'features/prospect-engagement/public-data.ts',
     'lib/invitations/create-invited-account.ts',
     'lib/quote-portal/portal-client.ts',
   ])

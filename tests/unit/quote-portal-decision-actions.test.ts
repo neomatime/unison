@@ -341,7 +341,7 @@ test('the evidence reads only the three headers it names', () => {
 // The portal client (source)
 // ---------------------------------------------------------------------------------------------------------------
 
-test('portal-client still holds the service role, and the allowlist of service-role files is unchanged', () => {
+test('portal-client still holds the service role, and every service-role file remains explicitly pinned', () => {
   const source = portalClientSource()
   assert.ok(source.startsWith("import 'server-only'"), 'server-only is the first line')
   assert.match(source, /^import \{ createAdminSupabase \} from '@\/lib\/supabase\/admin'$/m)
@@ -353,6 +353,7 @@ test('portal-client still holds the service role, and the allowlist of service-r
   assert.deepEqual([...pinned.matchAll(/'([^']+)'/g)].map((match) => match[1]), [
     'app/api/integrations/website-leads/route.ts',
     'features/internal-provisioning/actions/provision-organization.ts',
+    'features/prospect-engagement/public-data.ts',
     'lib/invitations/create-invited-account.ts',
     'lib/quote-portal/portal-client.ts',
   ])

@@ -66,10 +66,10 @@ test('/q is exempt from sign-in with a segment boundary', () => {
   assert.equal(isExempt('/api/q'), false)
   assert.equal(isExempt('/api/q/abc'), false)
 
-  // No API prefix was opened to make the portal reachable: the API entries are exactly the three that had their own credential.
+  // Every signed-out API prefix is narrow and performs its own credential or public-form abuse checks.
   assert.deepEqual(
     entries.filter((entry) => entry.startsWith('/api')),
-    ['/api/integrations/webhook', '/api/integrations/website-leads', '/api/v1/clients'],
+    ['/api/integrations/webhook', '/api/integrations/website-leads', '/api/engage', '/api/v1/clients'],
   )
   assert.ok(!entries.includes('/api'), 'the whole API surface must not bypass sign-in')
   assert.ok(!entries.includes('/'), 'the root must not be an exemption prefix, or every path would match')
@@ -104,9 +104,9 @@ test('portal responses carry the four headers', async () => {
     'Content-Security-Policy': "frame-ancestors 'none'",
   })
 
-  // The rest of the application is neither kept out of search indexes nor made uncacheable by these headers.
+  // The only other no-store/noindex rules belong to the deliberately public prospect experience.
   for (const rule of rules) {
-    if (rule.source === '/q/:path*') continue
+    if (['/q/:path*', '/engage', '/api/engage/:path*'].includes(rule.source)) continue
     const keys = rule.headers.map((header) => header.key.toLowerCase())
     assert.ok(!keys.includes('x-robots-tag') && !keys.includes('cache-control'), `${rule.source} must not carry portal headers`)
   }

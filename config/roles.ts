@@ -10,12 +10,12 @@ export const roles = [
   {
     id: 'owner',
     label: 'Owner',
-    permissions: ['organization.manage', 'company.manage', 'members.manage', 'modules.manage'],
+    permissions: ['organization.manage', 'company.manage', 'members.manage', 'modules.manage', 'acquisition.manage'],
   },
   {
     id: 'admin',
     label: 'Admin',
-    permissions: ['company.manage', 'members.manage', 'modules.manage'],
+    permissions: ['company.manage', 'members.manage', 'modules.manage', 'acquisition.manage'],
   },
   {
     id: 'member',

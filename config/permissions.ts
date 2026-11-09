@@ -3,6 +3,7 @@ export const permissions = [
   { id: 'company.manage', description: 'Edit the company details printed on quotes and invoices.' },
   { id: 'members.manage', description: 'Invite, update, and remove organization members.' },
   { id: 'modules.manage', description: 'Configure modules enabled for an organization.' },
+  { id: 'acquisition.manage', description: 'Manage public engagement forms, acquisition links and QR assets.' },
 ] as const
 
 export type PermissionId = (typeof permissions)[number]['id']

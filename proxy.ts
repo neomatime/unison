@@ -20,6 +20,10 @@ const AUTH_EXEMPT = [
   // The HIMARK website signs each exact request body. This endpoint verifies
   // that signature and accepts no browser session as an alternative credential.
   '/api/integrations/website-leads',
+  // Public HIMARK prospect experience. These exact routes perform their own
+  // source, origin, validation, abuse and service-role boundary checks.
+  '/engage',
+  '/api/engage',
   // Read-only client feed for HIVE. It checks its own hashed per-organisation bearer key and accepts no
   // browser session. Exact prefix only.
   '/api/v1/clients',

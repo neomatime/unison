@@ -17,7 +17,7 @@ export const moduleGroups = [
   { id: 'delivery', label: 'Delivery', moduleIds: ['overview', 'portfolio', 'projects', 'frameworks', 'approvals', 'vendors'] },
   { id: 'people', label: 'People', moduleIds: ['team'] },
   { id: 'operations', label: 'Operations', moduleIds: ['clients', 'onboarding'] },
-  { id: 'commercial', label: 'Commercial', moduleIds: ['leads', 'quotes', 'sales'] },
+  { id: 'commercial', label: 'Commercial', moduleIds: ['leads', 'acquisition', 'quotes', 'sales'] },
   { id: 'finance', label: 'Finance', moduleIds: ['invoices', 'expenses', 'forecast'] },
 ] as const satisfies readonly { id: ModuleGroupId; label: string; moduleIds: readonly UnisonModuleId[] }[]
 

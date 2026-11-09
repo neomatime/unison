@@ -28,6 +28,7 @@ export const modules = [
   { id: 'onboarding', label: 'Onboarding', enabled: true, route: '/operations/onboarding', category: 'operations' },
   { id: 'vendors', label: 'Vendors', enabled: true, route: '/delivery/vendors', category: 'operations' },
   { id: 'leads', label: 'Leads', enabled: true, route: '/commercial/leads', category: 'commercial' },
+  { id: 'acquisition', label: 'Acquisition', enabled: true, route: '/commercial/acquisition', category: 'commercial' },
   { id: 'quotes', label: 'Quotes', enabled: true, route: '/commercial/quotes', category: 'commercial' },
   { id: 'sales', label: 'Sales', enabled: true, route: '/commercial/sales', category: 'commercial' },
   { id: 'invoices', label: 'Invoices', enabled: true, route: '/finance/invoices', category: 'finance' },

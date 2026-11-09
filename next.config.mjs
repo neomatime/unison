@@ -17,6 +17,7 @@ const nextConfig = {
     '/finance/invoices/\\[invoiceId\\]/document/pdf': ['./public/brand/**/*'],
     // The client's PDF download in the quote portal.
     '/q/\\[token\\]/pdf': ['./public/brand/**/*'],
+    '/api/acquisition/links/\\[linkId\\]/card': ['./public/brand/**/*'],
   },
   // The quote portal is public and its address is its credential. These keep that address out of caches, search
   // indexes, referrer headers and frames. "/q/:path*" matches /q as well as everything under it.
@@ -29,6 +30,23 @@ const nextConfig = {
           { key: 'Referrer-Policy', value: 'no-referrer' },
           { key: 'X-Robots-Tag', value: 'noindex, nofollow' },
           { key: 'Content-Security-Policy', value: "frame-ancestors 'none'" },
+        ],
+      },
+      {
+        source: '/engage',
+        headers: [
+          { key: 'Cache-Control', value: 'no-store' },
+          { key: 'Referrer-Policy', value: 'no-referrer' },
+          { key: 'X-Robots-Tag', value: 'noindex, nofollow' },
+          { key: 'Content-Security-Policy', value: "frame-ancestors 'none'" },
+        ],
+      },
+      {
+        source: '/api/engage/:path*',
+        headers: [
+          { key: 'Cache-Control', value: 'no-store' },
+          { key: 'Referrer-Policy', value: 'no-referrer' },
+          { key: 'X-Robots-Tag', value: 'noindex, nofollow' },
         ],
       },
     ]

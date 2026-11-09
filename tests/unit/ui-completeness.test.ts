@@ -449,7 +449,7 @@ test('every module a tier can withhold is guarded by its own layout', () => {
     .filter((module) => !(lockedModuleIds as readonly string[]).includes(module.id))
     .map((module) => ({ id: module.id, dir: join(unisonRoot, module.route.replace(/^\//, '')) }))
 
-  assert.equal(gated.length, 8, 'expected exactly the Operations, Commercial and Finance modules')
+  assert.equal(gated.length, 9, 'expected exactly the Operations, Commercial and Finance modules')
 
   for (const { id, dir } of gated) {
     const layout = join(dir, 'layout.tsx')

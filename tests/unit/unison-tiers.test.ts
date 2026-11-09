@@ -14,7 +14,7 @@ test('Framework adds Operations to Core', () => {
 })
 
 test('Enterprise includes the full current product', () => {
-  assert.deepEqual(getEntitledModuleIds('enterprise'), [...deliveryAndTeam, 'clients', 'onboarding', 'leads', 'quotes', 'sales', 'invoices', 'expenses', 'forecast'])
+  assert.deepEqual(getEntitledModuleIds('enterprise'), [...deliveryAndTeam, 'clients', 'onboarding', 'leads', 'acquisition', 'quotes', 'sales', 'invoices', 'expenses', 'forecast'])
 })
 
 test('Strategic Enterprise currently receives the full Enterprise module set', () => {

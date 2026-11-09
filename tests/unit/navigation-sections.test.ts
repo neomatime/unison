@@ -32,7 +32,7 @@ test('the sidebar is exactly the CRM structure for a full tenant', () => {
       ['Overview', ['Overview']],
       ['People', ['Team']],
       ['Operations', ['Clients', 'Onboarding', 'Vendors']],
-      ['Commercial', ['Leads', 'Quotes', 'Sales']],
+      ['Commercial', ['Leads', 'Acquisition', 'Quotes', 'Sales']],
       ['Finance', ['Invoices', 'Expenses', 'Forecasting']],
     ],
   )
@@ -99,7 +99,7 @@ test('every retained module still has a route', () => {
     assert.ok(!routes.has(module.route), `${module.route} must be listed once`)
     routes.add(module.route)
   }
-  assert.equal(routes.size, 11)
+  assert.equal(routes.size, 12)
 })
 
 test('sections carry no functions, so they survive the RSC boundary', () => {
