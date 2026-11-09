@@ -32,6 +32,7 @@ import {
   type ServiceId,
 } from '../catalog'
 import type { PublicEngagementContext } from '../types'
+import { HimarkWordmark } from './himark-wordmark'
 
 type Attribution = { source: string; medium: string; campaign: string; term: string; content: string }
 type Details = {
@@ -191,7 +192,7 @@ export function EngagementExperience({ context, attribution }: { context: Public
 
       <div className="relative mx-auto max-w-6xl">
         <header className="text-center">
-          <p className="text-lg font-semibold tracking-[0.45em] text-[#102746] uppercase sm:text-xl">HIMARK</p>
+          <HimarkWordmark />
           <p className="mt-2 text-[0.64rem] font-semibold tracking-[0.27em] text-[#536b89] uppercase">Powered by UNISON</p>
           <div className="mx-auto mt-6 h-0.5 w-12 bg-[#1288d4]" />
           <h1 className="mt-6 text-3xl font-semibold tracking-[-0.04em] sm:text-4xl lg:text-[2.75rem]">{context.config.headline}</h1>
@@ -389,7 +390,7 @@ function Summary({ title, rows, onEdit }: { title: string; rows: Array<[string, 
 }
 
 function Success() {
-  return <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#eff6ff] px-5 py-16 text-[#102746]"><div aria-hidden className="absolute -top-28 -left-28 size-[28rem] rotate-12 bg-white/55 [clip-path:polygon(0_0,100%_0,35%_100%,0_70%)]" /><section className="relative w-full max-w-2xl rounded-[1.5rem] border border-white bg-white/95 px-7 py-14 text-center shadow-[0_25px_80px_-42px_rgba(10,62,111,0.58)] sm:px-14"><span className="mx-auto flex size-16 items-center justify-center rounded-full bg-[#e8f8f1] text-[#167a54]"><CheckCircle2 className="size-8" /></span><p className="mt-8 text-sm font-semibold tracking-[0.38em] uppercase">HIMARK</p><h1 className="mt-6 text-3xl font-semibold tracking-[-0.04em] sm:text-4xl">Thank you for connecting with HIMARK.</h1><p className="mx-auto mt-4 max-w-xl text-sm leading-7 text-[#5c7089]">We&apos;ve received your enquiry. Our team will review your information and get in touch to discuss the next steps.</p><a href="https://himark.co.za" className="mt-9 inline-flex items-center gap-3 bg-[linear-gradient(100deg,#0965b7,#078bd5)] px-7 py-3.5 text-sm font-semibold tracking-[0.14em] text-white uppercase">Return to HIMARK<ArrowRight className="size-5" /></a></section></main>
+  return <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#eff6ff] px-5 py-16 text-[#102746]"><div aria-hidden className="absolute -top-28 -left-28 size-[28rem] rotate-12 bg-white/55 [clip-path:polygon(0_0,100%_0,35%_100%,0_70%)]" /><section className="relative w-full max-w-2xl rounded-[1.5rem] border border-white bg-white/95 px-7 py-14 text-center shadow-[0_25px_80px_-42px_rgba(10,62,111,0.58)] sm:px-14"><span className="mx-auto flex size-16 items-center justify-center rounded-full bg-[#e8f8f1] text-[#167a54]"><CheckCircle2 className="size-8" /></span><div className="mt-8"><HimarkWordmark compact /></div><h1 className="mt-6 text-3xl font-semibold tracking-[-0.04em] sm:text-4xl">Thank you for connecting with HIMARK.</h1><p className="mx-auto mt-4 max-w-xl text-sm leading-7 text-[#5c7089]">We&apos;ve received your enquiry. Our team will review your information and get in touch to discuss the next steps.</p><a href="https://himark.co.za" className="mt-9 inline-flex items-center gap-3 bg-[linear-gradient(100deg,#0965b7,#078bd5)] px-7 py-3.5 text-sm font-semibold tracking-[0.14em] text-white uppercase">Return to HIMARK<ArrowRight className="size-5" /></a></section></main>
 }
 
 function updateDetail<K extends keyof Details>(setter: React.Dispatch<React.SetStateAction<Details>>, key: K, value: Details[K]) {
