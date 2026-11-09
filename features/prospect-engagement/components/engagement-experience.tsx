@@ -184,22 +184,21 @@ export function EngagementExperience({ context, attribution }: { context: Public
   if (complete) return <Success />
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#eff6ff] px-4 py-8 text-[#102746] sm:px-6 sm:py-12 lg:py-16">
+    <main className="relative min-h-screen overflow-hidden bg-[#F7F6F3] px-4 py-8 text-[#0F1115] sm:px-6 sm:py-12 lg:py-16">
       <div aria-hidden className="absolute inset-0 pointer-events-none">
-        <div className="absolute -top-40 -left-36 h-[34rem] w-[34rem] rotate-12 bg-[linear-gradient(135deg,rgba(255,255,255,0.9),rgba(203,225,250,0.4))] [clip-path:polygon(0_0,100%_0,35%_100%,0_72%)]" />
-        <div className="absolute right-[-16rem] bottom-[-11rem] h-[42rem] w-[50rem] -rotate-6 bg-[linear-gradient(135deg,rgba(205,227,252,0.55),rgba(111,173,232,0.18))] [clip-path:polygon(38%_0,100%_14%,100%_100%,0_100%)]" />
+        <div className="absolute -top-40 -left-36 h-[34rem] w-[34rem] rotate-12 bg-[linear-gradient(135deg,rgba(247,246,243,0.96),rgba(183,208,227,0.58))] [clip-path:polygon(0_0,100%_0,35%_100%,0_72%)]" />
+        <div className="absolute right-[-16rem] bottom-[-11rem] h-[42rem] w-[50rem] -rotate-6 bg-[linear-gradient(135deg,rgba(183,208,227,0.52),rgba(47,93,124,0.16))] [clip-path:polygon(38%_0,100%_14%,100%_100%,0_100%)]" />
       </div>
 
       <div className="relative mx-auto max-w-6xl">
         <header className="text-center">
           <HimarkWordmark />
-          <p className="mt-2 text-[0.64rem] font-semibold tracking-[0.27em] text-[#536b89] uppercase">Powered by UNISON</p>
-          <div className="mx-auto mt-6 h-0.5 w-12 bg-[#1288d4]" />
+          <div className="mx-auto mt-6 h-0.5 w-12 bg-[#2F5D7C]" />
           <h1 className="mt-6 text-3xl font-semibold tracking-[-0.04em] sm:text-4xl lg:text-[2.75rem]">{context.config.headline}</h1>
-          <p className="mx-auto mt-3 max-w-3xl text-sm leading-6 text-[#4c6381] sm:text-base">{context.config.supportingText}</p>
+          <p className="mx-auto mt-3 max-w-3xl text-sm leading-6 text-[#3E4B59] sm:text-base">{context.config.supportingText}</p>
         </header>
 
-        <section className="mt-8 overflow-hidden rounded-[1.6rem] border border-white/80 bg-white/90 shadow-[0_25px_80px_-42px_rgba(10,62,111,0.58)] backdrop-blur-sm sm:mt-10">
+        <section className="mt-8 overflow-hidden rounded-[1.6rem] border border-[#B7D0E3]/80 bg-[#F7F6F3]/95 shadow-[0_25px_80px_-42px_rgba(11,39,66,0.46)] backdrop-blur-sm sm:mt-10">
           <Progress step={step} />
           <div className="px-5 py-8 sm:px-10 sm:py-10 lg:px-14">
             {error ? <div role="alert" className="mb-7 border border-[#d44a4a]/25 bg-[#fff5f5] px-4 py-3 text-sm text-[#a62f2f]">{error}</div> : null}
@@ -242,16 +241,16 @@ export function EngagementExperience({ context, attribution }: { context: Public
                 ) : null}
 
                 {timeline ? (
-                  <div className="mt-7 border-t border-[#dce6f1] pt-6">
-                    <button type="button" onClick={() => setShowAdditional((value) => !value)} className="inline-flex items-center gap-2 text-sm font-semibold text-[#0877c9]">
+                  <div className="mt-7 border-t border-[#B7D0E3] pt-6">
+                    <button type="button" onClick={() => setShowAdditional((value) => !value)} className="inline-flex items-center gap-2 text-sm font-semibold text-[#2F5D7C]">
                       <Plus className={`size-4 transition-transform ${showAdditional ? 'rotate-45' : ''}`} />
-                      Is there anything else you&apos;d like us to know? <span className="font-normal text-[#6a7c93]">Optional</span>
+                      Is there anything else you&apos;d like us to know? <span className="font-normal text-[#3E4B59]">Optional</span>
                     </button>
                     {showAdditional ? (
                       <label className="mt-4 block text-sm font-medium">
                         <span className="sr-only">Additional information</span>
                         <textarea value={additionalInformation} maxLength={500} onChange={(event) => setAdditionalInformation(event.target.value)} rows={4} className={inputClass} placeholder="Share any helpful context in a few words." />
-                        <span className="mt-1 block text-right text-xs font-normal text-[#73849a]">{additionalInformation.length}/500</span>
+                        <span className="mt-1 block text-right text-xs font-normal text-[#3E4B59]">{additionalInformation.length}/500</span>
                       </label>
                     ) : null}
                   </div>
@@ -282,8 +281,8 @@ export function EngagementExperience({ context, attribution }: { context: Public
                   </fieldset>
                 </div>
 
-                <div className="mt-7 space-y-3 border-t border-[#dce6f1] pt-6 text-sm leading-6 text-[#4f647d]">
-                  <p>HIMARK will use these details to review your enquiry and connect you with the right representative. Read the <a href={context.config.privacyNoticeUrl} target="_blank" rel="noreferrer" className="font-semibold text-[#0877c9] underline underline-offset-2">HIMARK Privacy Notice</a>.</p>
+                <div className="mt-7 space-y-3 border-t border-[#B7D0E3] pt-6 text-sm leading-6 text-[#3E4B59]">
+                  <p>HIMARK will use these details to review your enquiry and connect you with the right representative. Read the <a href={context.config.privacyNoticeUrl} target="_blank" rel="noreferrer" className="font-semibold text-[#2F5D7C] underline underline-offset-2">HIMARK Privacy Notice</a>.</p>
                   <CheckLine checked={details.privacyAcknowledged} onChange={(checked) => updateDetail(setDetails, 'privacyAcknowledged', checked)} required>I acknowledge the Privacy Notice and consent to HIMARK using my information to respond to this enquiry.</CheckLine>
                   <CheckLine checked={details.marketingConsent} onChange={(checked) => updateDetail(setDetails, 'marketingConsent', checked)}>I would also like to receive occasional HIMARK insights and marketing communications.</CheckLine>
                 </div>
@@ -322,7 +321,7 @@ export function EngagementExperience({ context, attribution }: { context: Public
             ) : null}
           </div>
         </section>
-        <p className="mt-5 text-center text-[0.68rem] tracking-[0.14em] text-[#647994] uppercase">A secure HIMARK engagement experience powered by UNISON</p>
+        <p className="mt-5 text-center text-[0.68rem] tracking-[0.14em] text-[#3E4B59] uppercase">A secure HIMARK engagement experience</p>
       </div>
     </main>
   )
@@ -330,16 +329,16 @@ export function EngagementExperience({ context, attribution }: { context: Public
 
 function Progress({ step }: { step: number }) {
   return (
-    <ol aria-label="Enquiry progress" className="grid grid-cols-4 border-b border-[#dce6f1] bg-[#f8fbff]/80 px-4 sm:px-10">
+    <ol aria-label="Enquiry progress" className="grid grid-cols-4 border-b border-[#B7D0E3] bg-[#B7D0E3]/15 px-4 sm:px-10">
       {STAGES.map((label, index) => {
         const number = index + 1
         const active = number === step
         const done = number < step
         return (
-          <li key={label} aria-current={active ? 'step' : undefined} className={`relative flex min-h-20 flex-col items-center justify-center gap-1 text-center ${active ? 'text-[#0c4e80]' : 'text-[#6b7e96]'}`}>
-            <span className={`flex size-8 items-center justify-center rounded-full border text-xs font-semibold ${active ? 'border-[#0784d2] bg-[#0784d2] text-white' : done ? 'border-[#7bb5db] bg-[#e8f5fd] text-[#0877c9]' : 'border-[#bfd0e3] bg-white'}`}>{done ? <Check className="size-4" /> : number}</span>
+          <li key={label} aria-current={active ? 'step' : undefined} className={`relative flex min-h-20 flex-col items-center justify-center gap-1 text-center ${active ? 'text-[#0B2742]' : 'text-[#3E4B59]'}`}>
+            <span className={`flex size-8 items-center justify-center rounded-full border text-xs font-semibold ${active ? 'border-[#0B2742] bg-[#0B2742] text-[#F7F6F3]' : done ? 'border-[#2F5D7C] bg-[#B7D0E3]/45 text-[#0B2742]' : 'border-[#B7D0E3] bg-[#F7F6F3]'}`}>{done ? <Check className="size-4" /> : number}</span>
             <span className="hidden text-xs font-medium sm:block">{label}</span>
-            {active ? <span className="absolute bottom-0 h-0.5 w-full max-w-32 bg-[#0784d2]" /> : null}
+            {active ? <span className="absolute bottom-0 h-0.5 w-full max-w-32 bg-[#2F5D7C]" /> : null}
           </li>
         )
       })}
@@ -348,49 +347,49 @@ function Progress({ step }: { step: number }) {
 }
 
 function Stage({ title, supporting, children }: { title: string; supporting: string; children: React.ReactNode }) {
-  return <div className="animate-in fade-in slide-in-from-bottom-2 duration-300"><div className="mb-8 text-center"><h2 className="text-2xl font-semibold tracking-[-0.035em] sm:text-3xl">{title}</h2><p className="mt-2 text-sm leading-6 text-[#5f738c]">{supporting}</p></div>{children}</div>
+  return <div className="animate-in fade-in slide-in-from-bottom-2 duration-300"><div className="mb-8 text-center"><h2 className="text-2xl font-semibold tracking-[-0.035em] text-[#0B2742] sm:text-3xl">{title}</h2><p className="mt-2 text-sm leading-6 text-[#3E4B59]">{supporting}</p></div>{children}</div>
 }
 
 function Question({ number, title, children }: { number: string; title: string; children: React.ReactNode }) {
-  return <fieldset className="mt-7 first:mt-0"><legend className="mb-3 flex items-center gap-3 text-sm font-semibold"><span className="text-[0.66rem] tracking-[0.16em] text-[#1687cd]">{number}</span>{title}</legend>{children}</fieldset>
+  return <fieldset className="mt-7 first:mt-0"><legend className="mb-3 flex items-center gap-3 text-sm font-semibold"><span className="text-[0.66rem] tracking-[0.16em] text-[#2F5D7C]">{number}</span>{title}</legend>{children}</fieldset>
 }
 
 function ServiceCard({ service, selected, onClick }: { service: ServiceDefinition; selected: boolean; onClick: () => void }) {
   const Icon = ICONS[service.icon]
   return (
-    <button type="button" aria-pressed={selected} onClick={onClick} className={`group relative min-h-40 border p-5 text-left transition-all duration-200 ${selected ? 'border-[#0784d2] bg-[#edf8ff] shadow-[0_12px_28px_-22px_rgba(7,132,210,0.8)]' : 'border-[#d8e4f1] bg-white hover:-translate-y-0.5 hover:border-[#8abde0] hover:shadow-[0_12px_30px_-24px_rgba(13,65,111,0.55)]'}`}>
-      <span className={`flex size-10 items-center justify-center rounded-full ${selected ? 'bg-[#0784d2] text-white' : 'bg-[#edf6fd] text-[#0877c9]'}`}><Icon className="size-5" /></span>
+    <button type="button" aria-pressed={selected} onClick={onClick} className={`group relative min-h-40 border p-5 text-left transition-all duration-200 ${selected ? 'border-[#2F5D7C] bg-[#B7D0E3]/35 shadow-[0_12px_28px_-22px_rgba(47,93,124,0.58)]' : 'border-[#B7D0E3] bg-[#F7F6F3] hover:-translate-y-0.5 hover:border-[#2F5D7C] hover:shadow-[0_12px_30px_-24px_rgba(11,39,66,0.4)]'}`}>
+      <span className={`flex size-10 items-center justify-center rounded-full ${selected ? 'bg-[#2F5D7C] text-[#F7F6F3]' : 'bg-[#B7D0E3]/35 text-[#0B2742]'}`}><Icon className="size-5" /></span>
       <span className="mt-4 block text-sm font-semibold">{service.label}</span>
-      <span className="mt-2 block text-xs leading-5 text-[#5b7088]">{service.description}</span>
-      {selected ? <CheckCircle2 className="absolute top-4 right-4 size-5 text-[#0784d2]" /> : null}
+      <span className="mt-2 block text-xs leading-5 text-[#3E4B59]">{service.description}</span>
+      {selected ? <CheckCircle2 className="absolute top-4 right-4 size-5 text-[#2F5D7C]" /> : null}
     </button>
   )
 }
 
 function CompactChoice({ selected, onClick, children }: { selected: boolean; onClick: () => void; children: React.ReactNode }) {
-  return <button type="button" aria-pressed={selected} onClick={onClick} className={`flex min-h-14 items-center justify-between gap-3 border px-4 py-3 text-left text-sm leading-5 transition-colors ${selected ? 'border-[#0784d2] bg-[#edf8ff] font-semibold text-[#0b568c]' : 'border-[#d8e4f1] bg-white hover:border-[#8abde0]'}`}><span>{children}</span>{selected ? <Check className="size-4 shrink-0 text-[#0784d2]" /> : null}</button>
+  return <button type="button" aria-pressed={selected} onClick={onClick} className={`flex min-h-14 items-center justify-between gap-3 border px-4 py-3 text-left text-sm leading-5 transition-colors ${selected ? 'border-[#2F5D7C] bg-[#B7D0E3]/35 font-semibold text-[#0B2742]' : 'border-[#B7D0E3] bg-[#F7F6F3] hover:border-[#2F5D7C]'}`}><span>{children}</span>{selected ? <Check className="size-4 shrink-0 text-[#2F5D7C]" /> : null}</button>
 }
 
 function Actions({ back, onBack, onContinue, disabled, submit, pending }: { back?: boolean; onBack?: () => void; onContinue: () => void; disabled?: boolean; submit?: boolean; pending?: boolean }) {
-  return <div className="mt-9 flex flex-col-reverse gap-3 border-t border-[#dce6f1] pt-6 sm:flex-row sm:items-center sm:justify-between">{back ? <button type="button" onClick={onBack} className="inline-flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold text-[#526b88]"><ArrowLeft className="size-4" />Back</button> : <a href="https://himark.co.za" className="px-4 py-3 text-center text-sm font-medium text-[#526b88]">Cancel</a>}<button type="button" disabled={disabled || pending} onClick={onContinue} className="inline-flex min-w-56 items-center justify-center gap-3 bg-[linear-gradient(100deg,#0965b7,#078bd5)] px-7 py-3.5 text-sm font-semibold tracking-[0.14em] text-white uppercase shadow-[0_14px_28px_-18px_rgba(5,106,183,0.8)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-45">{pending ? 'Sending…' : submit ? 'Submit enquiry' : 'Continue'}{!pending ? <ArrowRight className="size-5" /> : null}</button></div>
+  return <div className="mt-9 flex flex-col-reverse gap-3 border-t border-[#B7D0E3] pt-6 sm:flex-row sm:items-center sm:justify-between">{back ? <button type="button" onClick={onBack} className="inline-flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold text-[#3E4B59]"><ArrowLeft className="size-4" />Back</button> : <a href="https://himark.co.za" className="px-4 py-3 text-center text-sm font-medium text-[#3E4B59]">Cancel</a>}<button type="button" disabled={disabled || pending} onClick={onContinue} className="inline-flex min-w-56 items-center justify-center gap-3 bg-[linear-gradient(100deg,#0B2742,#2F5D7C)] px-7 py-3.5 text-sm font-semibold tracking-[0.14em] text-[#F7F6F3] uppercase shadow-[0_14px_28px_-18px_rgba(11,39,66,0.65)] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-45">{pending ? 'Sending…' : submit ? 'Submit enquiry' : 'Continue'}{!pending ? <ArrowRight className="size-5" /> : null}</button></div>
 }
 
-const inputClass = 'min-h-12 w-full border border-[#cbd9e8] bg-white px-3.5 py-2.5 text-sm text-[#102746] outline-none transition focus:border-[#0784d2] focus:ring-2 focus:ring-[#0784d2]/15'
+const inputClass = 'min-h-12 w-full border border-[#B7D0E3] bg-[#F7F6F3] px-3.5 py-2.5 text-sm text-[#0F1115] outline-none transition focus:border-[#2F5D7C] focus:ring-2 focus:ring-[#2F5D7C]/15'
 
 function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
-  return <label className="block text-sm font-medium">{label}{required ? <span className="ml-1 text-[#0877c9]">*</span> : <span className="ml-2 text-xs font-normal text-[#8290a2]">Optional</span>}<span className="mt-2 block">{children}</span></label>
+  return <label className="block text-sm font-medium">{label}{required ? <span className="ml-1 text-[#2F5D7C]">*</span> : <span className="ml-2 text-xs font-normal text-[#3E4B59]">Optional</span>}<span className="mt-2 block">{children}</span></label>
 }
 
 function CheckLine({ checked, onChange, required, children }: { checked: boolean; onChange: (checked: boolean) => void; required?: boolean; children: React.ReactNode }) {
-  return <label className="flex cursor-pointer items-start gap-3"><input type="checkbox" checked={checked} required={required} onChange={(event) => onChange(event.target.checked)} className="mt-1 size-4 accent-[#0877c9]" /><span>{children}{required ? <span className="ml-1 text-[#0877c9]">*</span> : null}</span></label>
+  return <label className="flex cursor-pointer items-start gap-3"><input type="checkbox" checked={checked} required={required} onChange={(event) => onChange(event.target.checked)} className="mt-1 size-4 accent-[#2F5D7C]" /><span>{children}{required ? <span className="ml-1 text-[#2F5D7C]">*</span> : null}</span></label>
 }
 
 function Summary({ title, rows, onEdit }: { title: string; rows: Array<[string, string]>; onEdit: () => void }) {
-  return <section className="border border-[#d8e4f1] bg-[#fbfdff] p-5"><header className="flex items-center justify-between gap-3 border-b border-[#e1eaf3] pb-3"><h3 className="font-semibold">{title}</h3><button type="button" onClick={onEdit} className="text-xs font-semibold text-[#0877c9]">Edit</button></header><dl className="mt-4 space-y-3">{rows.map(([label, value]) => <div key={label}><dt className="text-[0.67rem] font-semibold tracking-[0.1em] text-[#7a899c] uppercase">{label}</dt><dd className="mt-1 whitespace-pre-wrap text-sm leading-5 text-[#263f5c]">{value}</dd></div>)}</dl></section>
+  return <section className="border border-[#B7D0E3] bg-[#B7D0E3]/15 p-5"><header className="flex items-center justify-between gap-3 border-b border-[#B7D0E3] pb-3"><h3 className="font-semibold text-[#0B2742]">{title}</h3><button type="button" onClick={onEdit} className="text-xs font-semibold text-[#2F5D7C]">Edit</button></header><dl className="mt-4 space-y-3">{rows.map(([label, value]) => <div key={label}><dt className="text-[0.67rem] font-semibold tracking-[0.1em] text-[#3E4B59] uppercase">{label}</dt><dd className="mt-1 whitespace-pre-wrap text-sm leading-5 text-[#0B2742]">{value}</dd></div>)}</dl></section>
 }
 
 function Success() {
-  return <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#eff6ff] px-5 py-16 text-[#102746]"><div aria-hidden className="absolute -top-28 -left-28 size-[28rem] rotate-12 bg-white/55 [clip-path:polygon(0_0,100%_0,35%_100%,0_70%)]" /><section className="relative w-full max-w-2xl rounded-[1.5rem] border border-white bg-white/95 px-7 py-14 text-center shadow-[0_25px_80px_-42px_rgba(10,62,111,0.58)] sm:px-14"><span className="mx-auto flex size-16 items-center justify-center rounded-full bg-[#e8f8f1] text-[#167a54]"><CheckCircle2 className="size-8" /></span><div className="mt-8"><HimarkWordmark compact /></div><h1 className="mt-6 text-3xl font-semibold tracking-[-0.04em] sm:text-4xl">Thank you for connecting with HIMARK.</h1><p className="mx-auto mt-4 max-w-xl text-sm leading-7 text-[#5c7089]">We&apos;ve received your enquiry. Our team will review your information and get in touch to discuss the next steps.</p><a href="https://himark.co.za" className="mt-9 inline-flex items-center gap-3 bg-[linear-gradient(100deg,#0965b7,#078bd5)] px-7 py-3.5 text-sm font-semibold tracking-[0.14em] text-white uppercase">Return to HIMARK<ArrowRight className="size-5" /></a></section></main>
+  return <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#F7F6F3] px-5 py-16 text-[#0F1115]"><div aria-hidden className="absolute -top-28 -left-28 size-[28rem] rotate-12 bg-[#B7D0E3]/35 [clip-path:polygon(0_0,100%_0,35%_100%,0_70%)]" /><section className="relative w-full max-w-2xl rounded-[1.5rem] border border-[#B7D0E3] bg-[#F7F6F3]/95 px-7 py-14 text-center shadow-[0_25px_80px_-42px_rgba(11,39,66,0.46)] sm:px-14"><span className="mx-auto flex size-16 items-center justify-center rounded-full bg-[#B7D0E3]/45 text-[#2F5D7C]"><CheckCircle2 className="size-8" /></span><div className="mt-8"><HimarkWordmark compact /></div><h1 className="mt-6 text-3xl font-semibold tracking-[-0.04em] text-[#0B2742] sm:text-4xl">Thank you for connecting with HIMARK.</h1><p className="mx-auto mt-4 max-w-xl text-sm leading-7 text-[#3E4B59]">We&apos;ve received your enquiry. Our team will review your information and get in touch to discuss the next steps.</p><a href="https://himark.co.za" className="mt-9 inline-flex items-center gap-3 bg-[linear-gradient(100deg,#0B2742,#2F5D7C)] px-7 py-3.5 text-sm font-semibold tracking-[0.14em] text-[#F7F6F3] uppercase">Return to HIMARK<ArrowRight className="size-5" /></a></section></main>
 }
 
 function updateDetail<K extends keyof Details>(setter: React.Dispatch<React.SetStateAction<Details>>, key: K, value: Details[K]) {
