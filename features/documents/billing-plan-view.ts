@@ -12,7 +12,11 @@ export type PlanTone = 'waiting' | 'attention' | 'done' | 'muted'
 /** What the database holds of one month of a plan. `billOn` is a date (YYYY-MM-DD); `approvedAt` is a time, or null. */
 export type PlanItemFacts = { kind: PlanItemKind; monthNumber: number; billOn: string; status: 'open' | 'cancelled'; approvedAt: string | null }
 export type PlanItemInvoice = { id: string; number: string; status: string }
-export type BillingPlanItemView = PlanItemFacts & { id: string; invoice: PlanItemInvoice | null }
+/** Why the runner is holding a month for a person (accept to invoice, stage 2): the codes of billing_plan_items.attention_code. */
+export type PlanAttention = { code: 'CHECKS_FAILED' | 'CATCH_UP' | 'EMAIL_FAILED'; detail: string | null }
+/** What the panel knows of automatic sending for one month. With `enabled` false every Stage 1 label is unchanged. */
+export type PlanAutoFacts = { enabled: boolean; attention: PlanAttention | null; systemIssued: boolean }
+export type BillingPlanItemView = PlanItemFacts & { id: string; invoice: PlanItemInvoice | null; attention: PlanAttention | null; systemIssued: boolean }
 
 /** What the panel shows. `blockers` and `emailed` are only worked out when they can matter (see getBillingPlan). */
 export type BillingPlanView = {
@@ -23,6 +27,8 @@ export type BillingPlanView = {
   /** An email for the first invoice is on record, so the mail server accepted it. */
   emailed: boolean
   canManage: boolean
+  /** Automatic sending is on for the organisation (billing_auto_send_enabled and billing plans on). */
+  autoSend: boolean
 }
 
 /** The sentences the panel and the actions say. One place, so the wording cannot drift between them. */
@@ -32,6 +38,7 @@ export const BILLING_PLAN_COPY = {
   // not what has been done, and it speaks of later months only when the plan has some.
   descriptionFirstInvoice: 'Approve and email the first invoice here.',
   descriptionLaterMonths: 'Later months are made here and issued by hand; none is sent automatically yet.',
+  descriptionLaterMonthsAuto: 'Later months are issued and emailed automatically.',
   approveLabel: 'Approve and send',
   approvePendingLabel: 'Approving\u2026',
   approveConfirm: 'Approve this invoice and email it to the client? It gets its number now and can no longer be edited.',
@@ -56,9 +63,10 @@ export const BILLING_PLAN_COPY = {
  * agreement has a monthly item for each later month, so it adds how those are handled. It does not depend on the plan's state or on
  * whether the first invoice has been approved: it says what can be done here, which stays true.
  */
-export function billingPlanDescription(items: ReadonlyArray<{ kind: PlanItemKind }>): string {
+export function billingPlanDescription(items: ReadonlyArray<{ kind: PlanItemKind }>, autoSend = false): string {
   const laterMonths = items.some((item) => item.kind === 'monthly')
-  return laterMonths ? `${BILLING_PLAN_COPY.descriptionFirstInvoice} ${BILLING_PLAN_COPY.descriptionLaterMonths}` : BILLING_PLAN_COPY.descriptionFirstInvoice
+  if (!laterMonths) return BILLING_PLAN_COPY.descriptionFirstInvoice
+  return `${BILLING_PLAN_COPY.descriptionFirstInvoice} ${autoSend ? BILLING_PLAN_COPY.descriptionLaterMonthsAuto : BILLING_PLAN_COPY.descriptionLaterMonths}`
 }
 
 /** The three plan controls: the words on each, and whether a reason is required. Ending asks first, because it cannot be undone. */
@@ -122,16 +130,21 @@ function isDue(billOn: string, today: string): boolean {
  * is due, with no invoice, is not a prompt to invoice while the first invoice has not been approved (`firstApproved` false): it waits,
  * because no monthly invoice goes out before the first one is approved. `firstApproved` is true when it is left out.
  */
-export function describePlanItem(item: PlanItemFacts, invoice: PlanItemInvoice | null, today: string, planStatus: PlanStatus = 'active', firstApproved = true): { label: string; tone: PlanTone } {
+export function describePlanItem(item: PlanItemFacts, invoice: PlanItemInvoice | null, today: string, planStatus: PlanStatus = 'active', firstApproved = true, auto?: PlanAutoFacts): { label: string; tone: PlanTone } {
   if (item.status === 'cancelled') return { label: 'Cancelled', tone: 'muted' }
+  if (auto?.enabled && auto.attention && item.kind === 'monthly') {
+    const held = describeHeldMonth(auto.attention, invoice)
+    if (held) return held
+  }
   if (!invoice) {
     if (item.kind === 'first') return { label: 'Draft invoice not made yet', tone: 'attention' }
     if (isDue(item.billOn, today)) {
       if (!firstApproved) return { label: 'Waiting for the first invoice to be approved', tone: 'waiting' }
-      return { label: "Due: create this month's invoice", tone: 'attention' }
+      return auto?.enabled ? { label: 'Due: being issued automatically', tone: 'waiting' } : { label: "Due: create this month's invoice", tone: 'attention' }
     }
     if (!isRealDay(item.billOn)) return { label: 'Scheduled', tone: 'muted' }
-    return { label: `Scheduled for ${formatDocumentDate(item.billOn) ?? item.billOn}`, tone: 'muted' }
+    const when = formatDocumentDate(item.billOn) ?? item.billOn
+    return auto?.enabled ? { label: `Will be issued and emailed on ${when}`, tone: 'muted' } : { label: `Scheduled for ${when}`, tone: 'muted' }
   }
   switch (invoice.status) {
     case 'Draft':
@@ -140,6 +153,7 @@ export function describePlanItem(item: PlanItemFacts, invoice: PlanItemInvoice |
     case 'Issued':
     case 'Partially Paid':
     case 'Overdue':
+      if (auto?.enabled && auto.systemIssued && invoice.status === 'Issued') return { label: `Issued automatically: ${invoice.number}`, tone: 'done' }
       return { label: `Invoiced: ${invoice.number}, ${invoice.status}`, tone: 'done' }
     case 'Paid':
       return { label: 'Paid', tone: 'done' }
@@ -148,6 +162,24 @@ export function describePlanItem(item: PlanItemFacts, invoice: PlanItemInvoice |
     default:
       return { label: `Invoice ${invoice.number}, ${invoice.status}`, tone: 'muted' }
   }
+}
+
+/**
+ * What to say about a month the runner is holding for a person, or null when its state says nothing more than the invoice does. Only
+ * used while automatic sending is on. A held month never says "paid": it is waiting for a person.
+ */
+function describeHeldMonth(attention: PlanAttention, invoice: PlanItemInvoice | null): { label: string; tone: PlanTone } | null {
+  if (attention.code === 'CATCH_UP' && (!invoice || invoice.status === 'Draft')) {
+    return { label: 'Held for your check: more than one month is due. Issue and email it yourself.', tone: 'attention' }
+  }
+  if (attention.code === 'CHECKS_FAILED' && (!invoice || invoice.status === 'Draft')) {
+    const first = (attention.detail ?? '').split(',')[0]?.trim() ?? ''
+    return { label: `Held: ${blockerSentence(first)}`, tone: 'attention' }
+  }
+  if (attention.code === 'EMAIL_FAILED' && invoice && invoice.status !== 'Draft' && invoice.status !== 'Cancelled') {
+    return { label: 'Issued, email not sent. Send it from the invoice.', tone: 'attention' }
+  }
+  return null
 }
 
 /**

@@ -315,7 +315,7 @@ test('the panel shows the status line and the agreement sentence without a month
 
 test('the table gives each month its label from describePlanItem and a link to its invoice', () => {
   const source = panel()
-  assert.match(source, /describePlanItem\(item, item\.invoice, today, view\.plan\.status, firstApproved\)/, 'a paused or ended plan, and a first invoice not yet approved, are told to the label')
+  assert.match(source, /describePlanItem\(item, item\.invoice, today, view\.plan\.status, firstApproved, \{ enabled: view\.autoSend, attention: item\.attention, systemIssued: item\.systemIssued \}\)/, 'a paused or ended plan, and a first invoice not yet approved, are told to the label')
   assert.match(source, /href=\{`\$\{DOCUMENTS\.invoice\.base\}\/\$\{item\.invoice\.id\}`\}/)
   assert.match(source, /isDraftReference\(item\.invoice\.number\) \? 'Draft invoice' : item\.invoice\.number/)
   assert.match(source, /formatDocumentDate\(item\.billOn\)/)
@@ -323,7 +323,7 @@ test('the table gives each month its label from describePlanItem and a link to i
 
 test('the panel intro comes from the plan items, so it is true on a once-off quote and after approval', () => {
   const source = panel()
-  assert.match(source, /description=\{billingPlanDescription\(view\.items\)\}/)
+  assert.match(source, /description=\{billingPlanDescription\(view\.items, view\.autoSend\)\}/)
   assert.doesNotMatch(source, /BILLING_PLAN_COPY\.description/, 'no fixed sentence')
   assert.doesNotMatch(source, /approved and emailed here|Monthly invoices are made here/)
   assert.match(view(), /export function billingPlanDescription\(/)

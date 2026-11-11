@@ -42,8 +42,8 @@ export function BillingPlansSwitch({ enabled, canEdit }: { enabled: boolean; can
           </label>
           <p id={helpId} className="text-sm text-muted-foreground">
             When on, a quote accepted on the client portal moves its sales record to Won, gets a billing plan and a draft first invoice,
-            and the owner is told. An owner or admin approves the first invoice before it is emailed. Monthly invoices are not sent
-            automatically yet: create each month&apos;s invoice from the quote page.
+            and the owner is told. An owner or admin approves the first invoice before it is emailed. Monthly invoices are sent
+            automatically only when automatic sending is switched on below.
           </p>
         </fieldset>
       </FormSection>

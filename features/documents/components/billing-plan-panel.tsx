@@ -40,7 +40,7 @@ export async function BillingPlanPanel({ quoteId }: { quoteId: string }) {
   return (
     <WorkspaceSection
       title={BILLING_PLAN_COPY.title}
-      description={billingPlanDescription(view.items)}
+      description={billingPlanDescription(view.items, view.autoSend)}
     >
       <div className="space-y-1 border-b border-border px-5 py-4 text-sm">
         <p className={`min-w-0 break-words font-medium ${STATUS_TEXT[planStatusTone(view.plan.status)]}`}>{planStatusLine(view.plan)}</p>
@@ -96,7 +96,7 @@ export async function BillingPlanPanel({ quoteId }: { quoteId: string }) {
           </thead>
           <tbody className="block divide-y divide-border md:table-row-group">
             {view.items.map((item) => {
-              const described = describePlanItem(item, item.invoice, today, view.plan.status, firstApproved)
+              const described = describePlanItem(item, item.invoice, today, view.plan.status, firstApproved, { enabled: view.autoSend, attention: item.attention, systemIssued: item.systemIssued })
               return (
                 <tr key={item.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 px-5 py-3 md:table-row">
                   <td className="text-foreground md:px-5 md:py-3">

@@ -17,7 +17,7 @@ const folded = (source: string) => source.replace(/&apos;/g, "'").replace(/\s+/g
 const SUCCESS_ON = 'Billing plans switched on. A quote accepted on the portal now gets a billing plan and a draft first invoice for approval.'
 const SUCCESS_OFF = 'Billing plans switched off. Nothing new is created and nothing more is approved; existing plans stay on their quotes.'
 const EXPLANATION =
-  "When on, a quote accepted on the client portal moves its sales record to Won, gets a billing plan and a draft first invoice, and the owner is told. An owner or admin approves the first invoice before it is emailed. Monthly invoices are not sent automatically yet: create each month's invoice from the quote page."
+  "When on, a quote accepted on the client portal moves its sales record to Won, gets a billing plan and a draft first invoice, and the owner is told. An owner or admin approves the first invoice before it is emailed. Monthly invoices are sent automatically only when automatic sending is switched on below."
 
 test('the switch action is a server-action module with one exported async function and nothing else', () => {
   const source = action()
@@ -93,8 +93,8 @@ test('the settings page renders the billing switch after the portal switch and p
   assert.match(source, /<BillingPlansSwitch enabled=\{settings\?\.billing_plans_enabled \?\? false\} canEdit=\{canEdit\} \/>/)
   assert.match(
     source,
-    /return \(\s*<>\s*<CompanyDetailsForm [^>]*\/>\s*<QuotePortalSwitch [^>]*\/>\s*<BillingPlansSwitch [^>]*\/>\s*<\/>\s*\)/,
-    'all three are children of one fragment',
+    /return \(\s*<>\s*<CompanyDetailsForm [^>]*\/>\s*<QuotePortalSwitch [^>]*\/>\s*<BillingPlansSwitch [^>]*\/>\s*<BillingAutoSendSwitch [^>]*\/>\s*<\/>\s*\)/,
+    'all four are children of one fragment',
   )
   assert.match(source, /<QuotePortalSwitch enabled=\{settings\?\.quote_portal_enabled \?\? false\} canEdit=\{canEdit\} \/>/, 'the portal switch is wired as before')
   assert.match(source, /<CompanyDetailsForm settings=\{settings\} canEdit=\{canEdit\} termsManaged=\{managed\} \/>/, 'the company form is wired as before')
@@ -137,11 +137,11 @@ test('the switch is one labelled checkbox named enabled, described by its explan
   assert.match(source, /!canEdit \? \(\s*<p role="note"[^>]*>\s*Only an owner or admin can change this\.\s*<\/p>\s*\) : null/, 'the same note the company form uses')
 })
 
-test('the explanation says what the switch does and, honestly, what is still done by hand', () => {
+test('the explanation says what the switch does and, honestly, when monthly invoices are automatic', () => {
   const source = folded(component())
   assert.ok(source.includes(EXPLANATION), 'the sentences from the brief, word for word')
   assert.match(source, /An owner or admin approves the first invoice before it is emailed\./, 'the first invoice is approved, not sent on its own')
-  assert.match(source, /Monthly invoices are not sent automatically yet: create each month's invoice from the quote page\./, 'monthly invoices are still made by hand')
+  assert.match(source, /Monthly invoices are sent automatically only when automatic sending is switched on below\./, 'monthly invoices are automatic only with the second switch')
   assert.doesNotMatch(source, /kill switch/i, 'plain, calm language')
 })
 

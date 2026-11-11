@@ -35,6 +35,8 @@ export type CompanySettings = {
   quote_portal_enabled?: boolean
   /** The billing plans switch (default false): when on, a quote accepted on the portal gets a billing plan and a draft first invoice. Anything but true is off. */
   billing_plans_enabled?: boolean
+  /** The automatic sending switch (default false): when on, the runner issues and emails each later month of an approved plan on its date. Anything but true is off. */
+  billing_auto_send_enabled?: boolean
 }
 
 export type DocumentLine = {

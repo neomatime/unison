@@ -32,7 +32,7 @@ export async function getBillingPlan(quoteId: string): Promise<BillingPlanView |
 
   const itemRows = await db
     .from('billing_plan_items')
-    .select('id,kind,month_number,bill_on,status,approved_at')
+    .select('id,kind,month_number,bill_on,status,approved_at,system_issued_at,attention_code,attention_detail')
     .eq('plan_id', planRow.id)
     .eq('organization_id', organization.id)
     .order('month_number')
@@ -61,7 +61,18 @@ export async function getBillingPlan(quoteId: string): Promise<BillingPlanView |
     status: row.status,
     approvedAt: row.approved_at ?? null,
     invoice: invoiceByItem.get(row.id) ?? null,
+    attention: row.attention_code ? { code: row.attention_code, detail: row.attention_detail ?? null } : null,
+    systemIssued: Boolean(row.system_issued_at),
   }))
+
+  // Automatic sending (accept to invoice, stage 2) is on only when both switches are: the runner needs both.
+  const settings = await db
+    .from('organization_settings')
+    .select('billing_plans_enabled,billing_auto_send_enabled')
+    .eq('organization_id', organization.id)
+    .maybeSingle()
+  if (settings.error) throw settings.error
+  const autoSend = settings.data?.billing_plans_enabled === true && settings.data?.billing_auto_send_enabled === true
 
   const firstItem = items.find((item) => item.kind === 'first')
   let blockers: string[] = []
@@ -95,5 +106,6 @@ export async function getBillingPlan(quoteId: string): Promise<BillingPlanView |
     blockers,
     emailed,
     canManage: roleHasPermission(role, 'company.manage'),
+    autoSend,
   }
 }
