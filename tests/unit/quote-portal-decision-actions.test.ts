@@ -352,6 +352,7 @@ test('portal-client still holds the service role, and every service-role file re
   assert.ok(pinned, 'the boundary test pins its allowlist by value')
   assert.deepEqual([...pinned.matchAll(/'([^']+)'/g)].map((match) => match[1]), [
     'app/api/integrations/website-leads/route.ts',
+    'features/billing-runner/run-billing.ts',
     'features/internal-provisioning/actions/provision-organization.ts',
     'features/prospect-engagement/public-data.ts',
     'lib/invitations/create-invited-account.ts',
