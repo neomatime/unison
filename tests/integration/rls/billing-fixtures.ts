@@ -45,6 +45,17 @@ export type BillingOrg = PortalOrg & {
   approvedPlan(options?: BillingQuoteOptions): Promise<{ quoteId: string; planId: string; items: Array<{ id: string; monthNumber: number }>; firstInvoiceId: string }>
   /** Moves a month's date to the South African today, as the service role, so it is due. */
   dueMonth(planId: string, monthNumber: number): Promise<void>
+  /** Switches billing_reminders_enabled (accept to invoice, stage 3) as the service role. */
+  setReminders(enabled: boolean): Promise<void>
+  /**
+   * A plan invoice that is out: an approved plan (approvedPlan), month 2 made due and issued with the real billing_run_item. Reminders are
+   * not switched on here (setReminders does that), so a test chooses when the switch's time is stamped.
+   */
+  issuedPlanInvoice(options?: BillingQuoteOptions): Promise<{ quoteId: string; planId: string; itemId: string; invoiceId: string }>
+  /** Sets an issued invoice's due date so that the South African today is `daysPastDue` days after it, as the service role. */
+  agePast(invoiceId: string, daysPastDue: number): Promise<void>
+  /** A recorded payment through the real record_payment, made by a member (the organisation's sender). */
+  payInvoice(invoiceId: string, amount: number): Promise<void>
 }
 
 const DEFAULT_LINES: BillingLine[] = [
@@ -147,6 +158,35 @@ export async function setupBillingOrg(label: string, options: { billing?: boolea
       assert.equal((await admin.from('billing_plan_items').update({ bill_on: today }).eq('plan_id', planId).eq('month_number', monthNumber)).error, null)
     }
 
+    const setReminders = async (enabled: boolean) =>
+      assert.equal((await admin.from('organization_settings').update({ billing_reminders_enabled: enabled }).eq('organization_id', base.orgId)).error, null)
+
+    const issuedPlanInvoice = async (quoteOptions: BillingQuoteOptions = {}) => {
+      const plan = await approvedPlan(quoteOptions)
+      await dueMonth(plan.planId, 2)
+      const itemId = plan.items.find((entry) => entry.monthNumber === 2)!.id
+      const ran = await admin.rpc('billing_run_item', { p_item_id: itemId, p_email_cap: 50 })
+      assert.equal(ran.error, null, `billing_run_item: ${ran.error?.message}`)
+      assert.equal((ran.data as Record<string, any>).state, 'issued', `month 2 was issued: ${JSON.stringify(ran.data)}`)
+      return { quoteId: plan.quoteId, planId: plan.planId, itemId, invoiceId: (ran.data as Record<string, any>).invoice_id as string }
+    }
+
+    const agePast = async (invoiceId: string, daysPastDue: number) => {
+      const day = (offset: number) => {
+        const date = new Date(`${new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Johannesburg', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())}T00:00:00Z`)
+        date.setUTCDate(date.getUTCDate() + offset)
+        return date.toISOString().slice(0, 10)
+      }
+      const aged = await admin.from('invoices').update({ issue_date: day(-daysPastDue - 1), due_date: day(-daysPastDue) }).eq('id', invoiceId)
+      assert.equal(aged.error, null, `agePast: ${aged.error?.message}`)
+    }
+
+    const payInvoice = async (invoiceId: string, amount: number) => {
+      const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Johannesburg', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
+      const paid = await base.sender.client.rpc('record_payment', { p_invoice: invoiceId, p_amount: amount, p_received_on: today, p_method: 'Bank transfer', p_reference: 'FIXTURE' })
+      assert.equal(paid.error, null, `record_payment: ${paid.error?.message}`)
+    }
+
     const teardown = async () => {
       try {
         await base.teardown()
@@ -156,7 +196,7 @@ export async function setupBillingOrg(label: string, options: { billing?: boolea
     }
 
     if (billing) await setBilling(true)
-    return { ...base, setBilling, sentBillingQuote, acceptedOnPortal, setAutoSend, approvedPlan, dueMonth, teardown }
+    return { ...base, setBilling, sentBillingQuote, acceptedOnPortal, setAutoSend, approvedPlan, dueMonth, setReminders, issuedPlanInvoice, agePast, payInvoice, teardown }
   } catch (error) {
     // The caller never receives a teardown when setup fails part way, so what was made is removed here.
     await base.teardown().catch(() => {})

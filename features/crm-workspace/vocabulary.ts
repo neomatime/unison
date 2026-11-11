@@ -31,6 +31,10 @@ export const SYSTEM_ACTIVITY_KINDS = [
   'prospect.engagement_submitted',
   'billing.invoice_auto_issued',
   'billing.item_held',
+  'invoice.reminder_sent',
+  'billing.reminders_changed',
+  'billing.onboarding_created',
+  'billing.readiness_overridden',
 ] as const
 
 /** Matches sales_opportunities_stage_check. */
@@ -68,4 +72,8 @@ export const ACTIVITY_LABELS: Record<string, string> = {
   'prospect.engagement_submitted': 'Prospect enquiry received',
   'billing.invoice_auto_issued': 'Invoice issued automatically',
   'billing.item_held': 'Month held',
+  'invoice.reminder_sent': 'Payment reminder sent',
+  'billing.reminders_changed': 'Reminders changed',
+  'billing.onboarding_created': 'Onboarding started',
+  'billing.readiness_overridden': 'Start decision',
 }
