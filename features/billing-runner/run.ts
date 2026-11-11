@@ -7,6 +7,8 @@
 // billing_record_send, billing_record_send_failure), under row locks. This file walks what it is told, in order, and keeps going
 // when one item fails. Its log lines carry item ids and database error codes only: never an address, a message or an invoice body.
 
+import { runReminders, type ReminderDeps } from './reminders.ts'
+
 export type SendContext = {
   state: 'ready' | 'busy' | 'skipped'
   invoice_id: string
@@ -35,16 +37,18 @@ export type RunDeps = {
   send(message: OutgoingMessage, attachment: OutgoingAttachment): Promise<{ delivered: boolean }>
   /** Sends one billing notice email. */
   sendNotice(notice: { id: string; to: string; subject: string; body: string; quoteId: string | null }): Promise<{ delivered: boolean }>
+  /** Loads an invoice, makes its PDF and the payment reminder message (accept to invoice, stage 3). */
+  prepareReminder: ReminderDeps['prepareReminder']
 }
 
-export type RunSummary = { issued: number; sent: number; held: number; capped: number; failed: number; skipped: number; logged: number; notices: number }
+export type RunSummary = { issued: number; sent: number; held: number; capped: number; failed: number; skipped: number; logged: number; notices: number; reminders: number }
 
 /** A database error as far as a log line repeats it: its code, never its message (which can quote data). */
 const code = (error: { code?: unknown } | null | undefined) => (typeof error?.code === 'string' ? error.code : 'unknown')
 
 export async function runBilling(deps: RunDeps): Promise<RunSummary> {
   const { db } = deps
-  const summary: RunSummary = { issued: 0, sent: 0, held: 0, capped: 0, failed: 0, skipped: 0, logged: 0, notices: 0 }
+  const summary: RunSummary = { issued: 0, sent: 0, held: 0, capped: 0, failed: 0, skipped: 0, logged: 0, notices: 0, reminders: 0 }
 
   const due = await db.rpc('billing_due_items', { p_limit: deps.maxItems })
   if (due.error) throw new Error(`billing_due_items failed (${code(due.error)})`)
@@ -74,6 +78,8 @@ export async function runBilling(deps: RunDeps): Promise<RunSummary> {
   }
 
   await sendNotices(deps, summary)
+  // Payment reminders last: the months and the notices are done before a problem here can stop the run.
+  await runReminders({ db, maxItems: deps.maxItems, prepareReminder: deps.prepareReminder, send: deps.send }, summary)
   return summary
 }
 

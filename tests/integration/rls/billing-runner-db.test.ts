@@ -34,6 +34,8 @@ const scopedDb = {
       return { ...listed, data: ((listed.data ?? []) as Array<{ item_id: string }>).filter((row) => mine.has(row.item_id)) }
     }
     if (name === 'billing_pending_notice_emails') return { data: [], error: null }
+    // Payment reminders (stage 3) are tested in billing-reminders-db.test.ts: none of this fixture's runs may touch a real invoice's.
+    if (name === 'billing_reminder_candidates') return { data: [], error: null }
     return admin.rpc(name, args as never)
   },
 }
@@ -57,6 +59,7 @@ const deps = (): RunDeps => ({
     return { delivered: true }
   },
   sendNotice: async () => ({ delivered: true }),
+  prepareReminder: async () => ({ error: 'PDF_FAILED' }),
 })
 
 test('a run issues a due month, sends and records it once, and a second run does nothing', async () => {

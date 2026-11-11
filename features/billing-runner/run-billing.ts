@@ -5,12 +5,14 @@ import { createHash } from 'node:crypto'
 import { sendEmail } from '@/lib/email/send-email'
 import { readAppUrl } from '@/lib/env'
 import { createAdminSupabase } from '@/lib/supabase/admin'
+import { reminderEmail } from '../documents/billing-reminder-copy'
 import { monthlyInvoiceEmail } from '../documents/billing-run-copy'
-import { buildDocumentView } from '../documents/document-view'
+import { buildDocumentView, formatAmount, formatDocumentDate } from '../documents/document-view'
 import { HOURLY_EMAIL_CAP, MAX_EMAIL_PDF_BYTES } from '../documents/email'
 import { makeDocumentPdf } from '../documents/pdf/make-document-pdf'
 import type { CompanySettings, DocumentLine } from '../documents/types'
 import { noticeEmail } from './notices'
+import type { ReminderContext } from './reminders'
 import { runBilling, type PreparedMonth, type RunDeps, type RunSummary, type SendContext } from './run'
 
 /**
@@ -49,26 +51,52 @@ async function loadInvoiceBundle(db: any, invoiceId: string) {
   }
 }
 
-async function prepare(db: any, input: { invoiceId: string; context: SendContext }): Promise<PreparedMonth | { error: 'PDF_FAILED' | 'NO_ADDRESS' }> {
-  const { invoiceId, context } = input
-  if (!context.to) return { error: 'NO_ADDRESS' }
+/** The invoice's PDF, with the bundle and view it was made from; null when it cannot be made or is too big to email. */
+async function makeInvoicePdf(db: any, invoiceId: string) {
   const bundle = await loadInvoiceBundle(db, invoiceId)
-  if (!bundle) return { error: 'PDF_FAILED' }
+  if (!bundle) return null
   let made: Awaited<ReturnType<typeof makeDocumentPdf>>
   try {
     made = await makeDocumentPdf('invoice', bundle)
   } catch (error) {
     console.error('[billing-runner:pdf]', invoiceId, error instanceof Error ? error.name : 'unknown error')
-    return { error: 'PDF_FAILED' }
+    return null
   }
-  if (made.bytes.length > MAX_EMAIL_PDF_BYTES) return { error: 'PDF_FAILED' }
+  if (made.bytes.length > MAX_EMAIL_PDF_BYTES) return null
+  return { bundle, made, view: buildDocumentView({ kind: 'invoice', ...bundle }) }
+}
 
-  const view = buildDocumentView({ kind: 'invoice', ...bundle })
-  const email = monthlyInvoiceEmail(view, { monthNumber: context.month_number, termMonths: context.term_months, senderName: context.sender_name ?? view.from.name ?? 'HIMARK' })
+async function prepare(db: any, input: { invoiceId: string; context: SendContext }): Promise<PreparedMonth | { error: 'PDF_FAILED' | 'NO_ADDRESS' }> {
+  const { invoiceId, context } = input
+  if (!context.to) return { error: 'NO_ADDRESS' }
+  const pdf = await makeInvoicePdf(db, invoiceId)
+  if (!pdf) return { error: 'PDF_FAILED' }
+  const email = monthlyInvoiceEmail(pdf.view, { monthNumber: context.month_number, termMonths: context.term_months, senderName: context.sender_name ?? pdf.view.from.name ?? 'HIMARK' })
   return {
     message: { to: context.to, replyTo: context.reply_to ?? undefined, subject: email.subject, text: email.text, html: email.html },
-    attachment: { filename: made.filename, bytes: made.bytes },
-    sha256: createHash('sha256').update(made.bytes).digest('hex'),
+    attachment: { filename: pdf.made.filename, bytes: pdf.made.bytes },
+    sha256: createHash('sha256').update(pdf.made.bytes).digest('hex'),
+  }
+}
+
+/** The payment reminder (accept to invoice, stage 3): the same invoice PDF, attached again, with the reminder wording. */
+async function prepareReminder(db: any, input: { invoiceId: string; context: ReminderContext }): Promise<PreparedMonth | { error: 'PDF_FAILED' | 'NO_ADDRESS' }> {
+  const { invoiceId, context } = input
+  if (!context.to) return { error: 'NO_ADDRESS' }
+  const pdf = await makeInvoicePdf(db, invoiceId)
+  if (!pdf) return { error: 'PDF_FAILED' }
+  const email = reminderEmail(pdf.view, {
+    sequence: context.sequence,
+    total: 5,
+    balance: formatAmount(Number(context.balance)),
+    currency: context.currency,
+    dueDateLabel: formatDocumentDate(context.due_date),
+    senderName: context.sender_name ?? pdf.view.from.name ?? 'HIMARK',
+  })
+  return {
+    message: { to: context.to, replyTo: context.reply_to ?? undefined, subject: email.subject, text: email.text, html: email.html },
+    attachment: { filename: pdf.made.filename, bytes: pdf.made.bytes },
+    sha256: createHash('sha256').update(pdf.made.bytes).digest('hex'),
   }
 }
 
@@ -80,6 +108,7 @@ export async function runBillingNow(): Promise<RunSummary> {
     emailCap: HOURLY_EMAIL_CAP,
     maxItems: 20,
     prepare: (input) => prepare(db, input),
+    prepareReminder: (input) => prepareReminder(db, input),
     send: (message, attachment) =>
       sendEmail({
         to: message.to,

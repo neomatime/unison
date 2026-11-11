@@ -45,6 +45,7 @@ function harness(handlers: Record<string, (args: Record<string, any>, n: number)
       notices.push(notice)
       return { delivered: true }
     },
+    prepareReminder: async () => ({ error: 'PDF_FAILED' }),
     ...overrides,
   }
   return { deps, calls, sent, notices, names: () => calls.map((call) => call.name) }
@@ -58,7 +59,7 @@ test('a run issues, then sends, then records, in that order, for each due month'
     billing_record_send: () => 'email-id',
   })
   const summary = await runBilling(h.deps)
-  assert.deepEqual(h.names(), ['billing_due_items', 'billing_run_item', 'billing_send_context', 'billing_record_send', 'billing_pending_notice_emails'])
+  assert.deepEqual(h.names(), ['billing_due_items', 'billing_run_item', 'billing_send_context', 'billing_record_send', 'billing_pending_notice_emails', 'billing_reminder_candidates'])
   assert.deepEqual(h.calls[0].args, { p_limit: 20 })
   assert.deepEqual(h.calls[1].args, { p_item_id: ITEM, p_email_cap: 50 })
   assert.equal(h.sent.length, 1)
@@ -196,7 +197,7 @@ test('the summary holds counts only, no address and no invoice number', async ()
     billing_record_send: () => 'email-id',
   })
   const summary = await runBilling(h.deps)
-  assert.deepEqual(Object.keys(summary).sort(), ['capped', 'failed', 'held', 'issued', 'logged', 'notices', 'sent', 'skipped'])
+  assert.deepEqual(Object.keys(summary).sort(), ['capped', 'failed', 'held', 'issued', 'logged', 'notices', 'reminders', 'sent', 'skipped'])
   for (const value of Object.values(summary)) assert.equal(typeof value, 'number')
 })
 
@@ -234,4 +235,38 @@ test('a second run over the same state sends nothing new', async () => {
   await runBilling(h.deps)
   await runBilling(h.deps)
   assert.equal(h.sent.length, 1)
+})
+
+test('payment reminders run after the notices, with the same database and mail server', async () => {
+  const h = harness(
+    {
+      billing_due_items: () => [],
+      billing_reminder_candidates: () => [{ invoice_id: INVOICE, sequence: 1 }],
+      billing_reminder_claim: () => ({ state: 'ready', invoice_id: INVOICE, sequence: 1, to: 'client@example.test', reply_to: 'owner@example.test', sender_name: 'Olive', number: 'HMK-I-1', balance: 1725, currency: 'ZAR', due_date: '2027-01-02', month_number: 2 }),
+      billing_reminder_record: () => 'row-id',
+    },
+    {
+      prepareReminder: async ({ context }) => ({
+        message: { to: context.to as string, replyTo: context.reply_to ?? undefined, subject: 'Reminder', text: 'text', html: '<p>h</p>' },
+        attachment: { filename: 'invoice.pdf', bytes: new Uint8Array([1, 2, 3]) },
+        sha256: 'd'.repeat(64),
+      }),
+    },
+  )
+  const summary = await runBilling(h.deps)
+  assert.deepEqual(h.names(), ['billing_due_items', 'billing_pending_notice_emails', 'billing_reminder_candidates', 'billing_reminder_claim', 'billing_reminder_record'])
+  assert.equal(h.sent.length, 1)
+  assert.equal(h.sent[0].subject, 'Reminder')
+  assert.equal(summary.reminders, 1)
+})
+
+test('a reminders step that cannot read its list stops the run after the months and notices were done', async () => {
+  const h = harness({
+    billing_due_items: () => [{ item_id: ITEM, step: 'send' }],
+    billing_send_context: () => READY,
+    billing_record_send: () => 'email-id',
+    billing_reminder_candidates: () => ({ data: null, error: { code: '42883', message: 'function does not exist' } }),
+  })
+  await assert.rejects(() => runBilling(h.deps), /billing_reminder_candidates failed \(42883\)/)
+  assert.equal(h.sent.length, 1, 'the month was still sent before the reminders step failed')
 })

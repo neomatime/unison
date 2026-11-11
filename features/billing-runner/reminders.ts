@@ -15,7 +15,8 @@ export type ReminderContext = {
   reply_to: string | null
   sender_name: string | null
   number: string
-  balance: string
+  /** What is still owing, as the database holds it (a number). */
+  balance: number | string
   currency: string
   due_date: string | null
   month_number: number | null
