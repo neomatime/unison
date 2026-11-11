@@ -64,3 +64,9 @@ test('the HTML escapes names with markup characters and carries the same facts',
 test('a view without a number is refused', () => {
   assert.throws(() => monthlyInvoiceEmail(view({ number: null }), { monthNumber: 3, termMonths: 12, senderName: 'Olive' }), /number/i)
 })
+
+test('when the sender is the company itself its name is not printed twice', () => {
+  const { text } = monthlyInvoiceEmail(view(), { monthNumber: 3, termMonths: 12, senderName: 'HIMARK (Pty) Ltd' })
+  assert.equal(text.split('HIMARK (Pty) Ltd').length - 1, 2, 'once in the bank details and once in the sign-off')
+  assert.ok(text.endsWith('Kind regards,\nHIMARK (Pty) Ltd'), 'the sign-off is the company once')
+})

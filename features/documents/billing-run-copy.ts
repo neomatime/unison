@@ -25,7 +25,8 @@ export function monthlyInvoiceEmail(
     for (const field of view.bank) lines.push(`${field.label}: ${field.value}`)
   }
   lines.push('', `Please use ${view.number} as your payment reference.`, '', 'Kind regards,', input.senderName)
-  if (company) lines.push(company)
+  // When the sender is the company itself (the quote's owner has no name on file) its name is printed once.
+  if (company && company !== input.senderName) lines.push(company)
   const text = lines.join('\n')
   return { subject, text, html: emailHtml(text) }
 }
