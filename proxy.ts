@@ -30,6 +30,9 @@ const AUTH_EXEMPT = [
   // The client quote portal. The link token in the address is the credential and there is no browser session to
   // look for; the page and its PDF check the token themselves. Exact prefix only: /q and what sits under /q/.
   '/q',
+  // The billing runner (accept to invoice, stage 2). The host's cron has no browser session; the route checks its own shared
+  // secret and accepts nothing else. Exact prefix only.
+  '/api/billing/run',
 ]
 
 // A plain startsWith would also match e.g. /auth/callback-admin or

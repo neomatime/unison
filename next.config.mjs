@@ -18,6 +18,8 @@ const nextConfig = {
     // The client's PDF download in the quote portal.
     '/q/\\[token\\]/pdf': ['./public/brand/**/*'],
     '/api/acquisition/links/\\[linkId\\]/card': ['./public/brand/**/*'],
+    // The billing runner makes the monthly invoice PDFs.
+    '/api/billing/run': ['./public/brand/**/*'],
   },
   // The quote portal is public and its address is its credential. These keep that address out of caches, search
   // indexes, referrer headers and frames. "/q/:path*" matches /q as well as everything under it.

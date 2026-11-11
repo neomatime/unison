@@ -69,6 +69,9 @@ export const SERVICE_ROLE_REQUEST_PATHS = [
   // The quote portal has no session: the link token is the credential, and its functions are granted to service_role
   // only so the database API cannot be called with the public key.
   'lib/quote-portal/portal-client.ts',
+  // The monthly invoice runner has no session: the host's cron calls it with a shared secret. It issues and emails only what the
+  // database has already chosen, through functions granted to the service role alone, so RLS has no user to scope to.
+  'features/billing-runner/run-billing.ts',
 ]
 
 test('only allowlisted request paths import the service-role client', () => {
@@ -94,6 +97,7 @@ test('the allowlist is exactly the known request-path callers', () => {
   // must be argued for here, next to the reasons the existing entries carry.
   assert.deepEqual([...SERVICE_ROLE_REQUEST_PATHS].sort(), [
     'app/api/integrations/website-leads/route.ts',
+    'features/billing-runner/run-billing.ts',
     'features/internal-provisioning/actions/provision-organization.ts',
     'features/prospect-engagement/public-data.ts',
     'lib/invitations/create-invited-account.ts',
