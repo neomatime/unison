@@ -29,6 +29,8 @@ export const SYSTEM_ACTIVITY_KINDS = [
   'billing.invoice_approved',
   'billing.plan_changed',
   'prospect.engagement_submitted',
+  'billing.invoice_auto_issued',
+  'billing.item_held',
 ] as const
 
 /** Matches sales_opportunities_stage_check. */
@@ -64,4 +66,6 @@ export const ACTIVITY_LABELS: Record<string, string> = {
   'billing.invoice_approved': 'Invoice approved',
   'billing.plan_changed': 'Billing plan changed',
   'prospect.engagement_submitted': 'Prospect enquiry received',
+  'billing.invoice_auto_issued': 'Invoice issued automatically',
+  'billing.item_held': 'Month held',
 }

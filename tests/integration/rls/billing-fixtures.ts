@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict'
 
-import { admin } from './helpers.ts'
+import { createHash } from 'node:crypto'
+
+import { admin, cleanup, createFixtureUser, signedInClient } from './helpers.ts'
 import { must, setupPortalOrg, type PortalMember, type PortalOrg } from './portal-fixtures.ts'
 
 // Shared fixtures for the billing plan tests (accept to invoice, stage 1). setupBillingOrg() wraps setupPortalOrg(): the same
@@ -33,6 +35,16 @@ export type BillingOrg = PortalOrg & {
   sentBillingQuote(options?: BillingQuoteOptions): Promise<string>
   /** A link to the quote, a code, and the client's acceptance through portal_decide. Asserts ok. */
   acceptedOnPortal(quoteId: string): Promise<{ responseId: string; linkId: string }>
+  /** Switches billing_auto_send_enabled (accept to invoice, stage 2) as the service role. */
+  setAutoSend(enabled: boolean): Promise<void>
+  /**
+   * A plan the runner may work on: both switches on, a quote with terms sent and accepted on the portal, item 1 approved by an owner
+   * through the real approve_first_invoice and its email recorded through the service role (as record_document_email would for a
+   * signed-in sender), so every later month is eligible once its date comes.
+   */
+  approvedPlan(options?: BillingQuoteOptions): Promise<{ quoteId: string; planId: string; items: Array<{ id: string; monthNumber: number }>; firstInvoiceId: string }>
+  /** Moves a month's date to the South African today, as the service role, so it is due. */
+  dueMonth(planId: string, monthNumber: number): Promise<void>
 }
 
 const DEFAULT_LINES: BillingLine[] = [
@@ -101,8 +113,50 @@ export async function setupBillingOrg(label: string, options: { billing?: boolea
       return { responseId: response.id as string, linkId: link.id }
     }
 
+    const setAutoSend = async (enabled: boolean) =>
+      assert.equal((await admin.from('organization_settings').update({ billing_auto_send_enabled: enabled }).eq('organization_id', base.orgId)).error, null)
+
+    // An owner login for approve_first_invoice, made when the first plan needs one and removed with the organisation.
+    const extraUsers: string[] = []
+    let approver: Awaited<ReturnType<typeof signedInClient>> | null = null
+    const approvedPlan = async (quoteOptions: BillingQuoteOptions = {}) => {
+      await setBilling(true)
+      await setAutoSend(true)
+      const quoteId = await sentBillingQuote(quoteOptions)
+      await acceptedOnPortal(quoteId)
+      const plan = must(await admin.from('billing_plans').select('id').eq('quote_id', quoteId).single())
+      const items = must(await admin.from('billing_plan_items').select('id,month_number').eq('quote_id', quoteId).order('month_number'))
+      if (!approver) {
+        const user = await createFixtureUser(base.orgId, 'owner')
+        extraUsers.push(user.id)
+        approver = await signedInClient(user.email, user.password)
+      }
+      const approved = await approver.rpc('approve_first_invoice', { p_item_id: items[0].id })
+      assert.equal(approved.error, null, `approve_first_invoice: ${approved.error?.message}`)
+      const firstInvoiceId = (approved.data as Record<string, any>).invoice_id as string
+      const recorded = await admin.from('document_emails').insert({
+        organization_id: base.orgId, invoice_id: firstInvoiceId, to_address: 'accounts@portal-client.test', subject: 'First invoice', body: '',
+        pdf_sha256: createHash('sha256').update(firstInvoiceId).digest('hex'), pdf_bytes: 1000, sent_by: null,
+      })
+      assert.equal(recorded.error, null, `document_emails: ${recorded.error?.message}`)
+      return { quoteId, planId: plan.id as string, items: items.map((item) => ({ id: item.id as string, monthNumber: item.month_number as number })), firstInvoiceId }
+    }
+
+    const dueMonth = async (planId: string, monthNumber: number) => {
+      const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Johannesburg', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
+      assert.equal((await admin.from('billing_plan_items').update({ bill_on: today }).eq('plan_id', planId).eq('month_number', monthNumber)).error, null)
+    }
+
+    const teardown = async () => {
+      try {
+        await base.teardown()
+      } finally {
+        await cleanup([], extraUsers)
+      }
+    }
+
     if (billing) await setBilling(true)
-    return { ...base, setBilling, sentBillingQuote, acceptedOnPortal }
+    return { ...base, setBilling, sentBillingQuote, acceptedOnPortal, setAutoSend, approvedPlan, dueMonth, teardown }
   } catch (error) {
     // The caller never receives a teardown when setup fails part way, so what was made is removed here.
     await base.teardown().catch(() => {})
