@@ -28,6 +28,12 @@ export function readWebsiteLeadIngestSecret(source: Source): string {
   return required(source, 'WEBSITE_LEADS_INGEST_SECRET')
 }
 
+// The billing runner's credential (accept to invoice, stage 2): the host's cron sends it as `Authorization: Bearer <secret>`. Read
+// lazily in the route, never at import, and never exposed as NEXT_PUBLIC.
+export function readCronSecret(source: Source): string {
+  return required(source, 'CRON_SECRET')
+}
+
 // Microsoft 365 blocks SMTP AUTH while security defaults are enabled, so mail
 // goes through the Graph API with an OAuth2 client-credentials grant instead of
 // a mailbox password. These are read lazily at send time, never at import: a
