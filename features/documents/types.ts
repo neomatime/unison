@@ -37,6 +37,8 @@ export type CompanySettings = {
   billing_plans_enabled?: boolean
   /** The automatic sending switch (default false): when on, the runner issues and emails each later month of an approved plan on its date. Anything but true is off. */
   billing_auto_send_enabled?: boolean
+  /** The payment reminders switch (default false): when on, an unpaid plan invoice that falls due after it was switched on is reminded. Anything but true is off. */
+  billing_reminders_enabled?: boolean
 }
 
 export type DocumentLine = {

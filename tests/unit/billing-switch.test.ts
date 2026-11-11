@@ -93,8 +93,8 @@ test('the settings page renders the billing switch after the portal switch and p
   assert.match(source, /<BillingPlansSwitch enabled=\{settings\?\.billing_plans_enabled \?\? false\} canEdit=\{canEdit\} \/>/)
   assert.match(
     source,
-    /return \(\s*<>\s*<CompanyDetailsForm [^>]*\/>\s*<QuotePortalSwitch [^>]*\/>\s*<BillingPlansSwitch [^>]*\/>\s*<BillingAutoSendSwitch [^>]*\/>\s*<\/>\s*\)/,
-    'all four are children of one fragment',
+    /return \(\s*<>\s*<CompanyDetailsForm [^>]*\/>\s*<QuotePortalSwitch [^>]*\/>\s*<BillingPlansSwitch [^>]*\/>\s*<BillingAutoSendSwitch [^>]*\/>\s*(<BillingRemindersSwitch [^>]*\/>\s*)?<\/>\s*\)/,
+    'all of them are children of one fragment',
   )
   assert.match(source, /<QuotePortalSwitch enabled=\{settings\?\.quote_portal_enabled \?\? false\} canEdit=\{canEdit\} \/>/, 'the portal switch is wired as before')
   assert.match(source, /<CompanyDetailsForm settings=\{settings\} canEdit=\{canEdit\} termsManaged=\{managed\} \/>/, 'the company form is wired as before')
