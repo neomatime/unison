@@ -1966,3 +1966,168 @@ migration list does not show these five (the owner ran them another way), so che
 - **Months due together are held, not sent.** Confirm this, or choose to send the oldest and hold the rest.
 - **The notice emails go to the quote's owner and the member who sent the link,** as the in-app notices do. The other choice is every owner and admin.
 - **The company VAT number**, still blank in Settings > Company details (see Stage 1).
+
+## From accept-to-invoice, Stage 3 (2026-11-12)
+
+Stage 3 of 4 is built: behind its own switch, UNISON sends a friendly payment reminder for an unpaid billing-plan invoice 3 days after its due date and
+then every 7 days, five in all, stops the moment the invoice is paid in full, lets an owner or admin pause the reminders on one invoice with a reason, tells
+the owner and makes a follow-up task after the fifth, and shows the amount still owing on the quote's plan panel. The new switch is Settings > Company
+details > "Payment reminders". It is off by default, only an owner or admin can change it, it cannot be switched on while "Billing plans" is off, and it is
+off for HIMARK. Spec: `docs/superpowers/specs/2026-10-26-accept-to-invoice-to-payment-design.md` (sections 6 and 7). Plan:
+`docs/superpowers/plans/2026-11-12-accept-to-invoice-stage-3.md`. It was built on `main`. The database changes below are already live.
+**Next step for the owner:** read the next block before anything else.
+
+### Read before you switch payment reminders on
+
+1. **It uses Stage 2's runner.** Reminders go out from the same daily call (`/api/billing/run`, 03:00 UTC, protected by `CRON_SECRET`). Read "Read before you
+   switch automatic sending on" first: the secret must be set on the host and the cron job must exist, or nothing runs (the route answers "Unavailable"
+   and says nothing else, so a missing secret is silent).
+2. **Only invoices that fall due from the day you switch it on.** Nothing is sent retroactively: an invoice already due or overdue when you turn it on is
+   never reminded. Hand-made invoices are never reminded: only invoices that belong to a billing plan (the first invoice and the monthly ones).
+3. **The wording is yours to approve.** One friendly message for all five reminders (it does not count them and does not get firmer), with the invoice
+   number, the balance still owing, the due date, the bank details, "Please use <number> as your payment reference", the invoice PDF attached again, and "If
+   you have already paid, please let us know and ignore this message". It is in `features/documents/billing-reminder-copy.ts`.
+4. **A payment in full stops them at once; a part payment keeps them going for the balance.** The reminder quotes the balance owing on the day it is sent.
+5. **At most one reminder per invoice per run,** so a runner that was down for a while sends the next reminder the next day and the one after that the day after
+   that, never several at once.
+6. **After the fifth reminder** you are told (in the app, and by email) and a task is made for the quote's owner to follow up personally (High, due in three days).
+7. **To stop reminders on one invoice,** open the invoice and press "Pause reminders" with a reason. Only an owner or admin can. To stop all reminders,
+   switch the setting off; reminders already sent stay on record.
+
+### What Stage 3 does
+
+- **Which reminder is due** is decided in one database function: the invoice is a plan invoice that is Issued, Partially Paid or Overdue with a balance, its due date
+  is on or after the day the switch was turned on, its plan item is open and not paused, and reminder *n* is due on the due date plus 3 + 7 x (n - 1) days
+  (3, 10, 17, 24, 31), counted in South African days. The next one to send is the first not yet sent.
+- **The runner** claims the reminder for ten minutes (so two runs never send the same one), makes the PDF, sends the email with Reply-To the quote's owner, and
+  records it only after the mail server accepted it. A failed send gives the claim back and is tried again on the next run, five times at most.
+- **On the invoice page:** a "Payment reminders" panel says where they stand ("2 of 5 sent. The next goes out on 28 December 2026."), lists the ones sent, and
+  gives an owner or admin "Pause reminders" / "Resume reminders". Resuming carries on from the next unsent reminder.
+- **On the quote page:** each month that is still owing shows its balance ("Invoiced: <number>, Issued, ZAR 1,725.00 owing"), and the panel shows
+  "Outstanding on this plan: ZAR 14,950.00". These come from recorded payments; nothing here says "paid" unless an invoice is.
+- **On the timeline:** each reminder ("Reminder 1 of 5 sent for invoice <number> to <address>") and each pause or resume.
+
+### Production changes already live
+
+Three migration files, `supabase/migrations/20261112100000` to `20261112102000`, were applied to the live database (`unison-uat`, which is production) by the
+owner. As before, the database's migration list does not show them; check the functions, not the list.
+
+- **The schema.** Columns `organization_settings.billing_reminders_enabled` and `billing_reminders_enabled_at`; three pause columns on `billing_plan_items`; a table
+  `billing_reminders` (one row per invoice and sequence, unique, so a reminder cannot be sent twice; members can read their organisation's rows, nobody signed in can
+  write); two timeline kinds, `invoice.reminder_sent` and `billing.reminders_changed`.
+- **The functions.** `billing_reminder_candidates`, `billing_reminder_claim`, `billing_reminder_record`, `billing_reminder_release` (service role only) and
+  `billing_reminders_set_paused` (owners and admins). `private.billing_notify` now also queues the email when reminders are on. The first three take an optional day
+  to evaluate, which only the tests use (the runner never passes it); it is how the 3, 10, 17, 24 and 31 day schedule is tested without waiting for it.
+- **Everything is additive and behind the switch, which is OFF for HIMARK.** The real organisation's data was never touched.
+
+### Verified (Stage 3)
+
+- **Typecheck** is clean and the **production build** succeeded. **Unit and tenancy tests** (`pnpm test`): 1579 passed, 0 failed (run once for Stages 3 and 4 together, after both were built).
+- **Database tests against production** (`pnpm test:rls`): 675 passed, 0 failed (also once for Stages 3 and 4 together). The new Stage 3 files: schema 5, reminders run 10, pause 5, runner-with-reminders 5.
+  They cover the schedule (3, 10, 17, 24, 31 days; one per call however late; none after five), part payment and full payment, cancelled and paused invoices, nothing
+  retroactive, claim/lease/record, two runs at once, release and the five-attempt stop, the fifth reminder's notice and single task, address and hash checks, and who may call what.
+- **Regressions:** the Stage 1 and 2 suites touched by the changed functions were re-run and pass. One Stage 1 test compared a whole plan row and needed the three new
+  Stage 4 columns added to its expectation.
+- **In the browser** (throwaway organisation, signed in as an owner, dev server in log-mail mode): the invoice page showed "2 of 5 sent. The next goes out on 28 December 2026." with both
+  reminders listed; pausing through the real form saved and the database followed ("Paused: Client promised payment on Friday"); the quote page showed "Outstanding on this plan: ZAR 14,950.00" and
+  each month's balance; the Company details page showed four switches with the new one; and none of the three pages scrolls sideways at 375 px. The live route answers with a `reminders` count.
+  The organisation was removed afterwards and production returned to its baseline counts.
+- **Review.** Reviewed by its author, not by a fresh reviewer (no separate reviewing agent was used in this run); that is weaker. The tests found and fixed four mistakes of mine before they shipped
+  (a missing escape for the ellipsis character in two files, the over-wide scope of a runner database test, a sender-name edge, and test fixtures that sent a quote the Stage 1 rule correctly refuses).
+
+### Not verified (Stage 3)
+
+- **A real reminder email.** The tests and the walk-through used fake or log-mode mail. The first real reminder will be the first real send.
+- **A reminder firing live from the real cron.** A reminder is only due 3 days after an invoice's due date, which must itself be after the switch was turned on, so it
+  cannot be produced on a throwaway organisation today without waiting. The schedule is tested through the database function with a given day; the live route was
+  called and answers with a `reminders` count of 0.
+- **The wording in a real mail client.**
+
+### Known limits (Stage 3)
+
+- Reminders do not depend on the plan's state: an issued invoice of a paused or ended plan is still reminded until it is paid, paused or cancelled.
+- If the message goes out but writing it down fails (rare), the claim is not given back, so after ten minutes the next run may send it once more. The runner counts and logs it.
+- The pause is shown and changed on the invoice page only, not on the quote's plan panel.
+- A task made after the fifth reminder has no assignee if the quote's owner has no team profile.
+- In log mode a reminder is not recorded, so on a developer machine it is shown again on every run.
+
+### Owner decisions (Stage 3)
+
+- **The wording** of the reminder email, and whether all five should say the same thing (the design says the owner follows up personally after the fifth).
+- **Five reminders at 3, 10, 17, 24 and 31 days** (the design asked you to confirm the count).
+- **Whether reminders should also stop for a paused or ended plan.**
+
+## From accept-to-invoice, Stage 4 (2026-11-12)
+
+Stage 4 of 4 is built, which completes the accept-to-invoice project. When a client accepts a quote on the portal, UNISON now also makes the client's onboarding
+record (one per quote, owned by the quote's owner, with the quote's start date) and a task for the owner to contact the client within one business day. The quote
+page has a "Starting the work" panel that says whether the work may start (the start date has arrived and the first invoice is paid) and lets an owner or admin
+decide to start anyway, with a reason. There is no new switch: it rides on "Billing plans", exactly as the Sales update at acceptance does. Spec: the same design,
+sections 2 and 8. Plan: `docs/superpowers/plans/2026-11-12-accept-to-invoice-stage-4.md`. Nothing is sent to HIVE. The database changes below are already live.
+
+### Read before you rely on it
+
+1. **It is a line on the quote page, not a lock.** UNISON does not stop or start any work, and sends nothing to HIVE. The line and the override are the record of
+   who decided what. If HIVE should wait for payment, a read-only "first invoice paid" field can be added to the client feed later.
+2. **The rule is the design's.** Ready means the start date has arrived (or the quote has none) and the first invoice's status is Paid. A first invoice that is a
+   draft, cancelled or only partly paid is not ready. A plan that has ended is never ready ("nothing will start from it"). An override beats the date and the
+   payment, and can be removed.
+3. **The onboarding record and its task are only made for acceptances made after Stage 4 went live,** on organisations with "Billing plans" on. A plan made earlier
+   gets none (the existing manual onboarding form still works).
+4. **A business day is Monday to Friday, with no public holidays.** The task is due at 17:00 South African time on the next business day.
+5. **Decide whether "work starts when paid" should be the default for every quote.** It is the default for every quote that has a billing plan.
+
+### What Stage 4 does
+
+- **At acceptance** (in the same guarded block as the rest, so a failure here never undoes the acceptance, the plan or the draft invoice): an onboarding record
+  (stage Welcome, status Active, owner the quote's owner, start date the quote's) and one task "Contact <client> within one business day" for the owner (High).
+  The nightly sweep that recovers a missed acceptance recovers this too, and makes no second record or task.
+- **On the quote page, "Starting the work":** "Waiting for the start date, <date>.", "Waiting for the first invoice to be paid: <number>, ZAR <balance> owing.",
+  "The work may start: the start date has arrived and the first invoice is paid.", or "Started by decision of <name>: <reason>", with a link to the onboarding
+  record. Owners and admins get "Start anyway" (a reason is required) and "Remove this decision". Each decision is on the quote's timeline.
+- **The rule lives in one place** (`public.billing_readiness`) so it can become a setting later.
+
+### Production changes already live
+
+Three migration files, `supabase/migrations/20261113100000` to `20261113102000`, were applied by the owner.
+
+- **The schema.** `client_onboardings.quote_id` (unique, same organisation, kept when the quote is deleted); three start-decision columns on `billing_plans`; two timeline
+  kinds, `billing.onboarding_created` and `billing.readiness_overridden`.
+- **The functions.** `private.add_business_days`, `private.billing_make_onboarding`, `private.billing_on_acceptance` (replaced: one new guarded block), `billing_readiness` and
+  `billing_set_readiness_override`. The business-day function was also checked directly: Friday, Saturday and Sunday plus one day all give Monday, Thursday gives Friday,
+  Friday plus five gives the next Friday.
+- **Additive, behind "Billing plans", which is OFF for HIMARK.** The real organisation's data was never touched.
+
+### Verified (Stage 4)
+
+- The same typecheck, build, unit (1579) and database (675) runs as Stage 3. The new Stage 4 files: schema 2, onboarding at acceptance 6, readiness 6. They cover one onboarding and one task per
+  quote (including the sweep and two sweeps at once, and a quote with no terms or only once-off lines), the due time of the task, every readiness state and its edges (start date today and later, no start date, draft,
+  partly paid, cancelled and paid first invoices, an ended plan), the override (who may, reason required, update, remove, timeline), and who may read it.
+- **In the browser:** the quote page showed "Waiting for the start date, 1 January 2027." with the onboarding link; "Start anyway" with a reason saved and showed "Started by decision of somebody: Deposit agreed by phone"
+  with "Remove this decision"; no page scrolls sideways at 375 px.
+- **Review.** By its author only, as for Stage 3.
+
+### Not verified (Stage 4)
+
+- **How the readiness line looks to a person who has a team profile name** (the walk-through login had none, so the override read "somebody").
+- **A real acceptance on the portal followed by a look at the task list.** The tests accept through the real portal functions and check the record and task; the
+  tasks page was not opened in the walk-through.
+
+### Known limits (Stage 4)
+
+- No public holidays in the business-day rule.
+- A plan made before Stage 4 has no onboarding record.
+- The override is on the quote only; it does not change the onboarding record or any invoice.
+
+### Owner decisions (Stage 4)
+
+- **Whether "work starts when paid" should be the default for every quote, or only some.**
+- **Who should be told when the first invoice is paid and the date has arrived** (today the line simply changes; nobody is notified).
+- **Whether the onboarding task should be due the next business day at 17:00** or at another time.
+
+## The whole accept-to-invoice project (2026-11-12)
+
+All four stages are built, each behind its own off-by-default setting (or, for Stage 4, behind "Billing plans"), and all are OFF for HIMARK. To use it for real,
+in this order: fill in the company VAT number and bank details; set `CRON_SECRET` on the host and confirm the daily job; read each stage's "Read before you switch it on"
+block; turn on "Billing plans", then watch one real acceptance and its first invoice; then "Automatic sending"; then "Payment reminders". Nothing here has yet sent a
+real email to a real client, which is the largest thing still not verified.

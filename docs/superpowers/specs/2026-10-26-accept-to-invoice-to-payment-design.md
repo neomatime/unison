@@ -1,7 +1,7 @@
 # From acceptance to invoice to payment
 
 **Date:** 2026-10-26
-**Status:** Stages 1 (2026-10-27) and 2 (2026-11-11) built; Stages 3 and 4 not started
+**Status:** All four stages built (Stage 1 2026-10-27, Stage 2 2026-11-11, Stages 3 and 4 2026-11-12); all off for HIMARK, none yet used on a real client
 **Origin:** The owner's brief of 2026-10-26 ("when a client securely accepts a quotation ... generate and email the invoice ...
 track payment"), refined in conversation the same day. It completes the quote portal (slices 1 to 3 are built and live; see
 `docs/superpowers/specs/2026-10-18-quote-portal-design.md`). It **amends** the boundary decision of 2026-10-13
