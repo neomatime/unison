@@ -288,7 +288,7 @@ test("a plan, item 1 and a draft first invoice with the quote's lines are made; 
   const state = await billed(fx, quote)
   assert.ok(state.plan)
   assert.deepEqual(without(state.plan, ['id', 'created_at', 'updated_at']), {
-    organization_id: fx.orgId, quote_id: quote, client_id: fx.clientId, start_date: '2031-05-31', term_months: 12, status: 'active', status_reason: null,
+    organization_id: fx.orgId, quote_id: quote, client_id: fx.clientId, start_date: '2031-05-31', term_months: 12, status: 'active', status_reason: null, readiness_override_at: null, readiness_override_by: null, readiness_override_reason: null,
   })
   assert.equal(state.items.length, 12, 'every month of the term')
   assert.deepEqual(state.items.map((item) => item.month_number), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12])
