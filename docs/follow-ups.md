@@ -1724,7 +1724,8 @@ instalments and milestones come later still. Spec: `docs/superpowers/specs/2026-
 The switch (Settings > Company details > "Billing plans") is off by default. Do not turn it on until you have read these seven points.
 
 1. **Stage 2 is not built.** After the first invoice, every month's invoice has to be made by hand from the quote page and emailed by hand. The design
-   says to switch this on only after Stage 2 ships.
+   says to switch this on only after Stage 2 ships. **Update 2026-11-11: Stage 2 is now built** (see "From accept-to-invoice, Stage 2" below); read its
+   "Read before you switch automatic sending on" block too.
 2. **Fill in the company VAT number first.** Go to Settings > Company details and type it in. It is blank today while 15% VAT is charged. While it is
    blank, every approval is held with the message "The company VAT number is not set".
 3. **The switch changes what acceptance does for the whole organisation.** A client's acceptance then moves the Sales record to Won, makes a billing plan
@@ -1842,3 +1843,126 @@ recorded differ from the file names.
 - **The email layout for the AGREEMENT cell** (see "Not verified").
 - **The company VAT number.** It has to be filled in before approvals can go through (see "Read before you switch billing plans on").
 - **The first invoice's due date.** Should it stay "issue day plus the company's payment days" (30 today)? It can be typed on the draft.
+
+## From accept-to-invoice, Stage 2 (2026-11-11)
+
+Stage 2 of 4 is built: behind its own switch, UNISON now issues and emails each later month of a billing plan on its date, without anyone pressing a
+button, after the same checks the first invoice passes. A month that fails its checks, or that is due together with another month, waits for a person and
+tells them, in the app and by email. The "first invoice ready" and "waiting for approval" notices now also go by email. The new switch is Settings >
+Company details > "Automatic sending". It is off by default, only an owner or admin can change it, it cannot be switched on while "Billing plans" is off,
+and it is off for HIMARK. Stages 3 and 4 are not started: Stage 3 is payment reminders and outstanding balances, Stage 4 is the onboarding record, the
+readiness line and the override. Spec: `docs/superpowers/specs/2026-10-26-accept-to-invoice-to-payment-design.md`. Plan:
+`docs/superpowers/plans/2026-11-11-accept-to-invoice-stage-2.md`. It was built on `main`. The database changes below are already live.
+**Next step for the owner:** read the next block before anything else.
+
+### Read before you switch automatic sending on
+
+The switch (Settings > Company details > "Automatic sending") is off by default. Do not turn it on until you have read these seven points.
+
+1. **Set `CRON_SECRET` first.** Put any long random string in the host's environment variables as `CRON_SECRET`, then redeploy. `vercel.json` schedules the
+   runner (`/api/billing/run`) once a day at 03:00 UTC, which is 05:00 South African time; the host sends the secret with each call. Check that the job
+   appears on the host's Cron Jobs page. Without the secret the route answers "Unavailable" and nothing runs, so a missing secret is safe, but it is also
+   silent: nothing will tell you the months are not going out. Look at the quote page the first morning.
+2. **The first month goes out for real.** Check the company VAT number, the bank details, and the client's billing email and address before you switch it
+   on. A month that fails a check is held as a draft, nothing is numbered, and you are told once. Fix the data and it goes out on the next run.
+3. **It needs the first invoice to be approved and emailed.** A month is only ever issued once item 1 of its plan is approved and has a recorded email. A
+   first invoice approved but not emailed holds every later month.
+4. **Months already due are not billed in a burst.** If more than one month of a plan is due at once (for example the switch is turned on late), every one
+   is prepared as a draft, marked "Held for your check", and you are told once. You issue and email each by hand with the ordinary Issue button; the
+   runner never releases them.
+5. **The switch is for the whole organisation, and it needs "Billing plans" on.** Turning it off stops everything automatic, including emailing a month
+   that was already issued but not yet sent. Invoices already issued stay as they are.
+6. **The mail limit is shared.** The 50-emails-an-hour limit counts the runner's emails and people's. The runner handles at most 20 items a run, oldest
+   first, so a backlog clears over a few days.
+7. **Running `pnpm test:rls` is safe for HIMARK's real invoices.** The runner's database test is scoped to its own fixture rows and an empty notice
+   outbox. The nightly database job is still run for real by the notice test, as before (see Stage 1, point 5).
+
+### What Stage 2 does
+
+- **Each day** the host calls the runner. The database says which months are due (an open monthly month of an active plan, whose date has come as a
+  South African day, in an organisation with both switches on, whose first invoice was approved and emailed). The runner then, one month at a time:
+  1. **Issues it**, after the checks (company name, prefix, VAT number when VAT is charged, bank details, the client's billing or primary-contact email,
+     the client's address, lines, a total above zero). The invoice is dated that day, due in the company's payment days, and numbered; the monthly lines
+     only are on it.
+  2. **Emails it** to the client with the PDF, the bank details and the invoice number as the payment reference, "Reply-To" the quote's owner. It is the
+     plain invoice email, not the Welcome Email.
+  3. **Records the send** (who it went to, the PDF's hash), as every email is recorded.
+- **When a send fails** (the mail server says no, the PDF cannot be made, no address): the month stays issued, the next run tries again (up to five
+  tries), the owner is told on the first failure and when it gives up, and the invoice is never issued a second time. If the message went out but could
+  not be recorded, the runner does not send it again.
+- **When two runs overlap, or a run is repeated:** nothing is created or sent twice. The database takes a row lock that skips a month someone else
+  holds, and a ten-minute lease stops two runs sending the same invoice.
+- **VAT** is the rate in force on the day of issue. If it is not the rate on the quote, the owner is told (it is not blocked). The accountant should
+  confirm this (see Not verified).
+- **The plan panel** shows each month: "Will be issued and emailed on ...", "Due: being issued automatically", "Issued automatically: <number>", "Held:
+  <what to fix>", "Held for your check: more than one month is due", "Issued, email not sent". With the switch off every label is as it was.
+- **Notices by email.** When automatic sending is on, the first-invoice-ready notice, the two-day approval reminder, held months, failed sends and the VAT
+  notice are also emailed to the same people (the quote's owner and the member who sent the link), with a link to the quote. Pause notices stay in the
+  app only.
+
+### Production changes already live
+
+Five migration files, `supabase/migrations/20261111100000` to `20261111104000`, were applied to the live database (`unison-uat`, which is production) by
+the owner, one at a time, each checked straight afterwards. As before, the versions the database recorded differ from the file names, and the database's
+migration list does not show these five (the owner ran them another way), so check the functions, not the list.
+
+- **The schema.** New columns `organization_settings.billing_auto_send_enabled` and `billing_auto_send_enabled_at`; six columns on `billing_plan_items`
+  (`system_issued_at`, `send_lease_until`, `send_attempts`, `attention_code`, `attention_detail`, `attention_notified_at`); a table
+  `billing_notice_emails` (the outbox; no signed-in role can read it); two timeline kinds, `billing.invoice_auto_issued` and `billing.item_held`.
+- **Two refactors with no change in behaviour.** `issue_invoice` and `record_document_email` now call shared cores (`private.issue_invoice_apply`,
+  `private.record_document_email_core`) that the runner's path uses too. Their tests (documents-send-issue 22, documents-delivery 12, billing-approval 13,
+  payments 14, plus a characterisation test) pass with the same counts before and after.
+- **The functions.** `billing_due_items`, `billing_run_item`, `billing_send_context`, `billing_record_send`, `billing_record_send_failure`,
+  `billing_pending_notice_emails`, `billing_mark_notice_email`: all granted to the service role only. `private.billing_notify` now also queues the email.
+  `private.billing_on_acceptance` and `billing_nightly` were replaced with only their notice inserts changed.
+- **In the code.** The route `/api/billing/run` (checks `CRON_SECRET` first, answers with counts only, never cached), the one new file allowed to hold the
+  service role (`features/billing-runner/run-billing.ts`, added to the service-role list with its reason), `vercel.json`, and an exemption for that one
+  path in `proxy.ts`.
+- **Everything is additive and behind the switch, which is OFF for HIMARK.** The real organisation's data was never touched: its three billing settings
+  are off and HMK-Q-2026-00001 is still Sent with no plan.
+
+### Verified
+
+- **Typecheck** is clean. **Production build** succeeded and the route's file trace includes the brand images the PDF draws.
+- **Unit and tenancy tests** (`pnpm test`): 1500 tests when Stage 2 was verified; 1498 passed first time. The two that failed were older guards pinned to the old list of service-role files and to the old order of switches on the Company details page. Both were updated for the new files and pass. Typecheck and build were clean.
+- **Database tests against production** (`pnpm test:rls`): 636 tests, all 636 passed, 0 failed, with the new runner database test scoped to its own fixture rows. One earlier targeted re-run of `billing-send-record` showed a single test that took 312 seconds and failed on a stalled connection; it passed in 6 seconds when run alone straight afterwards, so it was the connection and not the code (the same kind of dropped connection noted for Stage 1).
+- **The real route, run against a throwaway organisation with the dev server in log-mail mode:** no secret and a wrong secret both answered 401, the right
+  secret answered 200 with counts only and `Cache-Control: no-store`; one due month was issued (1,725.00 for a 1,500.00 retainer plus 15% VAT), a real
+  4.4 KB PDF was attached, the email carried the month, the due date, the bank details and the payment reference, nothing was recorded (log mode records
+  nothing), and a second call did nothing while the lease held. The walk-through found one flaw, the company name printed twice in the sign-off when the
+  quote's owner has no name on file, which was fixed and has a test.
+- **In the browser** (same throwaway organisation, signed in as an owner): the new switch renders under the other two; unticking it and saving showed the
+  exact "switched off" sentence and the database followed (flag off, time cleared); ticking it again worked; the plan panel showed "Will be issued and
+  emailed on ...", the CATCH_UP and failed-check labels, and the intro "Later months are issued and emailed automatically"; at phone width (375 px)
+  the page does not scroll sideways. The throwaway organisation and its users were removed and production returned to its baseline counts.
+- **Reviews.** The work was reviewed by its author at the end (a read of the whole Stage 2 diff against the plan's six "Review Focus" items), not by a fresh reviewer: this run did not start a separate reviewing agent. That is weaker, so treat the first real months as the true test. The reading and the walk-through found two real problems, both fixed with a test first: the company name printed twice in the email's sign-off, and a hazard in the runner's own database test, which could have recorded a real organisation's invoices as emailed (with a fake mail server) once HIMARK has the switch on; the test now sees only its own fixture rows
+
+### Not verified
+
+- **A real send of a monthly invoice.** The walk-through used log mode, so the mail transport was not exercised and the PDF was not seen in a real mail
+  client. The first real month will be the first real send.
+- **The real cron firing.** `vercel.json` has not been deployed; the host's Cron Jobs page and the `CRON_SECRET` are the owner's to check.
+- **The accountant's view on VAT** at the rate in force on the issue date for the later months (call 8 in the design).
+- **Lint.** `eslint` is not installed in this repository, so `pnpm lint` cannot run (this was already so).
+- **A very long backlog.** The runner handles 20 items a run; it was tested with a handful.
+
+### Known limits
+
+- The runner decides the "first invoice approved and emailed" gate from the email record. If the first invoice's email is sent outside UNISON, no
+  later month goes out until it is recorded.
+- A month the runner holds as "Held for your check" (more than one month due) has to be issued and emailed by hand; there is no "release" button.
+- If a month's email fails five times, the runner gives up and the invoice has to be emailed from the invoice page.
+- A notice email that fails to send is retried up to five times, then left; the in-app notice is unaffected.
+- In log mode a notice email is never marked sent, so on a developer machine it is shown again on every run.
+- The notice email's link uses the app address from `NEXT_PUBLIC_APP_URL`.
+- The plan panel does not yet show whether a month's email has gone out, only that it was issued; "Issued, email not sent" appears only after a recorded
+  failure.
+
+### Owner decisions
+
+- **The wording of the monthly invoice email** (`features/documents/billing-run-copy.ts`): "month N of M", the total, the due date, the bank details and the
+  payment reference.
+- **The run time** (03:00 UTC, 05:00 South African time) and the **five tries** before the runner gives up on an email.
+- **Months due together are held, not sent.** Confirm this, or choose to send the oldest and hold the rest.
+- **The notice emails go to the quote's owner and the member who sent the link,** as the in-app notices do. The other choice is every owner and admin.
+- **The company VAT number**, still blank in Settings > Company details (see Stage 1).
