@@ -3,12 +3,14 @@ import 'server-only'
 import { createHash } from 'node:crypto'
 
 import { sendEmail } from '@/lib/email/send-email'
+import { readAppUrl } from '@/lib/env'
 import { createAdminSupabase } from '@/lib/supabase/admin'
 import { monthlyInvoiceEmail } from '../documents/billing-run-copy'
 import { buildDocumentView } from '../documents/document-view'
-import { HOURLY_EMAIL_CAP, MAX_EMAIL_PDF_BYTES, emailHtml } from '../documents/email'
+import { HOURLY_EMAIL_CAP, MAX_EMAIL_PDF_BYTES } from '../documents/email'
 import { makeDocumentPdf } from '../documents/pdf/make-document-pdf'
 import type { CompanySettings, DocumentLine } from '../documents/types'
+import { noticeEmail } from './notices'
 import { runBilling, type PreparedMonth, type RunDeps, type RunSummary, type SendContext } from './run'
 
 /**
@@ -85,7 +87,11 @@ export async function runBillingNow(): Promise<RunSummary> {
         replyTo: message.replyTo,
         attachments: [{ filename: attachment.filename, contentType: 'application/pdf', content: Buffer.from(attachment.bytes) }],
       }),
-    sendNotice: (notice) => sendEmail({ to: notice.to, template: { subject: notice.subject, text: notice.body, html: emailHtml(notice.body) } }),
+    sendNotice: (notice) => {
+      // A missing app address throws MissingEnvError, which run.ts counts as one failed attempt on this notice.
+      const template = noticeEmail({ subject: notice.subject, body: notice.body, appUrl: readAppUrl(process.env), quotePath: notice.quoteId ? `/commercial/quotes/${notice.quoteId}` : null })
+      return sendEmail({ to: notice.to, template })
+    },
   }
   return runBilling(deps)
 }

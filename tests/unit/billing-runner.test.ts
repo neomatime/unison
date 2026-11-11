@@ -202,21 +202,24 @@ test('the summary holds counts only, no address and no invoice number', async ()
 
 test('pending notice emails are sent and marked; one that fails is counted as an attempt', async () => {
   let n = 0
+  const seen: any[] = []
   const h = harness(
     {
       billing_due_items: () => [],
       billing_pending_notice_emails: () => [
-        { id: 'n1', to_address: 'a@example.test', subject: 'S1', body: 'B1' },
+        { id: 'n1', to_address: 'a@example.test', subject: 'S1', body: 'B1', quote_id: 'q1' },
         { id: 'n2', to_address: 'b@example.test', subject: 'S2', body: 'B2' },
       ],
       billing_mark_notice_email: () => null,
     },
-    { sendNotice: async () => { n += 1; if (n === 2) throw new Error('nope'); return { delivered: true } } },
+    { sendNotice: async (notice) => { n += 1; seen.push(notice); if (n === 2) throw new Error('nope'); return { delivered: true } } },
   )
   const summary = await runBilling(h.deps)
   const marks = h.calls.filter((call) => call.name === 'billing_mark_notice_email').map((call) => call.args)
   assert.deepEqual(marks, [{ p_id: 'n1', p_sent: true }, { p_id: 'n2', p_sent: false }])
   assert.equal(summary.notices, 1)
+  assert.deepEqual(seen[0], { id: 'n1', to: 'a@example.test', subject: 'S1', body: 'B1', quoteId: 'q1' })
+  assert.equal(seen[1].quoteId, null, 'a notice with no quote has none')
 })
 
 test('a second run over the same state sends nothing new', async () => {

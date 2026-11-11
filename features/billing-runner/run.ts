@@ -34,7 +34,7 @@ export type RunDeps = {
   /** Hands the message to the mail server. `delivered: false` is log mode: nothing was sent. */
   send(message: OutgoingMessage, attachment: OutgoingAttachment): Promise<{ delivered: boolean }>
   /** Sends one billing notice email. */
-  sendNotice(notice: { id: string; to: string; subject: string; body: string }): Promise<{ delivered: boolean }>
+  sendNotice(notice: { id: string; to: string; subject: string; body: string; quoteId: string | null }): Promise<{ delivered: boolean }>
 }
 
 export type RunSummary = { issued: number; sent: number; held: number; capped: number; failed: number; skipped: number; logged: number; notices: number }
@@ -137,10 +137,10 @@ async function sendNotices(deps: RunDeps, summary: RunSummary): Promise<void> {
     console.error('[billing-runner:notices]', code(pending.error))
     return
   }
-  for (const row of (pending.data ?? []) as Array<{ id: string; to_address: string; subject: string; body: string }>) {
+  for (const row of (pending.data ?? []) as Array<{ id: string; to_address: string; subject: string; body: string; quote_id?: string | null }>) {
     let delivered = false
     try {
-      ;({ delivered } = await deps.sendNotice({ id: row.id, to: row.to_address, subject: row.subject, body: row.body }))
+      ;({ delivered } = await deps.sendNotice({ id: row.id, to: row.to_address, subject: row.subject, body: row.body, quoteId: row.quote_id ?? null }))
     } catch (error) {
       console.error('[billing-runner:notice]', row.id, error instanceof Error ? error.name : 'unknown error')
       const marked = await db.rpc('billing_mark_notice_email', { p_id: row.id, p_sent: false })
