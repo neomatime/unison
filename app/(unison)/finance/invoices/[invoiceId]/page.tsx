@@ -2,6 +2,7 @@ import Link from 'next/link'
 
 import { PhaseSixDetail } from '@/features/commercial-finance/components/phase-six-detail'
 import { PLAN_DRAFT_LOCKED_NOTE, firstInvoiceBannerParts, isFirstPlanDraft } from '@/features/documents/billing-plan-view'
+import { BillingRemindersPanel } from '@/features/documents/components/billing-reminders-panel'
 import { DocumentActions } from '@/features/documents/components/document-actions'
 import { EmailSection } from '@/features/documents/components/email-section'
 import { LineEditor } from '@/features/documents/components/line-editor'
@@ -74,6 +75,7 @@ async function InvoiceWorkspace({ invoiceId }: { invoiceId: string }) {
       <InvoiceLines invoiceId={invoiceId} />
       <DocumentTermsPanel kind="invoice" id={invoiceId} />
       <PaymentsSection invoiceId={invoiceId} />
+      <BillingRemindersPanel invoiceId={invoiceId} />
       <EmailSection kind="invoice" id={invoiceId} />
     </>
   )

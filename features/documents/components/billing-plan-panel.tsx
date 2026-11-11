@@ -5,7 +5,7 @@ import { ActionButton } from '@/features/crm-workspace/components/action-button'
 import { WorkspaceSection } from '@/features/crm-workspace/components/workspace-section'
 import { todayInJohannesburg } from '../../payments/fields'
 import { createPlanItemInvoiceAction } from '../actions/billing-plan'
-import { BILLING_PLAN_COPY, billingPlanDescription, blockerSentence, canCreateItemInvoice, describePlanItem, isAwaitingApproval, planStatusLine, planStatusTone, type PlanTone } from '../billing-plan-view'
+import { BILLING_PLAN_COPY, billingPlanDescription, blockerSentence, canCreateItemInvoice, describePlanItem, isAwaitingApproval, outstandingOnPlan, owingLabel, planStatusLine, planStatusTone, type PlanTone } from '../billing-plan-view'
 import { agreementSentence } from '../billing-terms'
 import { formatDocumentDate } from '../document-view'
 import { getBillingPlan } from '../queries/get-billing-plan'
@@ -35,6 +35,7 @@ export async function BillingPlanPanel({ quoteId }: { quoteId: string }) {
   const awaitingApproval = firstItem ? isAwaitingApproval(firstItem, firstItem.invoice, view.plan.status) : false
   // No month is prompted, or offered Create invoice, until the first invoice has been approved by a person.
   const firstApproved = firstItem !== undefined && firstItem.approvedAt !== null
+  const outstanding = outstandingOnPlan(view.items)
   const agreement = agreementSentence({ monthly: null, termMonths: view.plan.termMonths, startDateLabel: formatDocumentDate(view.plan.startDate) })
 
   return (
@@ -45,6 +46,7 @@ export async function BillingPlanPanel({ quoteId }: { quoteId: string }) {
       <div className="space-y-1 border-b border-border px-5 py-4 text-sm">
         <p className={`min-w-0 break-words font-medium ${STATUS_TEXT[planStatusTone(view.plan.status)]}`}>{planStatusLine(view.plan)}</p>
         {agreement ? <p className="text-foreground">{agreement}</p> : null}
+        {outstanding ? <p className="font-medium text-foreground">Outstanding on this plan: {outstanding.label}</p> : null}
       </div>
 
       {awaitingApproval && firstItem && view.blockers.length > 0 ? (
@@ -105,7 +107,7 @@ export async function BillingPlanPanel({ quoteId }: { quoteId: string }) {
                   </td>
                   <td className="whitespace-nowrap text-muted-foreground md:px-5 md:py-3">{formatDocumentDate(item.billOn) ?? item.billOn}</td>
                   <td className="basis-full md:px-5 md:py-3">
-                    <StatusBadge tone={BADGE_TONE[described.tone]} className="whitespace-normal md:whitespace-nowrap">{described.label}</StatusBadge>
+                    <StatusBadge tone={BADGE_TONE[described.tone]} className="whitespace-normal md:whitespace-nowrap">{owingLabel(described.label, item.invoice)}</StatusBadge>
                   </td>
                   <td className="md:px-5 md:py-3">
                     {item.invoice ? (

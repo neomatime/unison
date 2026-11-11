@@ -382,7 +382,7 @@ test('below md each month is a stacked block with its status and invoice link in
 test('on a phone the month reads "Month N" and the status text may wrap, and every label, link and button is still there', () => {
   const source = panel()
   assert.match(source, /<span className="md:hidden">Month <\/span>\{item\.monthNumber\}/, 'the number is not left bare beside the date')
-  assert.match(source, /<StatusBadge tone=\{BADGE_TONE\[described\.tone\]\} className="whitespace-normal md:whitespace-nowrap">\{described\.label\}<\/StatusBadge>/, 'a long status is not cut off at the card edge')
+  assert.match(source, /<StatusBadge tone=\{BADGE_TONE\[described\.tone\]\} className="whitespace-normal md:whitespace-nowrap">\{owingLabel\(described\.label, item\.invoice\)\}<\/StatusBadge>/, 'a long status is not cut off at the card edge')
   // Nothing was taken out of the markup to make it fit.
   assert.match(source, /\{item\.kind === 'first' \? <span className="ml-2 text-xs text-muted-foreground">First invoice<\/span> : null\}/)
   assert.match(source, /<span className="text-muted-foreground">None yet<\/span>/)

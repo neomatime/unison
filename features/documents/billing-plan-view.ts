@@ -2,7 +2,7 @@
 // imports with their extensions only, no directive and no server code, so the panel, the queries, the actions and the unit tests can
 // all load it. Staff-facing wording lives here and in billing-terms.ts. UNISON says "approved" for a person's approval, "emailed"
 // only when the mail server accepted the message, and "paid" only for an invoice whose payments are on record.
-import { formatDocumentDate } from './document-view.ts'
+import { formatAmount, formatDocumentDate } from './document-view.ts'
 import { WELCOME_TOO_LARGE_WAY_FORWARD } from './welcome-email-copy.ts'
 
 export type PlanStatus = 'active' | 'paused' | 'ended'
@@ -11,7 +11,8 @@ export type PlanTone = 'waiting' | 'attention' | 'done' | 'muted'
 
 /** What the database holds of one month of a plan. `billOn` is a date (YYYY-MM-DD); `approvedAt` is a time, or null. */
 export type PlanItemFacts = { kind: PlanItemKind; monthNumber: number; billOn: string; status: 'open' | 'cancelled'; approvedAt: string | null }
-export type PlanItemInvoice = { id: string; number: string; status: string }
+/** A month's invoice. `balance` and `currency` (what is still owing, from recorded payments) are present when the query read them. */
+export type PlanItemInvoice = { id: string; number: string; status: string; balance?: number; currency?: string }
 /** Why the runner is holding a month for a person (accept to invoice, stage 2): the codes of billing_plan_items.attention_code. */
 export type PlanAttention = { code: 'CHECKS_FAILED' | 'CATCH_UP' | 'EMAIL_FAILED'; detail: string | null }
 /** What the panel knows of automatic sending for one month. With `enabled` false every Stage 1 label is unchanged. */
@@ -270,4 +271,35 @@ export function approvedNotEmailedSentence(number: string, reason: string): stri
   }
   const why = /[.!?]$/.test(text) ? text : `${text}.`
   return `Invoice ${number} is approved and issued, but the email did not go: ${why} Send it from the invoice page.`
+}
+
+const OWING_STATUSES: ReadonlySet<string> = new Set(['Issued', 'Partially Paid', 'Overdue'])
+const isOwing = (invoice: PlanItemInvoice | null | undefined): invoice is PlanItemInvoice & { balance: number; currency: string } =>
+  Boolean(invoice) && OWING_STATUSES.has(invoice!.status) && typeof invoice!.balance === 'number' && invoice!.balance > 0 && typeof invoice!.currency === 'string'
+
+/**
+ * A month's label with what is still owing on its invoice after it: "Invoiced: HMK-I-1, Issued, ZAR 1,725.00 owing". The balance comes
+ * from the invoice, which gets it from recorded payments; a label for an invoice that owes nothing, or a month with no invoice, is
+ * left exactly as it was.
+ */
+export function owingLabel(label: string, invoice: PlanItemInvoice | null): string {
+  return isOwing(invoice) ? `${label}, ${invoice.currency} ${formatAmount(invoice.balance)} owing` : label
+}
+
+/**
+ * The amount outstanding across a plan's invoices (spec section 7), in whole cents so pennies add up exactly; null when nothing is owing
+ * or when the invoices are in more than one currency (they are not added together).
+ */
+export function outstandingOnPlan(items: ReadonlyArray<{ invoice: PlanItemInvoice | null }>): { currency: string; amount: number; label: string } | null {
+  let cents = 0
+  const currencies = new Set<string>()
+  for (const item of items) {
+    if (!isOwing(item.invoice)) continue
+    cents += Math.round(item.invoice.balance * 100)
+    currencies.add(item.invoice.currency)
+  }
+  if (cents <= 0 || currencies.size !== 1) return null
+  const currency = [...currencies][0]
+  const amount = cents / 100
+  return { currency, amount, label: `${currency} ${formatAmount(amount)}` }
 }

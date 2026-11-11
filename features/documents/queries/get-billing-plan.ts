@@ -43,13 +43,13 @@ export async function getBillingPlan(quoteId: string): Promise<BillingPlanView |
   if (rows.length > 0) {
     const invoiceRows = await db
       .from('invoices')
-      .select('id,invoice_number,status,billing_plan_item_id,archived_at')
+      .select('id,invoice_number,status,billing_plan_item_id,archived_at,balance_amount,currency')
       .in('billing_plan_item_id', rows.map((row) => row.id))
       .eq('organization_id', organization.id)
     if (invoiceRows.error) throw invoiceRows.error
     for (const row of (invoiceRows.data ?? []) as Array<Record<string, any>>) {
       if (row.status === 'Draft' && row.archived_at) continue
-      invoiceByItem.set(row.billing_plan_item_id, { id: row.id, number: row.invoice_number, status: row.status })
+      invoiceByItem.set(row.billing_plan_item_id, { id: row.id, number: row.invoice_number, status: row.status, balance: Number(row.balance_amount ?? 0), currency: String(row.currency ?? 'ZAR') })
     }
   }
 

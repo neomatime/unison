@@ -22,8 +22,25 @@ after(async () => {
 const sent: Array<{ to: string; replyTo?: string; subject: string }> = []
 let failNext = false
 
+// THE GUARD THAT KEEPS THIS TEST AWAY FROM REAL DATA. runBilling works on whatever billing_due_items lists, in every organisation that
+// has both switches on, and records what it "sent". With the fake mail server above, a run over a real organisation would mark its
+// real invoices as emailed when nothing was sent. So the database the runner sees is this one: the list of due items is cut down to
+// this fixture's own plan items, and the notice outbox is empty. Nothing else about the database is changed.
+const mine = new Set<string>()
+const scopedDb = {
+  rpc: async (name: string, args?: Record<string, unknown>) => {
+    if (name === 'billing_due_items') {
+      const listed = await admin.rpc(name, args as never)
+      return { ...listed, data: ((listed.data ?? []) as Array<{ item_id: string }>).filter((row) => mine.has(row.item_id)) }
+    }
+    if (name === 'billing_pending_notice_emails') return { data: [], error: null }
+    return admin.rpc(name, args as never)
+  },
+}
+const track = (plan: { items: Array<{ id: string }> }) => plan.items.forEach((item) => mine.add(item.id))
+
 const deps = (): RunDeps => ({
-  db: admin,
+  db: scopedDb,
   emailCap: 50,
   maxItems: 20,
   prepare: async ({ context }) => ({
@@ -44,6 +61,7 @@ const deps = (): RunDeps => ({
 
 test('a run issues a due month, sends and records it once, and a second run does nothing', async () => {
   const plan = await fx.approvedPlan()
+  track(plan)
   await fx.dueMonth(plan.planId, 2)
   const item = plan.items.find((entry) => entry.monthNumber === 2)!.id
   sent.length = 0
@@ -70,6 +88,7 @@ test('a run issues a due month, sends and records it once, and a second run does
 
 test('a send that fails is recorded, the month is issued once, and the next run sends it', async () => {
   const plan = await fx.approvedPlan()
+  track(plan)
   await fx.dueMonth(plan.planId, 2)
   const item = plan.items.find((entry) => entry.monthNumber === 2)!.id
   sent.length = 0
@@ -93,6 +112,7 @@ test('a send that fails is recorded, the month is issued once, and the next run 
 
 test('two runs at once issue and send each month once', async () => {
   const plan = await fx.approvedPlan()
+  track(plan)
   await fx.dueMonth(plan.planId, 2)
   const item = plan.items.find((entry) => entry.monthNumber === 2)!.id
   sent.length = 0
@@ -102,4 +122,12 @@ test('two runs at once issue and send each month once', async () => {
   const invoice = must(await admin.from('invoices').select('id').eq('billing_plan_item_id', item).single())
   assert.equal(must(await admin.from('document_emails').select('id').eq('invoice_id', invoice.id)).length, 1)
   assert.equal(sent.length, 1, 'one message')
+})
+
+test('the guard holds: a run never touches an item that is not from this fixture', async () => {
+  const stranger = await admin.rpc('billing_due_items', { p_limit: 200 })
+  assert.equal(stranger.error, null)
+  const listed = await scopedDb.rpc('billing_due_items', { p_limit: 200 })
+  for (const row of (listed.data ?? []) as Array<{ item_id: string }>) assert.ok(mine.has(row.item_id), 'only this fixture items are listed')
+  assert.deepEqual((await scopedDb.rpc('billing_pending_notice_emails', { p_limit: 20 })).data, [], 'no real notice is ever handed to the fake mail server')
 })
