@@ -156,3 +156,11 @@
 
   --briefing-muted: #a3b3c7;
 }
+
+/* In dark mode "foreground" is a light colour, so a solid foreground block (a monogram square, a toast, a
+   dark button) would turn light with white text on it. Make those blocks the brand blue instead. This sits
+   outside any layer on purpose: an unlayered rule beats the utility classes it overrides. */
+:root.dark .unison-tenant .bg-foreground {
+  background-color: var(--tenant-brand);
+  color: #ffffff;
+}
