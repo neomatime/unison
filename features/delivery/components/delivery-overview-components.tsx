@@ -34,7 +34,7 @@ export function OverallPositionBrief({ overview }: { overview: DeliveryOverview 
       <div className="grid xl:grid-cols-[1.08fr_0.92fr]">
         <div className="p-5 sm:p-6 xl:border-r xl:border-border xl:p-7">
           <p className="text-xs font-semibold tracking-[0.1em] text-brand uppercase">Overall position</p>
-          <h2 id="overall-position-heading" className="mt-2 text-[1.625rem] leading-tight font-bold tracking-[-0.035em] text-foreground sm:text-[1.875rem]">
+          <h2 id="overall-position-heading" className="mt-2 font-brand text-[1.625rem] leading-tight font-light tracking-tight text-foreground sm:text-[1.875rem]">
             {narrative.headline}
           </h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--briefing-muted)] sm:text-[0.9375rem]">

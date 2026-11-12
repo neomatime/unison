@@ -50,7 +50,7 @@ test('the briefing header uses shell context and the intervention queue is a sem
 })
 
 test('the briefing title matches the overall-position headline typography', () => {
-  const typography = 'text-[1.625rem] leading-tight font-bold tracking-[-0.035em] text-foreground sm:text-[1.875rem]'
+  const typography = 'font-brand text-[1.625rem] leading-tight font-light tracking-tight text-foreground sm:text-[1.875rem]'
 
   assert.match(briefingHeader, new RegExp(typography.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
   assert.match(overviewComponents, new RegExp(typography.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
