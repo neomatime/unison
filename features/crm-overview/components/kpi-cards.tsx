@@ -12,15 +12,13 @@ const icons: Record<KpiCardId, LucideIcon> = { clients: Users, leads: Target, qu
 function Card({ label, icon: Icon, href, body }: { label: string; icon: LucideIcon; href: string; body: KpiBody }) {
   const content = (
     <>
-      <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:gap-3">
-        <span aria-hidden="true" className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[var(--brand-soft)] text-brand sm:size-10">
-          <Icon className="size-4 sm:size-5" strokeWidth={1.75} />
-        </span>
-        <p className="unison-metric-label min-h-[2lh] text-[0.675rem] text-muted-foreground sm:min-h-0">{label}</p>
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-sm text-muted-foreground">{label}</p>
+        <Icon aria-hidden="true" className="size-[1.125rem] shrink-0 text-muted-foreground/70" strokeWidth={1.5} />
       </div>
       {body.state === 'ready' ? (
         <div className="mt-3">
-          <p className="font-brand text-[1.75rem] leading-none font-medium tracking-tight break-words text-foreground" title={body.valueTitle}>{body.value}</p>
+          <p className="font-brand text-[2rem] leading-none font-light tracking-tight break-words text-foreground" title={body.valueTitle}>{body.value}</p>
           <DeltaLine delta={body.delta} label={body.deltaLabel} reason={body.noComparisonReason} />
           <p className="mt-1 text-xs text-[var(--briefing-muted)]">{body.caption}</p>
         </div>
