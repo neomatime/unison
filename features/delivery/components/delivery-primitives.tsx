@@ -2,6 +2,7 @@ import type { LucideIcon } from 'lucide-react'
 import type { ReactNode } from 'react'
 
 import { ProgressBar } from '@/components/ui/progress-bar'
+import { StatusDot } from '@/components/ui/status-dot'
 import { cn } from '@/lib/utils'
 import type { DeliveryHealth } from '../data'
 
@@ -31,23 +32,8 @@ export function SectionCard({ title, description, action, children, className }:
   </section>
 }
 
-const healthStyles: Record<string, string> = {
-  'On Track': 'bg-emerald-50 text-emerald-800',
-  Healthy: 'bg-emerald-50 text-emerald-800',
-  Watch: 'bg-amber-50 text-amber-800',
-  'At Risk': 'bg-amber-100 text-amber-900',
-  Critical: 'bg-red-700 text-white',
-  Pending: 'bg-amber-50 text-amber-800',
-  'In Review': 'bg-blue-50 text-blue-800',
-  Overdue: 'bg-red-50 text-red-800',
-  Approved: 'bg-emerald-50 text-emerald-800',
-  Current: 'bg-emerald-50 text-emerald-800',
-}
-
 export function HealthBadge({ children }: { children: DeliveryHealth | ReactNode }) {
-  const label = String(children)
-
-  return <span className={cn('unison-status-transition inline-flex items-center gap-1.5 rounded-none border border-current/10 px-2 py-1 text-[0.6875rem] font-medium whitespace-nowrap', healthStyles[label] ?? 'bg-muted text-foreground')}><span aria-hidden="true" className="size-1.5 rounded-full bg-current/70" />{label}</span>
+  return <StatusDot status={String(children)} />
 }
 
 export function PhaseStepper({ phases, active }: { phases: ReadonlyArray<{ name: string; projects?: number }>; active?: string }) {

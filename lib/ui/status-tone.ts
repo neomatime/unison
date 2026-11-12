@@ -20,6 +20,9 @@ const TONES: Readonly<Record<string, StatusTone>> = {
   Available: 'positive',
   Current: 'positive',
   Low: 'positive',
+  Delivered: 'positive',
+  Verified: 'positive',
+  Satisfied: 'positive',
   // Waiting on someone
   'Partially Paid': 'attention',
   'Awaiting Approval': 'attention',
@@ -32,6 +35,8 @@ const TONES: Readonly<Record<string, StatusTone>> = {
   'On Hold': 'attention',
   Pending: 'attention',
   Medium: 'attention',
+  'In Review': 'attention',
+  Open: 'attention',
   // In progress
   Contacted: 'info',
   Sent: 'info',
@@ -44,6 +49,7 @@ const TONES: Readonly<Record<string, StatusTone>> = {
   'In Progress': 'info',
   Invited: 'info',
   Backlog: 'info',
+  Mitigating: 'info',
   // Bad outcomes
   Disqualified: 'negative',
   Declined: 'negative',

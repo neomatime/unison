@@ -19,18 +19,12 @@ import type { DependencyRow } from '../queries/list-project-dependencies'
 import { DEPENDENCY_CRITICALITIES, DEPENDENCY_REQUIRED_STATUSES } from '../schemas/project-dependency'
 import { SectionCard } from './delivery-primitives'
 import { Dropdown } from '@/components/ui/select'
+import { StatusDot } from '@/components/ui/status-dot'
 
 type DependencyFormOptions = Awaited<ReturnType<typeof listDependencyFormOptions>>
 
-const dependencyTone: Record<DependencyStatus, string> = {
-  Blocked: 'border-destructive/40 bg-destructive/5 text-destructive',
-  'At Risk': 'border-amber-500/40 bg-amber-500/5 text-amber-700',
-  Pending: 'border-border bg-muted text-muted-foreground',
-  Satisfied: 'border-emerald-600/40 bg-emerald-600/5 text-emerald-700',
-}
-
 function DependencyStatusBadge({ status }: { status: DependencyStatus }) {
-  return <span className={`inline-flex items-center rounded-none border px-2 py-0.5 text-xs font-medium ${dependencyTone[status]}`}>{status}</span>
+  return <StatusDot status={status} />
 }
 
 /**

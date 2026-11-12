@@ -76,8 +76,11 @@ test('briefing status labels, secondary copy and phase colors stay accessible an
   assert.match(designTokens, /--briefing-muted:\s*#53677c/)
   assert.match(overviewComponents, /text-\[var\(--briefing-muted\)\]/)
   assert.match(briefingHeader, /text-\[var\(--briefing-muted\)\]/)
-  assert.match(deliveryPrimitives, /'At Risk':\s*'bg-amber-[^']+ text-amber-[^']+'/)
-  assert.match(deliveryPrimitives, /Critical:\s*'bg-red-[^']+ text-white'/)
+  // Health shows as a coloured dot and its word; the colours come from the shared status rules.
+  assert.match(deliveryPrimitives, /<StatusDot status=\{String\(children\)\} \/>/)
+  const tone = readFileSync(join(workspace, 'lib', 'ui', 'status-tone.ts'), 'utf8')
+  assert.match(tone, /'At Risk': 'attention'/)
+  assert.match(tone, /Critical: 'negative'/)
 
   assert.match(overviewComponents, /const coloredColumns = itemColumns\.map/)
   assert.match(overviewComponents, /backgroundColor: column\.color/)

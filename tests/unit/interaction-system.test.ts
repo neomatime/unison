@@ -49,5 +49,5 @@ test('registers expose row and state feedback affordances', () => {
   const primitives = source('features', 'delivery', 'components', 'delivery-primitives.tsx')
   // Metric cards carry no accent rule: brand blue is reserved for primary actions and the active state.
   assert.doesNotMatch(primitives, /before:bg-brand/)
-  assert.match(primitives, /size-1\.5 rounded-full bg-current\/70/)
+  assert.match(primitives, /StatusDot/, 'health is shown as a dot and its word')
 })
