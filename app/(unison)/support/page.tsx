@@ -3,9 +3,70 @@ import { CircleHelp, FileQuestion, Plus } from 'lucide-react'
 
 import { WorkspaceHeader } from '@/components/shared/workspace-header'
 import { StatusDot } from '@/components/ui/status-dot'
+import { SupportToolbar } from '@/features/collaboration/components/support-toolbar'
 import { listSupportTickets, supportReference } from '@/features/collaboration/support'
+import { filterSupportTickets, hasSupportFilters, readSupportFilters } from '@/features/collaboration/support-filter'
 
-export default async function Page() {
-  const tickets = await listSupportTickets()
-  return <><WorkspaceHeader category="Help & Support" title="Support" description="Create, review and track support requests for your organization." /><div className="mb-5 flex flex-wrap justify-end gap-2"><Link href="/knowledge" className="inline-flex h-10 items-center gap-2 border border-border bg-card px-4 text-sm font-semibold"><CircleHelp className="size-4" />Browse guidance</Link><Link href="/support/new" className="inline-flex h-10 items-center gap-2 bg-brand px-4 text-sm font-semibold text-white"><Plus className="size-4" />New request</Link></div><section className="overflow-hidden border border-border bg-card"><header className="border-b border-border px-5 py-4"><h2 className="text-sm font-medium">Support requests</h2><p className="mt-1 text-xs text-muted-foreground">Requests and status history are retained for your organization.</p></header>{tickets.length ? <div className="overflow-x-auto"><table className="w-full min-w-[760px] text-left"><thead><tr className="bg-muted/30 text-[0.65rem] font-semibold tracking-wide text-muted-foreground uppercase">{['Reference', 'Subject', 'Category', 'Priority', 'Status', 'Updated'].map((label) => <th key={label} className="px-5 py-3">{label}</th>)}</tr></thead><tbody>{tickets.map((ticket) => <tr key={ticket.id} className="border-t border-border hover:bg-muted/25"><td className="px-5 py-3.5"><Link href={`/support/${ticket.id}`} className="unison-record-name text-sm text-brand hover:underline">{supportReference(ticket.ticket_number)}</Link></td><td className="px-5 py-3.5 text-sm font-medium">{ticket.subject}</td><td className="px-5 py-3.5 text-xs text-muted-foreground">{ticket.category}</td><td className="px-5 py-3.5"><StatusDot status={ticket.priority} /></td><td className="px-5 py-3.5"><StatusDot status={ticket.status} /></td><td className="px-5 py-3.5 text-xs text-muted-foreground">{new Intl.DateTimeFormat('en-ZA', { dateStyle: 'medium' }).format(new Date(ticket.updated_at))}</td></tr>)}</tbody></table></div> : <div className="flex min-h-64 flex-col items-center justify-center px-6 text-center"><FileQuestion className="size-8 text-muted-foreground" /><h2 className="mt-4 font-semibold">No support requests yet</h2><p className="mt-1 max-w-md text-sm text-muted-foreground">If you need help, create a request and track its status here.</p><Link href="/support/new" className="mt-5 bg-brand px-4 py-2 text-sm font-semibold text-white">Create request</Link></div>}</section></>
+export default async function Page({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const filters = readSupportFilters(await searchParams)
+  const all = await listSupportTickets()
+  const tickets = filterSupportTickets(all, filters)
+  return (
+    <>
+      <WorkspaceHeader category="Help & Support" title="Support" description="Create, review and track support requests for your organization." />
+      <div className="mb-5 flex flex-wrap justify-end gap-2">
+        <Link href="/knowledge" className="inline-flex h-10 items-center gap-2 border border-border bg-card px-4 text-sm font-semibold">
+          <CircleHelp className="size-4" />
+          Browse guidance
+        </Link>
+        <Link href="/support/new" className="inline-flex h-10 items-center gap-2 bg-brand px-4 text-sm font-semibold text-white">
+          <Plus className="size-4" />
+          New request
+        </Link>
+      </div>
+      <section className="overflow-hidden border border-border bg-card">
+        <header className="border-b border-border px-5 py-4">
+          <h2 className="text-sm font-medium">Support requests</h2>
+          <p className="mt-1 text-xs text-muted-foreground">Requests and status history are retained for your organization.</p>
+        </header>
+        {all.length ? <SupportToolbar filters={filters} /> : null}
+        {tickets.length ? (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[760px] text-left">
+              <thead>
+                <tr className="bg-muted/30 text-[0.65rem] font-semibold tracking-wide text-muted-foreground uppercase">
+                  {['Reference', 'Subject', 'Category', 'Priority', 'Status', 'Updated'].map((label) => <th key={label} className="px-5 py-3">{label}</th>)}
+                </tr>
+              </thead>
+              <tbody>
+                {tickets.map((ticket) => (
+                  <tr key={ticket.id} className="border-t border-border hover:bg-muted/25">
+                    <td className="px-5 py-3.5"><Link href={`/support/${ticket.id}`} className="unison-record-name text-sm text-brand hover:underline">{supportReference(ticket.ticket_number)}</Link></td>
+                    <td className="px-5 py-3.5 text-sm font-medium">{ticket.subject}</td>
+                    <td className="px-5 py-3.5 text-xs text-muted-foreground">{ticket.category}</td>
+                    <td className="px-5 py-3.5"><StatusDot status={ticket.priority} /></td>
+                    <td className="px-5 py-3.5"><StatusDot status={ticket.status} /></td>
+                    <td className="px-5 py-3.5 text-xs text-muted-foreground">{new Intl.DateTimeFormat('en-ZA', { dateStyle: 'medium' }).format(new Date(ticket.updated_at))}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : all.length && hasSupportFilters(filters) ? (
+          <div className="flex min-h-48 flex-col items-center justify-center px-6 text-center">
+            <h2 className="font-semibold">No requests match</h2>
+            <p className="mt-1 max-w-md text-sm text-muted-foreground">Try a different search, or clear the filters to see every request.</p>
+            <Link href="/support" className="mt-4 border border-border px-4 py-2 text-sm font-medium hover:bg-muted">Clear filters</Link>
+          </div>
+        ) : (
+          <div className="flex min-h-64 flex-col items-center justify-center px-6 text-center">
+            <FileQuestion className="size-8 text-muted-foreground" />
+            <h2 className="mt-4 font-semibold">No support requests yet</h2>
+            <p className="mt-1 max-w-md text-sm text-muted-foreground">If you need help, create a request and track its status here.</p>
+            <Link href="/support/new" className="mt-5 bg-brand px-4 py-2 text-sm font-semibold text-white">Create request</Link>
+          </div>
+        )}
+      </section>
+    </>
+  )
 }
