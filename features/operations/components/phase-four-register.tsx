@@ -52,9 +52,8 @@ export async function PersistentTeamScreen({ initialTab }: { initialTab?: string
     <nav className="mb-5 flex gap-1 border-b border-border">
       <Link href="/people/team" className={`border-b-2 px-4 py-3 text-sm font-semibold ${assignmentView ? "border-transparent text-muted-foreground" : "border-brand text-brand"}`}>Directory</Link>
     </nav>
-    <div className="grid gap-3 sm:grid-cols-3">
+    <div className="grid gap-3 sm:grid-cols-2">
       <MetricCard label="Active members" value={String(active.length)} detail="Available for accountable delivery" />
-      <MetricCard label="Active assignments" value={String(assignments.filter((item) => item.status === "Active").length)} detail="Persistent project commitments" />
       <MetricCard label="Capacity allocated" value={`${active.length ? Math.round(active.reduce((sum, item) => sum + Number(item.capacityPercent ?? 0), 0) / active.length) : 0}%`} detail="Average member allocation" />
     </div>
     <div className="mt-5"><RecordCollectionWorkspace config={{
