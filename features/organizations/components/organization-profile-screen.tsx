@@ -19,17 +19,15 @@ import Link from 'next/link'
 import { WorkspaceHeader } from '@/components/shared/workspace-header'
 import { ContentPanel } from '@/components/ui/content-panel'
 import { InitialAvatar } from '@/components/ui/initial-avatar'
-import { StatusBadge } from '@/components/ui/status-badge'
+import { StatusDot } from '@/components/ui/status-dot'
 import type { OrganizationProfileData } from '@/features/organizations/types'
-import { cn, getInitials } from '@/lib/utils'
+import { getInitials } from '@/lib/utils'
 import { OrganizationMenu } from './organization-menu'
 
 type OrganizationProfileScreenProps = {
   profile: OrganizationProfileData
   saved?: boolean
 }
-
-const unavailableTabs = ['Settings', 'Subscription & Billing', 'Audit Log'] as const
 
 export function OrganizationProfileScreen({ profile, saved = false }: OrganizationProfileScreenProps) {
   const headerActions = (
@@ -67,14 +65,14 @@ export function OrganizationProfileScreen({ profile, saved = false }: Organizati
       <OrganisationTabs />
       <OrganisationSummaryMetrics profile={profile} />
 
-      <div className="mt-4 grid gap-4 xl:grid-cols-12">
-        <OrganisationDetailsPanel profile={profile} className="xl:col-span-5 xl:row-span-2" />
-        <div className="grid content-start gap-4 xl:col-span-4">
-          <OrganisationBrandingPanel organizationName={profile.name} />
+      <div className="mt-6 grid gap-6 lg:grid-cols-[22rem_minmax(0,1fr)] lg:items-start">
+        <div className="grid content-start gap-4">
+          <OrganisationDetailsPanel profile={profile} />
           <OrganisationContactPanel owner={profile.workspaceOwner} />
         </div>
-        <div className="grid content-start gap-4 xl:col-span-3">
+        <div className="grid content-start gap-4 xl:grid-cols-2">
           <OrganisationSubscriptionPanel profile={profile} />
+          <OrganisationBrandingPanel organizationName={profile.name} />
           <OrganisationIntegrationsPanel />
           <OrganisationSettingsLink />
         </div>
@@ -132,7 +130,6 @@ function OrganisationTabs() {
         <Link href="/settings" aria-current="page" className="border-b-2 border-foreground px-4 py-3 text-sm font-medium text-foreground">
           Overview
         </Link>
-        {unavailableTabs.slice(0, 2).map((tab) => <UnavailableTab key={tab} label={tab} />)}
         <Link href="/settings/integrations" className="border-b-2 border-transparent px-4 py-3 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
           Integrations
         </Link>
@@ -142,26 +139,8 @@ function OrganisationTabs() {
         <Link href="/people/team" className="border-b-2 border-transparent px-4 py-3 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
           Users
         </Link>
-        <Link href="/people/team" className="border-b-2 border-transparent px-4 py-3 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
-          Teams
-        </Link>
-        <UnavailableTab label="Audit Log" />
       </div>
     </nav>
-  )
-}
-
-function UnavailableTab({ label }: { label: string }) {
-  return (
-    <button
-      type="button"
-      disabled
-      aria-disabled="true"
-      title={`${label} is not available yet`}
-      className="cursor-not-allowed border-b-2 border-transparent px-4 py-3 text-sm font-medium text-muted-foreground/55"
-    >
-      {label}
-    </button>
   )
 }
 
@@ -211,7 +190,7 @@ export function OrganisationDetailsPanel({ profile, className }: { profile: Orga
     >
       <dl className="divide-y divide-border">
         {details.map(([label, value]) => (
-          <div key={label} className="grid gap-1 py-3 text-sm sm:grid-cols-[10rem_1fr] sm:gap-4">
+          <div key={label} className="grid gap-1 py-3 text-sm">
             <dt className="text-muted-foreground">{label}</dt>
             <dd className="min-w-0 break-words font-medium text-foreground">{value}</dd>
           </div>
@@ -316,14 +295,7 @@ export function OrganisationSettingsLink() {
 }
 
 function OrganizationStatus({ status }: { status: OrganizationProfileData['status'] }) {
-  const active = status === 'active'
-  const tone = status === 'suspended' ? 'warning' : status === 'archived' ? 'neutral' : 'brand'
-  return (
-    <StatusBadge tone={tone} className={cn(active && 'bg-success-soft text-success')}>
-      <span aria-hidden="true" className={cn('mr-1.5 size-1.5 rounded-full', active ? 'bg-success' : status === 'suspended' ? 'bg-warning' : 'bg-muted-foreground')} />
-      {titleCase(status)}
-    </StatusBadge>
-  )
+  return <StatusDot status={titleCase(status)} tone={status === 'active' ? 'positive' : status === 'suspended' ? 'attention' : 'neutral'} />
 }
 
 function DetailRow({ label, value, href }: { label: string; value: string; href?: string }) {
