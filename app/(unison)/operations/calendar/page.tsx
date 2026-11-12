@@ -1,5 +1,5 @@
 import { PhaseFourRegister } from '@/features/operations/components/phase-four-register'
 
 export default function Page() {
-  return <PhaseFourRegister kind="calendar-event" />
+  return <PhaseFourRegister kind="calendar-event" slim />
 }
