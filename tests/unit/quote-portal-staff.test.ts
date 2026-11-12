@@ -704,7 +704,7 @@ test('each response shows the decision, who decided, the time in South African t
   const source = panel()
   assert.match(source, /responses\.map\(\(response\) =>/, 'newest first, as the query returns them')
   assert.match(source, /<h3 [^>]*>Response<\/h3>/, 'a Response block')
-  assert.match(source, /<StatusBadge tone=\{DECISION_TONE\[response\.decision\]\}>\{DECISION_LABEL\[response\.decision\]\}<\/StatusBadge>/, 'the decision is a badge')
+  assert.match(source, /<StatusDot status=\{DECISION_LABEL\[response\.decision\]\} tone=\{DECISION_TONE\[response\.decision\]\} \/>/, 'the decision is a dot and its word')
   for (const field of ['signatory_name', 'signatory_position', 'signatory_organisation', 'verified_email']) assert.match(source, new RegExp(`\\{response\\.${field}\\}`), `${field} is shown`)
   assert.match(source, /\{when\(response\.decided_at\)\}/, 'the time goes through the South African time helper')
   assert.match(source, /Quote version \{response\.quote_version\}/)

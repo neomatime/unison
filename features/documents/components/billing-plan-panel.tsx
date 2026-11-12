@@ -1,6 +1,7 @@
 import Link from 'next/link'
 
-import { StatusBadge } from '@/components/ui/status-badge'
+import { StatusDot } from '@/components/ui/status-dot'
+import type { StatusTone } from '@/lib/ui/status-tone'
 import { ActionButton } from '@/features/crm-workspace/components/action-button'
 import { WorkspaceSection } from '@/features/crm-workspace/components/workspace-section'
 import { todayInJohannesburg } from '../../payments/fields'
@@ -13,7 +14,7 @@ import { DOCUMENTS, isDraftReference } from '../vocabulary'
 import { ApproveFirstInvoiceControl } from './approve-first-invoice-control'
 import { BillingPlanStateForm } from './billing-plan-state-form'
 
-const BADGE_TONE: Record<PlanTone, 'info' | 'warning' | 'brand' | 'neutral'> = { waiting: 'info', attention: 'warning', done: 'brand', muted: 'neutral' }
+const BADGE_TONE: Record<PlanTone, StatusTone> = { waiting: 'info', attention: 'attention', done: 'positive', muted: 'neutral' }
 const STATUS_TEXT = { brand: 'text-brand', warning: 'text-warning', neutral: 'text-muted-foreground' } as const
 
 /**
@@ -107,7 +108,7 @@ export async function BillingPlanPanel({ quoteId }: { quoteId: string }) {
                   </td>
                   <td className="whitespace-nowrap text-muted-foreground md:px-5 md:py-3">{formatDocumentDate(item.billOn) ?? item.billOn}</td>
                   <td className="basis-full md:px-5 md:py-3">
-                    <StatusBadge tone={BADGE_TONE[described.tone]} className="whitespace-normal md:whitespace-nowrap">{owingLabel(described.label, item.invoice)}</StatusBadge>
+                    <StatusDot status={owingLabel(described.label, item.invoice)} tone={BADGE_TONE[described.tone]} wrap />
                   </td>
                   <td className="md:px-5 md:py-3">
                     {item.invoice ? (

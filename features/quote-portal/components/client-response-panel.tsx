@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
-import { StatusBadge } from '@/components/ui/status-badge'
+import { StatusDot } from '@/components/ui/status-dot'
+import type { StatusTone } from '@/lib/ui/status-tone'
 import { ActionButton } from '@/features/crm-workspace/components/action-button'
 import { WorkspaceSection } from '@/features/crm-workspace/components/workspace-section'
 import { getDocument } from '@/features/documents/queries/get-document'
@@ -17,17 +18,17 @@ const when = (value: string): string => {
   return Number.isNaN(date.getTime()) ? 'unknown time' : WHEN.format(date)
 }
 
-const TONE: Record<LinkState, 'brand' | 'neutral' | 'danger' | 'info' | 'warning'> = {
-  Active: 'brand',
+const TONE: Record<LinkState, StatusTone> = {
+  Active: 'positive',
   Expired: 'neutral',
-  Revoked: 'danger',
+  Revoked: 'negative',
   Superseded: 'info',
-  'Not sent': 'warning',
+  'Not sent': 'attention',
 }
 
 // Staff-facing wording for a recorded response. (Client-facing copy lives in ../copy.ts, not here.)
 const DECISION_LABEL: Record<QuoteResponseRow['decision'], string> = { accepted: 'Accepted', declined: 'Declined' }
-const DECISION_TONE: Record<QuoteResponseRow['decision'], 'brand' | 'danger'> = { accepted: 'brand', declined: 'danger' }
+const DECISION_TONE: Record<QuoteResponseRow['decision'], StatusTone> = { accepted: 'positive', declined: 'negative' }
 const MARKED_BY_STAFF = 'Marked by staff'
 const NO_CLIENT_RESPONSE = 'No client response is on record for this status.'
 
@@ -48,7 +49,7 @@ function ResponseBlock({ response }: { response: QuoteResponseRow }) {
     <li className="px-5 py-4 text-sm">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="font-medium text-foreground">Response</h3>
-        <StatusBadge tone={DECISION_TONE[response.decision]}>{DECISION_LABEL[response.decision]}</StatusBadge>
+        <StatusDot status={DECISION_LABEL[response.decision]} tone={DECISION_TONE[response.decision]} />
       </div>
       <dl className="mt-3 grid gap-x-6 gap-y-2 text-xs sm:grid-cols-2">
         <Fact label="Signatory">{response.signatory_name}</Fact>
@@ -116,7 +117,7 @@ export async function ClientResponsePanel({ quoteId }: { quoteId: string }) {
       ) : null}
       {attribution === 'staff' ? (
         <div className="flex flex-wrap items-center gap-3 border-b border-border px-5 py-3 text-sm">
-          <StatusBadge tone="warning">{MARKED_BY_STAFF}</StatusBadge>
+          <StatusDot status={MARKED_BY_STAFF} tone="attention" />
           <p className="text-muted-foreground">{NO_CLIENT_RESPONSE}</p>
         </div>
       ) : null}
@@ -160,7 +161,7 @@ export async function ClientResponsePanel({ quoteId }: { quoteId: string }) {
                   {responded ? <p className="mt-1 text-xs text-muted-foreground">Responded {when(responded.decided_at)}</p> : null}
                 </div>
                 <div className="flex flex-col items-end gap-2">
-                  <StatusBadge tone={TONE[state]}>{state}</StatusBadge>
+                  <StatusDot status={state} tone={TONE[state]} />
                   {state === 'Active' ? (
                     <ActionButton
                       action={revokeLinkAction.bind(null, link.id)}

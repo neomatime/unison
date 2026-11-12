@@ -10,11 +10,11 @@ const DOT: Record<StatusTone, string> = {
 }
 
 /** A status as a small coloured dot and its word, instead of a filled badge. The word always carries the meaning. */
-export function StatusDot({ status }: { status: string | null | undefined }) {
+export function StatusDot({ status, tone, wrap }: { status: string | null | undefined; /** Set when the words are a sentence, not a known status. */ tone?: StatusTone; /** Let a long sentence wrap instead of staying on one line. */ wrap?: boolean }) {
   const label = status ? String(status) : '—'
   return (
-    <span className="inline-flex items-center gap-2 text-xs whitespace-nowrap text-foreground">
-      <span aria-hidden="true" className={cn('size-2 shrink-0 rounded-full', DOT[statusTone(status)])} />
+    <span className={cn('inline-flex gap-2 text-xs text-foreground', wrap ? 'items-start' : 'items-center whitespace-nowrap')}>
+      <span aria-hidden="true" className={cn('size-2 shrink-0 rounded-full', wrap && 'mt-1', DOT[tone ?? statusTone(status)])} />
       {label}
     </span>
   )

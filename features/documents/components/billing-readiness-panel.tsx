@@ -1,13 +1,14 @@
 import Link from 'next/link'
 
-import { StatusBadge } from '@/components/ui/status-badge'
+import { StatusDot } from '@/components/ui/status-dot'
+import type { StatusTone } from '@/lib/ui/status-tone'
 import { WorkspaceSection } from '@/features/crm-workspace/components/workspace-section'
 import type { PlanTone } from '../billing-plan-view'
 import { describeReadiness } from '../billing-readiness-view'
 import { getBillingReadiness } from '../queries/get-billing-readiness'
 import { BillingReadinessOverrideForm } from './billing-readiness-override-form'
 
-const BADGE_TONE: Record<PlanTone, 'info' | 'warning' | 'brand' | 'neutral'> = { waiting: 'info', attention: 'warning', done: 'brand', muted: 'neutral' }
+const BADGE_TONE: Record<PlanTone, StatusTone> = { waiting: 'info', attention: 'attention', done: 'positive', muted: 'neutral' }
 
 /**
  * "Starting the work" on the quote page (accept to invoice, stage 4): whether the work may start (the start date has arrived and the
@@ -26,7 +27,7 @@ export async function BillingReadinessPanel({ quoteId }: { quoteId: string }) {
   return (
     <WorkspaceSection title="Starting the work" description="The work may start when the start date has arrived and the first invoice is paid. An owner or admin can decide otherwise, with a reason.">
       <div className="space-y-2 border-b border-border px-5 py-4 text-sm">
-        <StatusBadge tone={BADGE_TONE[described.tone]} className="whitespace-normal">{described.line}</StatusBadge>
+        <StatusDot status={described.line} tone={BADGE_TONE[described.tone]} wrap />
         {view.onboardingHref ? (
           <p>
             <Link href={view.onboardingHref} className="font-semibold text-brand hover:underline">Open the onboarding record</Link>
