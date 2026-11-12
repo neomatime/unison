@@ -5,6 +5,7 @@ import { useActionState, useState, useTransition } from 'react'
 import { formatDocumentDate } from '@/features/documents/document-view'
 import { placeholderProblems, placeholdersIn } from '../placeholders'
 import { saveTermsDraftAction } from '../actions/terms'
+import { DatePicker } from '@/components/ui/date-picker'
 
 const field = 'h-10 w-full rounded-none border border-border bg-background px-3 text-sm'
 /** Only a retainer template has these values (the rate card tier); anywhere else the line is left out of the document. */
@@ -82,7 +83,7 @@ export function DraftEditor({ templateId, start, hasDraft, savedAt, targetKind, 
       ) : null}
       <label className="text-sm font-medium">
         Effective from
-        <input name="effectiveFrom" type="date" value={effective} onChange={(event) => setEffective(event.target.value)} aria-label="Effective from" className={`${field} mt-1.5`} />
+        <DatePicker name="effectiveFrom" value={effective} onChange={(event) => setEffective(event.target.value)} aria-label="Effective from" className={`${field} mt-1.5`} />
       </label>
       <label key={`note-${fieldsKey}`} className="text-sm font-medium">
         Change note

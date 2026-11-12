@@ -18,6 +18,7 @@ import type { DependencyRow } from '../queries/list-project-dependencies'
 // here would let the form drift from what the schema and database accept.
 import { DEPENDENCY_CRITICALITIES, DEPENDENCY_REQUIRED_STATUSES } from '../schemas/project-dependency'
 import { SectionCard } from './delivery-primitives'
+import { Dropdown } from '@/components/ui/select'
 
 type DependencyFormOptions = Awaited<ReturnType<typeof listDependencyFormOptions>>
 
@@ -235,7 +236,7 @@ export function AddDependencyForm({
     <form action={formAction} className="space-y-4">
       <label className="block">
         <FieldLabel label="Prerequisite project" required />
-        <select
+        <Dropdown
           name="prerequisiteProjectId"
           required
           value={prerequisiteId}
@@ -244,11 +245,11 @@ export function AddDependencyForm({
         >
           <option value="">Choose a project</option>
           {options.projects.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}
-        </select>
+        </Dropdown>
       </label>
       <label className="block">
         <FieldLabel label="Required state" required />
-        <select
+        <Dropdown
           name="requiredState"
           required
           value={requiredState}
@@ -262,7 +263,7 @@ export function AddDependencyForm({
           {phaseOptions.map((phase) => (
             <option key={phase.id} value={`phase:${phase.id}`}>{`Has reached ${phase.name}`}</option>
           ))}
-        </select>
+        </Dropdown>
       </label>
       <div className="grid gap-4 sm:grid-cols-2">
         <SelectField name="criticality" label="Criticality" options={DEPENDENCY_CRITICALITIES} defaultValue={DEPENDENCY_CRITICALITIES[0]} />

@@ -132,7 +132,7 @@ test('the editor warns, without blocking, about retainer-only placeholders in ot
   assert.match(editor, /disabled=\{pending \|\| problems\.length > 0\}/, 'only an unknown placeholder blocks approval, the retainer-only note does not')
   assert.match(editor, /const backDated = effective !== '' && currentEffectiveFrom !== null && effective <= currentEffectiveFrom/)
   assert.match(editor, /This date is not later than the version in force \(effective \{formatDocumentDate\(currentEffectiveFrom\)\}\), so this version will not replace it\./)
-  assert.match(editor, /name="effectiveFrom" type="date" value=\{effective\} onChange=/, 'the date is controlled but still submitted with the form')
+  assert.match(editor, /<DatePicker name="effectiveFrom" value=\{effective\} onChange=/, 'the date is controlled but still submitted with the form')
 })
 
 test('the list also shows the pending version, and a template whose only version is future-dated is flagged', () => {

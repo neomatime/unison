@@ -12,6 +12,7 @@ import { deriveCoverage, unlinkedOptions, type Coverage } from "../traceability-
 import type { DeliveryItemNode } from "../queries/list-delivery-items";
 import type { TraceabilityRow } from "../queries/list-traceability";
 import { SectionCard } from "./delivery-primitives";
+import { Dropdown } from '@/components/ui/select'
 
 type Option = { id: string; name: string };
 type FieldName = "deliveryItemId" | "evidenceId";
@@ -148,7 +149,7 @@ function LinkedItems({
       </ul>
       {options.length ? (
         <form action={linkFormAction} className="mt-2 flex gap-2">
-          <select name={fieldName} required defaultValue="" className={input}>
+          <Dropdown name={fieldName} required defaultValue="" className={input}>
             <option value="" disabled>
               {addLabel}
             </option>
@@ -157,7 +158,7 @@ function LinkedItems({
                 {option.name}
               </option>
             ))}
-          </select>
+          </Dropdown>
           <button
             disabled={linkPending}
             className="shrink-0 border border-border px-3 py-1.5 text-xs font-semibold"

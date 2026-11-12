@@ -5,6 +5,8 @@ import { useActionState } from 'react'
 
 import { saveKnowledgeArticleAction, saveSubscriptionAction, saveSupportCaseAction, saveTenantConfigurationAction } from '../actions'
 import type { KnowledgeArticle, PlatformOrganization, PlatformSubscription, SupportCase, SupportTicketOption, TenantConfiguration } from '../types'
+import { Dropdown } from '@/components/ui/select'
+import { AppInput } from '@/components/ui/input'
 
 const input = 'mt-1.5 h-11 w-full border border-border bg-background px-3 text-sm outline-none focus:border-brand'
 
@@ -32,7 +34,7 @@ export function SubscriptionForm({ organizations, subscription }: { organization
   const [state, action, pending] = useActionState(bound, undefined)
   return <form action={action} className="border border-border bg-card">
     <div className="grid gap-5 p-6 md:grid-cols-2 lg:p-8">
-      <label className="text-sm font-medium">Organization<select name="organizationId" required defaultValue={subscription?.organization_id ?? ''} disabled={Boolean(subscription)} className={input}><option value="">Select organization…</option>{organizations.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select>{subscription ? <input type="hidden" name="organizationId" value={subscription.organization_id} /> : null}</label>
+      <label className="text-sm font-medium">Organization<Dropdown name="organizationId" required defaultValue={subscription?.organization_id ?? ''} disabled={Boolean(subscription)} className={input}><option value="">Select organization…</option>{organizations.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</Dropdown>{subscription ? <input type="hidden" name="organizationId" value={subscription.organization_id} /> : null}</label>
       <Select name="planKey" label="Plan" value={subscription?.plan_key ?? 'strategic-enterprise'} options={['core', 'framework', 'enterprise', 'strategic-enterprise']} />
       <Select name="status" label="Status" value={subscription?.status ?? 'draft'} options={['draft', 'pending', 'active', 'paused', 'cancelled', 'expired']} />
       <Select name="billingCycle" label="Billing cycle" value={subscription?.billing_cycle ?? 'annual'} options={['monthly', 'annual', 'custom']} />
@@ -54,7 +56,7 @@ export function SupportCaseForm({ organizations, supportCase, linkedTicket }: { 
   return <form action={action} className="border border-border bg-card">
     <div className="grid gap-5 p-6 md:grid-cols-2 lg:p-8">
       <input type="hidden" name="supportTicketId" value={supportCase?.support_ticket_id ?? linkedTicket?.id ?? ''} />
-      <label className="text-sm font-medium">Organization<select name="organizationId" required defaultValue={supportCase?.organization_id ?? linkedTicket?.organization_id ?? ''} disabled={Boolean(supportCase || linkedTicket)} className={input}><option value="">Select organization…</option>{organizations.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select>{supportCase || linkedTicket ? <input type="hidden" name="organizationId" value={supportCase?.organization_id ?? linkedTicket?.organization_id} /> : null}</label>
+      <label className="text-sm font-medium">Organization<Dropdown name="organizationId" required defaultValue={supportCase?.organization_id ?? linkedTicket?.organization_id ?? ''} disabled={Boolean(supportCase || linkedTicket)} className={input}><option value="">Select organization…</option>{organizations.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</Dropdown>{supportCase || linkedTicket ? <input type="hidden" name="organizationId" value={supportCase?.organization_id ?? linkedTicket?.organization_id} /> : null}</label>
       <Field name="subject" label="Subject" required value={supportCase?.subject ?? linkedTicket?.subject ?? ''} />
       <Select name="category" label="Category" value={supportCase?.category ?? linkedTicket?.category ?? 'General'} options={['General', 'Access', 'Data', 'Delivery', 'Billing', 'Technical']} />
       <Select name="priority" label="Priority" value={supportCase?.priority ?? linkedTicket?.priority ?? 'Medium'} options={['Low', 'Medium', 'High', 'Critical']} />
@@ -91,11 +93,11 @@ function FormFooter({ back, pending, label, error }: { back: string; pending: bo
 }
 
 function Field({ name, label, value, type = 'text', required, min, max, step, maxLength }: { name: string; label: string; value?: string; type?: string; required?: boolean; min?: number; max?: number; step?: string; maxLength?: number }) {
-  return <label className="text-sm font-medium">{label}<input name={name} type={type} required={required} min={min} max={max} step={step} maxLength={maxLength} defaultValue={value ?? ''} className={input} /></label>
+  return <label className="text-sm font-medium">{label}<AppInput name={name} type={type} required={required} min={min} max={max} step={step} maxLength={maxLength} defaultValue={value ?? ''} className={input} /></label>
 }
 
 function Select({ name, label, value, options }: { name: string; label: string; value: string; options: string[] }) {
-  return <label className="text-sm font-medium">{label}<select name={name} defaultValue={value} className={input}>{options.map((option) => <option key={option} value={option}>{option}</option>)}</select></label>
+  return <label className="text-sm font-medium">{label}<Dropdown name={name} defaultValue={value} className={input}>{options.map((option) => <option key={option} value={option}>{option}</option>)}</Dropdown></label>
 }
 
 function TextArea({ name, label, value, description, rows = 5, required }: { name: string; label: string; value?: string; description?: string; rows?: number; required?: boolean }) {

@@ -9,6 +9,8 @@ import { FOLLOW_UP_PRIORITIES } from '../vocabulary'
 import { ActionButton } from './action-button'
 import { Feedback, input } from './form-parts'
 import { WorkspaceSection } from './workspace-section'
+import { Dropdown } from '@/components/ui/select'
+import { DatePicker } from '@/components/ui/date-picker'
 
 type Parent = { kind: 'lead' | 'client' | 'opportunity'; id: string }
 
@@ -59,14 +61,14 @@ function AddFollowUpForm({ parent, teamMembers, defaultAssigneeId }: { parent: P
   return (
     <form action={action} className="grid gap-3 border-t border-border p-5 md:grid-cols-2">
       <input name="title" required aria-label="Follow-up title" placeholder="What needs to happen?" className={`${input} md:col-span-2`} />
-      <input name="dueDate" type="date" aria-label="Due date" className={input} />
-      <select name="priority" aria-label="Priority" defaultValue="Medium" className={input}>
+      <DatePicker name="dueDate" aria-label="Due date" className={input} />
+      <Dropdown name="priority" aria-label="Priority" defaultValue="Medium" className={input}>
         {FOLLOW_UP_PRIORITIES.map((priority) => <option key={priority} value={priority}>{priority}</option>)}
-      </select>
-      <select name="assigneeId" aria-label="Assigned to" defaultValue={defaultAssigneeId ?? ''} className={input}>
+      </Dropdown>
+      <Dropdown name="assigneeId" aria-label="Assigned to" defaultValue={defaultAssigneeId ?? ''} className={input}>
         <option value="">Unassigned</option>
         {teamMembers.map((member) => <option key={member.id} value={member.id}>{member.name}</option>)}
-      </select>
+      </Dropdown>
       <div className="flex items-center justify-between gap-3">
         <Feedback state={state} />
         <button disabled={pending} className="ml-auto bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-60">Add follow-up</button>

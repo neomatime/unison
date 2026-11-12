@@ -11,6 +11,7 @@ import type { ProjectFormOptions } from '../queries/list-project-form-options'
 // its enums from, so the form cannot offer a value the schema or
 // projects_status_check would reject. Copying them here would let them drift.
 import { PROJECT_HEALTHS, PROJECT_STATUSES } from '../schemas/project'
+import { Dropdown } from '@/components/ui/select'
 
 type ActionState = { error?: string } | undefined
 type ProjectFormAction = (prevState: ActionState, formData: FormData) => Promise<ActionState>
@@ -70,7 +71,7 @@ export function ProjectForm({
             restyled. */}
         <label className="block">
           <FieldLabel label="Delivery framework" required />
-          <select
+          <Dropdown
             name="frameworkId"
             required
             value={frameworkId}
@@ -81,7 +82,7 @@ export function ProjectForm({
             {options.frameworks.map((framework) => (
               <option key={framework.id} value={framework.id}>{framework.name}</option>
             ))}
-          </select>
+          </Dropdown>
         </label>
         <EntitySelectField
           name="phaseId"

@@ -539,11 +539,14 @@ test('the confirm step shows the summary, labelled fields prefilled, the email a
 test('the decline step adds the six reasons with an empty choice, and an optional comments box', () => {
   const html = renderConfirm(flowReducer(initialFlowState(PREFILL), { type: 'open', decision: 'declined' }))
   assert.match(html, new RegExp(`<h3[^>]*>${copy.STEP_LABELS.confirmDecline}</h3>`))
-  const select = tags(html, 'select')
+  // The reason is the app's dropdown: a labelled button that opens a list, showing the empty choice until one is picked.
+  const select = tags(html, 'button').filter((tag) => attr(tag, 'aria-haspopup') === 'listbox')
   assert.equal(select.length, 1)
   assert.equal(labelFor(html, attr(select[0], 'id') ?? ''), copy.FORM_LABELS.reason)
-  const options = [...html.matchAll(/<option value="([^"]*)"[^>]*>([^<]*)<\/option>/g)].map((match) => [match[1], match[2]])
-  assert.deepEqual(options, [['', copy.FORM_LABELS.noReason], ...DECLINE_REASONS.map((reason) => [reason, reason])])
+  assert.ok(html.includes(`>${copy.FORM_LABELS.noReason}</span>`))
+  const source = read('features', 'quote-portal', 'components', 'portal-decision-steps.tsx')
+  assert.ok(source.includes('<option value="">{FORM_LABELS.noReason}</option>'))
+  assert.match(source, /DECLINE_REASONS\.map\(\(reason\) => \(\s*<option key=\{reason\} value=\{reason\}>\s*\{reason\}/)
   const textarea = tags(html, 'textarea')
   assert.equal(textarea.length, 1)
   assert.equal(labelFor(html, attr(textarea[0], 'id') ?? ''), copy.FORM_LABELS.comments)

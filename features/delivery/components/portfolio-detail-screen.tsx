@@ -11,6 +11,7 @@ import type { getExecutiveVisibility } from "../queries/portfolio-management";
 import { ExecutiveVisibility } from "./executive-visibility";
 import { HealthBadge, MetricCard, SectionCard } from "./delivery-primitives";
 import { assignPortfolioProjectAction } from "../actions/portfolio-management";
+import { Dropdown } from '@/components/ui/select'
 const tabs = ["Overview", "Programmes", "Executive visibility"] as const;
 export function PortfolioDetailScreen({
   portfolio,
@@ -138,8 +139,8 @@ export function PortfolioDetailScreen({
               </p>
             )}
             <form action={assignmentAction} className="grid gap-3 border-t border-border p-5 sm:grid-cols-[1fr_1fr_auto]">
-              <select name="projectId" required className="h-10 border border-border bg-background px-3 text-sm"><option value="">Choose project</option>{projects.map(project=><option key={project.id} value={project.id}>{project.name}{project.assigned?' · assigned':''}</option>)}</select>
-              <select name="programmeId" className="h-10 border border-border bg-background px-3 text-sm"><option value="">Portfolio only</option>{programmes.map(programme=><option key={programme.id} value={programme.id}>{programme.name}</option>)}</select>
+              <Dropdown name="projectId" required className="h-10 border border-border bg-background px-3 text-sm"><option value="">Choose project</option>{projects.map(project=><option key={project.id} value={project.id}>{project.name}{project.assigned?' · assigned':''}</option>)}</Dropdown>
+              <Dropdown name="programmeId" className="h-10 border border-border bg-background px-3 text-sm"><option value="">Portfolio only</option>{programmes.map(programme=><option key={programme.id} value={programme.id}>{programme.name}</option>)}</Dropdown>
               <button disabled={assigning} className="bg-brand px-4 py-2 text-sm font-semibold text-white">Assign project</button>
               {assignmentState?.error?<p role="alert" className="text-sm text-destructive sm:col-span-3">{assignmentState.error}</p>:assignmentState?.success?<p role="status" className="text-sm text-success sm:col-span-3">{assignmentState.success}</p>:null}
             </form>

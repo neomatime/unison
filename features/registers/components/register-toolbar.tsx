@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState, type ReactNode } from 'react'
+import { Dropdown } from '@/components/ui/select'
 
 /**
  * Search, status, owner and the archived switch. Every change builds a new address (a search or a filter returns to
@@ -79,18 +80,18 @@ export function RegisterToolbar({
       </label>
       <label className="block">
         <span className="text-xs font-medium text-muted-foreground">Status</span>
-        <select name="status" value={status ?? ''} onChange={(event) => go({ status: event.target.value })} className={`${field} mt-1 block`}>
+        <Dropdown name="status" value={status ?? ''} onChange={(event) => go({ status: event.target.value })} className={`${field} mt-1 block`}>
           <option value="">All statuses</option>
           {statuses.map((value) => <option key={value} value={value}>{value}</option>)}
-        </select>
+        </Dropdown>
       </label>
       <label className="block">
         <span className="text-xs font-medium text-muted-foreground">Owner</span>
-        <select name="owner" value={owner ?? ''} onChange={(event) => go({ owner: event.target.value })} className={`${field} mt-1 block`}>
+        <Dropdown name="owner" value={owner ?? ''} onChange={(event) => go({ owner: event.target.value })} className={`${field} mt-1 block`}>
           <option value="">Everyone</option>
           {ownerMissing ? <option value={owner ?? ''}>Former member</option> : null}
           {owners.map((value) => <option key={value.id} value={value.id}>{value.label}</option>)}
-        </select>
+        </Dropdown>
       </label>
       <label className="flex min-h-10 items-center gap-2 text-sm">
         <input type="checkbox" name="archived" checked={archived} onChange={(event) => go({ archived: event.target.checked })} />

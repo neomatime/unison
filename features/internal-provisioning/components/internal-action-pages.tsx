@@ -8,6 +8,7 @@ import { UnsavedForm } from '@/components/shared/unsaved-form'
 import { getEntitledModuleIds, getTier, unisonTiers, type UnisonTierId } from '@/config/unison-tiers'
 import { subscriptions, tenants } from '../data'
 import { InternalPageHeader } from './internal-primitives'
+import { Dropdown } from '@/components/ui/select'
 
 export function InternalCreatePage({ kind }: { kind: 'support' | 'knowledge' }) {
   const [saving, setSaving] = useState(false)
@@ -32,7 +33,7 @@ export function InternalCreatePage({ kind }: { kind: 'support' | 'knowledge' }) 
       <div className="grid gap-5 p-6 lg:grid-cols-2 lg:p-8">
         <Field name={support ? 'subject' : 'title'} label={support ? 'Subject' : 'Title'} required />
         <Field name={support ? 'organisation' : 'category'} label={support ? 'Organisation' : 'Category'} required />
-        {support ? <label className="text-sm font-medium">Priority<select name="priority" className="mt-2 h-11 w-full border border-border bg-background px-3"><option>Medium</option><option>Low</option><option>High</option><option>Critical</option></select></label> : null}
+        {support ? <label className="text-sm font-medium">Priority<Dropdown name="priority" className="mt-2 h-11 w-full border border-border bg-background px-3"><option>Medium</option><option>Low</option><option>High</option><option>Critical</option></Dropdown></label> : null}
         <label className="text-sm font-medium lg:col-span-2">Description<textarea name="description" required rows={7} className="mt-2 w-full border border-border bg-background p-3 outline-none focus:border-brand" /></label>
       </div>
       <footer className="flex justify-end gap-2 border-t border-border p-5"><Link href={backHref} className="border border-border px-4 py-2 text-sm font-medium">Cancel</Link><button type="submit" disabled={saving} className="bg-brand px-5 py-2 text-sm font-medium text-white disabled:opacity-60">{saving ? 'Saving…' : support ? 'Create Ticket' : 'Create Article'}</button></footer>

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 
 import { input } from './form-parts'
+import { DatePicker } from '@/components/ui/date-picker'
 
 /**
  * A date and time the viewer picks in their own timezone, sent to the server as an exact ISO instant.
@@ -16,7 +17,7 @@ export function OccurredAtField({ defaultValue }: { defaultValue?: string | null
   const iso = initial && local === initial && defaultValue ? defaultValue : toIso(local)
   return (
     <>
-      <input
+      <DatePicker
         type="datetime-local"
         aria-label="When it happened"
         value={local}

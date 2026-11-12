@@ -6,6 +6,8 @@ import { useState } from 'react'
 
 import { WorkspaceHeader } from '@/components/shared/workspace-header'
 import { onboardings } from '../data'
+import { Dropdown } from '@/components/ui/select'
+import { AppInput } from '@/components/ui/input'
 
 export function OnboardingEditForm({ onboardingId }: { onboardingId: string }) {
   const record = onboardings.find((item) => item.id === onboardingId) ?? onboardings[0]
@@ -22,4 +24,4 @@ export function OnboardingEditForm({ onboardingId }: { onboardingId: string }) {
 }
 
 function FormSection({ title, children }: { title: string; children: React.ReactNode }) { return <section className="rounded-xl border border-border bg-card p-6"><h2 className="mb-5 font-semibold">{title}</h2><div className="grid gap-5 md:grid-cols-2">{children}</div></section> }
-function Field({ label, value, type = 'text', options, disabled }: { label: string; value: string; type?: string; options?: string[]; disabled?: boolean }) { const classes = 'mt-1.5 h-11 w-full rounded-lg border border-border bg-background px-3 text-sm disabled:bg-muted disabled:text-muted-foreground'; return <label className="text-sm font-medium">{label}{options ? <select defaultValue={value} className={classes}>{options.map((option) => <option key={option}>{option}</option>)}</select> : <input type={type} defaultValue={value} disabled={disabled} className={classes} />}</label> }
+function Field({ label, value, type = 'text', options, disabled }: { label: string; value: string; type?: string; options?: string[]; disabled?: boolean }) { const classes = 'mt-1.5 h-11 w-full rounded-lg border border-border bg-background px-3 text-sm disabled:bg-muted disabled:text-muted-foreground'; return <label className="text-sm font-medium">{label}{options ? <Dropdown defaultValue={value} className={classes}>{options.map((option) => <option key={option}>{option}</option>)}</Dropdown> : <AppInput type={type} defaultValue={value} disabled={disabled} className={classes} />}</label> }

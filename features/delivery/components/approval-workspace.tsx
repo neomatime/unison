@@ -6,6 +6,8 @@ import { WorkspaceHeader } from "@/components/shared/workspace-header";
 import { createStandaloneApprovalAction } from "../actions/approval-decisions";
 import type { ApprovalRecord } from "../queries/approvals";
 import { HealthBadge, SectionCard } from "./delivery-primitives";
+import { Dropdown } from '@/components/ui/select'
+import { DatePicker } from '@/components/ui/date-picker'
 
 const field =
   "mt-1.5 min-h-11 w-full border border-border bg-background px-3 text-sm";
@@ -33,14 +35,14 @@ export function ApprovalForm({
         <div className="grid gap-5 md:grid-cols-2">
           <label>
             Project
-            <select required name="projectId" className={field}>
+            <Dropdown required name="projectId" className={field}>
               <option value="">Choose project</option>
               {projects.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.name}
                 </option>
               ))}
-            </select>
+            </Dropdown>
           </label>
           <label>
             Title
@@ -52,15 +54,15 @@ export function ApprovalForm({
           </label>
           <label>
             Priority
-            <select name="priority" className={field}>
+            <Dropdown name="priority" className={field}>
               {["Low", "Medium", "High", "Critical"].map((x) => (
                 <option key={x}>{x}</option>
               ))}
-            </select>
+            </Dropdown>
           </label>
           <label>
             Due date
-            <input type="date" name="dueDate" className={field} />
+            <DatePicker name="dueDate" className={field} />
           </label>
         </div>
         {state?.error ? (

@@ -9,6 +9,7 @@ import {
 import type { ProjectGovernance } from "../queries/get-project-governance";
 import { SectionCard } from "./delivery-primitives";
 import { area, Feedback, formatDate, input } from "./governance-form-parts";
+import { DatePicker } from '@/components/ui/date-picker'
 
 type Decision = ProjectGovernance["decisions"][number];
 
@@ -103,9 +104,9 @@ function AddDecisionForm({ projectId }: { projectId: string }) {
         aria-label="Decision title"
         className={input}
       />
-      <input
+      <DatePicker
         name="decidedAt"
-        type="date"
+       
         aria-label="Decision date"
         className={input}
       />
@@ -166,9 +167,9 @@ function EditDecisionForm({
         aria-label="Decision title"
         className={input}
       />
-      <input
+      <DatePicker
         name="decidedAt"
-        type="date"
+       
         required
         defaultValue={decision.decided_at}
         aria-label="Decision date"

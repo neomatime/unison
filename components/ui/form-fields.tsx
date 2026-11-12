@@ -1,4 +1,6 @@
 import { cn } from '@/lib/utils'
+import { Dropdown } from '@/components/ui/select'
+import { AppInput } from '@/components/ui/input'
 
 /**
  * The three input shapes every connected module's create/edit form needs.
@@ -41,7 +43,7 @@ export function TextField({
   return (
     <label className={cn('group block', className)}>
       <FieldLabel label={label} required={required} />
-      <input
+      <AppInput
         name={name}
         type={type}
         required={required}
@@ -110,14 +112,14 @@ export function EntitySelectField({
   return (
     <label className={cn('group block', className)}>
       <FieldLabel label={label} required={required} />
-      <select name={name} defaultValue={defaultValue ?? ''} required={required} className={`${fieldClasses} cursor-pointer`}>
+      <Dropdown name={name} defaultValue={defaultValue ?? ''} required={required} className={`${fieldClasses} cursor-pointer`}>
         {emptyLabel ? <option value="">{emptyLabel}</option> : null}
         {options.map((option) => (
           <option key={option.id} value={option.id}>
             {option.name}
           </option>
         ))}
-      </select>
+      </Dropdown>
     </label>
   )
 }
@@ -140,13 +142,13 @@ export function SelectField<T extends readonly string[]>({
   return (
     <label className={cn('group block', className)}>
       <FieldLabel label={label} required={required} />
-      <select name={name} defaultValue={defaultValue} required={required} className={`${fieldClasses} cursor-pointer`}>
+      <Dropdown name={name} defaultValue={defaultValue} required={required} className={`${fieldClasses} cursor-pointer`}>
         {options.map((option) => (
           <option key={option} value={option}>
             {option}
           </option>
         ))}
-      </select>
+      </Dropdown>
     </label>
   )
 }

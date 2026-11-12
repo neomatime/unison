@@ -10,6 +10,8 @@ import {
 import { selectOwnerOptions, type SelectableMember } from "../form-options";
 import type { RequirementRow } from "../queries/list-requirements";
 import { SectionCard } from "./delivery-primitives";
+import { Dropdown } from '@/components/ui/select'
+import { DatePicker } from '@/components/ui/date-picker'
 
 // Mirrors PRIORITIES/STATUSES in features/delivery/actions/requirements.ts,
 // which is the source of truth the database enforces. Restated here rather
@@ -151,31 +153,31 @@ function AddRequirementForm({
         className={input}
       />
       <div className="grid grid-cols-2 gap-3">
-        <select name="priority" defaultValue="Medium" className={input}>
+        <Dropdown name="priority" defaultValue="Medium" className={input}>
           {PRIORITIES.map((priority) => (
             <option key={priority}>{priority}</option>
           ))}
-        </select>
-        <select name="status" defaultValue="Draft" className={input}>
+        </Dropdown>
+        <Dropdown name="status" defaultValue="Draft" className={input}>
           {STATUSES.map((status) => (
             <option key={status}>{status}</option>
           ))}
-        </select>
+        </Dropdown>
       </div>
       <textarea
         name="description"
         placeholder="Requirement description"
         className={area}
       />
-      <select name="ownerId" defaultValue="" className={input}>
+      <Dropdown name="ownerId" defaultValue="" className={input}>
         <option value="">Unassigned</option>
         {addOwnerOptions.map((option) => (
           <option key={option.id} value={option.id}>
             {option.name}
           </option>
         ))}
-      </select>
-      <input name="targetDate" type="date" className={input} />
+      </Dropdown>
+      <DatePicker name="targetDate" className={input} />
       <div>
         <Feedback state={state} />
         <button
@@ -230,7 +232,7 @@ function EditRequirementForm({
         className={input}
       />
       <div className="grid grid-cols-2 gap-3">
-        <select
+        <Dropdown
           name="priority"
           defaultValue={requirement.priority}
           className={input}
@@ -238,8 +240,8 @@ function EditRequirementForm({
           {PRIORITIES.map((priority) => (
             <option key={priority}>{priority}</option>
           ))}
-        </select>
-        <select
+        </Dropdown>
+        <Dropdown
           name="status"
           defaultValue={requirement.status}
           className={input}
@@ -247,7 +249,7 @@ function EditRequirementForm({
           {STATUSES.map((status) => (
             <option key={status}>{status}</option>
           ))}
-        </select>
+        </Dropdown>
       </div>
       <textarea
         name="description"
@@ -255,7 +257,7 @@ function EditRequirementForm({
         placeholder="Requirement description"
         className={area}
       />
-      <select
+      <Dropdown
         name="ownerId"
         defaultValue={requirement.ownerId ?? ""}
         className={input}
@@ -266,10 +268,10 @@ function EditRequirementForm({
             {option.name}
           </option>
         ))}
-      </select>
-      <input
+      </Dropdown>
+      <DatePicker
         name="targetDate"
-        type="date"
+       
         defaultValue={requirement.targetDate ?? ""}
         className={input}
       />

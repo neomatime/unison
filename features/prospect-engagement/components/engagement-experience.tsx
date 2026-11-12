@@ -33,6 +33,7 @@ import {
 } from '../catalog'
 import type { PublicEngagementContext } from '../types'
 import { HimarkWordmark } from './himark-wordmark'
+import { Dropdown } from '@/components/ui/select'
 
 type Attribution = { source: string; medium: string; campaign: string; term: string; content: string }
 type Details = {
@@ -263,12 +264,12 @@ export function EngagementExperience({ context, attribution }: { context: Public
               <Stage title="Tell us a little about your organisation." supporting="We'll use these details to connect you with the right HIMARK representative.">
                 <div className="grid gap-5 sm:grid-cols-2">
                   <Field label="Organisation name" required><input className={inputClass} value={details.organisationName} onChange={(event) => updateDetail(setDetails, 'organisationName', event.target.value)} autoComplete="organization" /></Field>
-                  <Field label="Industry" required><select className={inputClass} value={details.industry} onChange={(event) => updateDetail(setDetails, 'industry', event.target.value)}><option value="">Select an industry</option>{INDUSTRIES.map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select></Field>
+                  <Field label="Industry" required><Dropdown className={inputClass} value={details.industry} onChange={(event) => updateDetail(setDetails, 'industry', event.target.value)}><option value="">Select an industry</option>{INDUSTRIES.map(([id, label]) => <option key={id} value={id}>{label}</option>)}</Dropdown></Field>
                   <Field label="Full name" required><input className={inputClass} value={details.fullName} onChange={(event) => updateDetail(setDetails, 'fullName', event.target.value)} autoComplete="name" /></Field>
                   <Field label="Email address" required><input className={inputClass} type="email" value={details.email} onChange={(event) => updateDetail(setDetails, 'email', event.target.value)} autoComplete="email" /></Field>
                   <Field label="Position / Job Title"><input className={inputClass} value={details.jobTitle} onChange={(event) => updateDetail(setDetails, 'jobTitle', event.target.value)} autoComplete="organization-title" /></Field>
                   <Field label="Contact number" required={details.contactPreference === 'telephone'}><input className={inputClass} type="tel" value={details.phone} onChange={(event) => updateDetail(setDetails, 'phone', event.target.value)} autoComplete="tel" placeholder="+27" /></Field>
-                  <Field label="Country"><select className={inputClass} value={details.country} onChange={(event) => updateDetail(setDetails, 'country', event.target.value)} autoComplete="country-name"><option value="">Select a country</option>{COUNTRIES.map((country) => <option key={country}>{country}</option>)}</select></Field>
+                  <Field label="Country"><Dropdown className={inputClass} value={details.country} onChange={(event) => updateDetail(setDetails, 'country', event.target.value)}><option value="">Select a country</option>{COUNTRIES.map((country) => <option key={country}>{country}</option>)}</Dropdown></Field>
                   <fieldset>
                     <legend className="mb-2 text-sm font-medium">How would you prefer us to contact you?</legend>
                     <div className="grid grid-cols-2 gap-2">

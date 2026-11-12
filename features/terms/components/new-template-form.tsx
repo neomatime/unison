@@ -3,6 +3,7 @@
 import { useActionState, useTransition } from 'react'
 
 import { createTermsTemplateAction } from '../actions/terms'
+import { Dropdown } from '@/components/ui/select'
 
 const field = 'h-10 w-full rounded-none border border-border bg-background px-3 text-sm'
 
@@ -22,12 +23,12 @@ export function NewTemplateForm() {
       <h2 className="unison-section-title text-xs text-foreground md:col-span-2">New template</h2>
       <label className="text-sm font-medium">
         For
-        <select name="targetKind" required defaultValue="" aria-label="For" className={`${field} mt-1.5`}>
+        <Dropdown name="targetKind" required defaultValue="" aria-label="For" className={`${field} mt-1.5`}>
           <option value="" disabled>Choose…</option>
           <option value="retainer">A retainer tier</option>
           <option value="project">A project category</option>
           <option value="support">A support service</option>
-        </select>
+        </Dropdown>
       </label>
       <label className="text-sm font-medium">
         Key
@@ -36,11 +37,11 @@ export function NewTemplateForm() {
       </label>
       <label className="text-sm font-medium">
         Applies to
-        <select name="appliesTo" required defaultValue="quote" aria-label="Applies to" className={`${field} mt-1.5`}>
+        <Dropdown name="appliesTo" required defaultValue="quote" aria-label="Applies to" className={`${field} mt-1.5`}>
           <option value="quote">Quotes</option>
           <option value="invoice">Invoices</option>
           <option value="both">Quotes and invoices</option>
-        </select>
+        </Dropdown>
       </label>
       <label className="text-sm font-medium">
         Title

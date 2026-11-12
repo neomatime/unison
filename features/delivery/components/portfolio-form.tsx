@@ -2,6 +2,8 @@
 import { useActionState } from "react";
 import Link from "next/link";
 import { WorkspaceHeader } from "@/components/shared/workspace-header";
+import { Dropdown } from '@/components/ui/select'
+import { AppInput } from '@/components/ui/input'
 import {
   savePortfolioAction,
   saveProgrammeAction,
@@ -151,7 +153,7 @@ function Field({
   return (
     <label>
       {label}
-      <input
+      <AppInput
         name={name}
         type={type}
         required={required}
@@ -175,11 +177,11 @@ function Select({
   return (
     <label>
       {label}
-      <select name={name} defaultValue={value ?? options[0]} className={field}>
+      <Dropdown name={name} defaultValue={value ?? options[0]} className={field}>
         {options.map((x) => (
           <option key={x}>{x}</option>
         ))}
-      </select>
+      </Dropdown>
     </label>
   );
 }

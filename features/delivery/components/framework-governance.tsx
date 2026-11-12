@@ -8,6 +8,7 @@ import {
 } from "../actions/framework-governance";
 import type { FrameworkDetail } from "../queries/get-framework";
 import { SectionCard } from "./delivery-primitives";
+import { Dropdown } from '@/components/ui/select'
 
 const field =
   "h-10 w-full rounded-lg border border-border bg-background px-3 text-sm";
@@ -197,7 +198,7 @@ export function FrameworkGates({ framework }: { framework: FrameworkDetail }) {
         action={action}
         className="grid gap-3 border-t border-border p-5 md:grid-cols-2"
       >
-        <select
+        <Dropdown
           required
           name="phaseId"
           aria-label="Phase"
@@ -211,7 +212,7 @@ export function FrameworkGates({ framework }: { framework: FrameworkDetail }) {
                 {p.name}
               </option>
             ))}
-        </select>
+        </Dropdown>
         <input
           required
           name="name"

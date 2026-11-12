@@ -8,6 +8,7 @@ import { useShellContext } from '@/components/layout/shell-context'
 import { UnsavedForm } from '@/components/shared/unsaved-form'
 import { WorkPage } from '@/components/shared/work-page'
 import type { TeamMember } from '../data'
+import { Dropdown } from '@/components/ui/select'
 
 const actionCopy = {
   'change-team': { title: 'Change team', description: 'Move this member to another delivery team.' },
@@ -48,5 +49,5 @@ export function TeamMemberActionPage({ member, action }: { member: TeamMember; a
 }
 
 function Select({ name, label, value, options }: { name: string; label: string; value?: string; options: string[] }) {
-  return <label className="block text-sm font-medium">{label}<select name={name} required defaultValue={value} className="mt-2 h-11 w-full border border-border bg-background px-3 outline-none focus:border-brand">{options.map((option) => <option key={option}>{option}</option>)}</select></label>
+  return <label className="block text-sm font-medium">{label}<Dropdown name={name} required defaultValue={value} className="mt-2 h-11 w-full border border-border bg-background px-3 outline-none focus:border-brand">{options.map((option) => <option key={option}>{option}</option>)}</Dropdown></label>
 }

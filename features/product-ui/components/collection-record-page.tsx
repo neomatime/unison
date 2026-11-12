@@ -12,6 +12,8 @@ import { useShellContext } from '@/components/layout/shell-context'
 import { HealthBadge } from '@/features/delivery/components/delivery-primitives'
 import { collectionRoute, collectionStorageKey, type CollectionRoutePayload } from '../collection-route-storage'
 import type { CollectionField, CollectionRecord } from './record-collection-workspace'
+import { Dropdown } from '@/components/ui/select'
+import { AppInput } from '@/components/ui/input'
 
 const fallbackFields: CollectionField[] = [
   { id: 'name', label: 'Name', required: true },
@@ -73,5 +75,5 @@ export function CollectionRecordPage({ slug, recordId, mode }: { slug: string; r
 
 function CollectionFieldInput({ field, value }: { field: CollectionField; value?: string | boolean }) {
   const classes = 'mt-1.5 min-h-11 w-full border border-border bg-background px-3 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/10'
-  return <label className={field.type === 'textarea' ? 'md:col-span-2' : ''}><span className="text-sm font-medium">{field.label}{field.required ? <span className="text-destructive"> *</span> : null}</span>{field.type === 'textarea' ? <textarea name={field.id} defaultValue={String(value ?? '')} required={field.required} rows={5} className={`${classes} py-3`} /> : field.type === 'select' ? <select name={field.id} defaultValue={String(value ?? field.options?.[0] ?? '')} className={classes}>{field.options?.map((option) => <option key={option}>{option}</option>)}</select> : <input name={field.id} type={field.type ?? 'text'} defaultValue={String(value ?? '')} required={field.required} placeholder={field.placeholder} className={classes} />}</label>
+  return <label className={field.type === 'textarea' ? 'md:col-span-2' : ''}><span className="text-sm font-medium">{field.label}{field.required ? <span className="text-destructive"> *</span> : null}</span>{field.type === 'textarea' ? <textarea name={field.id} defaultValue={String(value ?? '')} required={field.required} rows={5} className={`${classes} py-3`} /> : field.type === 'select' ? <Dropdown name={field.id} defaultValue={String(value ?? field.options?.[0] ?? '')} className={classes}>{field.options?.map((option) => <option key={option}>{option}</option>)}</Dropdown> : <AppInput name={field.id} type={field.type ?? 'text'} defaultValue={String(value ?? '')} required={field.required} placeholder={field.placeholder} className={classes} />}</label>
 }

@@ -5,6 +5,7 @@ import { useActionState, useState } from 'react'
 import { changeOpportunityStageAction } from '../actions/opportunity-stage'
 import { OPPORTUNITY_STAGES } from '../vocabulary'
 import { Feedback, input } from './form-parts'
+import { Dropdown } from '@/components/ui/select'
 
 /**
  * The opportunity's stage, changed in place. Choosing Lost first asks why.
@@ -19,9 +20,9 @@ export function StageControl({ opportunityId, stage, lostReason }: { opportunity
     <form action={action} className="flex flex-wrap items-center gap-2">
       <label className="sr-only" htmlFor="quick-stage">Stage</label>
       <div className="w-40">
-        <select id="quick-stage" name="stage" value={chosen} onChange={(event) => setChosen(event.target.value)} className={input}>
+        <Dropdown id="quick-stage" name="stage" value={chosen} onChange={(event) => setChosen(event.target.value)} className={input}>
           {OPPORTUNITY_STAGES.map((option) => <option key={option} value={option}>{option}</option>)}
-        </select>
+        </Dropdown>
       </div>
       {chosen === 'Lost' ? (
         <div className="w-56">

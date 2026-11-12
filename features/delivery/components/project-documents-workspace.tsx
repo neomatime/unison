@@ -9,6 +9,7 @@ import { useShellContext } from '@/components/layout/shell-context'
 import { WorkPage } from '@/components/shared/work-page'
 import { createBrowserSupabase } from '@/lib/supabase/client'
 import { FILE_TYPES, FILE_VISIBILITY, fileTypeLabel, fileVisibilityLabel } from '@/features/documents/file-categories'
+import { Dropdown } from '@/components/ui/select'
 
 type DocumentRecord = {
   id: string
@@ -159,7 +160,7 @@ export function DocumentUploadPage({ returnHref }: { returnHref: string }) {
 }
 
 function Field({ label, value, onChange, options }: { label: string; value: string; onChange: (value: string) => void; options: ReadonlyArray<{ value: string; label: string }> }) {
-  return <label className="text-sm font-medium">{label}<select value={value} onChange={(event) => onChange(event.target.value)} className="mt-2 h-11 w-full border border-border bg-background px-3 text-sm">{options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
+  return <label className="text-sm font-medium">{label}<Dropdown value={value} onChange={(event) => onChange(event.target.value)} className="mt-2 h-11 w-full border border-border bg-background px-3 text-sm">{options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</Dropdown></label>
 }
 
 function parseLinkedRecord(path: string) {

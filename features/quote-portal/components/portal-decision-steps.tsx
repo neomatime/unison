@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils'
 import { ACCEPT_QUOTATION, CONFIRMATION_LABELS, DECLINE_QUOTATION, FLOW_BUTTONS, FORM_LABELS, STEP_LABELS } from '../copy'
 import { consentTextFor, type FlowField, type FlowState, type FlowText } from '../decision-flow'
 import type { ConfirmationModel } from '../portal-view-model'
+import { Dropdown } from '@/components/ui/select'
 
 // The steps of the decision flow, laid out. They hold no state and call nothing: PortalDecisionFlow gives them the
 // flow's state and what to do on each press, and owns the focus. Every control is a real button of type "button" and
@@ -184,7 +185,7 @@ export function ConfirmStep({
               <label htmlFor={fieldId(idBase, 'reason')} className={LABEL}>
                 {FORM_LABELS.reason}
               </label>
-              <select
+              <Dropdown
                 id={fieldId(idBase, 'reason')}
                 value={state.declineReason}
                 disabled={busy}
@@ -198,7 +199,7 @@ export function ConfirmStep({
                     {reason}
                   </option>
                 ))}
-              </select>
+              </Dropdown>
               <FieldError idBase={idBase} field="reason" error={errors.reason} />
             </div>
             <div>

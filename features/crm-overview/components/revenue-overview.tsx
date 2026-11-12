@@ -5,6 +5,7 @@ import { useId, useMemo, useState } from 'react'
 import { buildRevenueChart, CHART_PERIODS, formatMoney, niceMax, type ChartPeriod } from '../metrics'
 import type { RevenueChartData } from '../types'
 import { Panel } from './panel'
+import { Dropdown } from '@/components/ui/select'
 
 const selectClass = 'h-9 rounded-none border border-border bg-card px-2.5 text-xs font-medium text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand'
 
@@ -25,15 +26,15 @@ export function RevenueOverview({ data }: { data: RevenueChartData }) {
       {chart.currencies.length > 1 ? (
         <>
           <label htmlFor={currencyId} className="sr-only">Currency</label>
-          <select id={currencyId} value={chart.currency ?? ''} onChange={(event) => setCurrency(event.target.value)} className={selectClass}>
+          <Dropdown id={currencyId} value={chart.currency ?? ''} onChange={(event) => setCurrency(event.target.value)} className={selectClass}>
             {chart.currencies.map((code) => <option key={code} value={code}>{code}</option>)}
-          </select>
+          </Dropdown>
         </>
       ) : null}
       <label htmlFor={periodId} className="sr-only">Period</label>
-      <select id={periodId} value={period} onChange={(event) => setPeriod(event.target.value as ChartPeriod)} className={selectClass}>
+      <Dropdown id={periodId} value={period} onChange={(event) => setPeriod(event.target.value as ChartPeriod)} className={selectClass}>
         {CHART_PERIODS.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
-      </select>
+      </Dropdown>
     </div>
   )
 

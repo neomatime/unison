@@ -6,6 +6,8 @@ import { useActionState } from "react";
 import { WorkspaceHeader } from "@/components/shared/workspace-header";
 import { savePhaseFourRecordAction } from "../actions/phase-four";
 import type { PhaseFourKind, PhaseFourRecord, SelectOption } from "../queries/phase-four";
+import { Dropdown } from '@/components/ui/select'
+import { AppInput } from '@/components/ui/input'
 
 type Options = {
   members: SelectOption[];
@@ -155,13 +157,13 @@ function Fields({ kind, record, options, defaults }: { kind: PhaseFourKind; reco
 function dateTimeValue(value: string) { return value ? value.slice(0, 16) : ""; }
 
 function Field({ name, label, value, type = "text", required, min, max }: { name: string; label: string; value?: string; type?: string; required?: boolean; min?: number; max?: number }) {
-  return <label className="text-sm font-medium">{label}<input name={name} type={type} required={required} min={min} max={max} defaultValue={value ?? ""} className={inputClass} /></label>;
+  return <label className="text-sm font-medium">{label}<AppInput name={name} type={type} required={required} min={min} max={max} defaultValue={value ?? ""} className={inputClass} /></label>;
 }
 function Select({ name, label, value, options }: { name: string; label: string; value?: string; options: string[] }) {
-  return <label className="text-sm font-medium">{label}<select name={name} defaultValue={value ?? options[0]} className={inputClass}>{options.map((option) => <option key={option}>{option}</option>)}</select></label>;
+  return <label className="text-sm font-medium">{label}<Dropdown name={name} defaultValue={value ?? options[0]} className={inputClass}>{options.map((option) => <option key={option}>{option}</option>)}</Dropdown></label>;
 }
 function OptionSelect({ name, label, value, options, optional, required }: { name: string; label: string; value?: string; options: SelectOption[]; optional?: boolean; required?: boolean }) {
-  return <label className="text-sm font-medium">{label}<select name={name} defaultValue={value ?? ""} required={required} className={inputClass}>{optional ? <option value="">Unassigned</option> : <option value="">Select…</option>}{options.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}</select></label>;
+  return <label className="text-sm font-medium">{label}<Dropdown name={name} defaultValue={value ?? ""} required={required} className={inputClass}>{optional ? <option value="">Unassigned</option> : <option value="">Select…</option>}{options.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}</Dropdown></label>;
 }
 function TextArea({ name, label, value }: { name: string; label: string; value?: string }) {
   return <label className="text-sm font-medium md:col-span-2">{label}<textarea name={name} rows={4} defaultValue={value ?? ""} className={`${inputClass} h-auto py-3`} /></label>;

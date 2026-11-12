@@ -15,6 +15,8 @@ import {
 import type { ProjectGovernance } from "../queries/get-project-governance";
 import { SectionCard } from "./delivery-primitives";
 import { area, Feedback, formatDate, input } from "./governance-form-parts";
+import { Dropdown } from '@/components/ui/select'
+import { DatePicker } from '@/components/ui/date-picker'
 
 type Risk = ProjectGovernance["risks"][number];
 
@@ -126,21 +128,21 @@ function AddRiskForm({
         className={input}
       />
       <div className="grid grid-cols-3 gap-3">
-        <select name="probability" aria-label="Probability" defaultValue="Possible" className={input}>
+        <Dropdown name="probability" aria-label="Probability" defaultValue="Possible" className={input}>
           {RISK_PROBABILITIES.map((option) => (
             <option key={option}>{option}</option>
           ))}
-        </select>
-        <select name="impact" aria-label="Impact" defaultValue="Moderate" className={input}>
+        </Dropdown>
+        <Dropdown name="impact" aria-label="Impact" defaultValue="Moderate" className={input}>
           {RISK_IMPACTS.map((option) => (
             <option key={option}>{option}</option>
           ))}
-        </select>
-        <select name="status" aria-label="Status" defaultValue="Open" className={input}>
+        </Dropdown>
+        <Dropdown name="status" aria-label="Status" defaultValue="Open" className={input}>
           {RISK_STATUSES.map((option) => (
             <option key={option}>{option}</option>
           ))}
-        </select>
+        </Dropdown>
       </div>
       <textarea
         name="description" aria-label="Risk description"
@@ -152,15 +154,15 @@ function AddRiskForm({
         placeholder="Mitigation plan"
         className={area}
       />
-      <select name="ownerId" aria-label="Owner" defaultValue="" className={input}>
+      <Dropdown name="ownerId" aria-label="Owner" defaultValue="" className={input}>
         <option value="">Unassigned</option>
         {addOwnerOptions.map((option) => (
           <option key={option.id} value={option.id}>
             {option.name}
           </option>
         ))}
-      </select>
-      <input name="targetDate" aria-label="Target date" type="date" className={input} />
+      </Dropdown>
+      <DatePicker name="targetDate" aria-label="Target date" className={input} />
       <div>
         <Feedback state={state} />
         <button
@@ -211,21 +213,21 @@ function EditRiskForm({
         className={input}
       />
       <div className="grid grid-cols-3 gap-3">
-        <select name="probability" aria-label="Probability" defaultValue={risk.probability} className={input}>
+        <Dropdown name="probability" aria-label="Probability" defaultValue={risk.probability} className={input}>
           {RISK_PROBABILITIES.map((option) => (
             <option key={option}>{option}</option>
           ))}
-        </select>
-        <select name="impact" aria-label="Impact" defaultValue={risk.impact} className={input}>
+        </Dropdown>
+        <Dropdown name="impact" aria-label="Impact" defaultValue={risk.impact} className={input}>
           {RISK_IMPACTS.map((option) => (
             <option key={option}>{option}</option>
           ))}
-        </select>
-        <select name="status" aria-label="Status" defaultValue={risk.status} className={input}>
+        </Dropdown>
+        <Dropdown name="status" aria-label="Status" defaultValue={risk.status} className={input}>
           {RISK_STATUSES.map((option) => (
             <option key={option}>{option}</option>
           ))}
-        </select>
+        </Dropdown>
       </div>
       <textarea
         name="description" aria-label="Risk description"
@@ -239,17 +241,17 @@ function EditRiskForm({
         placeholder="Mitigation plan"
         className={area}
       />
-      <select name="ownerId" aria-label="Owner" defaultValue={risk.owner_id ?? ""} className={input}>
+      <Dropdown name="ownerId" aria-label="Owner" defaultValue={risk.owner_id ?? ""} className={input}>
         <option value="">Unassigned</option>
         {editOwnerOptions.map((option) => (
           <option key={option.id} value={option.id}>
             {option.name}
           </option>
         ))}
-      </select>
-      <input
+      </Dropdown>
+      <DatePicker
         name="targetDate" aria-label="Target date"
-        type="date"
+       
         defaultValue={risk.target_date ?? ""}
         className={input}
       />

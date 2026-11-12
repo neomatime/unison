@@ -15,6 +15,8 @@ import {
   setIntegrationStatusAction,
 } from '../actions'
 import type { AutomationRule, IntegrationConnection } from '../types'
+import { Dropdown } from '@/components/ui/select'
+import { AppInput } from '@/components/ui/input'
 
 const inputClass = 'mt-1.5 min-h-11 w-full border border-border bg-background px-3 text-sm outline-none focus:border-brand'
 const providers = ['Webhook', 'Microsoft 365', 'Google Workspace', 'Supabase', 'Accounting', 'Payments', 'Email', 'Calendar', 'Cloud Storage']
@@ -24,7 +26,7 @@ export function IntegrationForm({ connection }: { connection?: IntegrationConnec
   return <form action={action} className="border border-border bg-card">
     <div className="grid gap-5 p-6 md:grid-cols-2 lg:p-8">
       <Field name="name" label="Connection name" required defaultValue={connection?.name} placeholder="Finance webhook" />
-      <label className="text-sm font-medium">Provider<span className="text-destructive"> *</span><select name="provider" required defaultValue={connection?.provider ?? 'Webhook'} className={inputClass}>{providers.map((provider) => <option key={provider}>{provider}</option>)}</select></label>
+      <label className="text-sm font-medium">Provider<span className="text-destructive"> *</span><Dropdown name="provider" required defaultValue={connection?.provider ?? 'Webhook'} className={inputClass}>{providers.map((provider) => <option key={provider}>{provider}</option>)}</Dropdown></label>
       <Field name="eventKey" label="Inbound event key" required defaultValue={connection?.eventKey} placeholder="finance.invoice_paid" help="Stable key used by external event senders and automation triggers." />
       <div className="border border-border bg-muted/25 p-4 text-xs leading-5 text-muted-foreground">Secrets are generated separately and displayed once. UNISON stores only the verification hash and a masked hint.</div>
     </div>
@@ -59,9 +61,9 @@ export function AutomationRuleForm({ rule, integrations }: { rule?: AutomationRu
   return <form action={action} className="border border-border bg-card">
     <div className="grid gap-5 p-6 md:grid-cols-2 lg:p-8">
       <Field name="name" label="Automation name" required defaultValue={rule?.name} placeholder="Notify finance when an invoice is paid" />
-      <label className="text-sm font-medium">Status<select name="status" defaultValue={rule?.status ?? 'draft'} className={inputClass}>{['draft', 'active', 'paused'].map((status) => <option key={status} value={status}>{titleCase(status)}</option>)}</select></label>
-      <label className="text-sm font-medium">Trigger<select name="triggerType" defaultValue={rule?.triggerType ?? 'manual'} className={inputClass}>{[['manual','Manual'],['schedule','Schedule'],['integration_event','Integration event']].map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-      <label className="text-sm font-medium">Integration<select name="integrationConnectionId" defaultValue={rule?.integrationConnectionId ?? ''} className={inputClass}><option value="">No integration</option>{integrations.map((connection) => <option key={connection.id} value={connection.id}>{connection.name} · {connection.provider}</option>)}</select></label>
+      <label className="text-sm font-medium">Status<Dropdown name="status" defaultValue={rule?.status ?? 'draft'} className={inputClass}>{['draft', 'active', 'paused'].map((status) => <option key={status} value={status}>{titleCase(status)}</option>)}</Dropdown></label>
+      <label className="text-sm font-medium">Trigger<Dropdown name="triggerType" defaultValue={rule?.triggerType ?? 'manual'} className={inputClass}>{[['manual','Manual'],['schedule','Schedule'],['integration_event','Integration event']].map(([value, label]) => <option key={value} value={value}>{label}</option>)}</Dropdown></label>
+      <label className="text-sm font-medium">Integration<Dropdown name="integrationConnectionId" defaultValue={rule?.integrationConnectionId ?? ''} className={inputClass}><option value="">No integration</option>{integrations.map((connection) => <option key={connection.id} value={connection.id}>{connection.name} · {connection.provider}</option>)}</Dropdown></label>
       <Field name="eventKey" label="Integration event key" defaultValue={eventKey} placeholder="finance.invoice_paid" help="Optional event-key filter for integration triggers." />
       <Field name="intervalMinutes" label="Schedule interval (minutes)" type="number" min="5" max="525600" defaultValue={String(rule?.schedule?.intervalMinutes ?? 60)} help="Used only when the trigger is Schedule." />
       <Field name="timezone" label="Schedule timezone" required defaultValue={rule?.schedule?.timezone ?? 'Africa/Johannesburg'} />
@@ -69,7 +71,7 @@ export function AutomationRuleForm({ rule, integrations }: { rule?: AutomationRu
       <TextArea name="description" label="Description" defaultValue={rule?.description} />
       <div className="md:col-span-2 border-t border-border pt-5"><h2 className="unison-section-title text-sm">Notification action</h2><p className="mt-1 text-xs text-muted-foreground">Each successful run creates a persistent in-product notification.</p></div>
       <Field name="notificationTitle" label="Notification title" required defaultValue={stringValue(actionConfig.title)} placeholder="Invoice paid" />
-      <label className="text-sm font-medium">Category<select name="notificationCategory" defaultValue={stringValue(actionConfig.category) || 'System'} className={inputClass}>{['System', 'Delivery', 'Operations', 'Commercial', 'Finance', 'Support', 'Documents', 'Import'].map((category) => <option key={category}>{category}</option>)}</select></label>
+      <label className="text-sm font-medium">Category<Dropdown name="notificationCategory" defaultValue={stringValue(actionConfig.category) || 'System'} className={inputClass}>{['System', 'Delivery', 'Operations', 'Commercial', 'Finance', 'Support', 'Documents', 'Import'].map((category) => <option key={category}>{category}</option>)}</Dropdown></label>
       <TextArea name="notificationBody" label="Notification message" defaultValue={stringValue(actionConfig.body)} />
     </div>
     {state?.error ? <p role="alert" className="mx-6 mb-4 border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">{state.error}</p> : null}
@@ -92,7 +94,7 @@ function ConfirmDeleteForm({ action, id, label }: { action: (formData: FormData)
 }
 
 function Field({ name, label, defaultValue, required, placeholder, help, type = 'text', min, max }: { name: string; label: string; defaultValue?: string | null; required?: boolean; placeholder?: string; help?: string; type?: string; min?: string; max?: string }) {
-  return <label className="text-sm font-medium">{label}{required ? <span className="text-destructive"> *</span> : null}<input name={name} type={type} min={min} max={max} required={required} defaultValue={defaultValue ?? ''} placeholder={placeholder} className={inputClass} />{help ? <span className="mt-1 block text-xs font-normal text-muted-foreground">{help}</span> : null}</label>
+  return <label className="text-sm font-medium">{label}{required ? <span className="text-destructive"> *</span> : null}<AppInput name={name} type={type} min={min} max={max} required={required} defaultValue={defaultValue ?? ''} placeholder={placeholder} className={inputClass} />{help ? <span className="mt-1 block text-xs font-normal text-muted-foreground">{help}</span> : null}</label>
 }
 
 function TextArea({ name, label, defaultValue }: { name: string; label: string; defaultValue?: string | null }) {

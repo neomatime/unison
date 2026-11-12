@@ -10,6 +10,8 @@ import { APPROVAL_PRIORITIES } from "../governance-vocabulary";
 import type { ProjectGovernance } from "../queries/get-project-governance";
 import { SectionCard } from "./delivery-primitives";
 import { area, Feedback, formatDate, input } from "./governance-form-parts";
+import { Dropdown } from '@/components/ui/select'
+import { DatePicker } from '@/components/ui/date-picker'
 
 type Approval = ProjectGovernance["approvals"][number];
 
@@ -120,23 +122,23 @@ function AddApprovalForm({ projectId }: { projectId: string }) {
         aria-label="Approval title"
         className={input}
       />
-      <select
+      <Dropdown
         name="priority"
         defaultValue="Medium"
         aria-label="Approval priority"
         className={input}
       >
         <PriorityOptions />
-      </select>
+      </Dropdown>
       <textarea
         name="description"
         placeholder="Decision context"
         aria-label="Decision context"
         className={area}
       />
-      <input
+      <DatePicker
         name="dueDate"
-        type="date"
+       
         aria-label="Due date"
         className={input}
       />
@@ -194,14 +196,14 @@ function EditApprovalForm({
         aria-label="Approval title"
         className={input}
       />
-      <select
+      <Dropdown
         name="priority"
         defaultValue={approval.priority}
         aria-label="Approval priority"
         className={input}
       >
         <PriorityOptions />
-      </select>
+      </Dropdown>
       <textarea
         name="description"
         defaultValue={approval.description ?? ""}
@@ -209,9 +211,9 @@ function EditApprovalForm({
         aria-label="Decision context"
         className={area}
       />
-      <input
+      <DatePicker
         name="dueDate"
-        type="date"
+       
         defaultValue={approval.due_date ?? ""}
         aria-label="Due date"
         className={input}

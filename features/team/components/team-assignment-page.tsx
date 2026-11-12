@@ -8,6 +8,8 @@ import { UnsavedForm } from '@/components/shared/unsaved-form'
 import { WorkPage } from '@/components/shared/work-page'
 import { readTeamAssignments, type TeamAssignment, writeTeamAssignments } from '../assignment-storage'
 import { deliveryRoles, teamMembers } from '../data'
+import { Dropdown } from '@/components/ui/select'
+import { AppInput } from '@/components/ui/input'
 
 export function TeamAssignmentPage({ assignment: initialAssignment, assignmentId, defaultMemberId }: { assignment?: TeamAssignment; assignmentId?: string; defaultMemberId?: string }) {
   const router = useRouter()
@@ -61,5 +63,5 @@ export function TeamAssignmentPage({ assignment: initialAssignment, assignmentId
   </WorkPage>
 }
 
-function Select({ label, name, values, value }: { label: string; name: string; values: string[]; value?: string }) { return <label className="text-sm font-medium">{label}<select name={name} defaultValue={value} required className="mt-2 h-11 w-full border border-border bg-background px-3 outline-none focus:border-brand">{values.map((item) => <option key={item}>{item}</option>)}</select></label> }
-function Field({ label, name, type, value }: { label: string; name: string; type: string; value?: string }) { return <label className="text-sm font-medium">{label}<input name={name} type={type} min={type === 'number' ? 0 : undefined} max={type === 'number' ? 150 : undefined} required defaultValue={value} className="mt-2 h-11 w-full border border-border bg-background px-3 outline-none focus:border-brand" /></label> }
+function Select({ label, name, values, value }: { label: string; name: string; values: string[]; value?: string }) { return <label className="text-sm font-medium">{label}<Dropdown name={name} defaultValue={value} required className="mt-2 h-11 w-full border border-border bg-background px-3 outline-none focus:border-brand">{values.map((item) => <option key={item}>{item}</option>)}</Dropdown></label> }
+function Field({ label, name, type, value }: { label: string; name: string; type: string; value?: string }) { return <label className="text-sm font-medium">{label}<AppInput name={name} type={type} min={type === 'number' ? 0 : undefined} max={type === 'number' ? 150 : undefined} required defaultValue={value} className="mt-2 h-11 w-full border border-border bg-background px-3 outline-none focus:border-brand" /></label> }

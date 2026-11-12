@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState, useEffect, useState, useTransition, type ChangeEvent } from 'react'
+import { useActionState, useEffect, useState, useTransition } from 'react'
 
 import { ActionButton } from '@/features/crm-workspace/components/action-button'
 import { WorkspaceSection } from '@/features/crm-workspace/components/workspace-section'
@@ -10,6 +10,7 @@ import { HiveOfferingPicker } from './hive-offering-picker'
 import { formatQuantity } from '../document-view'
 import type { DocumentLine, HiveOfferingsResult } from '../types'
 import { CHARGE_KIND_LABELS, CHARGE_KINDS, VAT_CODES, VAT_LABELS, type ChargeKind, type DocumentKind, type VatCode } from '../vocabulary'
+import { Dropdown, type SelectChange } from '@/components/ui/select'
 
 const field = 'h-10 w-full rounded-none border border-border bg-background px-3 text-sm'
 
@@ -114,14 +115,14 @@ function LineRow({
 
 function VatSelect({ value, onChange, defaultValue }: { value?: string; onChange?: (next: string) => void; defaultValue?: string }) {
   return (
-    <select
+    <Dropdown
       name="vatCode"
       aria-label="VAT"
-      {...(value !== undefined ? { value, onChange: (event: ChangeEvent<HTMLSelectElement>) => onChange?.(event.target.value) } : { defaultValue })}
+      {...(value !== undefined ? { value, onChange: (event: SelectChange) => onChange?.(event.target.value) } : { defaultValue })}
       className={field}
     >
       {VAT_CODES.map((code) => <option key={code} value={code}>{VAT_LABELS[code]}</option>)}
-    </select>
+    </Dropdown>
   )
 }
 
@@ -130,15 +131,15 @@ function ChargeKindSelect({
   value, onChange, defaultValue, notSet,
 }: { value?: string; onChange?: (next: string) => void; defaultValue?: string; notSet?: boolean }) {
   return (
-    <select
+    <Dropdown
       name="chargeKind"
       aria-label="Charge kind"
-      {...(value !== undefined ? { value, onChange: (event: ChangeEvent<HTMLSelectElement>) => onChange?.(event.target.value) } : { defaultValue })}
+      {...(value !== undefined ? { value, onChange: (event: SelectChange) => onChange?.(event.target.value) } : { defaultValue })}
       className={field}
     >
       {notSet ? <option value="">Not set</option> : null}
       {CHARGE_KINDS.map((chargeKind) => <option key={chargeKind} value={chargeKind}>{CHARGE_KIND_LABELS[chargeKind]}</option>)}
-    </select>
+    </Dropdown>
   )
 }
 

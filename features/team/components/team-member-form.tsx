@@ -7,6 +7,8 @@ import { useState } from 'react'
 import { WorkspaceHeader } from '@/components/shared/workspace-header'
 
 import { deliveryRoles, deliveryTeams, teamMembers } from '../data'
+import { Dropdown } from '@/components/ui/select'
+import { AppInput } from '@/components/ui/input'
 
 export function TeamMemberForm({ mode, memberId }: { mode: 'invite' | 'edit'; memberId?: string }) {
   const member = teamMembers.find((item) => item.id === memberId)
@@ -45,5 +47,5 @@ export function TeamMemberForm({ mode, memberId }: { mode: 'invite' | 'edit'; me
 }
 
 function FormSection({ title, description, children }: { title: string; description: string; children: React.ReactNode }) { return <section className="rounded-2xl border border-border bg-card p-6 shadow-[0_1px_2px_rgb(16_32_46_/_0.04)]"><h2 className="text-base font-bold">{title}</h2><p className="mt-1 text-sm text-muted-foreground">{description}</p><div className="mt-6">{children}</div></section> }
-function Field({ name, label, type = 'text', required, defaultValue }: { name: string; label: string; type?: string; required?: boolean; defaultValue?: string }) { return <label className="text-sm font-medium">{label}{required ? <span className="text-danger"> *</span> : null}<input name={name} type={type} required={required} defaultValue={defaultValue} className="mt-1.5 h-11 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/10" /></label> }
-function SelectField({ name, label, values, defaultValue }: { name: string; label: string; values: string[]; defaultValue?: string }) { return <label className="text-sm font-medium">{label}<select name={name} defaultValue={defaultValue} className="mt-1.5 h-11 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-brand">{values.map((value) => <option key={value} value={value === 'No initial assignment' ? '' : value}>{value}</option>)}</select></label> }
+function Field({ name, label, type = 'text', required, defaultValue }: { name: string; label: string; type?: string; required?: boolean; defaultValue?: string }) { return <label className="text-sm font-medium">{label}{required ? <span className="text-danger"> *</span> : null}<AppInput name={name} type={type} required={required} defaultValue={defaultValue} className="mt-1.5 h-11 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/10" /></label> }
+function SelectField({ name, label, values, defaultValue }: { name: string; label: string; values: string[]; defaultValue?: string }) { return <label className="text-sm font-medium">{label}<Dropdown name={name} defaultValue={defaultValue} className="mt-1.5 h-11 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-brand">{values.map((value) => <option key={value} value={value === 'No initial assignment' ? '' : value}>{value}</option>)}</Dropdown></label> }

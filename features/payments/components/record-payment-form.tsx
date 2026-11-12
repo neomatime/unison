@@ -6,6 +6,8 @@ import { FieldLabel, TextField, fieldClasses } from '@/components/ui/form-fields
 import { FormError } from '@/components/ui/form-layout'
 import { recordPaymentAction } from '../actions/payments'
 import { PAYMENT_METHODS } from '../vocabulary'
+import { Dropdown } from '@/components/ui/select'
+import { DatePicker } from '@/components/ui/date-picker'
 
 /**
  * Amount, date, method and reference. The action is called by hand so a failed save keeps what was typed (React resets
@@ -32,13 +34,13 @@ export function RecordPaymentForm({ invoiceId, balanceLabel, today }: { invoiceI
         <TextField name="amount" label={`Amount (balance ${balanceLabel})`} required placeholder="0.00" />
         <label className="group block">
           <FieldLabel label="Date received" required />
-          <input type="date" name="receivedOn" required defaultValue={today} max={today} className={fieldClasses} />
+          <DatePicker name="receivedOn" required defaultValue={today} max={today} className={fieldClasses} />
         </label>
         <label className="group block">
           <FieldLabel label="Method" />
-          <select name="method" defaultValue="Bank transfer" className={fieldClasses}>
+          <Dropdown name="method" defaultValue="Bank transfer" className={fieldClasses}>
             {PAYMENT_METHODS.map((method) => <option key={method} value={method}>{method}</option>)}
-          </select>
+          </Dropdown>
         </label>
         <TextField name="reference" label="Reference (optional)" />
       </div>

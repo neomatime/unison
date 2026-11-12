@@ -7,6 +7,7 @@ import { addHiveOfferingLineAction } from '../actions/hive-offering-line'
 import { groupHiveOfferings } from '../hive-offerings'
 import type { HiveOfferingsResult } from '../types'
 import type { DocumentKind } from '../vocabulary'
+import { Dropdown } from '@/components/ui/select'
 
 const field = 'h-10 w-full rounded-none border border-border bg-background px-3 text-sm'
 
@@ -40,7 +41,7 @@ export function HiveOfferingPicker({ kind, documentId, result, currency }: { kin
     >
       <label>
         <span className="text-xs font-semibold text-[var(--briefing-muted)]">Add from HIVE offerings (prices set in HIVE Origin, excluding VAT)</span>
-        <select aria-label="Add from HIVE offerings" value={offeringKey} onChange={(event) => setOfferingKey(event.target.value)} className={`mt-1 ${field}`}>
+        <Dropdown aria-label="Add from HIVE offerings" value={offeringKey} onChange={(event) => setOfferingKey(event.target.value)} className={`mt-1 ${field}`}>
           <option value="">Choose a retainer, project, support service or top-up…</option>
           {groups.map((group) => (
             <optgroup key={group.label} label={group.label}>
@@ -56,7 +57,7 @@ export function HiveOfferingPicker({ kind, documentId, result, currency }: { kin
               {unpriced.map((item) => <option key={item.key} value={item.key} disabled>{item.name}{item.credits ? `: ${item.credits}` : ''}</option>)}
             </optgroup>
           ) : null}
-        </select>
+        </Dropdown>
       </label>
       {chosen?.description ? <p className="text-xs text-[var(--briefing-muted)]">{chosen.description}</p> : null}
       {state?.error ? <p role="alert" className="text-sm text-destructive">{state.error}</p> : null}

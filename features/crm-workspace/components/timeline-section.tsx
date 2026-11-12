@@ -10,6 +10,7 @@ import { ActionButton } from './action-button'
 import { area, Feedback, input } from './form-parts'
 import { OccurredAtField } from './occurred-at-field'
 import { WorkspaceSection } from './workspace-section'
+import { Dropdown } from '@/components/ui/select'
 
 type Props = {
   kind: ParentKind
@@ -98,9 +99,9 @@ export function TimelineSection({ kind, id, initial, currentUserId, canModerate 
 
 function KindSelect({ defaultValue }: { defaultValue?: string }) {
   return (
-    <select name="kind" aria-label="Type of activity" defaultValue={defaultValue ?? 'note'} className={input}>
+    <Dropdown name="kind" aria-label="Type of activity" defaultValue={defaultValue ?? 'note'} className={input}>
       {LOGGED_ACTIVITY_KINDS.map((kind) => <option key={kind} value={kind}>{ACTIVITY_LABELS[kind]}</option>)}
-    </select>
+    </Dropdown>
   )
 }
 

@@ -10,6 +10,8 @@ import { QUOTE_SENT_STATUSES, isDraftStatus } from "@/features/documents/vocabul
 import { savePhaseSixRecordAction } from "../actions/phase-six";
 import { NameCombobox } from "./name-combobox";
 import { packageKeyForName, referenceYear, suggestClientRef, suggestProjectRef } from "../document-references";
+import { Dropdown, type SelectChange } from '@/components/ui/select'
+import { AppInput } from '@/components/ui/input'
 import type {
   PhaseSixKind,
   PhaseSixOptions,
@@ -307,7 +309,7 @@ function Field({
   return (
     <label className="text-sm font-medium">
       {label}
-      <input
+      <AppInput
         name={name}
         type={type}
         required={required}
@@ -338,9 +340,9 @@ function Select({
   return (
     <label className="text-sm font-medium">
       {label}
-      <select name={name} defaultValue={value ?? options[0]} className={inputClass}>
+      <Dropdown name={name} defaultValue={value ?? options[0]} className={inputClass}>
         {options.map((option) => <option key={option}>{option}</option>)}
-      </select>
+      </Dropdown>
     </label>
   );
 }
@@ -364,16 +366,16 @@ function OptionSelect({
   return (
     <label className="text-sm font-medium">
       {label}
-      <select
+      <Dropdown
         name={name}
         {...(onValueChange
-          ? { value: value ?? "", onChange: (event: ChangeEvent<HTMLSelectElement>) => onValueChange(event.target.value) }
+          ? { value: value ?? "", onChange: (event: SelectChange) => onValueChange(event.target.value) }
           : { defaultValue: value ?? "" })}
         className={inputClass}
       >
         <option value="">{optional ? "Unassigned" : "Select…"}</option>
         {options.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
-      </select>
+      </Dropdown>
     </label>
   );
 }
