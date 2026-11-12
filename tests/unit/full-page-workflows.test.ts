@@ -38,17 +38,14 @@ test('shared nested records and governance actions use full pages', () => {
 
 test('evidence upload and Team mutations use full-page routes', () => {
   const documents = source('features', 'delivery', 'components', 'project-documents-workspace.tsx')
-  const teamPanel = source('features', 'team', 'components', 'team-dialogs.tsx')
   assert.doesNotMatch(documents, /UploadDialog|fixed inset-0/)
   assert.match(documents, /records\/documents\/upload/)
-  assert.doesNotMatch(teamPanel, /Save changes|Change Team|Change Role|Update Availability/)
   assert.ok(existsSync(join(app, 'records', 'documents', 'upload', 'page.tsx')))
   assert.ok(existsSync(join(app, 'people', 'team', '[employeeId]', 'action', 'page.tsx')))
 })
 
 test('lightweight utility and activity panels remain contextual', () => {
   assert.match(source('components', 'shared', 'utility-panel.tsx'), /notifications|help|search/)
-  assert.match(source('features', 'team', 'components', 'team-workspaces.tsx'), /ActivityDrawer/)
 })
 
 test('internal administrative work uses dedicated pages', () => {

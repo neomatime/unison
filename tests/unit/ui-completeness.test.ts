@@ -83,20 +83,13 @@ test('commercial and finance registers use the shared production register', () =
 test('Team is the only People module and exposes the complete accountability workspace', () => {
   const modules = readFileSync(join(workspace, 'config', 'modules.ts'), 'utf8')
   const teamRoute = readFileSync(join(unisonRoot, 'people', 'team', 'page.tsx'), 'utf8')
-  const screen = readFileSync(join(workspace, 'features', 'team', 'components', 'team-screen.tsx'), 'utf8')
-  const workspaces = readFileSync(join(workspace, 'features', 'team', 'components', 'team-workspaces.tsx'), 'utf8')
-  const memberForm = readFileSync(join(workspace, 'features', 'team', 'components', 'team-member-form.tsx'), 'utf8')
-
   assert.match(modules, /id: 'team'.*enabled: true.*category: 'people'/)
   assert.equal([...modules.matchAll(/category: 'people'/g)].length, 1)
   assert.doesNotMatch(modules, /id: 'hr'|id: 'leave'/)
   assert.match(teamRoute, /TeamScreen/)
-  for (const tab of ['Directory', 'Departments', 'Teams', 'Roles', 'Project Assignments', 'Capacity', 'Availability', 'Activity']) assert.match(workspaces, new RegExp(tab))
-  for (const capability of ['Invite Member', 'Total Members', 'Active on Projects', 'Capacity Utilisation', 'Department Snapshot', 'Recent Team Activity']) assert.match(screen, new RegExp(capability))
-  for (const action of ['View Profile', 'Edit', 'View Assignments', 'View Capacity', 'Change Team', 'Change Role', 'Deactivate', 'Reactivate', 'New Department', 'New Team', 'New Role', 'Assign Member', 'Remove Assignment']) assert.match(workspaces, new RegExp(action))
-  for (const field of ['First Name', 'Work Email', 'Access Role', 'Initial Project Assignment']) assert.match(memberForm, new RegExp(field, 'i'))
   for (const path of ['new/page.tsx', '[employeeId]/page.tsx', '[employeeId]/edit/page.tsx']) assert.ok(existsSync(join(unisonRoot, 'people', 'team', ...path.split('/'))))
-  // Project assignments are not part of the Team area: their pages are gone.
+  // Project assignments are not part of the Team area: their pages and the old prototype screens are gone.
+  assert.ok(!existsSync(join(workspace, 'features', 'team')))
   assert.ok(!existsSync(join(unisonRoot, 'people', 'team', 'assignments')))
 })
 
