@@ -128,17 +128,17 @@ export function AuthScreen({ kind, next, token, message, organizationName }: { k
   }
 
   return (
-    <main className="grid min-h-screen bg-background lg:grid-cols-2">
-      <BrandPanel />
+    <main className="grid min-h-screen bg-[#fafbfd] text-[#0d2340] lg:grid-cols-[1.12fr_0.88fr]">
+      <SignInBrandPanel />
 
-      <section className="flex items-center justify-center px-6 py-10 sm:px-10 lg:px-12">
+      <section className="flex items-center justify-center border-l border-[#dce3eb] bg-white px-6 py-10 sm:px-10 lg:px-12">
         <div className="w-full max-w-md">
           <div className="mb-10 flex items-center justify-between lg:hidden">
             <Link href="/" className="text-lg font-medium tracking-[0.2em]">UNISON</Link>
             <span className="flex items-center gap-2 text-xs font-medium tracking-[0.14em] text-muted-foreground"><Image src="/brand/himark-mark.png" alt="" width={28} height={28} />HIMARK</span>
           </div>
 
-          <h1 className="text-3xl font-medium tracking-[-0.025em]">{content.title}</h1>
+          <h1 className="font-brand text-3xl font-light tracking-tight">{content.title}</h1>
           <p className="mt-3 text-sm leading-6 text-muted-foreground">{content.description}</p>
 
           {completion || accountAccessComplete ? <CompletionState kind={kind} /> : (
@@ -157,7 +157,7 @@ export function AuthScreen({ kind, next, token, message, organizationName }: { k
               {isReset ? <label className="block text-sm font-medium">Confirm password<input required type="password" name="confirmPassword" autoComplete="new-password" className="mt-2 h-12 w-full border border-border bg-card px-3 outline-none transition-[border-color,box-shadow] duration-150 focus:border-ring focus:ring-2 focus:ring-ring/15 motion-reduce:transition-none" /></label> : null}
               {isAccept && acceptState?.error ? <p role="alert" className="border-l-2 border-destructive bg-destructive/5 px-4 py-3 text-sm text-destructive">{acceptState.error}</p> : null}
               {accountAccessError ? <p role="alert" className="border-l-2 border-destructive bg-destructive/5 px-4 py-3 text-sm text-destructive">{accountAccessError}</p> : null}
-              <button type="submit" disabled={(isAccept && acceptPending) || accountAccessPending} className="flex h-12 w-full items-center justify-center gap-2 bg-foreground text-sm font-medium text-primary-foreground transition-colors duration-150 hover:bg-foreground/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:cursor-wait disabled:opacity-60 motion-reduce:transition-none">{accountAccessPending ? 'Working…' : content.action}<ArrowRight className="size-4" /></button>
+              <button type="submit" disabled={(isAccept && acceptPending) || accountAccessPending} className="flex h-12 w-full items-center justify-center gap-2 bg-[#1769aa] text-sm font-medium text-white transition-colors duration-150 hover:bg-[#12598f] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:cursor-wait disabled:opacity-60 motion-reduce:transition-none">{accountAccessPending ? 'Working…' : content.action}<ArrowRight className="size-4" /></button>
             </form>
           )}
         </div>
