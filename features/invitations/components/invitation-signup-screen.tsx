@@ -4,7 +4,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { ArrowRight } from 'lucide-react'
 import { useActionState } from 'react'
-import { BrandPanel } from '@/features/auth-ui/auth-screen'
+import { SignInBrandPanel } from '@/features/auth-ui/auth-screen'
 import { signUpFromInvitationAction } from '../actions/sign-up-from-invitation'
 import { MIN_PASSWORD_LENGTH } from '../schemas/signup'
 
@@ -28,17 +28,17 @@ export function InvitationSignUpScreen({
 }) {
   const [state, formAction, pending] = useActionState(signUpFromInvitationAction, undefined)
 
-  return <main className="grid min-h-screen bg-background lg:grid-cols-2">
-    <BrandPanel />
+  return <main className="grid min-h-screen bg-[#fafbfd] text-[#0d2340] lg:grid-cols-[1.12fr_0.88fr]">
+    <SignInBrandPanel />
 
-    <section className="flex items-center justify-center px-6 py-10 sm:px-10 lg:px-12">
+    <section className="flex items-center justify-center border-l border-[#dce3eb] bg-white px-6 py-10 sm:px-10 lg:px-12">
       <div className="w-full max-w-md">
         <div className="mb-10 flex items-center justify-between lg:hidden">
-          <span className="text-lg font-bold tracking-[0.2em]">UNISON</span>
+          <span className="text-lg font-medium tracking-[0.2em]">UNISON</span>
           <span className="flex items-center gap-2 text-xs font-semibold tracking-[0.14em] text-muted-foreground"><Image src="/brand/himark-mark.png" alt="" width={28} height={28} className="rounded-md" />HIMARK</span>
         </div>
 
-        <h1 className="text-3xl font-bold tracking-tight">Join {organizationName}</h1>
+        <h1 className="font-brand text-3xl font-light tracking-tight">Join {organizationName}</h1>
         <p className="mt-2 text-sm text-muted-foreground">Choose a password to finish setting up your account.</p>
 
         <form action={formAction} className="mt-8 space-y-4">
@@ -54,7 +54,7 @@ export function InvitationSignUpScreen({
               value={email}
               disabled
               readOnly
-              className="mt-1.5 h-12 w-full rounded-xl border border-border bg-muted/50 px-3 text-muted-foreground outline-none"
+              className="mt-1.5 h-12 w-full rounded-none border border-border bg-muted/50 px-3 text-muted-foreground outline-none"
             />
           </label>
 
@@ -66,7 +66,7 @@ export function InvitationSignUpScreen({
               name="password"
               minLength={MIN_PASSWORD_LENGTH}
               autoComplete="new-password"
-              className="mt-1.5 h-12 w-full rounded-xl border border-border bg-card px-3 outline-none transition-shadow focus:border-ring focus:ring-2 focus:ring-ring/15"
+              className="mt-1.5 h-12 w-full rounded-none border border-border bg-card px-3 outline-none transition-shadow focus:border-ring focus:ring-2 focus:ring-ring/15"
             />
             <span className="mt-1.5 block text-xs font-normal text-muted-foreground">At least {MIN_PASSWORD_LENGTH} characters.</span>
           </label>
@@ -79,7 +79,7 @@ export function InvitationSignUpScreen({
               name="confirmPassword"
               minLength={MIN_PASSWORD_LENGTH}
               autoComplete="new-password"
-              className="mt-1.5 h-12 w-full rounded-xl border border-border bg-card px-3 outline-none transition-shadow focus:border-ring focus:ring-2 focus:ring-ring/15"
+              className="mt-1.5 h-12 w-full rounded-none border border-border bg-card px-3 outline-none transition-shadow focus:border-ring focus:ring-2 focus:ring-ring/15"
             />
           </label>
 
@@ -88,7 +88,7 @@ export function InvitationSignUpScreen({
           <button
             type="submit"
             disabled={pending}
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-none bg-foreground text-sm font-medium text-primary-foreground transition-colors duration-150 ease-out hover:bg-foreground/90 disabled:opacity-60 motion-reduce:transition-none"
+            className="flex h-12 w-full items-center justify-center gap-2 rounded-none bg-[#1769aa] text-sm font-medium text-white transition-colors duration-150 ease-out hover:bg-[#12598f] disabled:opacity-60 motion-reduce:transition-none"
           >
             {pending ? 'Creating your account…' : 'Create account and join'}
             <ArrowRight className="size-4" />

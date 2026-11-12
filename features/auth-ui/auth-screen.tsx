@@ -166,7 +166,8 @@ export function AuthScreen({ kind, next, token, message, organizationName }: { k
   )
 }
 
-function SignInBrandPanel() {
+// Exported so the invitation signup screen can share the same light panel as sign-in.
+export function SignInBrandPanel() {
   const principles = ['Capture', 'Qualify', 'Propose', 'Win', 'Invoice', 'Collect', 'Retain']
 
   return (
