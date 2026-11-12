@@ -123,10 +123,10 @@ export async function PhaseSixDetail({
             Edit record
           </Link>
         </div>
-        <div className="mt-5 grid gap-6 lg:grid-cols-[22rem_minmax(0,1fr)] lg:items-start">
+        <div className={after ? "mt-5 grid gap-6 lg:grid-cols-[22rem_minmax(0,1fr)] lg:items-start" : "mt-5"}>
           <aside aria-label="Record details" className="border border-border bg-card p-6">
             <h2 className="text-sm font-medium text-foreground">Details</h2>
-            <dl className="mt-4 space-y-5">
+            <dl className={after ? "mt-4 space-y-5" : "mt-4 grid gap-x-8 gap-y-5 sm:grid-cols-2"}>
               {shown.map(([label, key]) => (
                 <div key={key}>
                   <dt className="text-xs text-muted-foreground">{label}</dt>
@@ -137,7 +137,7 @@ export async function PhaseSixDetail({
               ))}
             </dl>
           </aside>
-          <div className="min-w-0 space-y-5">{after}</div>
+          {after ? <div className="min-w-0 space-y-5">{after}</div> : null}
         </div>
       </WorkPage>
     );
