@@ -23,9 +23,9 @@ export function UtilityPanel({ kind, open, onClose }: { kind: UtilityPanelKind; 
     return () => { document.removeEventListener('keydown', keydown); previousFocus.current?.focus() }
   }, [onClose, open])
   if (!open) return null
-  return <div className="unison-overlay-enter fixed inset-0 z-[60]" role="presentation">
+  return <div className="unison-overlay-enter fixed inset-0 z-[60] flex items-start justify-center px-4 pt-[8vh] sm:pt-[12vh]" role="presentation">
     <button type="button" aria-label={`Close ${title}`} className="absolute inset-0 bg-foreground/20" onClick={onClose} />
-    <aside ref={panel} role="dialog" aria-modal="true" aria-label={title} className="unison-drawer-enter absolute top-0 right-0 flex h-full w-full max-w-md flex-col border-l border-border bg-card shadow-2xl">
+    <aside ref={panel} role="dialog" aria-modal="true" aria-label={title} className="unison-dialog-enter relative flex max-h-[80vh] w-full max-w-xl flex-col border border-border bg-card shadow-2xl">
       <header className="flex items-center justify-between border-b border-border p-5"><div className="flex items-center gap-3">{kind === 'help' ? <CircleHelp className="size-5" /> : kind === 'notifications' ? <Bell className="size-5" /> : <Search className="size-5" />}<h2 className="unison-section-title text-sm">{title}</h2></div><button type="button" onClick={onClose} aria-label="Close panel" className="unison-action-control p-2 hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"><X className="size-4" /></button></header>
       <div className="flex-1 overflow-y-auto p-5">{kind === 'help' ? <HelpContent onClose={onClose} /> : kind === 'notifications' ? <NotificationContent onClose={onClose} /> : <SearchContent onClose={onClose} />}</div>
     </aside>

@@ -12,6 +12,9 @@ import { NavigationProvider } from '@/components/layout/navigation-context'
 import type { NavigationSection } from '@/config/navigation'
 import type { Organization } from '@/types/tenancy'
 import { RealtimeRefresh } from '@/components/layout/realtime-refresh'
+import { TopBar } from '@/components/layout/top-bar'
+import { UtilityProvider } from '@/components/layout/utility-context'
+import { UtilityIcons } from '@/components/layout/utility-actions'
 
 type AppShellProps = {
   user: ShellUser
@@ -91,6 +94,7 @@ export function AppShell({ user, organization, organizations, role, navigationSe
   return (
     <ShellProvider value={{ user, organization, organizations, role }}>
       <NavigationProvider sections={navigationSections}>
+        <UtilityProvider>
         <div className="unison-tenant flex h-screen h-dvh overflow-hidden bg-tenant-canvas">
           <NavigationLoading />
           <RealtimeRefresh organizationId={organization.id} />
@@ -128,6 +132,8 @@ export function AppShell({ user, organization, organizations, role, navigationSe
           <div className="flex min-w-0 flex-1 flex-col">
             <div className="flex h-14 items-center justify-between border-b border-tenant-sidebar-border bg-tenant-sidebar px-4 text-tenant-sidebar-foreground lg:hidden">
               <span className="font-brand font-medium tracking-[0.2em]">UNISON</span>
+              <div className="flex items-center gap-1">
+              <UtilityIcons withSearch />
               <button
                 ref={navigationTriggerRef}
                 type="button"
@@ -139,12 +145,15 @@ export function AppShell({ user, organization, organizations, role, navigationSe
               >
                 <Menu className="size-5" />
               </button>
+              </div>
             </div>
-            <main className="flex-1 overflow-y-auto overscroll-contain bg-tenant-canvas px-4 py-5 sm:px-6 lg:px-6 lg:py-6 xl:px-8">
+            <TopBar />
+            <main className="flex-1 overflow-y-auto overscroll-contain bg-tenant-canvas px-4 py-5 sm:px-6 lg:px-6 lg:pt-2 lg:pb-6 xl:px-8">
               <div key={pathname} className="unison-route-view min-h-full">{children}</div>
             </main>
           </div>
         </div>
+        </UtilityProvider>
       </NavigationProvider>
     </ShellProvider>
   )

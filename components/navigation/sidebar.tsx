@@ -3,7 +3,7 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Bell, CircleHelp, Menu, ChevronDown, Search } from 'lucide-react'
+import { Menu, ChevronDown } from 'lucide-react'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { cn, getInitials } from '@/lib/utils'
 import { useShellContext } from '@/components/layout/shell-context'
@@ -12,7 +12,6 @@ import { moduleIcons } from '@/config/navigation'
 import { InitialAvatar } from '@/components/ui/initial-avatar'
 import { roles } from '@/config/roles'
 import { signOutAction } from '@/features/auth-ui/actions/sign-out'
-import { UtilityPanel, type UtilityPanelKind } from '@/components/shared/utility-panel'
 import { TenantSwitcher } from '@/components/shared/tenant-switcher'
 
 const CLOSED_SECTIONS_KEY = 'unison:sidebar:closed-sections'
@@ -32,8 +31,6 @@ export function Sidebar({ onNavigate, floating }: SidebarProps = {}) {
   const [collapsed, setCollapsed] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
   const profileRef = useRef<HTMLDivElement>(null)
-  const [panel, setPanel] = useState<UtilityPanelKind | null>(null)
-  const [unread, setUnread] = useState(0)
   const [closedSections, setClosedSections] = useState<string[]>([])
   const [prefsLoaded, setPrefsLoaded] = useState(false)
   const navRef = useRef<HTMLElement>(null)
@@ -117,26 +114,6 @@ export function Sidebar({ onNavigate, floating }: SidebarProps = {}) {
     }
   }, [profileOpen])
   useEffect(() => setProfileOpen(false), [pathname])
-  useEffect(() => {
-    function handleKeyDown(event: KeyboardEvent) {
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
-        event.preventDefault()
-        setPanel('search')
-      } else if (event.key === 'Escape') setPanel(null)
-    }
-    function handleCount(event: Event) { setUnread(Number((event as CustomEvent<number>).detail) || 0) }
-    document.addEventListener('keydown', handleKeyDown)
-    window.addEventListener('unison:notification-count', handleCount)
-    void fetch('/api/notifications', { cache: 'no-store' }).then(async (response) => {
-      if (!response.ok) return
-      const payload = await response.json() as { notifications?: Array<{ read_at: string | null }> }
-      setUnread((payload.notifications ?? []).filter((item) => !item.read_at).length)
-    })
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown)
-      window.removeEventListener('unison:notification-count', handleCount)
-    }
-  }, [])
   return (
     <><aside className={cn('flex h-full shrink-0 flex-col border-r border-tenant-sidebar-border bg-tenant-sidebar text-tenant-sidebar-foreground transition-[width] duration-200 ease-out', collapsed ? 'w-20' : 'w-64', floating && 'border shadow-[0_10px_36px_-14px_rgb(13_35_64_/_0.22)]')}>
       {/* Brand */}
@@ -220,12 +197,6 @@ export function Sidebar({ onNavigate, floating }: SidebarProps = {}) {
         })}
       </nav>
 
-      <div className="grid grid-cols-3 gap-1 border-t border-tenant-sidebar-border px-3 py-1 lg:py-2">
-        <UtilityButton label="Search" collapsed={collapsed} onClick={() => setPanel('search')}><Search className="size-4" /></UtilityButton>
-        <UtilityButton label="Notifications" collapsed={collapsed} onClick={() => setPanel('notifications')} dot={unread > 0}><Bell className="size-4" /></UtilityButton>
-        <UtilityButton label="Help" collapsed={collapsed} onClick={() => setPanel('help')}><CircleHelp className="size-4" /></UtilityButton>
-      </div>
-
       {/* User */}
       <div ref={profileRef} className="relative border-t border-tenant-sidebar-border px-3 py-1.5 lg:py-3">
         <button
@@ -255,10 +226,7 @@ export function Sidebar({ onNavigate, floating }: SidebarProps = {}) {
         </button>
         {profileOpen ? <div role="menu" className={cn('absolute bottom-full z-50 mb-2 border border-border bg-card p-1.5 text-foreground shadow-xl', collapsed ? 'left-2 w-52' : 'right-3 left-3')}><p className="px-2 py-2 text-xs font-medium text-muted-foreground">{displayName} · {organization.name}</p><Link href="/people/team" onClick={onNavigate} className="block px-2 py-2 text-sm transition-colors hover:bg-muted">View profile</Link><Link href="/settings" onClick={onNavigate} className="block px-2 py-2 text-sm transition-colors hover:bg-muted">Organization settings</Link><form action={signOutAction} onSubmit={onNavigate}><button type="submit" className="block w-full px-2 py-2 text-left text-sm text-destructive transition-colors hover:bg-muted">Sign out</button></form></div> : null}
       </div>
-    </aside><UtilityPanel kind={panel ?? 'help'} open={panel !== null} onClose={() => setPanel(null)} /></>
+    </aside></>
   )
 }
 
-function UtilityButton({ label, collapsed, onClick, dot, children }: { label: string; collapsed: boolean; onClick: () => void; dot?: boolean; children: React.ReactNode }) {
-  return <button type="button" title={label} aria-label={label} onClick={onClick} className="unison-action-control relative flex items-center justify-center px-1 py-2 text-tenant-sidebar-muted lg:py-2.5 hover:bg-tenant-sidebar-hover hover:text-tenant-sidebar-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">{children}{dot ? <span className="absolute top-1 right-2 size-2 rounded-full bg-warning" /> : null}</button>
-}
