@@ -150,7 +150,7 @@ export function Sidebar({ onNavigate }: SidebarProps = {}) {
                 onClick={() => toggleSection(section.heading!)}
                 aria-expanded={!sectionClosed}
                 tabIndex={collapsed ? -1 : undefined}
-                className={cn('unison-action-control flex w-full items-center justify-between px-3 pt-3 pb-1.5 text-left font-brand text-[0.6875rem] font-medium tracking-[0.14em] text-tenant-sidebar-muted uppercase hover:text-tenant-sidebar-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand', collapsed && 'sr-only')}
+                className={cn('unison-action-control flex w-full items-center justify-between px-3 pt-3 pb-1.5 text-left font-brand text-[0.6875rem] font-medium tracking-[0.08em] text-tenant-sidebar-muted/80 uppercase hover:text-tenant-sidebar-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand', collapsed && 'sr-only')}
               >
                 {section.heading}
                 <ChevronDown aria-hidden="true" className={cn('size-3.5 transition-transform', sectionClosed && '-rotate-90')} />
@@ -185,7 +185,6 @@ export function Sidebar({ onNavigate }: SidebarProps = {}) {
                         : 'text-tenant-sidebar-muted hover:bg-tenant-sidebar-hover hover:text-tenant-sidebar-foreground',
                     )}
                   >
-                    {isActive ? <span aria-hidden="true" className="unison-nav-indicator absolute inset-y-0 -left-3 w-0.5 bg-brand" /> : null}
                     <Icon className="size-[1.125rem] shrink-0" strokeWidth={1.75} />
                     <span className={cn(collapsed && 'sr-only')}>{item.label}</span>
                   </Link>
@@ -236,5 +235,5 @@ export function Sidebar({ onNavigate }: SidebarProps = {}) {
 }
 
 function UtilityButton({ label, collapsed, onClick, dot, children }: { label: string; collapsed: boolean; onClick: () => void; dot?: boolean; children: React.ReactNode }) {
-  return <button type="button" title={label} aria-label={label} onClick={onClick} className="unison-action-control relative flex flex-col items-center justify-center gap-1 px-1 py-1.5 text-tenant-sidebar-muted lg:py-2 hover:bg-tenant-sidebar-hover hover:text-tenant-sidebar-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">{children}{dot ? <span className="absolute top-1 right-2 size-2 rounded-full bg-warning" /> : null}<span className={cn('text-[0.6rem]', collapsed && 'sr-only')}>{label}</span></button>
+  return <button type="button" title={label} aria-label={label} onClick={onClick} className="unison-action-control relative flex items-center justify-center px-1 py-2 text-tenant-sidebar-muted lg:py-2.5 hover:bg-tenant-sidebar-hover hover:text-tenant-sidebar-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">{children}{dot ? <span className="absolute top-1 right-2 size-2 rounded-full bg-warning" /> : null}</button>
 }

@@ -27,7 +27,7 @@ test('the tenant shell uses its light neutral palette without recolouring intern
   assert.match(sidebar, /border-r border-tenant-sidebar-border bg-tenant-sidebar text-tenant-sidebar-foreground/)
   assert.match(sidebar, /bg-tenant-sidebar-active text-tenant-sidebar-foreground/)
   assert.match(sidebar, /text-tenant-sidebar-muted hover:bg-tenant-sidebar-hover hover:text-tenant-sidebar-foreground/)
-  assert.match(sidebar, /absolute inset-y-0 -left-3 w-0\.5 bg-brand/)
+  assert.doesNotMatch(sidebar, /unison-nav-indicator/, 'the current page is marked by its tint alone, with no side bar')
   assert.match(sidebar, /collapsed \? 'w-20' : 'w-64'/)
   assert.match(sidebar, /useNavigationSections\(\)/)
   assert.match(sidebar, /moduleIcons\[item\.id\]/)
