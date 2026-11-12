@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { Bell, BookOpen, CheckCircle2, ChevronRight, CircleHelp, Command, FileQuestion, LifeBuoy, LoaderCircle, Search, X } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react'
 
 import { useShellContext } from '@/components/layout/shell-context'
 import { createBrowserSupabase } from '@/lib/supabase/client'
@@ -148,7 +148,47 @@ function SearchContent({ onClose }: { onClose: () => void }) {
     }, 250)
     return () => { controller.abort(); window.clearTimeout(timer) }
   }, [query])
-  return <div><label className="relative block"><Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" /><input autoFocus value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search records, people and support..." className="unison-field h-10 w-full rounded-none border border-border bg-background pr-3 pl-9 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/15" /></label><p className="unison-metric-label mt-6 text-xs text-muted-foreground" aria-live="polite">{query.trim().length < 2 ? 'Enter at least two characters' : loading ? 'Searching…' : `${results.length} result${results.length === 1 ? '' : 's'}`}</p>{error ? <p role="alert" className="unison-live-region mt-3 border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">{error}</p> : null}<div className="mt-2 space-y-1">{results.map((result) => <Link key={`${result.resource}:${result.record_id}`} href={result.href} onClick={onClose} className="unison-action-control flex items-center justify-between px-3 py-3 hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"><span className="min-w-0"><span className="block text-xs text-muted-foreground">{humanize(result.resource)}</span><span className="unison-record-name block truncate text-sm">{result.title}</span>{result.subtitle ? <span className="mt-0.5 block truncate text-xs text-muted-foreground">{result.subtitle}</span> : null}</span><Command className="ml-3 size-4 shrink-0 text-muted-foreground" /></Link>)}{query.trim().length >= 2 && !loading && !error && results.length === 0 ? <p className="unison-live-region border border-border bg-muted/35 p-5 text-center text-sm text-muted-foreground">No records match “{query.trim()}”.</p> : null}</div></div>
+  const normalized = query.trim()
+  const groups = results.reduce<Array<{ resource: string; items: SearchResult[] }>>((all, result) => {
+    const found = all.find((group) => group.resource === result.resource)
+    if (found) found.items.push(result)
+    else all.push({ resource: result.resource, items: [result] })
+    return all
+  }, [])
+  const body = useRef<HTMLDivElement>(null)
+  // Arrow keys move from the box down through the results and back up to the box.
+  function onKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
+    if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return
+    const links = Array.from(body.current?.querySelectorAll<HTMLAnchorElement>('a[data-result]') ?? [])
+    const box = body.current?.querySelector<HTMLInputElement>('input')
+    if (!links.length) return
+    const at = links.indexOf(document.activeElement as HTMLAnchorElement)
+    event.preventDefault()
+    if (event.key === 'ArrowDown') links[Math.min(links.length - 1, at + 1)]?.focus()
+    else if (at <= 0) box?.focus()
+    else links[at - 1]?.focus()
+  }
+  return <div ref={body} onKeyDown={onKeyDown}>
+    <label className="relative block">
+      <span className="sr-only">Search records, people and support</span>
+      <Search className="absolute top-1/2 left-3.5 size-[1.125rem] -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+      <input autoFocus value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search clients, leads, quotes, invoices and people…" className="unison-field h-12 w-full rounded-none border border-border bg-background pr-3 pl-11 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/15" />
+    </label>
+    <p className="sr-only" aria-live="polite">{normalized.length < 2 ? 'Enter at least two characters' : loading ? 'Searching' : `${results.length} result${results.length === 1 ? '' : 's'}`}</p>
+    {error ? <p role="alert" className="unison-live-region mt-4 border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">{error}</p> : null}
+    {normalized.length < 2 ? <p className="mt-5 text-sm text-muted-foreground">Type at least two characters. Use the arrow keys to move through the results.</p> : null}
+    {normalized.length >= 2 && loading && !results.length ? <p className="mt-5 text-sm text-muted-foreground">Searching…</p> : null}
+    {groups.map((group) => <section key={group.resource} aria-label={humanize(group.resource)}>
+      <h3 className="mt-5 mb-2 text-xs font-medium text-muted-foreground">{humanize(group.resource)}</h3>
+      <ul className="divide-y divide-border/70 border border-border">{group.items.map((result) => <li key={`${result.resource}:${result.record_id}`}>
+        <Link data-result href={result.href} onClick={onClose} className="unison-action-control flex items-center gap-3 px-4 py-3 hover:bg-muted/50 focus-visible:bg-muted/50 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-brand">
+          <span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium text-foreground">{result.title}</span>{result.subtitle ? <span className="mt-0.5 block truncate text-xs text-muted-foreground">{result.subtitle}</span> : null}</span>
+          <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+        </Link>
+      </li>)}</ul>
+    </section>)}
+    {normalized.length >= 2 && !loading && !error && results.length === 0 ? <div className="unison-live-region mt-5 px-4 py-10 text-center"><p className="text-sm font-medium text-foreground">No records match “{normalized}”</p><p className="mt-1 text-xs text-muted-foreground">Check the spelling, or try fewer words.</p></div> : null}
+  </div>
 }
 
 function humanize(value: string) { return value.replaceAll('_', ' ').replace(/\b\w/g, (letter) => letter.toUpperCase()) }
