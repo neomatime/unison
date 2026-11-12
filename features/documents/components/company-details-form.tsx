@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useActionState, useState, useTransition } from 'react'
+import { useActionState, useState, useTransition, type ReactNode } from 'react'
 
 import { WorkspaceHeader } from '@/components/shared/workspace-header'
 import { TextAreaField, TextField } from '@/components/ui/form-fields'
@@ -9,7 +9,7 @@ import { FormError, FormFooter, FormSection } from '@/components/ui/form-layout'
 import { saveCompanyDetailsAction } from '../actions/company'
 import type { CompanySettings } from '../types'
 
-export function CompanyDetailsForm({ settings, canEdit, termsManaged = { quote: false, invoice: false } }: { settings: CompanySettings | null; canEdit: boolean; termsManaged?: { quote: boolean; invoice: boolean } }) {
+export function CompanyDetailsForm({ settings, canEdit, aside, termsManaged = { quote: false, invoice: false } }: { settings: CompanySettings | null; canEdit: boolean; /** The on and off switches, shown in a column beside the form. */ aside?: ReactNode; termsManaged?: { quote: boolean; invoice: boolean } }) {
   const [state, run, pending] = useActionState(saveCompanyDetailsAction, undefined)
   const [, startTransition] = useTransition()
   const [dirty, setDirty] = useState(false)
@@ -28,6 +28,7 @@ export function CompanyDetailsForm({ settings, canEdit, termsManaged = { quote: 
           Only an owner or admin can change these details.
         </p>
       ) : null}
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
       <form
         onChange={() => setDirty(true)}
         onSubmit={(event) => {
@@ -36,7 +37,7 @@ export function CompanyDetailsForm({ settings, canEdit, termsManaged = { quote: 
           setDirty(false)
           startTransition(() => run(data))
         }}
-        className="mx-auto max-w-5xl space-y-5"
+        className="min-w-0 space-y-5"
       >
         <fieldset disabled={!canEdit} className="m-0 min-w-0 space-y-5 border-0 p-0">
           <FormSection title="Company" description="Who the documents come from.">
@@ -95,6 +96,8 @@ export function CompanyDetailsForm({ settings, canEdit, termsManaged = { quote: 
         ) : null}
         {canEdit ? <FormFooter cancelHref="/settings" submitLabel="Save company details" pending={pending} /> : null}
       </form>
+      {aside ? <aside aria-label="Switches" className="space-y-5">{aside}</aside> : null}
+      </div>
     </>
   )
 }

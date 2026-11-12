@@ -21,7 +21,7 @@ export function QuotePortalSwitch({ enabled, canEdit }: { enabled: boolean; canE
         setDirty(false)
         startTransition(() => run(data))
       }}
-      className="mx-auto mt-5 max-w-5xl space-y-5"
+      className="space-y-5"
     >
       {!canEdit ? (
         <p role="note" className="border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">

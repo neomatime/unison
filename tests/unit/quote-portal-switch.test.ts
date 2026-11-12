@@ -75,12 +75,12 @@ test('the settings page renders the switch after the company form and passes the
   const source = page()
   assert.doesNotMatch(source, /^\s*['"]use client['"]/, 'the page stays a server route')
   assert.match(source, /import \{ QuotePortalSwitch \} from '@\/features\/documents\/components\/quote-portal-switch'/)
-  const form = source.indexOf('<CompanyDetailsForm ')
+  const form = source.indexOf('<CompanyDetailsForm')
   const toggle = source.indexOf('<QuotePortalSwitch ')
   assert.ok(form > -1 && toggle > form, 'the switch is a sibling below the company form')
   assert.match(source, /<QuotePortalSwitch enabled=\{settings\?\.quote_portal_enabled \?\? false\} canEdit=\{canEdit\} \/>/)
-  assert.match(source, /return \(\s*<>\s*<CompanyDetailsForm [^>]*\/>\s*<QuotePortalSwitch [^>]*\/>\s*(<BillingPlansSwitch [^>]*\/>\s*)?(<BillingAutoSendSwitch [^>]*\/>\s*)?(<BillingRemindersSwitch [^>]*\/>\s*)?<\/>\s*\)/, 'both are children of one fragment (the billing plans switches may follow)')
-  assert.match(source, /<CompanyDetailsForm settings=\{settings\} canEdit=\{canEdit\} termsManaged=\{managed\} \/>/, 'the company form is wired as before')
+  assert.match(source, /<CompanyDetailsForm[\s\S]*?aside=\{\s*<>\s*<QuotePortalSwitch [^>]*\/>\s*(<BillingPlansSwitch [^>]*\/>\s*)?(<BillingAutoSendSwitch [^>]*\/>\s*)?(<BillingRemindersSwitch [^>]*\/>\s*)?<\/>\s*\}\s*\/>/, 'the switches are in the form side column (the billing plans switches may follow)')
+  assert.match(source, /<CompanyDetailsForm\s+settings=\{settings\}\s+canEdit=\{canEdit\}\s+termsManaged=\{managed\}/, 'the company form is wired as before')
 })
 
 test('the switch component is a client form that calls its own action by hand and renders no raw HTML', () => {

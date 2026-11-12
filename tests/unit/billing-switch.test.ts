@@ -86,18 +86,18 @@ test('the settings page renders the billing switch after the portal switch and p
   const source = page()
   assert.doesNotMatch(source, /^\s*['"]use client['"]/, 'the page stays a server route')
   assert.match(source, /import \{ BillingPlansSwitch \} from '@\/features\/documents\/components\/billing-plans-switch'/)
-  const form = source.indexOf('<CompanyDetailsForm ')
+  const form = source.indexOf('<CompanyDetailsForm')
   const portal = source.indexOf('<QuotePortalSwitch ')
   const billing = source.indexOf('<BillingPlansSwitch ')
   assert.ok(form > -1 && portal > form && billing > portal, 'the company form, then the portal switch, then the billing switch')
   assert.match(source, /<BillingPlansSwitch enabled=\{settings\?\.billing_plans_enabled \?\? false\} canEdit=\{canEdit\} \/>/)
   assert.match(
     source,
-    /return \(\s*<>\s*<CompanyDetailsForm [^>]*\/>\s*<QuotePortalSwitch [^>]*\/>\s*<BillingPlansSwitch [^>]*\/>\s*<BillingAutoSendSwitch [^>]*\/>\s*(<BillingRemindersSwitch [^>]*\/>\s*)?<\/>\s*\)/,
-    'all of them are children of one fragment',
+    /<CompanyDetailsForm[\s\S]*?aside=\{\s*<>\s*<QuotePortalSwitch [^>]*\/>\s*<BillingPlansSwitch [^>]*\/>\s*<BillingAutoSendSwitch [^>]*\/>\s*(<BillingRemindersSwitch [^>]*\/>\s*)?<\/>\s*\}\s*\/>/,
+    'all of them are in the form side column, in order',
   )
   assert.match(source, /<QuotePortalSwitch enabled=\{settings\?\.quote_portal_enabled \?\? false\} canEdit=\{canEdit\} \/>/, 'the portal switch is wired as before')
-  assert.match(source, /<CompanyDetailsForm settings=\{settings\} canEdit=\{canEdit\} termsManaged=\{managed\} \/>/, 'the company form is wired as before')
+  assert.match(source, /<CompanyDetailsForm\s+settings=\{settings\}\s+canEdit=\{canEdit\}\s+termsManaged=\{managed\}/, 'the company form is wired as before')
 })
 
 test('the company settings type carries the optional billing switch and the settings query still reads every column', () => {

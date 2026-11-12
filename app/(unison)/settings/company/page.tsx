@@ -13,11 +13,19 @@ export default async function Page() {
   const managed = await companyTermsManaged(db, organization.id)
   return (
     <>
-      <CompanyDetailsForm settings={settings} canEdit={canEdit} termsManaged={managed} />
-      <QuotePortalSwitch enabled={settings?.quote_portal_enabled ?? false} canEdit={canEdit} />
-      <BillingPlansSwitch enabled={settings?.billing_plans_enabled ?? false} canEdit={canEdit} />
-      <BillingAutoSendSwitch enabled={settings?.billing_auto_send_enabled ?? false} plansEnabled={settings?.billing_plans_enabled ?? false} canEdit={canEdit} />
-      <BillingRemindersSwitch enabled={settings?.billing_reminders_enabled ?? false} plansEnabled={settings?.billing_plans_enabled ?? false} canEdit={canEdit} />
+      <CompanyDetailsForm
+        settings={settings}
+        canEdit={canEdit}
+        termsManaged={managed}
+        aside={
+          <>
+            <QuotePortalSwitch enabled={settings?.quote_portal_enabled ?? false} canEdit={canEdit} />
+            <BillingPlansSwitch enabled={settings?.billing_plans_enabled ?? false} canEdit={canEdit} />
+            <BillingAutoSendSwitch enabled={settings?.billing_auto_send_enabled ?? false} plansEnabled={settings?.billing_plans_enabled ?? false} canEdit={canEdit} />
+            <BillingRemindersSwitch enabled={settings?.billing_reminders_enabled ?? false} plansEnabled={settings?.billing_plans_enabled ?? false} canEdit={canEdit} />
+          </>
+        }
+      />
     </>
   )
 }
