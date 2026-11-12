@@ -51,7 +51,6 @@ export async function PersistentTeamScreen({ initialTab }: { initialTab?: string
     <WorkspaceHeader category="People" title="Team" description="Persistent people, capacity and project accountability for the active organization." action={assignmentView ? "New Assignment" : "New Team Member"} actionHref={assignmentView ? "/people/team/assignments/new" : "/people/team/new"} />
     <nav className="mb-5 flex gap-1 border-b border-border">
       <Link href="/people/team" className={`border-b-2 px-4 py-3 text-sm font-semibold ${assignmentView ? "border-transparent text-muted-foreground" : "border-brand text-brand"}`}>Directory</Link>
-      <Link href="/people/team?tab=assignments" className={`border-b-2 px-4 py-3 text-sm font-semibold ${assignmentView ? "border-brand text-brand" : "border-transparent text-muted-foreground"}`}>Project Assignments</Link>
     </nav>
     <div className="grid gap-3 sm:grid-cols-3">
       <MetricCard label="Active members" value={String(active.length)} detail="Available for accountable delivery" />
@@ -67,7 +66,7 @@ export async function PersistentTeamScreen({ initialTab }: { initialTab?: string
       recordHrefBase: assignmentView ? "/people/team/assignments" : "/people/team",
       columns: assignmentView
         ? [{ id: "name", label: "Assignment" }, { id: "project", label: "Project" }, { id: "owner", label: "Member" }, { id: "allocation", label: "Allocation" }, { id: "start", label: "Start" }, { id: "end", label: "End" }, { id: "status", label: "Status" }]
-        : [{ id: "name", label: "Member" }, { id: "owner", label: "Delivery Role" }, { id: "department", label: "Department" }, { id: "team", label: "Team" }, { id: "projects", label: "Projects" }, { id: "capacity", label: "Capacity" }, { id: "availability", label: "Availability" }, { id: "status", label: "Status" }],
+        : [{ id: "name", label: "Member" }, { id: "owner", label: "Delivery Role" }, { id: "department", label: "Department" }, { id: "capacity", label: "Capacity" }, { id: "availability", label: "Availability" }, { id: "status", label: "Status" }],
       fields: [], contextualActions: [],
       allowImport: true,
       portableCollection: assignmentView ? "project-assignments" : "team-members",
