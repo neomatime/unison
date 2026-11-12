@@ -1,5 +1,6 @@
 'use client'
 
+import { Search } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState, type ReactNode } from 'react'
@@ -72,22 +73,23 @@ export function RegisterToolbar({
         event.preventDefault()
         go({})
       }}
-      className="flex flex-wrap items-end gap-3 border-b border-border px-5 py-4"
+      className="flex flex-wrap items-center gap-3 border-b border-border px-5 py-4"
     >
-      <label className="block min-w-48 flex-1">
-        <span className="text-xs font-medium text-muted-foreground">Search</span>
-        <input name="q" value={text} onChange={(event) => setText(event.target.value)} placeholder="Name, client, number…" className={`${field} mt-1 w-full`} />
+      <label className="relative block min-w-48 flex-1">
+        <span className="sr-only">Search</span>
+        <Search aria-hidden="true" className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+        <input name="q" value={text} onChange={(event) => setText(event.target.value)} placeholder="Search by name, client or number…" className={`${field} w-full pl-9`} />
       </label>
       <label className="block">
-        <span className="text-xs font-medium text-muted-foreground">Status</span>
-        <Dropdown name="status" value={status ?? ''} onChange={(event) => go({ status: event.target.value })} className={`${field} mt-1 block`}>
+        <span className="sr-only">Status</span>
+        <Dropdown name="status" value={status ?? ''} onChange={(event) => go({ status: event.target.value })} className={`${field} w-44`}>
           <option value="">All statuses</option>
           {statuses.map((value) => <option key={value} value={value}>{value}</option>)}
         </Dropdown>
       </label>
       <label className="block">
-        <span className="text-xs font-medium text-muted-foreground">Owner</span>
-        <Dropdown name="owner" value={owner ?? ''} onChange={(event) => go({ owner: event.target.value })} className={`${field} mt-1 block`}>
+        <span className="sr-only">Owner</span>
+        <Dropdown name="owner" value={owner ?? ''} onChange={(event) => go({ owner: event.target.value })} className={`${field} w-44`}>
           <option value="">Everyone</option>
           {ownerMissing ? <option value={owner ?? ''}>Former member</option> : null}
           {owners.map((value) => <option key={value.id} value={value.id}>{value.label}</option>)}
