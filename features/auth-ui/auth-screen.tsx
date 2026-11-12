@@ -75,8 +75,8 @@ export function AuthScreen({ kind, next, token, message, organizationName }: { k
 
           <div className="flex flex-1 items-center px-6 py-7 sm:px-10 lg:px-[clamp(3rem,7vw,7rem)] lg:py-8">
             <div className="w-full max-w-[36.5rem]">
-              <p className="text-[0.6875rem] font-medium tracking-[0.22em] text-[#56749a] uppercase">Welcome to UNISON</p>
-              <h1 className="mt-3 text-[2.65rem] leading-none font-medium tracking-[-0.035em] sm:text-[3rem]">Sign in</h1>
+              <p className="text-sm font-medium text-[#56749a]">Welcome to UNISON</p>
+              <h1 className="mt-3 font-brand text-[2.65rem] leading-none font-light tracking-tight sm:text-[3rem]">Sign in</h1>
               <p className="mt-3 max-w-[26rem] text-sm leading-6 text-[#657590]">Access your client relationship workspace.</p>
 
               {message ? <p role="alert" className="mt-7 border-l-2 border-red-500 bg-red-50 px-4 py-3 text-sm text-red-700">{message}</p> : null}
@@ -110,7 +110,7 @@ export function AuthScreen({ kind, next, token, message, organizationName }: { k
 
                 {signInState?.error ? <p role="alert" className="border-l-2 border-red-500 bg-red-50 px-4 py-3 text-sm text-red-700">{signInState.error}</p> : null}
 
-                <button type="submit" disabled={signInPending} className="flex h-12 w-full items-center justify-center gap-4 bg-[#1769aa] text-xs font-medium tracking-[0.18em] text-white uppercase transition-colors duration-150 ease-out hover:bg-[#125486] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0d2340] disabled:cursor-wait disabled:opacity-60 motion-reduce:transition-none">
+                <button type="submit" disabled={signInPending} className="flex h-12 w-full items-center justify-center gap-4 bg-[#1769aa] text-sm font-medium text-white transition-colors duration-150 ease-out hover:bg-[#125486] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0d2340] disabled:cursor-wait disabled:opacity-60 motion-reduce:transition-none">
                   {signInPending ? 'Signing in…' : 'Sign in'} <ArrowRight className="size-4" />
                 </button>
               </form>
@@ -184,8 +184,8 @@ function SignInBrandPanel() {
 
         <div className="my-auto max-w-[35rem] py-16">
           <span className="block h-0.5 w-9 bg-[#1769aa]" />
-          <p className="mt-7 max-w-[22rem] text-[0.6875rem] leading-5 font-medium tracking-[0.2em] text-[#5e7290] uppercase">The client relationship platform.</p>
-          <h2 className="mt-14 text-[clamp(3.25rem,5vw,5.35rem)] leading-[0.99] font-medium tracking-[-0.045em] text-[#0d2340]">Every client.<br />One relationship.</h2>
+          <p className="mt-7 max-w-[22rem] text-sm leading-5 text-[#5e7290]">The client relationship platform.</p>
+          <h2 className="mt-14 font-brand text-[clamp(3.25rem,5vw,5.35rem)] leading-[1] font-light tracking-tight text-[#0d2340]">Every client.<br />One relationship.</h2>
           <p className="mt-8 max-w-[31rem] text-lg leading-8 text-[#657590]">One workspace. Complete visibility.<br />From first hello to final payment.</p>
         </div>
 
@@ -232,7 +232,7 @@ function MicrosoftSignIn({ next }: { next: string }) {
         <input type="hidden" name="next" value={next} />
         <MicrosoftSignInButton />
       </form>
-      <div className="mt-5 flex items-center gap-5"><span className="h-px flex-1 bg-[#dce3eb]" /><span className="text-[0.6875rem] font-medium tracking-[0.14em] text-[#657590] uppercase">or</span><span className="h-px flex-1 bg-[#dce3eb]" /></div>
+      <div className="mt-5 flex items-center gap-5"><span className="h-px flex-1 bg-[#dce3eb]" /><span className="text-xs text-[#657590]">or</span><span className="h-px flex-1 bg-[#dce3eb]" /></div>
     </div>
   )
 }
