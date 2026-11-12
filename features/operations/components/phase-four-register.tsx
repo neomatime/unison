@@ -6,7 +6,6 @@ import { RecordCollectionWorkspace, type CollectionRecord } from "@/features/pro
 import {
   listCalendarEvents,
   listClientOnboardings,
-  listProjectAssignments,
   listTasks,
   listTeamMembers,
   listVendors,
@@ -31,45 +30,36 @@ const portableCollectionByKind = {
   "calendar-event": "calendar-events",
 } as const;
 
-export async function PersistentTeamScreen({ initialTab }: { initialTab?: string }) {
-  const [members, assignments] = await Promise.all([listTeamMembers(), listProjectAssignments()]);
-  const assignmentView = initialTab === "assignments";
+export async function PersistentTeamScreen() {
+  const members = await listTeamMembers();
   const active = members.filter((member) => member.status === "Active" && !member.archivedAt);
-  const records: CollectionRecord[] = assignmentView
-    ? assignments.map((row) => ({
-        id: row.id, name: row.name, context: text(row.deliveryRole), owner: text(row.member),
-        project: text(row.project), allocation: `${text(row.allocationPercent, "0")}%`,
-        start: date(row.startDate), end: date(row.endDate), status: row.status, updated: date(row.updatedAt),
-      }))
-    : members.map((row) => ({
+  const records: CollectionRecord[] = members.map((row) => ({
         id: row.id, name: row.name, context: text(row.jobTitle), owner: text(row.deliveryRole),
         department: text(row.department), team: text(row.teamName), projects: text(row.assignmentCount, "0"),
         capacity: `${text(row.capacityPercent, "0")}%`, availability: text(row.availability), status: row.status,
         updated: date(row.updatedAt), archived: Boolean(row.archivedAt),
       }));
   return <>
-    <WorkspaceHeader category="People" title="Team" description="Persistent people, capacity and project accountability for the active organization." action={assignmentView ? "New Assignment" : "New Team Member"} actionHref={assignmentView ? "/people/team/assignments/new" : "/people/team/new"} />
+    <WorkspaceHeader category="People" title="Team" description="Persistent people, capacity and project accountability for the active organization." action="New Team Member" actionHref="/people/team/new" />
     <nav className="mb-5 flex gap-1 border-b border-border">
-      <Link href="/people/team" className={`border-b-2 px-4 py-3 text-sm font-semibold ${assignmentView ? "border-transparent text-muted-foreground" : "border-brand text-brand"}`}>Directory</Link>
+      <Link href="/people/team" className={`border-b-2 px-4 py-3 text-sm font-semibold border-brand text-brand`}>Directory</Link>
     </nav>
     <div className="grid gap-3 sm:grid-cols-2">
       <MetricCard label="Active members" value={String(active.length)} detail="Available for accountable delivery" />
       <MetricCard label="Capacity allocated" value={`${active.length ? Math.round(active.reduce((sum, item) => sum + Number(item.capacityPercent ?? 0), 0) / active.length) : 0}%`} detail="Average member allocation" />
     </div>
     <div className="mt-5"><RecordCollectionWorkspace config={{
-      title: assignmentView ? "Project Assignment Register" : "Team Directory",
-      singular: assignmentView ? "Assignment" : "Team Member",
-      description: assignmentView ? "Project roles, dates and allocation commitments." : "People, delivery roles, capacity and availability.",
-      primaryAction: assignmentView ? "New Assignment" : "New Team Member",
+      title: "Team Directory",
+      singular: "Team Member",
+      description: "People, delivery roles, capacity and availability.",
+      primaryAction: "New Team Member",
       records,
-      recordHrefBase: assignmentView ? "/people/team/assignments" : "/people/team",
-      columns: assignmentView
-        ? [{ id: "name", label: "Assignment" }, { id: "project", label: "Project" }, { id: "owner", label: "Member" }, { id: "allocation", label: "Allocation" }, { id: "start", label: "Start" }, { id: "end", label: "End" }, { id: "status", label: "Status" }]
-        : [{ id: "name", label: "Member" }, { id: "owner", label: "Delivery Role" }, { id: "department", label: "Department" }, { id: "capacity", label: "Capacity" }, { id: "availability", label: "Availability" }, { id: "status", label: "Status" }],
+      recordHrefBase: "/people/team",
+      columns: [{ id: "name", label: "Member" }, { id: "owner", label: "Delivery Role" }, { id: "department", label: "Department" }, { id: "capacity", label: "Capacity" }, { id: "availability", label: "Availability" }, { id: "status", label: "Status" }],
       fields: [], contextualActions: [],
       allowImport: true,
-      portableCollection: assignmentView ? "project-assignments" : "team-members",
-      emptyDescription: assignmentView ? "Create the first project assignment." : "Add the first team member to the organization directory.",
+      portableCollection: "team-members",
+      emptyDescription: "Add the first team member to the organization directory.",
     }} /></div>
   </>;
 }

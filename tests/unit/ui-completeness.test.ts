@@ -96,7 +96,8 @@ test('Team is the only People module and exposes the complete accountability wor
   for (const action of ['View Profile', 'Edit', 'View Assignments', 'View Capacity', 'Change Team', 'Change Role', 'Deactivate', 'Reactivate', 'New Department', 'New Team', 'New Role', 'Assign Member', 'Remove Assignment']) assert.match(workspaces, new RegExp(action))
   for (const field of ['First Name', 'Work Email', 'Access Role', 'Initial Project Assignment']) assert.match(memberForm, new RegExp(field, 'i'))
   for (const path of ['new/page.tsx', '[employeeId]/page.tsx', '[employeeId]/edit/page.tsx']) assert.ok(existsSync(join(unisonRoot, 'people', 'team', ...path.split('/'))))
-  for (const path of ['assignments/new/page.tsx', 'assignments/[assignmentId]/page.tsx', 'assignments/[assignmentId]/edit/page.tsx']) assert.ok(existsSync(join(unisonRoot, 'people', 'team', ...path.split('/'))))
+  // Project assignments are not part of the Team area: their pages are gone.
+  assert.ok(!existsSync(join(unisonRoot, 'people', 'team', 'assignments')))
 })
 
 test('retired People routes redirect to Team without exposing orphan workspaces', () => {
