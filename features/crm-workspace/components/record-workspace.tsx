@@ -8,7 +8,7 @@ import { WorkspaceTabs, type WorkspaceTab } from './workspace-tabs'
 
 export type WorkspaceSectionId = 'contacts' | 'timeline' | 'followups'
 
-export function RecordWorkspaceSections({ workspace, sections }: { workspace: RecordWorkspace; sections: readonly WorkspaceSectionId[] }) {
+export function RecordWorkspaceSections({ workspace, sections, flush }: { workspace: RecordWorkspace; sections: readonly WorkspaceSectionId[]; /** No space above: the page already sits it in a column that starts level with its neighbour. */ flush?: boolean }) {
   const { kind } = workspace
   const tabs: WorkspaceTab[] = []
   if (sections.includes('timeline')) {
@@ -42,7 +42,7 @@ export function RecordWorkspaceSections({ workspace, sections }: { workspace: Re
     })
   }
   return (
-    <div className="mt-5 space-y-5">
+    <div className={flush ? 'space-y-5' : 'mt-5 space-y-5'}>
       {workspace.conversion ? (
         <p className="border border-border bg-[var(--brand-soft)] px-5 py-3 text-sm text-foreground">
           This lead was converted.{' '}

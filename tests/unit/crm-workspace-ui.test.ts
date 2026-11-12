@@ -104,7 +104,7 @@ test('each record page passes the workspace into the page, not just defines it',
   const client = page('operations', 'clients', '[clientId]')
   assert.match(client, /getRecordWorkspace\('client', clientId\)/)
   assert.match(client, /<ClientDetail[^>]*workspace=\{workspace\}/, 'the client page must hand the workspace to ClientDetail')
-  assert.match(read('..', '..', 'features', 'clients', 'components', 'client-detail.tsx'), /<RecordWorkspaceSections workspace=\{workspace\} sections=\{\['contacts', 'followups', 'timeline'\]\} \/>/)
+  assert.match(read('..', '..', 'features', 'clients', 'components', 'client-detail.tsx'), /<RecordWorkspaceSections workspace=\{workspace\} sections=\{\['contacts', 'followups', 'timeline'\]\} flush \/>/)
 })
 
 test('the lead form no longer offers Converted, and conversion is only reachable through the Convert page', () => {

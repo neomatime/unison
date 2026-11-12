@@ -79,9 +79,7 @@ export function ClientDetail({ client, workspace, confirmArchive, archiveError }
         </dl>
       </aside>
       <div className="min-w-0 space-y-5">
-        <div className="-mt-5">
-          <RecordWorkspaceSections workspace={workspace} sections={['contacts', 'followups', 'timeline']} />
-        </div>
+        <RecordWorkspaceSections workspace={workspace} sections={['contacts', 'followups', 'timeline']} flush />
         {!archived ? <ClientDocuments /> : null}
       </div>
     </div>
