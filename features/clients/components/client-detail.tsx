@@ -3,7 +3,6 @@ import { AlertTriangle, ArrowLeft, Pencil } from 'lucide-react'
 
 import { ArchiveConfirmation, ArchiveTrigger } from '@/components/shared/archive-confirmation'
 import { WorkspaceHeader } from '@/components/shared/workspace-header'
-import { DetailTile, SummaryTile } from '@/components/ui/record-tiles'
 import { StatusBadge } from '@/components/ui/status-badge'
 import { RecordWorkspaceSections } from '@/features/crm-workspace/components/record-workspace'
 import type { RecordWorkspace } from '@/features/crm-workspace/types'
@@ -25,6 +24,20 @@ function statusTone(status: string): 'brand' | 'warning' | 'info' | 'neutral' {
 export function ClientDetail({ client, workspace, confirmArchive, archiveError }: { client: ClientRecord; workspace: RecordWorkspace; confirmArchive?: boolean; archiveError?: boolean }) {
   const archived = Boolean(client.archived_at)
   const detailHref = `/operations/clients/${client.id}`
+  const facts = ([
+    ['Client health', client.health],
+    ['Industry', client.industry],
+    ['Website', client.website],
+    ['Primary contact', client.contact_name],
+    ['Contact email', client.contact_email],
+    ['Contact phone', client.contact_phone],
+    ['Primary engagement', engagementLabel(client.engagement_type)],
+    ['Billing email', client.billing_email],
+    ['Last activity', formatDate(client.updated_at)],
+    ['Created', formatDate(client.created_at)],
+    ['Archived', client.archived_at ? formatDate(client.archived_at) : null],
+    ['Notes', client.notes],
+  ] as Array<[string, string | null | undefined]>).filter((fact): fact is [string, string] => Boolean(fact[1]) && fact[1] !== '—')
 
   return <>
     <WorkspaceHeader category="Operations" parent={{ label: 'Clients', href: '/operations/clients' }} title={client.name} />
@@ -37,30 +50,8 @@ export function ClientDetail({ client, workspace, confirmArchive, archiveError }
       </div>
     ) : null}
 
-    <section className="rounded-xl border border-border bg-card p-6 shadow-[0_1px_2px_rgb(16_32_46_/_0.04)]">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-3">
-            <h2 className="text-2xl font-bold tracking-tight">{client.name}</h2>
-            <StatusBadge tone={statusTone(client.status)}>{client.status}</StatusBadge>
-          </div>
-          <p className="mt-2 text-sm text-muted-foreground">
-            {client.contact_name ?? 'No primary contact on file'} · Last activity {formatDate(client.updated_at)}
-          </p>
-        </div>
-        {!archived && !confirmArchive ? (
-          <div className="flex flex-wrap gap-2">
-            <Link href={`${detailHref}/edit`} className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm font-medium"><Pencil className="size-4" />Edit</Link>
-            <ArchiveTrigger detailHref={detailHref} label="Archive Client" />
-          </div>
-        ) : null}
-      </div>
-      <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <SummaryTile label="Status" value={client.status} />
-        <SummaryTile label="Client health" value={client.health} />
-        <SummaryTile label="Last activity" value={formatDate(client.updated_at)} />
-      </div>
-      {!archived && confirmArchive ? (
+    {!archived && confirmArchive ? (
+      <section className="border border-border bg-card p-6">
         <ArchiveConfirmation
           recordName={client.name}
           cancelHref={detailHref}
@@ -68,38 +59,37 @@ export function ClientDetail({ client, workspace, confirmArchive, archiveError }
           description="This removes it from the active clients list. There is no undo through the UI."
           confirmLabel="Yes, archive client"
         />
-      ) : null}
-    </section>
-
-    <div className="mt-5 grid gap-5 xl:grid-cols-3">
-      <section className="rounded-xl border border-border bg-card p-6 xl:col-span-2">
-        <h3 className="font-semibold">Company</h3>
-        <p className="mt-1 text-sm text-muted-foreground">Core details on record for {client.name}.</p>
-        <div className="mt-6 grid gap-4 sm:grid-cols-2">
-          <DetailTile label="Industry" value={client.industry} />
-          <DetailTile label="Website" value={client.website} />
-          <DetailTile label="Primary contact" value={client.contact_name} />
-          <DetailTile label="Contact email" value={client.contact_email} />
-          <DetailTile label="Contact phone" value={client.contact_phone} />
-          <DetailTile label="Primary engagement" value={engagementLabel(client.engagement_type)} />
-          <DetailTile label="Billing email" value={client.billing_email} />
-        </div>
-        {client.notes ? (
-          <div className="mt-6">
-            <p className="text-[0.6875rem] font-semibold tracking-wide text-muted-foreground uppercase">Notes</p>
-            <p className="mt-1 text-sm">{client.notes}</p>
-          </div>
-        ) : null}
       </section>
-      <aside className="rounded-xl border border-border bg-card p-6">
-        <h3 className="font-semibold">Record</h3>
-        <div className="mt-5 space-y-4 text-sm">
-          <div><p className="text-xs text-muted-foreground">Created</p><p className="mt-1 font-medium">{formatDate(client.created_at)}</p></div>
-          {client.archived_at ? <div><p className="text-xs text-muted-foreground">Archived</p><p className="mt-1 font-medium">{formatDate(client.archived_at)}</p></div> : null}
+    ) : null}
+
+    {!archived && !confirmArchive ? (
+      <div className="mt-5 flex flex-wrap items-center justify-end gap-2">
+        <Link href={`${detailHref}/edit`} className="inline-flex items-center gap-2 border border-border px-3 py-2 text-sm font-medium"><Pencil className="size-4" />Edit</Link>
+        <ArchiveTrigger detailHref={detailHref} label="Archive Client" />
+      </div>
+    ) : null}
+
+    <div className="mt-5 grid gap-6 lg:grid-cols-[22rem_minmax(0,1fr)] lg:items-start">
+      <aside aria-label="Client details" className="border border-border bg-card p-6">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-sm font-medium text-foreground">Details</h2>
+          <StatusBadge tone={statusTone(client.status)}>{client.status}</StatusBadge>
         </div>
+        <dl className="mt-4 space-y-5">
+          {facts.map(([label, value]) => (
+            <div key={label}>
+              <dt className="text-xs text-muted-foreground">{label}</dt>
+              <dd className="mt-1 text-sm break-words whitespace-pre-wrap text-foreground">{value}</dd>
+            </div>
+          ))}
+        </dl>
       </aside>
+      <div className="min-w-0 space-y-5">
+        <div className="-mt-5">
+          <RecordWorkspaceSections workspace={workspace} sections={['contacts', 'followups', 'timeline']} />
+        </div>
+        {!archived ? <ClientDocuments /> : null}
+      </div>
     </div>
-    <RecordWorkspaceSections workspace={workspace} sections={['contacts', 'followups', 'timeline']} />
-    {!archived ? <ClientDocuments /> : null}
   </>
 }
