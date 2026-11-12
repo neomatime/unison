@@ -23,10 +23,24 @@ const fields: Record<PhaseFourKind, Array<[string, string]>> = {
   "calendar-event": [["Type", "eventType"], ["Starts", "startAt"], ["Ends", "endAt"], ["All day", "allDay"], ["Location", "location"], ["Owner", "owner"], ["Project", "project"], ["Client", "client"], ["Onboarding", "onboarding"], ["Status", "status"], ["Description", "description"]],
 };
 
-export async function PhaseFourDetail({ kind, id }: { kind: PhaseFourKind; id: string }) {
+export async function PhaseFourDetail({ kind, id, split }: { kind: PhaseFourKind; id: string; split?: boolean }) {
   const record = await getPhaseFourRecord(kind, id);
   if (!record) notFound();
   const info = meta[kind];
+  if (split) {
+    const shown = fields[kind].filter(([, key]) => formatValue(key, record[key]) !== "—");
+    return <WorkPage category={info.category} title={record.name} description={info.description} parent={{ label: info.parent, href: info.base }}>
+      <div className="mt-5 flex justify-end">
+        <Link href={`${info.base}/${record.id}/edit`} className="bg-brand px-4 py-2 text-sm font-semibold text-white">Edit record</Link>
+      </div>
+      <section aria-label="Record details" className="mt-5 border border-border bg-card p-6">
+        <h2 className="text-sm font-medium text-foreground">Details</h2>
+        <dl className="mt-4 grid gap-x-8 gap-y-5 sm:grid-cols-2">
+          {shown.map(([label, key]) => <div key={key}><dt className="text-xs text-muted-foreground">{label}</dt><dd className="mt-1 text-sm break-words whitespace-pre-wrap text-foreground">{formatValue(key, record[key])}</dd></div>)}
+        </dl>
+      </section>
+    </WorkPage>;
+  }
   return <WorkPage category={info.category} title={record.name} description={info.description} parent={{ label: info.parent, href: info.base }}>
     <section className="border border-border bg-card">
       <header className="flex items-center justify-between border-b border-border p-6">
