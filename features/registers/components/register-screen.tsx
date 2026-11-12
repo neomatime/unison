@@ -2,7 +2,7 @@ import Link from 'next/link'
 
 import { WorkspaceHeader } from '@/components/shared/workspace-header'
 import { portableDefinitions, type PortableCollection } from '@/features/data-portability/portable-collections'
-import { HealthBadge, MetricCard } from '@/features/delivery/components/delivery-primitives'
+import { MetricCard } from '@/features/delivery/components/delivery-primitives'
 import { collectionSlug } from '@/features/product-ui/collection-route-storage'
 import { archiveRecordAction, restoreRecordAction } from '../actions/archive'
 import { readRegisterParams, registerHref, typedSearch, type RawParams } from '../read-register-params'
@@ -14,6 +14,7 @@ import { REGISTERS, type RegisterKind } from '../register-spec'
 import { buildCards } from '../summary'
 import { RegisterExport } from './register-export'
 import { RegisterRowMenu } from './register-row-menu'
+import { StatusDot } from './status-dot'
 import { RegisterToolbar } from './register-toolbar'
 
 const STATUS_COLUMNS = new Set(['status', 'stage'])
@@ -120,7 +121,7 @@ export async function RegisterScreen({ kind, searchParams }: { kind: RegisterKin
                         {index === 0 ? (
                           <Link href={`${frame.base}/${row.id}`} className="unison-record-name unison-action-control text-left text-sm hover:text-brand focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">{row.cells[column.id] ?? row.name}</Link>
                         ) : STATUS_COLUMNS.has(column.id) ? (
-                          <HealthBadge>{row.cells[column.id] ?? '—'}</HealthBadge>
+                          <StatusDot status={row.cells[column.id]} />
                         ) : (
                           <span className="text-muted-foreground">{row.cells[column.id] ?? '—'}</span>
                         )}
