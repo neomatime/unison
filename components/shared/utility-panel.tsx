@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 
 import { useShellContext } from '@/components/layout/shell-context'
 import { createBrowserSupabase } from '@/lib/supabase/client'
+import { groupNotifications } from '@/lib/ui/notification-groups'
 
 export type UtilityPanelKind = 'help' | 'notifications' | 'search'
 
@@ -83,10 +84,32 @@ function NotificationContent({ onClose }: { onClose: () => void }) {
   if (loading) return <div className="flex min-h-48 items-center justify-center"><LoaderCircle className="size-5 animate-spin text-brand" /><span className="sr-only">Loading notifications</span></div>
   if (error && !notifications.length) return <div className="unison-live-region border border-destructive/20 bg-destructive/5 p-5 text-sm text-destructive"><p>{error}</p><button type="button" onClick={() => void load()} className="unison-action-control mt-3 border border-destructive/25 px-3 py-2 text-xs font-semibold">Try again</button></div>
   const unread = notifications.filter((item) => !item.read_at).length
-  return <div><div className="flex items-center justify-between"><p className="unison-metric-label text-xs text-muted-foreground">{unread ? `${unread} unread` : 'Recent activity'}</p>{unread ? <button type="button" onClick={() => void markRead()} className="text-xs font-medium text-brand">Mark all read</button> : null}</div>{error ? <p role="alert" className="mt-3 text-xs text-destructive">{error}</p> : null}<div className="mt-3 space-y-2">{notifications.map((item) => {
-    const content = <><span className={`mt-1.5 size-2 shrink-0 rounded-full ${item.read_at ? 'bg-muted' : 'bg-warning'}`} /><span><span className="block text-[0.65rem] font-semibold tracking-wide text-muted-foreground uppercase">{item.category} · {relativeTime(item.created_at)}</span><span className="mt-1 block text-sm font-medium">{item.title}</span>{item.body ? <span className="mt-1 block text-xs leading-5 text-muted-foreground">{item.body}</span> : null}</span></>
-    return item.href ? <Link key={item.id} href={item.href} onClick={() => { void markRead(item.id); onClose() }} className="unison-interactive-card flex w-full gap-3 border border-border p-4 text-left hover:bg-muted/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">{content}</Link> : <button type="button" key={item.id} onClick={() => void markRead(item.id)} className="unison-interactive-card flex w-full gap-3 border border-border p-4 text-left hover:bg-muted/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">{content}</button>
-  })}</div>{!notifications.length || !unread ? <div className="mt-8 text-center"><CheckCircle2 className="mx-auto size-6 text-brand" /><p className="mt-2 text-sm text-muted-foreground">You are all caught up</p></div> : null}</div>
+  const groups = groupNotifications(notifications, new Date())
+  const rowClass = 'unison-interactive-card flex w-full gap-3 px-4 py-3.5 text-left hover:bg-muted/50 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-brand'
+  return <div>
+    <div className="flex items-center justify-between">
+      <p className="text-sm font-medium text-foreground">{unread ? `${unread} unread` : 'Nothing new'}</p>
+      {unread ? <button type="button" onClick={() => void markRead()} className="text-sm font-medium text-brand hover:underline">Mark all read</button> : null}
+    </div>
+    {error ? <p role="alert" className="mt-3 text-xs text-destructive">{error}</p> : null}
+    {groups.map((group) => <section key={group.label} aria-label={group.label}>
+      <h3 className="mt-5 mb-2 text-xs font-medium text-muted-foreground">{group.label}</h3>
+      <ul className="divide-y divide-border/70 border border-border">{group.items.map((item) => {
+        const content = <>
+          <span aria-hidden="true" className={`mt-1.5 size-2 shrink-0 rounded-full ${item.read_at ? 'bg-transparent' : 'bg-warning'}`} />
+          <span className="min-w-0 flex-1">
+            <span className={`block text-sm ${item.read_at ? 'text-muted-foreground' : 'font-medium text-foreground'}`}>{item.title}</span>
+            {item.body ? <span className="mt-1 line-clamp-2 block text-xs leading-5 text-muted-foreground">{item.body}</span> : null}
+            <span className="mt-1.5 block text-xs text-muted-foreground">{humanize(item.category)} · {relativeTime(item.created_at)}</span>
+          </span>
+        </>
+        return <li key={item.id}>{item.href
+          ? <Link href={item.href} onClick={() => { void markRead(item.id); onClose() }} className={rowClass}>{content}</Link>
+          : <button type="button" onClick={() => void markRead(item.id)} className={rowClass}>{content}</button>}</li>
+      })}</ul>
+    </section>)}
+    {!notifications.length ? <div className="px-4 py-14 text-center"><CheckCircle2 className="mx-auto size-6 text-brand" aria-hidden="true" /><p className="mt-3 text-sm font-medium text-foreground">You are all caught up</p><p className="mt-1 text-xs text-muted-foreground">New activity on your leads, quotes and invoices will show here.</p></div> : null}
+  </div>
 }
 
 type SearchResult = { resource: string; record_id: string; title: string; subtitle: string; href: string }
