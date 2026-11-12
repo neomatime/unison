@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { WorkPage } from "@/components/shared/work-page";
+import { StatusDot } from "@/components/ui/status-dot";
 import { formatCurrency } from "@/lib/utils/format-money";
 import { BILLING_TERMS_COPY, formatTermMonths } from "@/features/documents/billing-terms";
 import { isDraftReference } from "@/features/documents/vocabulary";
@@ -78,6 +79,8 @@ const fields: Record<PhaseSixKind, Array<[string, string]>> = {
   ],
 };
 
+const statusKeys = new Set(["status", "stage"]);
+
 const moneyKeys = new Set([
   "estimatedValue",
   "expectedValue",
@@ -131,7 +134,7 @@ export async function PhaseSixDetail({
                 <div key={key}>
                   <dt className="text-xs text-muted-foreground">{label}</dt>
                   <dd className="mt-1 text-sm break-words whitespace-pre-wrap text-foreground">
-                    {formatValue(key, record[key], record)}
+                    {statusKeys.has(key) ? <StatusDot status={formatValue(key, record[key], record)} /> : formatValue(key, record[key], record)}
                   </dd>
                 </div>
               ))}
@@ -167,7 +170,7 @@ export async function PhaseSixDetail({
             <div key={key} className="border-b border-border p-6 sm:odd:border-r">
               <dt className="text-xs tracking-[0.12em] text-muted-foreground uppercase">{label}</dt>
               <dd className="mt-2 whitespace-pre-wrap text-sm font-semibold">
-                {formatValue(key, record[key], record)}
+                {statusKeys.has(key) && formatValue(key, record[key], record) !== "—" ? <StatusDot status={formatValue(key, record[key], record)} /> : formatValue(key, record[key], record)}
               </dd>
             </div>
           ))}

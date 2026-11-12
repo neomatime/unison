@@ -3,7 +3,7 @@ import { AlertTriangle, ArrowLeft, Pencil } from 'lucide-react'
 
 import { ArchiveConfirmation, ArchiveTrigger } from '@/components/shared/archive-confirmation'
 import { WorkspaceHeader } from '@/components/shared/workspace-header'
-import { StatusBadge } from '@/components/ui/status-badge'
+import { StatusDot } from '@/components/ui/status-dot'
 import { RecordWorkspaceSections } from '@/features/crm-workspace/components/record-workspace'
 import type { RecordWorkspace } from '@/features/crm-workspace/types'
 import { formatDate } from '@/lib/utils'
@@ -11,12 +11,6 @@ import { archiveClientAction } from '../actions/archive-client'
 import { engagementLabel } from '../engagement'
 import { ClientDocuments } from './client-documents'
 import type { ClientRecord } from '../queries/get-client'
-
-function statusTone(status: string): 'brand' | 'warning' | 'info' | 'neutral' {
-  if (status === 'Active') return 'brand'
-  if (status === 'Archived') return 'neutral'
-  return 'info'
-}
 
 // A Server Component, deliberately: the archive confirmation is a two-step,
 // plain-HTML flow rather than a client-side dialog, so it works identically
@@ -73,7 +67,7 @@ export function ClientDetail({ client, workspace, confirmArchive, archiveError }
       <aside aria-label="Client details" className="border border-border bg-card p-6">
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-sm font-medium text-foreground">Details</h2>
-          <StatusBadge tone={statusTone(client.status)}>{client.status}</StatusBadge>
+          <StatusDot status={client.status} />
         </div>
         <dl className="mt-4 space-y-5">
           {facts.map(([label, value]) => (

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { WorkPage } from "@/components/shared/work-page";
+import { StatusDot } from "@/components/ui/status-dot";
 import { formatCurrency } from "@/lib/utils/format-money";
 import { getPhaseFourRecord, type PhaseFourKind } from "../queries/phase-four";
 
@@ -23,6 +24,8 @@ const fields: Record<PhaseFourKind, Array<[string, string]>> = {
   "calendar-event": [["Type", "eventType"], ["Starts", "startAt"], ["Ends", "endAt"], ["All day", "allDay"], ["Location", "location"], ["Owner", "owner"], ["Project", "project"], ["Client", "client"], ["Onboarding", "onboarding"], ["Status", "status"], ["Description", "description"]],
 };
 
+const statusKeys = new Set(["status", "stage", "health", "riskLevel"]);
+
 export async function PhaseFourDetail({ kind, id, split }: { kind: PhaseFourKind; id: string; split?: boolean }) {
   const record = await getPhaseFourRecord(kind, id);
   if (!record) notFound();
@@ -36,7 +39,7 @@ export async function PhaseFourDetail({ kind, id, split }: { kind: PhaseFourKind
       <section aria-label="Record details" className="mt-5 border border-border bg-card p-6">
         <h2 className="text-sm font-medium text-foreground">Details</h2>
         <dl className="mt-4 grid gap-x-8 gap-y-5 sm:grid-cols-2">
-          {shown.map(([label, key]) => <div key={key}><dt className="text-xs text-muted-foreground">{label}</dt><dd className="mt-1 text-sm break-words whitespace-pre-wrap text-foreground">{formatValue(key, record[key])}</dd></div>)}
+          {shown.map(([label, key]) => <div key={key}><dt className="text-xs text-muted-foreground">{label}</dt><dd className="mt-1 text-sm break-words whitespace-pre-wrap text-foreground">{statusKeys.has(key) ? <StatusDot status={formatValue(key, record[key])} /> : formatValue(key, record[key])}</dd></div>)}
         </dl>
       </section>
     </WorkPage>;
