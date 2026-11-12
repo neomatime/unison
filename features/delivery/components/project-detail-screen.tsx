@@ -13,7 +13,6 @@ import type { OrganizationMember } from "@/features/memberships/queries/list-org
 import { DeliveryItemsPanel } from "./delivery-items-panel";
 import {
   HealthBadge,
-  MetricCard,
   SectionCard,
   TableProgress,
 } from "./delivery-primitives";
@@ -140,97 +139,88 @@ export function ProjectDetailScreen({
           {archiveState.error}
         </p>
       ) : null}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-8">
-        <MetricCard
-          label="Current Phase"
-          value={project.phase}
-          detail="Applied framework phase"
-        />
-        <MetricCard
-          label="Health"
-          value={project.health}
-          detail="Recorded on the project"
-        />
-        <MetricCard
-          label="Status"
-          value={project.status}
-          detail="Lifecycle status"
-        />
-        <MetricCard
-          label="Progress"
-          value={`${project.progress}%`}
-          detail="Recorded progress"
-        />
-        <MetricCard
-          label="Next Gate"
-          value={project.nextGate}
-          detail="Recorded on the project"
-        />
-        <MetricCard
-          label="Due Date"
-          value={project.dueDate}
-          detail="Recorded on the project"
-        />
-        <MetricCard
-          label="Client"
-          value={project.client}
-          detail={
-            project.client === "—" ? "Internal change work" : "Delivered for"
-          }
-        />
-        <MetricCard
-          label="Owner"
-          value={project.owner}
-          detail="Accountable for delivery"
-        />
-      </div>
-      <nav
-        className="mt-5 flex gap-8 border-b border-border"
-        aria-label="Project workspace tabs"
-      >
-        {tabs.map((tab) => (
-          <button
-            type="button"
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`border-b-2 px-1 py-3 text-sm font-semibold ${activeTab === tab ? "border-brand text-brand" : "border-transparent text-muted-foreground hover:text-foreground"}`}
-          >
-            {tab}
-          </button>
-        ))}
-      </nav>
-      <div className="mt-5">
-        {activeTab === "Overview" ? (
-          <ProjectOverview project={project} />
-        ) : activeTab === "Framework" ? (
-          <FrameworkWorkspace project={project} />
-        ) : activeTab === "Delivery" ? (
-          <DeliveryItemsPanel
-            projectId={project.id}
-            items={items}
-            labels={labels}
-          />
-        ) : activeTab === "Governance" ? (
-          <ProjectGovernancePanel projectId={project.id} governance={governance} members={members} />
-        ) : activeTab === "Dependencies" ? (
-          <ProjectDependenciesPanel
-            projectId={project.id}
-            dependsOn={dependsOn}
-            dependedOnBy={dependedOnBy}
-          />
-        ) : activeTab === "Requirements" ? (
-          <ProjectRequirementsPanel
-            projectId={project.id}
-            requirements={requirements}
-            members={members}
-          />
-        ) : (
-          <ProjectTraceabilityPanel
-            traceability={traceability}
-            deliveryItems={items}
-            evidence={governance.artefacts}
-          />
-        )}
+      <div className="mt-5 grid gap-6 lg:grid-cols-[22rem_minmax(0,1fr)] lg:items-start">
+        <aside aria-label="Project details" className="border border-border bg-card p-6">
+          <h2 className="text-sm font-medium text-foreground">Details</h2>
+          <dl className="mt-4 space-y-5">
+            {[
+              ["Framework", project.framework],
+              ["Current phase", project.phase],
+              ["Client", project.client],
+              ["Owner", project.owner],
+              ["Next gate", project.nextGate],
+              ["Due date", project.dueDate],
+              ["Last updated", project.updated],
+            ].map(([label, value]) => (
+              <div key={label}>
+                <dt className="text-xs text-muted-foreground">{label}</dt>
+                <dd className="mt-1 text-sm break-words text-foreground">{value}</dd>
+              </div>
+            ))}
+            <div>
+              <dt className="text-xs text-muted-foreground">Health</dt>
+              <dd className="mt-1"><HealthBadge>{project.health}</HealthBadge></dd>
+            </div>
+            <div>
+              <dt className="text-xs text-muted-foreground">Status</dt>
+              <dd className="mt-1"><HealthBadge>{project.status}</HealthBadge></dd>
+            </div>
+            <div>
+              <dt className="text-xs text-muted-foreground">Progress</dt>
+              <dd className="mt-1"><TableProgress value={project.progress} /></dd>
+            </div>
+          </dl>
+        </aside>
+        <div className="min-w-0">
+        <nav
+          className="flex gap-8 overflow-x-auto border-b border-border"
+          aria-label="Project workspace tabs"
+        >
+          {tabs.map((tab) => (
+            <button
+              type="button"
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`border-b-2 px-1 py-3 text-sm font-semibold ${activeTab === tab ? "border-brand text-brand" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+            >
+              {tab}
+            </button>
+          ))}
+        </nav>
+        <div className="mt-5">
+          {activeTab === "Overview" ? (
+            <ProjectOverview project={project} />
+          ) : activeTab === "Framework" ? (
+            <FrameworkWorkspace project={project} />
+          ) : activeTab === "Delivery" ? (
+            <DeliveryItemsPanel
+              projectId={project.id}
+              items={items}
+              labels={labels}
+            />
+          ) : activeTab === "Governance" ? (
+            <ProjectGovernancePanel projectId={project.id} governance={governance} members={members} />
+          ) : activeTab === "Dependencies" ? (
+            <ProjectDependenciesPanel
+              projectId={project.id}
+              dependsOn={dependsOn}
+              dependedOnBy={dependedOnBy}
+            />
+          ) : activeTab === "Requirements" ? (
+            <ProjectRequirementsPanel
+              projectId={project.id}
+              requirements={requirements}
+              members={members}
+            />
+          ) : (
+            <ProjectTraceabilityPanel
+              traceability={traceability}
+              deliveryItems={items}
+              evidence={governance.artefacts}
+            />
+          )}
+        </div>
+        </div>
       </div>
       <ConfirmationDialog
         open={confirmArchive}
@@ -249,48 +239,12 @@ export function ProjectDetailScreen({
 
 function ProjectOverview({ project }: { project: ProjectDetail }) {
   return (
-    <div className="grid gap-5 xl:grid-cols-[1fr_360px]">
-      <SectionCard
-        title="Project record"
-        description="The governed project as it is stored."
-      >
-        <dl className="divide-y divide-border">
-          {[
-            ["Owner", project.owner],
-            ["Client", project.client],
-            ["Framework", project.framework],
-            ["Current phase", project.phase],
-            ["Lifecycle status", project.status],
-            ["Next gate", project.nextGate],
-            ["Due date", project.dueDate],
-            ["Last updated", project.updated],
-          ].map(([label, value]) => (
-            <div
-              key={label}
-              className="flex items-start justify-between gap-4 px-5 py-3"
-            >
-              <dt className="text-xs font-medium text-muted-foreground">
-                {label}
-              </dt>
-              <dd className="text-sm font-semibold">{value}</dd>
-            </div>
-          ))}
-          <div className="flex items-center justify-between gap-4 px-5 py-3">
-            <dt className="text-xs font-medium text-muted-foreground">
-              Progress
-            </dt>
-            <dd>
-              <TableProgress value={project.progress} />
-            </dd>
-          </div>
-          <div className="px-5 py-3">
-            <dt className="text-xs font-medium text-muted-foreground">Notes</dt>
-            <dd className="mt-1 text-sm whitespace-pre-line">
-              {project.notes}
-            </dd>
-          </div>
-        </dl>
-      </SectionCard>
+    <div className="space-y-5">
+      {project.notes && project.notes !== "—" ? (
+        <SectionCard title="Notes">
+          <p className="p-5 text-sm whitespace-pre-line">{project.notes}</p>
+        </SectionCard>
+      ) : null}
       <SectionCard
         title="What this project tracks"
         description="The whole surface, not a preview of it."
