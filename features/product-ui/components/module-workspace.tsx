@@ -75,9 +75,11 @@ export function ModuleWorkspace({ module, records, connected, initialQuery, tota
       <WorkspaceHeader category={module.category} title={module.label} action={module.id === 'settings' ? undefined : module.primaryAction} actionHref={module.id === 'settings' ? undefined : `${module.route}/new`} />
       <p className="-mt-4 mb-5 max-w-3xl text-sm text-muted-foreground">{module.description}</p>
 
-      <nav className="mb-5 flex gap-1 overflow-x-auto border-b border-border" aria-label={`${module.label} views`}>
-        {module.views.map((view) => <button type="button" key={view} onClick={() => { setActiveView(view); if (view === 'Grid') setDisplayMode('grid'); if (view === 'List') setDisplayMode('list') }} className={`whitespace-nowrap border-b-2 px-3 py-2.5 text-sm font-medium ${activeView === view ? 'border-foreground text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>{view}</button>)}
-      </nav>
+      {module.id === 'clients' ? null : (
+        <nav className="mb-5 flex gap-1 overflow-x-auto border-b border-border" aria-label={`${module.label} views`}>
+          {module.views.map((view) => <button type="button" key={view} onClick={() => { setActiveView(view); if (view === 'Grid') setDisplayMode('grid'); if (view === 'List') setDisplayMode('list') }} className={`whitespace-nowrap border-b-2 px-3 py-2.5 text-sm font-medium ${activeView === view ? 'border-foreground text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>{view}</button>)}
+        </nav>
+      )}
 
       <section className="overflow-hidden rounded-xl border border-border bg-card shadow-[0_1px_2px_rgb(16_32_46_/_0.04)]">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-4">
