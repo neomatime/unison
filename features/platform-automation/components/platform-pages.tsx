@@ -79,10 +79,12 @@ export async function AutomationDetailPage({ rule }: { rule: AutomationRule }) {
     <WorkspaceHeader category="Settings" parent={{ label: 'Automations', href: '/settings/automations' }} title={rule.name} description={rule.description || 'Persistent automation rule'} />
     <AutomationSettingsNav />
     {access.canManage ? <div className="mb-5"><AutomationControls rule={rule} /></div> : null}
-    <div className="grid gap-5 xl:grid-cols-2">
-      <ContentPanel title="Rule configuration"><dl className="divide-y divide-border"><Detail label="Status" value={titleCase(rule.status)} /><Detail label="Trigger" value={titleCase(rule.triggerType)} /><Detail label="Integration" value={rule.integrationName ?? 'No external connection'} /><Detail label="Execution count" value={String(rule.runCount)} /><Detail label="Last run" value={dateTime(rule.lastRunAt)} /></dl></ContentPanel>
+    <div className="grid gap-6 lg:grid-cols-[22rem_minmax(0,1fr)] lg:items-start">
+      <ContentPanel title="Rule configuration"><dl className="divide-y divide-border"><Detail stacked label="Status" value={titleCase(rule.status)} dot={<RuleStatus status={rule.status} />} /><Detail stacked label="Trigger" value={titleCase(rule.triggerType)} /><Detail stacked label="Integration" value={rule.integrationName ?? 'No external connection'} /><Detail stacked label="Execution count" value={String(rule.runCount)} /><Detail stacked label="Last run" value={dateTime(rule.lastRunAt)} /></dl></ContentPanel>
+      <div className="grid content-start gap-5">
       <ContentPanel title="Notification action"><dl className="divide-y divide-border"><Detail label="Title" value={stringValue(rule.actionConfig.title) || '—'} /><Detail label="Category" value={stringValue(rule.actionConfig.category) || 'System'} /><Detail label="Message" value={stringValue(rule.actionConfig.body) || 'No message body'} /></dl></ContentPanel>
-      {rule.schedule ? <ContentPanel title="Schedule" className="xl:col-span-2"><dl className="grid gap-4 sm:grid-cols-4"><CompactDetail label="Interval" value={duration(rule.schedule.intervalMinutes)} /><CompactDetail label="Timezone" value={rule.schedule.timezone} /><CompactDetail label="Next run" value={dateTime(rule.schedule.nextRunAt)} /><CompactDetail label="Last queued" value={dateTime(rule.schedule.lastEnqueuedAt)} /></dl></ContentPanel> : null}
+      {rule.schedule ? <ContentPanel title="Schedule"><dl className="grid gap-4 sm:grid-cols-4"><CompactDetail label="Interval" value={duration(rule.schedule.intervalMinutes)} /><CompactDetail label="Timezone" value={rule.schedule.timezone} /><CompactDetail label="Next run" value={dateTime(rule.schedule.nextRunAt)} /><CompactDetail label="Last queued" value={dateTime(rule.schedule.lastEnqueuedAt)} /></dl></ContentPanel> : null}
+      </div>
     </div>
   </>
 }
