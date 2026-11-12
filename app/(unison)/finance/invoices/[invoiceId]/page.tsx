@@ -89,6 +89,7 @@ export default async function Page({ params }: { params: Promise<{ invoiceId: st
       id={invoiceId}
       actions={<InvoiceHeaderActions invoiceId={invoiceId} />}
       after={<InvoiceWorkspace invoiceId={invoiceId} />}
+      split
     />
   )
 }
