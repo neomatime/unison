@@ -92,3 +92,14 @@ export function clampTime(hour: number, minute: number): TimeParts {
   const m = Number.isFinite(minute) ? Math.min(59, Math.max(0, Math.trunc(minute))) : 0
   return { hour: h, minute: m }
 }
+
+/** The numbers offered in a time column: every `step`, plus the current value when it is not on a step (so an existing 19:09 still shows). */
+export function timeOptions(max: number, step: number, current: number): number[] {
+  const values: number[] = []
+  for (let n = 0; n <= max; n += step) values.push(n)
+  if (Number.isInteger(current) && current >= 0 && current <= max && !values.includes(current)) {
+    values.push(current)
+    values.sort((a, b) => a - b)
+  }
+  return values
+}

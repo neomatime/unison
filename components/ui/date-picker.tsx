@@ -17,6 +17,7 @@ import {
   parseDate,
   parseTime,
   shiftDate,
+  timeOptions,
   type DateParts,
   type TimeParts,
 } from '@/lib/ui/date-model'
@@ -270,11 +271,10 @@ export function DatePicker({
                 </div>
               </div>
               {withTime && selectedTime ? (
-                <div className="mt-2 flex items-center gap-2 border-t border-border pt-3 text-sm">
-                  <span className="text-muted-foreground">Time</span>
-                  <TimeBox label="Hour" max={23} value={selectedTime.hour} onChange={(hour) => setTime(clampTime(hour, selectedTime.minute))} />
-                  <span aria-hidden="true">:</span>
-                  <TimeBox label="Minute" max={59} value={selectedTime.minute} onChange={(minute) => setTime(clampTime(selectedTime.hour, minute))} />
+                <div className="mt-2 flex items-start gap-3 border-t border-border pt-3 text-sm">
+                  <span className="pt-2 text-muted-foreground">Time</span>
+                  <TimeColumn label="Hour" options={timeOptions(23, 1, selectedTime.hour)} value={selectedTime.hour} onChange={(hour) => setTime(clampTime(hour, selectedTime.minute))} />
+                  <TimeColumn label="Minute" options={timeOptions(59, 5, selectedTime.minute)} value={selectedTime.minute} onChange={(minute) => setTime(clampTime(selectedTime.hour, minute))} />
                 </div>
               ) : null}
               <div className="mt-2 flex items-center justify-between border-t border-border pt-2 text-sm">
@@ -328,27 +328,55 @@ export function DatePicker({
   )
 }
 
-function TimeBox({ label, max, value, onChange }: { label: string; max: number; value: number; onChange: (next: number) => void }) {
+/** Pick-from-a-list time: a scrolling column of numbers to press, so nothing is typed. Arrow keys move through it. */
+function TimeColumn({ label, options, value, onChange }: { label: string; options: number[]; value: number; onChange: (next: number) => void }) {
+  const list = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const chosen = list.current?.querySelector<HTMLElement>('[aria-selected="true"]')
+    if (chosen && list.current) list.current.scrollTop = chosen.offsetTop - list.current.clientHeight / 2 + chosen.clientHeight / 2
+  }, [])
+  function onKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    const index = options.indexOf(value)
+    let next = index
+    if (event.key === 'ArrowDown') next = Math.min(options.length - 1, index + 1)
+    else if (event.key === 'ArrowUp') next = Math.max(0, index - 1)
+    else if (event.key === 'Home') next = 0
+    else if (event.key === 'End') next = options.length - 1
+    else return
+    event.preventDefault()
+    onChange(options[next])
+    requestAnimationFrame(() => list.current?.querySelector<HTMLElement>('[aria-selected="true"]')?.focus())
+  }
   return (
-    <input
-      type="text"
-      inputMode="numeric"
-      aria-label={label}
-      value={String(value).padStart(2, '0')}
-      maxLength={2}
-      onFocus={(event) => event.currentTarget.select()}
-      onChange={(event) => {
-        const digits = event.target.value.replace(/\D/g, '')
-        if (digits !== '') onChange(Math.min(max, Number(digits)))
-      }}
-      onKeyDown={(event) => {
-        if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
-          event.preventDefault()
-          const step = event.key === 'ArrowUp' ? 1 : -1
-          onChange((value + step + max + 1) % (max + 1))
-        }
-      }}
-      className="h-10 w-12 border border-border bg-card text-center text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/15"
-    />
+    <div className="flex flex-col items-center">
+      <span className="mb-1 text-xs text-muted-foreground">{label}</span>
+      <div
+        ref={list}
+        role="listbox"
+        aria-label={label}
+        onKeyDown={onKeyDown}
+        className="relative h-36 w-16 overflow-y-auto border border-border bg-card py-1"
+      >
+        {options.map((option) => {
+          const selected = option === value
+          return (
+            <button
+              key={option}
+              type="button"
+              role="option"
+              aria-selected={selected}
+              tabIndex={selected ? 0 : -1}
+              onClick={() => onChange(option)}
+              className={cn(
+                'flex h-9 w-full items-center justify-center text-sm tabular-nums outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                selected ? 'bg-brand font-medium text-brand-foreground' : 'hover:bg-muted',
+              )}
+            >
+              {String(option).padStart(2, '0')}
+            </button>
+          )
+        })}
+      </div>
+    </div>
   )
 }

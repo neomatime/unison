@@ -12,6 +12,7 @@ import {
   parseDate,
   parseTime,
   shiftDate,
+  timeOptions,
 } from '../../lib/ui/date-model.ts'
 
 test('dates round-trip in the exact string a native date input carried', () => {
@@ -69,4 +70,11 @@ test('monthGrid is six Sunday-first weeks that contain the whole month', () => {
 test('clampTime keeps hours and minutes in range', () => {
   assert.deepEqual(clampTime(30, -4), { hour: 23, minute: 0 })
   assert.deepEqual(clampTime(Number.NaN, 61), { hour: 0, minute: 59 })
+})
+
+test('time columns offer steps, and keep an existing off-step value', () => {
+  assert.deepEqual(timeOptions(59, 15, 0), [0, 15, 30, 45])
+  assert.deepEqual(timeOptions(59, 15, 9), [0, 9, 15, 30, 45])
+  assert.equal(timeOptions(23, 1, 5).length, 24)
+  assert.equal(timeOptions(59, 5, 99).includes(99), false)
 })
