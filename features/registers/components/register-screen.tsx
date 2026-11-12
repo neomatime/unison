@@ -1,7 +1,6 @@
 import Link from 'next/link'
 
 import { WorkspaceHeader } from '@/components/shared/workspace-header'
-import { ActionButton } from '@/features/crm-workspace/components/action-button'
 import { portableDefinitions, type PortableCollection } from '@/features/data-portability/portable-collections'
 import { HealthBadge, MetricCard } from '@/features/delivery/components/delivery-primitives'
 import { collectionSlug } from '@/features/product-ui/collection-route-storage'
@@ -14,11 +13,10 @@ import { REGISTER_FRAMES, toRegisterRow } from '../register-view'
 import { REGISTERS, type RegisterKind } from '../register-spec'
 import { buildCards } from '../summary'
 import { RegisterExport } from './register-export'
+import { RegisterRowMenu } from './register-row-menu'
 import { RegisterToolbar } from './register-toolbar'
 
 const STATUS_COLUMNS = new Set(['status', 'stage'])
-const rowButtons = '[&_button]:min-h-10 [&_button]:focus-visible:outline-2 [&_button]:focus-visible:outline-offset-2 [&_button]:focus-visible:outline-brand'
-const rowLink = 'unison-action-control inline-flex min-h-10 items-center text-xs font-semibold text-brand hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand'
 
 /**
  * One register: the cards, the search and filters, one page of rows and the footer. It reads the page address, asks the
@@ -111,7 +109,7 @@ export async function RegisterScreen({ kind, searchParams }: { kind: RegisterKin
                       </th>
                     )
                   })}
-                  <th scope="col" className="px-4 py-3">Actions</th>
+                  <th scope="col" className="px-4 py-3"><span className="sr-only">Actions</span></th>
                 </tr>
               </thead>
               <tbody>
@@ -128,16 +126,14 @@ export async function RegisterScreen({ kind, searchParams }: { kind: RegisterKin
                         )}
                       </td>
                     ))}
-                    <td className="px-4 py-3.5">
-                      <div className={`flex flex-wrap items-center gap-3 ${rowButtons}`}>
-                        <Link href={`${frame.base}/${row.id}`} className={rowLink} aria-label={`View ${row.name}`}>View</Link>
-                        <Link href={`${frame.base}/${row.id}/edit`} className={rowLink} aria-label={`Edit ${row.name}`}>Edit</Link>
-                        {row.archived ? (
-                          <ActionButton action={restoreRecordAction.bind(null, kind, row.id)} label="Restore" ariaLabel={`Restore ${row.name}`} />
-                        ) : (
-                          <ActionButton action={archiveRecordAction.bind(null, kind, row.id)} label="Archive" ariaLabel={`Archive ${row.name}`} confirmText="Archive this record?" tone="danger" />
-                        )}
-                      </div>
+                    <td className="px-4 py-2 text-right">
+                      <RegisterRowMenu
+                        name={row.name}
+                        viewHref={`${frame.base}/${row.id}`}
+                        editHref={`${frame.base}/${row.id}/edit`}
+                        archived={Boolean(row.archived)}
+                        action={row.archived ? restoreRecordAction.bind(null, kind, row.id) : archiveRecordAction.bind(null, kind, row.id)}
+                      />
                     </td>
                   </tr>
                 ))}
