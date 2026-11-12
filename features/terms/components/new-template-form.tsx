@@ -18,9 +18,9 @@ export function NewTemplateForm() {
         const data = new FormData(event.currentTarget)
         startTransition(() => run(data))
       }}
-      className="grid gap-3 border border-border bg-card p-5 md:grid-cols-2"
+      className="grid gap-4 border border-border bg-card p-5"
     >
-      <h2 className="unison-section-title text-xs text-foreground md:col-span-2">New template</h2>
+      <h2 className="text-sm font-medium text-foreground">New template</h2>
       <label className="text-sm font-medium">
         For
         <Dropdown name="targetKind" required defaultValue="" aria-label="For" className={`${field} mt-1.5`}>
@@ -47,8 +47,8 @@ export function NewTemplateForm() {
         Title
         <input name="title" required maxLength={200} aria-label="Title" className={`${field} mt-1.5`} />
       </label>
-      {state?.error ? <p role="alert" className="text-sm text-destructive md:col-span-2">{state.error}</p> : null}
-      <div className="md:col-span-2">
+      {state?.error ? <p role="alert" className="text-sm text-destructive">{state.error}</p> : null}
+      <div>
         <button type="submit" disabled={pending} className="bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-60">{pending ? 'Creating…' : 'Create template'}</button>
       </div>
     </form>

@@ -26,7 +26,8 @@ export async function TermsListScreen() {
       <p className="mb-4 text-sm text-[var(--briefing-muted)]">
         {canManage ? 'Owners and admins write, approve and archive terms.' : 'You can read approved terms. Only an owner or admin can change them.'}
       </p>
-      <div className="space-y-5">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
+        <div className="min-w-0 space-y-5">
         {groups.map((group) => (
           <WorkspaceSection key={group.label} title={group.label}>
             <ul className="divide-y divide-border">
@@ -56,7 +57,8 @@ export async function TermsListScreen() {
           </WorkspaceSection>
         ))}
         {groups.length === 0 ? <p className="text-sm text-[var(--briefing-muted)]">There are no terms templates yet.</p> : null}
-        {canManage ? <NewTemplateForm /> : null}
+        </div>
+        {canManage ? <aside aria-label="New template"><NewTemplateForm /></aside> : null}
       </div>
     </>
   )

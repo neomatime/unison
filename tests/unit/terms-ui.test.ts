@@ -59,7 +59,7 @@ test('the two settings pages exist, check the id before loading, and are linked 
 test('the list shows the groups and statuses, and only an owner or admin sees the New template form', () => {
   const screen = read('features', 'terms', 'components', 'terms-list-screen.tsx')
   assert.match(screen, /const canManage = role === 'owner' \|\| role === 'admin'/)
-  assert.match(screen, /\{canManage \? <NewTemplateForm \/> : null\}/)
+  assert.match(screen, /\{canManage \? <aside aria-label="New template"><NewTemplateForm \/><\/aside> : null\}/)
   assert.match(screen, /No approved terms/)
   assert.match(screen, /Draft pending/)
   assert.match(screen, /groupTemplates\(/)
