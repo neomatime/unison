@@ -9,7 +9,7 @@ import { ConfirmationDialog } from '@/components/shared/confirmation-dialog'
 import { ExportDialog } from '@/components/shared/export-dialog'
 import { EmptyState, ErrorState, LoadingSkeleton, PermissionState } from '@/components/shared/state-feedback'
 import { WorkspaceHeader } from '@/components/shared/workspace-header'
-import { StatusBadge } from '@/components/ui/status-badge'
+import { StatusDot } from '@/components/ui/status-dot'
 import type { MockRecord, ModuleDefinition } from '../types'
 import { Dropdown } from '@/components/ui/select'
 
@@ -160,7 +160,7 @@ export function ModuleWorkspace({ module, records, connected, initialQuery, tota
 }
 
 function RecordGrid({ module, records, onArchive }: { module: ModuleDefinition; records: MockRecord[]; onArchive?: (record: MockRecord) => void }) {
-  return <div className="grid gap-4 p-5 sm:grid-cols-2 xl:grid-cols-3">{records.map((record) => <article key={record.id} className="rounded-xl border border-border p-5 transition-shadow hover:shadow-md"><div className="flex items-start justify-between gap-3"><div><Link href={`${module.route}/${record.id}`} className="font-semibold hover:underline">{record.name}</Link><p className="mt-1 text-xs text-muted-foreground">Owned by {record.owner}</p></div><StatusBadge tone={statusTone(record.status)}>{record.status}</StatusBadge></div><div className="mt-6 grid grid-cols-2 gap-3 text-xs"><div><p className="text-muted-foreground">Last activity</p><p className="mt-1 font-medium">{record.updated}</p></div><div><p className="text-muted-foreground">Context</p><p className="mt-1 font-medium">{record.client ?? record.project ?? record.type ?? module.category}</p></div></div><div className="mt-5 flex items-center justify-between border-t border-border pt-4"><Link href={`${module.route}/${record.id}`} className="text-xs font-semibold">Open record</Link>{onArchive ? <button type="button" onClick={() => onArchive(record)} className="text-xs font-medium text-destructive">Archive</button> : null}</div></article>)}</div>
+  return <div className="grid gap-4 p-5 sm:grid-cols-2 xl:grid-cols-3">{records.map((record) => <article key={record.id} className="rounded-xl border border-border p-5 transition-shadow hover:shadow-md"><div className="flex items-start justify-between gap-3"><div><Link href={`${module.route}/${record.id}`} className="font-semibold hover:underline">{record.name}</Link><p className="mt-1 text-xs text-muted-foreground">Owned by {record.owner}</p></div><StatusDot status={record.status} /></div><div className="mt-6 grid grid-cols-2 gap-3 text-xs"><div><p className="text-muted-foreground">Last activity</p><p className="mt-1 font-medium">{record.updated}</p></div><div><p className="text-muted-foreground">Context</p><p className="mt-1 font-medium">{record.client ?? record.project ?? record.type ?? module.category}</p></div></div><div className="mt-5 flex items-center justify-between border-t border-border pt-4"><Link href={`${module.route}/${record.id}`} className="text-xs font-semibold">Open record</Link>{onArchive ? <button type="button" onClick={() => onArchive(record)} className="text-xs font-medium text-destructive">Archive</button> : null}</div></article>)}</div>
 }
 
 /**
@@ -195,22 +195,8 @@ function Cell({ module, record, column, primary }: { module: ModuleDefinition; r
   // labelled exactly 'Health', so this cannot change any other module's cells.
   // Onboarding's registry definition also has a 'Health' column, but Onboarding
   // renders through its own OnboardingScreen and never reaches this component.
-  if (column === 'Status' || column === 'Risk' || column === 'Client Health' || column === 'Stage' || column === 'Health') return <StatusBadge tone={statusTone(value)}>{value}</StatusBadge>
+  if (column === 'Status' || column === 'Risk' || column === 'Client Health' || column === 'Stage' || column === 'Health') return <StatusDot status={value} />
   return <span className="text-muted-foreground">{value}</span>
-}
-
-function statusTone(value: string): 'brand' | 'warning' | 'info' | 'neutral' | 'danger' {
-  // Critical is checked first and separately. It matched none of the patterns
-  // below and fell through to 'neutral', so the worst health a project can
-  // report rendered in grey on the governance register while At Risk rendered
-  // amber -- worst state, least signal. It cannot share 'warning' with At Risk
-  // either: that would erase the distinction rather than restore it, which is
-  // why StatusBadge gained a 'danger' tone alongside this branch.
-  if (/critical/i.test(value)) return 'danger'
-  if (/paid|active|healthy|approved|accepted|on track|published|configured/i.test(value)) return 'brand'
-  if (/risk|overdue|rejected|declined|watch/i.test(value)) return 'warning'
-  if (/review|new|progress|issued|awaiting|interview|assessment/i.test(value)) return 'info'
-  return 'neutral'
 }
 
 function recordValue(record: MockRecord, column: string) {

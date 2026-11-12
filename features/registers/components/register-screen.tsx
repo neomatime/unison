@@ -1,6 +1,7 @@
 import Link from 'next/link'
 
 import { WorkspaceHeader } from '@/components/shared/workspace-header'
+import { StatusDot } from '@/components/ui/status-dot'
 import { portableDefinitions, type PortableCollection } from '@/features/data-portability/portable-collections'
 import { MetricCard } from '@/features/delivery/components/delivery-primitives'
 import { collectionSlug } from '@/features/product-ui/collection-route-storage'
@@ -14,7 +15,6 @@ import { REGISTERS, type RegisterKind } from '../register-spec'
 import { buildCards } from '../summary'
 import { RegisterExport } from './register-export'
 import { RegisterRowMenu } from './register-row-menu'
-import { StatusDot } from './status-dot'
 import { RegisterToolbar } from './register-toolbar'
 
 const STATUS_COLUMNS = new Set(['status', 'stage'])

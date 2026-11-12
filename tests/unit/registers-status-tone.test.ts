@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 
 import { REGISTERS } from '../../features/registers/register-spec.ts'
-import { statusTone } from '../../features/registers/status-tone.ts'
+import { statusTone } from '../../lib/ui/status-tone.ts'
 
 test('good outcomes are positive, bad outcomes negative, waiting states attention', () => {
   for (const status of ['Qualified', 'Converted', 'Accepted', 'Paid', 'Approved', 'Won']) assert.equal(statusTone(status), 'positive', status)
@@ -21,4 +21,12 @@ test('every status the five registers filter on has a deliberate tone or is mean
       assert.ok(statusTone(status) !== 'neutral' || neutral.has(status), `${status} has no tone and is not on the neutral list`)
     }
   }
+})
+
+test('the statuses on the other lists have tones too', () => {
+  for (const status of ['Active', 'Healthy', 'On Track', 'Complete']) assert.equal(statusTone(status), 'positive', status)
+  for (const status of ['At Risk', 'Watch', 'Paused', 'Under Review']) assert.equal(statusTone(status), 'attention', status)
+  for (const status of ['Planned', 'In Progress', 'Invited']) assert.equal(statusTone(status), 'info', status)
+  for (const status of ['Blocked', 'Critical', 'High']) assert.equal(statusTone(status), 'negative', status)
+  for (const status of ['Archived', 'Inactive']) assert.equal(statusTone(status), 'neutral', status)
 })

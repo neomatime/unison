@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils'
-import { statusTone, type StatusTone } from '../status-tone'
+import { statusTone, type StatusTone } from '@/lib/ui/status-tone'
 
 const DOT: Record<StatusTone, string> = {
   positive: 'bg-success',

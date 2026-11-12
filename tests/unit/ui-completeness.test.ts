@@ -606,16 +606,16 @@ test('the projects register renders Health through the colour badge, not plain t
   // Track/At Risk/Critical values rendered as a plain <span> -- present, but
   // uncoloured. This pins that 'Health' is now in that set.
   const source = readFileSync(join(workspace, 'features', 'product-ui', 'components', 'module-workspace.tsx'), 'utf8')
-  const cellBody = source.slice(source.indexOf('function Cell('), source.indexOf('function statusTone('))
+  const cellBody = source.slice(source.indexOf('function Cell('), source.indexOf('function recordValue('))
   assert.ok(cellBody.length > 0, 'Cell() not found -- this test is out of sync with the source it checks')
 
   const badgeColumns = new Set([...cellBody.matchAll(/column === '([^']+)'/g)].map((match) => match[1]))
-  assert.ok(badgeColumns.has('Health'), "'Health' must route through <StatusBadge>, the same as 'Status'/'Risk'/'Client Health'/'Stage'")
+  assert.ok(badgeColumns.has('Health'), "'Health' must route through <StatusDot>, the same as 'Status'/'Risk'/'Client Health'/'Stage'")
 
   // And confirm the badge-or-not decision itself, not just that the string is
   // present somewhere in the file: build the exact condition from the source
   // and evaluate it the way Cell() does.
-  const conditionSource = cellBody.match(/if \((column === '[^)]+)\) return <StatusBadge/)?.[1]
+  const conditionSource = cellBody.match(/if \((column === '[^)]+)\) return <StatusDot/)?.[1]
   assert.ok(conditionSource, 'badge condition not found in the expected shape')
   // eslint-disable-next-line no-new-func -- evaluating the exact extracted boolean expression, not arbitrary input
   const isBadgeColumn = new Function('column', `return (${conditionSource})`) as (column: string) => boolean
