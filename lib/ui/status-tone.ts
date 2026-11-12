@@ -34,6 +34,8 @@ const TONES: Readonly<Record<string, StatusTone>> = {
   Paused: 'attention',
   'On Hold': 'attention',
   Pending: 'attention',
+  'Waiting on Customer': 'attention',
+  Resolved: 'positive',
   Medium: 'attention',
   'In Review': 'attention',
   Open: 'attention',
