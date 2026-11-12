@@ -137,7 +137,7 @@ export async function PhaseSixDetail({
               ))}
             </dl>
           </aside>
-          <div className="min-w-0">{after}</div>
+          <div className="min-w-0 space-y-5">{after}</div>
         </div>
       </WorkPage>
     );

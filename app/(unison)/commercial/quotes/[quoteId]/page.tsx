@@ -69,6 +69,7 @@ export default async function Page({ params }: { params: Promise<{ quoteId: stri
       id={quoteId}
       actions={<QuoteHeaderActions quoteId={quoteId} />}
       after={<QuoteWorkspace quoteId={quoteId} />}
+      split
     />
   )
 }
