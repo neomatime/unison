@@ -1,4 +1,3 @@
-import Link from "next/link";
 
 import { WorkspaceHeader } from "@/components/shared/workspace-header";
 import { MetricCard } from "@/features/delivery/components/delivery-primitives";
@@ -41,9 +40,6 @@ export async function PersistentTeamScreen() {
       }));
   return <>
     <WorkspaceHeader category="People" title="Team" description="Persistent people, capacity and project accountability for the active organization." action="New Team Member" actionHref="/people/team/new" />
-    <nav className="mb-5 flex gap-1 border-b border-border">
-      <Link href="/people/team" className={`border-b-2 px-4 py-3 text-sm font-semibold border-brand text-brand`}>Directory</Link>
-    </nav>
     <div className="grid gap-3 sm:grid-cols-2">
       <MetricCard label="Active members" value={String(active.length)} detail="Available for accountable delivery" />
       <MetricCard label="Capacity allocated" value={`${active.length ? Math.round(active.reduce((sum, item) => sum + Number(item.capacityPercent ?? 0), 0) / active.length) : 0}%`} detail="Average member allocation" />
