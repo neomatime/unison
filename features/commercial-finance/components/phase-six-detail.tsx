@@ -96,15 +96,52 @@ export async function PhaseSixDetail({
   id,
   actions,
   after,
+  split,
 }: {
   kind: PhaseSixKind;
   id: string;
   actions?: ReactNode;
   after?: ReactNode;
+  /** Details in a narrow panel beside `after`, hiding empty fields, instead of a full-width grid above it. */
+  split?: boolean;
 }) {
   const record = await getPhaseSixRecord(kind, id);
   if (!record) notFound();
   const info = meta[kind];
+  if (split) {
+    const shown = fields[kind].filter(([, key]) => formatValue(key, record[key], record) !== "—");
+    return (
+      <WorkPage
+        category={info.category}
+        title={record.name}
+        description={info.description}
+        parent={{ label: info.parent, href: info.base }}
+      >
+        <div className="mt-5 flex flex-wrap items-center justify-end gap-2">
+          {actions}
+          <Link href={`${info.base}/${record.id}/edit`} className="bg-brand px-4 py-2 text-sm font-semibold text-white">
+            Edit record
+          </Link>
+        </div>
+        <div className="mt-5 grid gap-6 lg:grid-cols-[22rem_minmax(0,1fr)] lg:items-start">
+          <aside aria-label="Record details" className="border border-border bg-card p-6">
+            <h2 className="text-sm font-medium text-foreground">Details</h2>
+            <dl className="mt-4 space-y-5">
+              {shown.map(([label, key]) => (
+                <div key={key}>
+                  <dt className="text-xs text-muted-foreground">{label}</dt>
+                  <dd className="mt-1 text-sm break-words whitespace-pre-wrap text-foreground">
+                    {formatValue(key, record[key], record)}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </aside>
+          <div className="min-w-0">{after}</div>
+        </div>
+      </WorkPage>
+    );
+  }
   return (
     <WorkPage
       category={info.category}

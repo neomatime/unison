@@ -19,7 +19,7 @@ const loadEngagements = cache(async (leadId: string) => getLeadEngagementDetails
 // it, and PhaseSixDetail calls notFound() for a well-formed id with no record.
 async function LeadWorkspace({ leadId }: { leadId: string }) {
   const [workspace, engagements] = await Promise.all([loadWorkspace(leadId), loadEngagements(leadId)])
-  return <div className="mt-5 space-y-5"><LeadEngagementDetails engagements={engagements} /><RecordWorkspaceSections workspace={workspace} sections={['contacts', 'followups', 'timeline']} /></div>
+  return <div className="-mt-5 space-y-5"><LeadEngagementDetails engagements={engagements} /><RecordWorkspaceSections workspace={workspace} sections={['contacts', 'followups', 'timeline']} /></div>
 }
 
 export default async function Page({ params }: { params: Promise<{ leadId: string }> }) {
@@ -38,6 +38,7 @@ export default async function Page({ params }: { params: Promise<{ leadId: strin
         ) : null
       }
       after={<LeadWorkspace leadId={leadId} />}
+      split
     />
   )
 }
