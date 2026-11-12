@@ -2,5 +2,5 @@ import { PhaseFourDetail } from '@/features/operations/components/phase-four-det
 
 export default async function Page({ params }: { params: Promise<{ eventId: string }> }) {
   const { eventId } = await params
-  return <PhaseFourDetail kind="calendar-event" id={eventId} />
+  return <PhaseFourDetail kind="calendar-event" id={eventId} split />
 }
