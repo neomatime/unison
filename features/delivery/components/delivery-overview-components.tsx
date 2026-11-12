@@ -159,9 +159,9 @@ type FocusItem = {
 
 const focusToneClasses: Record<FocusItem['tone'], string> = {
   brand: 'text-brand',
-  success: 'text-emerald-700',
-  warning: 'text-amber-700',
-  danger: 'text-red-600',
+  success: 'text-emerald-700 dark:text-emerald-400',
+  warning: 'text-amber-700 dark:text-amber-400',
+  danger: 'text-red-600 dark:text-red-400',
 }
 
 function FocusListItem({ item }: { item: FocusItem }) {
@@ -431,7 +431,7 @@ function PhaseDistribution({
 
 const riskBandTone: Record<TopRiskRow['band'], string> = {
   Critical: 'border-destructive/40 bg-destructive/5 text-destructive',
-  High: 'border-amber-500/40 bg-amber-500/5 text-amber-700',
+  High: 'border-amber-500/40 bg-amber-500/5 text-amber-700 dark:text-amber-400',
   Moderate: 'border-border bg-muted text-[var(--briefing-muted)]',
   Low: 'border-border bg-muted text-[var(--briefing-muted)]',
 }

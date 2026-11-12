@@ -7,8 +7,8 @@ import { DueDate } from './local-time'
 import { EmptyState, ErrorState, Panel } from './panel'
 
 const priorityStyle: Record<string, string> = {
-  Critical: 'bg-red-50 text-red-800',
-  High: 'bg-amber-50 text-amber-800',
+  Critical: 'bg-red-50 text-red-800 dark:bg-red-950/50 dark:text-red-300',
+  High: 'bg-amber-50 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300',
   Medium: 'bg-muted text-foreground',
   Low: 'bg-muted text-[var(--briefing-muted)]',
 }

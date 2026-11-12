@@ -109,3 +109,50 @@
   --radius-3xl: 0px;
   --radius-4xl: 0px;
 }
+
+/* Dark theme. Applied by adding the `dark` class to <html>, which only the signed-in workspace does
+   (components/layout/theme.tsx): sign-in, the public site, the client quote page and printed documents
+   stay light. It redefines the same variables the light theme sets, so nothing else needs to know
+   which theme is on. The blue is a little lighter than in the light theme so that blue text and
+   links read on a dark surface. */
+:root.dark {
+  color-scheme: dark;
+
+  --unison-navy: #e6ecf4;
+  --unison-canvas: #0a1220;
+  --unison-surface: #101a2b;
+  --unison-surface-muted: #16233a;
+  --unison-border: #25344d;
+  --unison-muted: #8fa1b8;
+  --unison-accent: #3a8ed4;
+
+  --focus-ring: 0 0 0 3px rgb(58 142 212 / 0.4);
+  --shadow-interactive: 0 5px 16px rgb(0 0 0 / 0.35);
+  --shadow-overlay: 0 18px 48px rgb(0 0 0 / 0.5);
+
+  --primary-foreground: #0a1220;
+  --accent: #16263f;
+  --brand-foreground: #ffffff;
+  --brand-soft: #14263f;
+  --success-soft: oklch(0.27 0.05 151);
+  --warning-soft: oklch(0.3 0.06 78);
+  --danger-soft: oklch(0.28 0.07 25);
+  --info-soft: oklch(0.28 0.05 285);
+
+  --tenant-sidebar: #0d1727;
+  --tenant-sidebar-foreground: #e6ecf4;
+  --tenant-sidebar-muted: #8fa1b8;
+  --tenant-sidebar-active: #172a45;
+  --tenant-sidebar-hover: #121f33;
+  --tenant-sidebar-border: #25344d;
+  --tenant-canvas: #0a1220;
+  --tenant-surface: #101a2b;
+  --tenant-surface-muted: #16233a;
+  --tenant-foreground: #e6ecf4;
+  --tenant-muted-foreground: #8fa1b8;
+  --tenant-border: #25344d;
+  --tenant-brand: #3a8ed4;
+  --tenant-brand-soft: #14263f;
+
+  --briefing-muted: #a3b3c7;
+}

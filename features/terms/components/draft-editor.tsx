@@ -72,12 +72,12 @@ export function DraftEditor({ templateId, start, hasDraft, savedAt, targetKind, 
         <textarea name="inclusions" rows={5} value={inclusions} onChange={(event) => setInclusions(event.target.value)} aria-label="Service inclusions" className={area} />
       </label>
       {problems.length > 0 ? (
-        <p role="status" className="text-xs text-amber-800 md:col-span-2">
+        <p role="status" className="text-xs text-amber-800 dark:text-amber-300 md:col-span-2">
           Not a placeholder UNISON knows: {problems.join(', ')}. Use only {'{{monthly_fee}}'}, {'{{monthly_credits}}'}, {'{{initiative_limit}}'}, {'{{valid_days}}'} and {'{{payment_days}}'}, with no spaces. The draft can be saved, but not approved.
         </p>
       ) : null}
       {retainerOnly.length > 0 ? (
-        <p role="status" className="text-xs text-amber-800 md:col-span-2">
+        <p role="status" className="text-xs text-amber-800 dark:text-amber-300 md:col-span-2">
           {retainerOnly.map((name) => `{{${name}}}`).join(', ')} {retainerOnly.length === 1 ? 'is' : 'are'} only available to retainer templates, so any line using {retainerOnly.length === 1 ? 'it' : 'them'} will be left out of documents for this template. The draft can still be saved and approved.
         </p>
       ) : null}
@@ -90,7 +90,7 @@ export function DraftEditor({ templateId, start, hasDraft, savedAt, targetKind, 
         <input name="changeNote" maxLength={500} defaultValue={start.changeNote ?? ''} aria-label="Change note" className={`${field} mt-1.5`} />
       </label>
       {backDated && currentEffectiveFrom ? (
-        <p role="status" className="text-xs text-amber-800 md:col-span-2">
+        <p role="status" className="text-xs text-amber-800 dark:text-amber-300 md:col-span-2">
           This date is not later than the version in force (effective {formatDocumentDate(currentEffectiveFrom)}), so this version will not replace it.
         </p>
       ) : null}

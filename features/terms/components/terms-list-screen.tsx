@@ -42,8 +42,8 @@ export async function TermsListScreen() {
                         {status.kind === 'current' && status.upcoming ? ` · Next: version ${status.upcoming.version} effective ${formatDocumentDate(status.upcoming.effectiveFrom)}` : null}
                         {status.kind === 'upcoming' ? ` · Approved version ${status.version}, effective ${formatDocumentDate(status.effectiveFrom)} (not yet in force)` : null}
                       </p>
-                      {status.kind === 'none' ? <span className={`${badge} border-amber-300 text-amber-800`}>No approved terms</span> : null}
-                      {status.kind === 'upcoming' ? <span className={`${badge} border-amber-300 text-amber-800`}>Not in force yet</span> : null}
+                      {status.kind === 'none' ? <span className={`${badge} border-amber-300 text-amber-800 dark:border-amber-700 dark:text-amber-300`}>No approved terms</span> : null}
+                      {status.kind === 'upcoming' ? <span className={`${badge} border-amber-300 text-amber-800 dark:border-amber-700 dark:text-amber-300`}>Not in force yet</span> : null}
                       {template.hasDraft ? <span className={`${badge} border-border text-[var(--briefing-muted)]`}>Draft pending</span> : null}
                     </div>
                     <Link href={`/settings/terms/${template.id}`} aria-label={`${canManage ? 'Open' : 'View'}: ${template.title}`} className="border border-border px-3 py-1.5 text-xs font-semibold text-foreground">

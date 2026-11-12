@@ -109,7 +109,7 @@
   }
 
   .unison-tenant :where(input, select, textarea)::placeholder {
-    color: color-mix(in oklab, var(--tenant-muted-foreground) 72%, white);
+    color: color-mix(in oklab, var(--tenant-muted-foreground) 72%, var(--tenant-surface));
   }
 
   .unison-tenant table thead {
@@ -124,11 +124,11 @@
   }
 
   .unison-tenant table tbody tr:hover {
-    background-color: color-mix(in oklab, var(--tenant-brand-soft) 58%, white);
+    background-color: color-mix(in oklab, var(--tenant-brand-soft) 58%, var(--tenant-surface));
   }
 
   .unison-tenant [role='tab'][aria-selected='true'] {
-    background-color: color-mix(in oklab, var(--tenant-brand-soft) 48%, white);
+    background-color: color-mix(in oklab, var(--tenant-brand-soft) 48%, var(--tenant-surface));
   }
 
   .unison-tenant :where(button, a[href], [role='tab']) {

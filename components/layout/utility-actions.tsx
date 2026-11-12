@@ -1,16 +1,18 @@
 'use client'
 
-import { Bell, CircleHelp, Search } from 'lucide-react'
+import { Bell, CircleHelp, Moon, Search, Sun } from 'lucide-react'
 
+import { useTheme } from '@/components/layout/theme'
 import { useUtilities } from '@/components/layout/utility-context'
 import { cn } from '@/lib/utils'
 
 const iconButton =
   'unison-action-control relative inline-flex size-10 items-center justify-center text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand'
 
-/** The bell and help buttons. Shared by the desktop top bar and the phone header. */
+/** The bell, light or dark mode, and help buttons. Shared by the desktop top bar and the phone header. */
 export function UtilityIcons({ withSearch, className }: { withSearch?: boolean; className?: string }) {
   const { open, unread } = useUtilities()
+  const { theme, toggle } = useTheme()
   return (
     <div className={cn('flex items-center gap-1', className)}>
       {withSearch ? (
@@ -27,6 +29,15 @@ export function UtilityIcons({ withSearch, className }: { withSearch?: boolean; 
       >
         <Bell className="size-[1.125rem]" strokeWidth={1.75} />
         {unread > 0 ? <span aria-hidden="true" className="absolute top-2 right-2.5 size-2 rounded-full bg-warning" /> : null}
+      </button>
+      <button
+        type="button"
+        aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+        title={theme === 'dark' ? 'Light mode' : 'Dark mode'}
+        onClick={toggle}
+        className={iconButton}
+      >
+        {theme === 'dark' ? <Sun className="size-[1.125rem]" strokeWidth={1.75} /> : <Moon className="size-[1.125rem]" strokeWidth={1.75} />}
       </button>
       <button type="button" aria-label="Help" title="Help" onClick={() => open('help')} className={iconButton}>
         <CircleHelp className="size-[1.125rem]" strokeWidth={1.75} />

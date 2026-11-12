@@ -8,6 +8,7 @@ import { entitledModuleIds } from '@/lib/auth/entitlement'
 import { resolveDisplayName } from '@/lib/auth/display-name'
 import { getSessionContext } from '@/lib/auth/get-session-context'
 import { NoMembershipError } from '@/lib/auth/errors'
+import { THEME_BOOT_SCRIPT } from '@/lib/ui/theme'
 
 // Never prerendered, for the same reason as the internal layout: this resolves
 // the caller's session from request cookies. Most pages beneath it read
@@ -32,9 +33,13 @@ export default async function UnisonLayout({ children }: { children: React.React
     const navigationSections = navigationSectionsFor(await entitledModuleIds())
 
     return (
-      <AppShell user={shellUser} organization={organization} organizations={organizations} role={role} navigationSections={navigationSections}>
-        {children}
-      </AppShell>
+      <>
+        {/* Sets a saved dark choice before the first paint, so there is no light flash. */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
+        <AppShell user={shellUser} organization={organization} organizations={organizations} role={role} navigationSections={navigationSections}>
+          {children}
+        </AppShell>
+      </>
     )
   } catch (error) {
     if (error instanceof NoMembershipError) redirect('/join-organization')

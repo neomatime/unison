@@ -15,6 +15,7 @@ import { RealtimeRefresh } from '@/components/layout/realtime-refresh'
 import { TopBar } from '@/components/layout/top-bar'
 import { UtilityProvider } from '@/components/layout/utility-context'
 import { UtilityIcons } from '@/components/layout/utility-actions'
+import { ThemeProvider } from '@/components/layout/theme'
 
 type AppShellProps = {
   user: ShellUser
@@ -94,6 +95,7 @@ export function AppShell({ user, organization, organizations, role, navigationSe
   return (
     <ShellProvider value={{ user, organization, organizations, role }}>
       <NavigationProvider sections={navigationSections}>
+        <ThemeProvider>
         <UtilityProvider>
         <div className="unison-tenant flex h-screen h-dvh overflow-hidden bg-tenant-canvas">
           <NavigationLoading />
@@ -154,6 +156,7 @@ export function AppShell({ user, organization, organizations, role, navigationSe
           </div>
         </div>
         </UtilityProvider>
+        </ThemeProvider>
       </NavigationProvider>
     </ShellProvider>
   )

@@ -107,7 +107,7 @@
   }
 
   ::selection {
-    background: color-mix(in oklab, var(--brand) 18%, white);
+    background: color-mix(in oklab, var(--brand) 18%, var(--background));
     color: var(--foreground);
   }
 }
