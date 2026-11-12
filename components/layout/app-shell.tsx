@@ -94,7 +94,7 @@ export function AppShell({ user, organization, organizations, role, navigationSe
         <div className="unison-tenant flex h-screen h-dvh overflow-hidden bg-tenant-canvas">
           <NavigationLoading />
           <RealtimeRefresh organizationId={organization.id} />
-          <div className="hidden lg:block"><Sidebar /></div>
+          <div className="hidden h-full p-3 pr-0 lg:block"><Sidebar floating /></div>
           {navigationOpen ? (
             <div className="fixed inset-0 z-50 lg:hidden">
               <button

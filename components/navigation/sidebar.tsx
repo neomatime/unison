@@ -23,12 +23,15 @@ const DRAWER_DEFAULT_CLOSED = ['People', 'Operations']
 
 type SidebarProps = {
   onNavigate?: () => void
+  /** Sits apart from the window edge as a raised panel, instead of a flush column. */
+  floating?: boolean
 }
 
-export function Sidebar({ onNavigate }: SidebarProps = {}) {
+export function Sidebar({ onNavigate, floating }: SidebarProps = {}) {
   const pathname = usePathname()
   const [collapsed, setCollapsed] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
+  const profileRef = useRef<HTMLDivElement>(null)
   const [panel, setPanel] = useState<UtilityPanelKind | null>(null)
   const [unread, setUnread] = useState(0)
   const [closedSections, setClosedSections] = useState<string[]>([])
@@ -92,6 +95,28 @@ export function Sidebar({ onNavigate }: SidebarProps = {}) {
       return next
     })
   }
+  // The profile menu closes when you press anywhere outside it, tab out of it, press Escape, or change page.
+  useEffect(() => {
+    if (!profileOpen) return
+    const outside = (event: Event) => {
+      if (!profileRef.current?.contains(event.target as Node)) setProfileOpen(false)
+    }
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setProfileOpen(false)
+        profileRef.current?.querySelector('button')?.focus()
+      }
+    }
+    document.addEventListener('pointerdown', outside)
+    document.addEventListener('focusin', outside)
+    document.addEventListener('keydown', escape)
+    return () => {
+      document.removeEventListener('pointerdown', outside)
+      document.removeEventListener('focusin', outside)
+      document.removeEventListener('keydown', escape)
+    }
+  }, [profileOpen])
+  useEffect(() => setProfileOpen(false), [pathname])
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
@@ -113,7 +138,7 @@ export function Sidebar({ onNavigate }: SidebarProps = {}) {
     }
   }, [])
   return (
-    <><aside className={cn('flex h-full shrink-0 flex-col border-r border-tenant-sidebar-border bg-tenant-sidebar text-tenant-sidebar-foreground transition-[width] duration-200 ease-out', collapsed ? 'w-20' : 'w-64')}>
+    <><aside className={cn('flex h-full shrink-0 flex-col border-r border-tenant-sidebar-border bg-tenant-sidebar text-tenant-sidebar-foreground transition-[width] duration-200 ease-out', collapsed ? 'w-20' : 'w-64', floating && 'border shadow-[0_10px_36px_-14px_rgb(13_35_64_/_0.22)]')}>
       {/* Brand */}
       <div className={cn('flex items-center justify-between py-4', collapsed ? 'px-6' : 'px-6')}>
         <span className={cn('font-brand text-xl font-medium tracking-[0.2em] text-tenant-sidebar-foreground', collapsed && 'hidden')}>
@@ -202,7 +227,7 @@ export function Sidebar({ onNavigate }: SidebarProps = {}) {
       </div>
 
       {/* User */}
-      <div className="relative border-t border-tenant-sidebar-border px-3 py-1.5 lg:py-3">
+      <div ref={profileRef} className="relative border-t border-tenant-sidebar-border px-3 py-1.5 lg:py-3">
         <button
           type="button"
           onClick={() => setProfileOpen((value) => !value)}

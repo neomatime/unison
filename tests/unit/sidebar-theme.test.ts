@@ -34,7 +34,7 @@ test('the tenant shell uses its light neutral palette without recolouring intern
   assert.match(shell, /bg-tenant-canvas/)
   assert.match(shell, /unison-tenant/)
   assert.match(shell, /border-b border-tenant-sidebar-border bg-tenant-sidebar/)
-  assert.match(shell, /hidden lg:block/)
+  assert.match(shell, /hidden h-full p-3 pr-0 lg:block"><Sidebar floating \/>/, 'on a wide screen the sidebar floats, inset from the window edge')
   assert.match(shell, /fixed inset-0 z-50 lg:hidden/)
   assert.match(shell, /h-screen h-dvh/)
   assert.match(shell, /role="dialog"/)
