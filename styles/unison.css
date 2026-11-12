@@ -58,7 +58,7 @@
   .unison-section-title {
     font-family: var(--unison-brand-font);
     font-weight: var(--font-weight-medium);
-    letter-spacing: 0.12em;
+    letter-spacing: 0.08em;
     line-height: 1.35;
     text-transform: uppercase;
   }
@@ -66,7 +66,7 @@
   .unison-metric-label {
     font-family: var(--unison-brand-font);
     font-weight: var(--font-weight-medium);
-    letter-spacing: 0.13em;
+    letter-spacing: 0.09em;
     text-transform: uppercase;
   }
 
@@ -115,7 +115,7 @@
   .unison-tenant table thead {
     font-family: var(--unison-brand-font);
     font-weight: var(--font-weight-medium);
-    letter-spacing: 0.1em;
+    letter-spacing: 0.07em;
     text-transform: uppercase;
   }
 
@@ -125,7 +125,6 @@
 
   .unison-tenant table tbody tr:hover {
     background-color: color-mix(in oklab, var(--tenant-brand-soft) 58%, white);
-    box-shadow: inset 3px 0 0 var(--tenant-brand);
   }
 
   .unison-tenant [role='tab'][aria-selected='true'] {
@@ -156,7 +155,7 @@
   .unison-interface table thead {
     font-family: var(--unison-brand-font);
     font-weight: var(--font-weight-medium);
-    letter-spacing: 0.1em;
+    letter-spacing: 0.07em;
     text-transform: uppercase;
   }
 
@@ -198,8 +197,7 @@
   @media (hover: hover) {
     .unison-interactive-card:hover {
       border-color: color-mix(in oklab, var(--border) 55%, var(--brand));
-      box-shadow: 0 14px 34px -18px rgb(13 35 64 / 0.28);
-      transform: translateY(-2px);
+      box-shadow: 0 10px 28px -20px rgb(13 35 64 / 0.22);
     }
   }
 

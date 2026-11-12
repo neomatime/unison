@@ -15,7 +15,7 @@ test('the interaction system has shared motion, focus and reduced-motion safegua
   assert.match(styles, /\.unison-interactive-card/)
   assert.match(styles, /prefers-reduced-motion: reduce/)
   assert.match(styles, /\.unison-live-region/)
-  assert.match(styles, /box-shadow: inset 3px 0 0 var\(--tenant-brand\)/)
+  assert.doesNotMatch(styles, /inset 3px 0 0/, 'table rows highlight with a tint only, without a side bar')
   assert.match(styles, /\[role='tab'\]\[aria-selected='true'\]/)
 })
 
