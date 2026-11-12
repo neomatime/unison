@@ -16,7 +16,7 @@ const loadWorkspace = cache(async (opportunityId: string) => getRecordWorkspace(
 // it, and PhaseSixDetail calls notFound() for a well-formed id with no record.
 async function OpportunityWorkspace({ opportunityId }: { opportunityId: string }) {
   const workspace = await loadWorkspace(opportunityId)
-  return <RecordWorkspaceSections workspace={workspace} sections={['contacts', 'followups', 'timeline']} />
+  return <div className="-mt-5"><RecordWorkspaceSections workspace={workspace} sections={['contacts', 'followups', 'timeline']} /></div>
 }
 
 export default async function Page({ params }: { params: Promise<{ opportunityId: string }> }) {
@@ -33,6 +33,7 @@ export default async function Page({ params }: { params: Promise<{ opportunityId
         ) : null
       }
       after={<OpportunityWorkspace opportunityId={opportunityId} />}
+      split
     />
   )
 }
