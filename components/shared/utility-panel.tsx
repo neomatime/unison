@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { Bell, BookOpen, CheckCircle2, CircleHelp, Command, FileQuestion, Keyboard, LoaderCircle, Search, X } from 'lucide-react'
+import { Bell, BookOpen, CheckCircle2, ChevronRight, CircleHelp, Command, FileQuestion, LifeBuoy, LoaderCircle, Search, X } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 
 import { useShellContext } from '@/components/layout/shell-context'
@@ -34,16 +34,27 @@ export function UtilityPanel({ kind, open, onClose }: { kind: UtilityPanelKind; 
 }
 
 function HelpContent({ onClose }: { onClose: () => void }) {
-  return <div className="space-y-3">
-    <ResourceLink href="/knowledge" icon={<BookOpen className="size-5" />} title="UNISON guide" description="Browse module and workflow guidance" onClick={onClose} />
-    <div className="border border-border p-4"><div className="flex items-center gap-4"><span className="flex size-10 items-center justify-center border border-border bg-muted/40"><Keyboard className="size-5" /></span><span><span className="unison-record-name block text-sm">Keyboard shortcuts</span><span className="text-xs text-muted-foreground">Move through the product efficiently</span></span></div><dl className="mt-4 grid grid-cols-[1fr_auto] gap-x-3 gap-y-2 text-xs"><dt className="text-muted-foreground">Open global search</dt><dd><kbd className="border border-border bg-muted px-1.5 py-0.5">Ctrl / ⌘ K</kbd></dd><dt className="text-muted-foreground">Close a panel</dt><dd><kbd className="border border-border bg-muted px-1.5 py-0.5">Esc</kbd></dd></dl></div>
-    <ResourceLink href="/support/new" icon={<FileQuestion className="size-5" />} title="Contact support" description="Create and track a support request" onClick={onClose} />
-    <Link href="/support" onClick={onClose} className="unison-interactive-card block border border-brand/20 bg-brand-soft/20 p-4 text-sm font-semibold text-brand hover:bg-brand-soft/40">View your support tickets</Link>
+  return <div>
+    <h3 className="mb-2 text-xs font-medium text-muted-foreground">Get help</h3>
+    <ul className="divide-y divide-border/70 border border-border">
+      <li><ResourceLink href="/knowledge" icon={<BookOpen className="size-[1.125rem]" strokeWidth={1.75} />} title="UNISON guide" description="Module and workflow guidance" onClick={onClose} /></li>
+      <li><ResourceLink href="/support/new" icon={<FileQuestion className="size-[1.125rem]" strokeWidth={1.75} />} title="Contact support" description="Create a support request" onClick={onClose} /></li>
+      <li><ResourceLink href="/support" icon={<LifeBuoy className="size-[1.125rem]" strokeWidth={1.75} />} title="Your support tickets" description="Follow your open requests" onClick={onClose} /></li>
+    </ul>
+    <h3 className="mt-6 mb-2 text-xs font-medium text-muted-foreground">Keyboard shortcuts</h3>
+    <dl className="divide-y divide-border/70 border border-border text-sm">
+      <div className="flex items-center justify-between px-4 py-3"><dt className="text-foreground">Open search</dt><dd><kbd className="border border-border bg-muted px-1.5 py-0.5 font-mono text-xs text-muted-foreground">Ctrl / ⌘ K</kbd></dd></div>
+      <div className="flex items-center justify-between px-4 py-3"><dt className="text-foreground">Close a panel</dt><dd><kbd className="border border-border bg-muted px-1.5 py-0.5 font-mono text-xs text-muted-foreground">Esc</kbd></dd></div>
+    </dl>
   </div>
 }
 
 function ResourceLink({ href, icon, title, description, onClick }: { href: string; icon: ReactNode; title: string; description: string; onClick: () => void }) {
-  return <Link href={href} onClick={onClick} className="unison-interactive-card flex w-full items-center gap-4 border border-border p-4 text-left hover:bg-muted/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"><span className="flex size-10 items-center justify-center border border-border bg-muted/40">{icon}</span><span><span className="unison-record-name block text-sm">{title}</span><span className="text-xs text-muted-foreground">{description}</span></span></Link>
+  return <Link href={href} onClick={onClick} className="unison-interactive-card flex w-full items-center gap-4 px-4 py-3.5 text-left hover:bg-muted/50 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-brand">
+    <span className="flex size-9 shrink-0 items-center justify-center bg-muted text-muted-foreground">{icon}</span>
+    <span className="min-w-0 flex-1"><span className="block text-sm font-medium text-foreground">{title}</span><span className="block text-xs text-muted-foreground">{description}</span></span>
+    <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+  </Link>
 }
 
 type NotificationRecord = { id: string; title: string; body: string | null; category: string; href: string | null; read_at: string | null; created_at: string }
