@@ -3,9 +3,9 @@
 import { Popover } from '@base-ui/react/popover'
 import { Archive, Eye, MoreHorizontal, Pencil, RotateCcw } from 'lucide-react'
 import Link from 'next/link'
-import { useActionState, useState } from 'react'
+import { useActionState, useEffect, useState, useTransition } from 'react'
 
-import { useConfirmedSubmit } from '@/components/shared/confirm-provider'
+import { useConfirm } from '@/components/shared/confirm-provider'
 import type { ActionState } from '@/features/crm-workspace/types'
 
 const item =
@@ -31,7 +31,20 @@ export function RegisterRowMenu({
 }) {
   const [open, setOpen] = useState(false)
   const [state, run, pending] = useActionState(action, undefined)
-  const confirmSubmit = useConfirmedSubmit(archived ? null : { title: 'Archive this record?', message: `${name} will leave the active list. You can restore it from the archived view.`, confirmLabel: 'Archive' })
+  const [, startTransition] = useTransition()
+  const confirm = useConfirm()
+
+  // The menu closes the moment Archive or Restore is pressed, so it never sits behind the confirmation. If the action
+  // is refused, the menu opens again to show why.
+  useEffect(() => {
+    if (state?.error) setOpen(true)
+  }, [state])
+
+  async function change() {
+    setOpen(false)
+    if (!archived && !(await confirm({ title: 'Archive this record?', message: `${name} will leave the active list. You can restore it from the archived view.`, confirmLabel: 'Archive' }))) return
+    startTransition(() => run(new FormData()))
+  }
 
   return (
     <Popover.Root open={open} onOpenChange={setOpen}>
@@ -57,20 +70,16 @@ export function RegisterRowMenu({
               <Pencil className="size-4 text-muted-foreground" aria-hidden="true" />
               Edit
             </Link>
-            <form
-              action={run}
-              onSubmit={confirmSubmit}
+            <button
+              type="button"
+              role="menuitem"
+              disabled={pending}
+              onClick={() => void change()}
+              className={`${item} ${archived ? '' : 'text-destructive'} disabled:opacity-60`}
             >
-              <button
-                type="submit"
-                role="menuitem"
-                disabled={pending}
-                className={`${item} ${archived ? '' : 'text-destructive'} disabled:opacity-60`}
-              >
-                {archived ? <RotateCcw className="size-4" aria-hidden="true" /> : <Archive className="size-4" aria-hidden="true" />}
-                {pending ? 'Working…' : archived ? 'Restore' : 'Archive'}
-              </button>
-            </form>
+              {archived ? <RotateCcw className="size-4" aria-hidden="true" /> : <Archive className="size-4" aria-hidden="true" />}
+              {pending ? 'Working…' : archived ? 'Restore' : 'Archive'}
+            </button>
             {state?.error ? <p role="alert" className="px-3 py-2 text-xs text-destructive">{state.error}</p> : null}
           </Popover.Popup>
         </Popover.Positioner>
