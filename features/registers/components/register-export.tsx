@@ -1,6 +1,7 @@
 'use client'
 
-import { Download } from 'lucide-react'
+import { Popover } from '@base-ui/react/popover'
+import { ChevronDown, Download } from 'lucide-react'
 import { useState } from 'react'
 
 type Format = 'CSV' | 'XLSX' | 'PDF'
@@ -10,6 +11,7 @@ type Format = 'CSV' | 'XLSX' | 'PDF'
  * parameters the page uses and shows the route's message (for example "More than 5,000 rows match…") instead of a file.
  */
 export function RegisterExport({ collection, kind, query }: { collection: string; kind: string; query: string }) {
+  const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState<Format | null>(null)
   const [message, setMessage] = useState('')
 
@@ -45,12 +47,37 @@ export function RegisterExport({ collection, kind, query }: { collection: string
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <span className="flex items-center gap-1 text-xs font-medium text-muted-foreground"><Download className="size-3.5" />Export</span>
-      {(['CSV', 'XLSX', 'PDF'] as Format[]).map((format) => (
-        <button key={format} type="button" disabled={busy !== null} onClick={() => run(format)} className="min-h-10 border border-border px-3 text-xs font-semibold hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:opacity-60">
-          {busy === format ? 'Preparing…' : format}
-        </button>
-      ))}
+      <Popover.Root open={open} onOpenChange={setOpen}>
+        <Popover.Trigger
+          disabled={busy !== null}
+          aria-haspopup="menu"
+          className="inline-flex min-h-10 items-center gap-2 border border-border px-4 text-sm font-medium outline-none hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:opacity-60"
+        >
+          <Download className="size-4" aria-hidden="true" />
+          {busy ? 'Preparing…' : 'Export'}
+          <ChevronDown className="size-3.5 text-muted-foreground" aria-hidden="true" />
+        </Popover.Trigger>
+        <Popover.Portal>
+          <Popover.Positioner side="bottom" align="end" sideOffset={4} collisionPadding={8} className="z-[80]">
+            <Popover.Popup role="menu" aria-label="Export format" className="w-44 border border-border bg-popover p-1 text-popover-foreground shadow-lg outline-none">
+              {(['CSV', 'XLSX', 'PDF'] as Format[]).map((format) => (
+                <button
+                  key={format}
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setOpen(false)
+                    void run(format)
+                  }}
+                  className="flex min-h-10 w-full items-center px-3 py-2 text-left text-sm font-medium outline-none hover:bg-muted focus-visible:bg-muted"
+                >
+                  {format}
+                </button>
+              ))}
+            </Popover.Popup>
+          </Popover.Positioner>
+        </Popover.Portal>
+      </Popover.Root>
       {message ? <p role="alert" className="w-full text-xs text-destructive">{message}</p> : null}
     </div>
   )

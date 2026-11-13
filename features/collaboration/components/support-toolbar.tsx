@@ -38,7 +38,7 @@ export function SupportToolbar({ filters }: { filters: SupportFilters }) {
       <label className="relative block min-w-48 flex-1">
         <span className="sr-only">Search support requests</span>
         <Search aria-hidden="true" className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-        <input name="q" value={text} onChange={(event) => setText(event.target.value)} placeholder="Search by reference, subject or details…" className={`${field} w-full pl-9`} />
+        <input name="q" value={text} onChange={(event) => setText(event.target.value)} placeholder="Search requests…" className={`${field} w-full pl-9`} />
       </label>
       <label className="block">
         <span className="sr-only">Status</span>
@@ -54,7 +54,6 @@ export function SupportToolbar({ filters }: { filters: SupportFilters }) {
           {SUPPORT_PRIORITIES.map((value) => <option key={value} value={value}>{value}</option>)}
         </Dropdown>
       </label>
-      <button type="submit" className="min-h-10 border border-border px-4 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">Search</button>
       {filtered ? <Link href="/support" className="inline-flex min-h-10 items-center px-2 text-sm font-medium text-brand hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">Clear filters</Link> : null}
     </form>
   )

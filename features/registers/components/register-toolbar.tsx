@@ -78,7 +78,7 @@ export function RegisterToolbar({
       <label className="relative block min-w-48 flex-1">
         <span className="sr-only">Search</span>
         <Search aria-hidden="true" className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-        <input name="q" value={text} onChange={(event) => setText(event.target.value)} placeholder="Search by name, client or number…" className={`${field} w-full pl-9`} />
+        <input name="q" value={text} onChange={(event) => setText(event.target.value)} placeholder="Search this list…" className={`${field} w-full pl-9`} />
       </label>
       <label className="block">
         <span className="sr-only">Status</span>
@@ -99,7 +99,6 @@ export function RegisterToolbar({
         <input type="checkbox" name="archived" checked={archived} onChange={(event) => go({ archived: event.target.checked })} />
         Show archived
       </label>
-      <button type="submit" className={`min-h-10 border border-border px-4 text-sm font-medium ${focus}`}>Search</button>
       {filtered ? <Link href={clearHref} className={`inline-flex min-h-10 items-center px-2 text-sm font-medium text-brand hover:underline ${focus}`}>Clear filters</Link> : null}
       <div className="ml-auto flex items-center gap-2">
         {importHref ? <Link href={importHref} className={`inline-flex min-h-10 items-center border border-border px-4 text-sm font-medium ${focus}`}>Import</Link> : null}
