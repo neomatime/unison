@@ -1,6 +1,7 @@
 // Turns a DocumentView into a PDF: A4, the same content and order as the on-screen sheet. Written with
 // createElement (no JSX) so node's test runner can load and render it. Text goes through pdfText so a character
 // the standard font cannot draw becomes "?" instead of breaking the render.
+import { join } from 'node:path'
 import { createElement as h } from 'react'
 import { Document, Font, Image, Page, Text, View, renderToBuffer, type Styles } from '@react-pdf/renderer'
 
@@ -12,6 +13,17 @@ type Style = Styles[string]
 
 export type PdfImage = { data: Buffer; format: 'png' | 'jpg' }
 export type PdfImages = { header: PdfImage | null; logo: PdfImage | null }
+
+// Carlito, the free typeface that matches Calibri letter for letter, so a PDF looks like the rest of UNISON. The files ship in
+// public/brand/fonts with the other brand files the PDF routes already include (next.config.mjs).
+const FONT_FOLDER = join(process.cwd(), 'public', 'brand', 'fonts')
+Font.register({
+  family: 'Carlito',
+  fonts: [
+    { src: join(FONT_FOLDER, 'Carlito-Regular.ttf'), fontWeight: 400 },
+    { src: join(FONT_FOLDER, 'Carlito-Bold.ttf'), fontWeight: 700 },
+  ],
+})
 
 // A name or a number split across two lines reads as two different things, so words are never hyphenated.
 Font.registerHyphenationCallback((word) => [word])
@@ -86,7 +98,7 @@ function titleBlock(view: DocumentView) {
           View,
           { style: s({ flexDirection: 'row', marginBottom: 6 }) },
           h(Text, { style: s({ width: mm(26), flexShrink: 0, fontSize: 8, letterSpacing: 1.6, color: MUTED }) }, upper(row.label)),
-          h(Text, { hyphenationCallback: breakAnywhere, style: s({ flexGrow: 1, flexShrink: 1, flexBasis: 0, fontSize: 8, letterSpacing: 0.8, fontFamily: 'Helvetica-Bold' }) }, upper(row.value)),
+          h(Text, { hyphenationCallback: breakAnywhere, style: s({ flexGrow: 1, flexShrink: 1, flexBasis: 0, fontSize: 8, letterSpacing: 0.8, fontFamily: 'Carlito', fontWeight: 700 }) }, upper(row.value)),
         ),
       ),
     ),
@@ -97,7 +109,7 @@ function parties(view: DocumentView) {
   const hasProject = Boolean(view.project)
   const hasFrom = Boolean(view.from.name) || view.from.lines.length > 0 || Boolean(view.from.vatNumber)
   const heading = (text: string) => label(text)
-  const name = (text: string) => h(Text, { style: s({ marginTop: 6, fontSize: 12, fontFamily: 'Helvetica-Bold' }) }, t(text))
+  const name = (text: string) => h(Text, { style: s({ marginTop: 6, fontSize: 12, fontFamily: 'Carlito', fontWeight: 700 }) }, t(text))
   const row = (text: string) => h(Text, { style: s({ fontSize: 9.5 }) }, t(text))
   const column = (ruleAfter: boolean, ...children: unknown[]) =>
     h(
@@ -148,7 +160,7 @@ function table(view: DocumentView) {
       h(
         View,
         { style: s({ flexGrow: 1, flexShrink: 1, flexBasis: 0, paddingRight: mm(2) }) },
-        h(Text, { style: s({ fontFamily: 'Helvetica-Bold' }) }, t(line.title)),
+        h(Text, { style: s({ fontFamily: 'Carlito', fontWeight: 700 }) }, t(line.title)),
         line.description ? h(Text, { style: s({ marginTop: 2, fontSize: 9, color: MUTED }) }, t(line.description)) : null,
       ),
       h(Text, { style: s({ width: COLUMN.qty, flexShrink: 0, textAlign: 'center' }) }, line.quantity),
@@ -184,7 +196,7 @@ function inclusionsAndTotals(view: DocumentView) {
       View,
       { wrap: false, style: s({ flexDirection: 'row', justifyContent: 'space-between', backgroundColor: background, paddingHorizontal: mm(4), paddingVertical: mm(vertical) }) },
       h(Text, { style: s({ fontSize: 9, letterSpacing: 1.6, color }) }, upper(key)),
-      h(Text, { style: s({ fontSize: size, fontFamily: 'Helvetica-Bold', color }) }, value),
+      h(Text, { style: s({ fontSize: size, fontFamily: 'Carlito', fontWeight: 700, color }) }, value),
     )
   return h(
     View,
@@ -207,7 +219,7 @@ function agreementLine(view: DocumentView) {
   return h(
     View,
     { wrap: false, style: s({ marginTop: mm(3), paddingHorizontal: mm(12) }) },
-    h(Text, { style: s({ fontSize: 9 }) }, h(Text, { style: s({ fontFamily: 'Helvetica-Bold' }) }, 'Monthly agreement: '), t(view.agreement)),
+    h(Text, { style: s({ fontSize: 9 }) }, h(Text, { style: s({ fontFamily: 'Carlito', fontWeight: 700 }) }, 'Monthly agreement: '), t(view.agreement)),
   )
 }
 
@@ -308,7 +320,7 @@ export function buildDocumentPdfElement(view: DocumentView, images: PdfImages) {
     { title: t(`${view.title} ${view.number ?? ''}`.trim()), author: t(view.from.name), creator: 'UNISON', producer: 'UNISON' },
     h(
       Page,
-      { size: 'A4', style: s({ fontFamily: 'Helvetica', fontSize: 10, color: INK, paddingTop: RUNNER_HEIGHT, paddingBottom: FOOTER_HEIGHT }) },
+      { size: 'A4', style: s({ fontFamily: 'Carlito', fontSize: 10, color: INK, paddingTop: RUNNER_HEIGHT, paddingBottom: FOOTER_HEIGHT }) },
       runner(view, images),
       band(view, images),
       titleBlock(view),

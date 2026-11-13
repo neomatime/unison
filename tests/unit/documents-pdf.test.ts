@@ -5,7 +5,7 @@ import { join } from 'node:path'
 import test from 'node:test'
 import { crc32, deflateSync, inflateSync } from 'node:zlib'
 
-import { PDFArray, PDFDocument, PDFName, type PDFObject, type PDFRawStream } from 'pdf-lib'
+import { pdfPageTexts } from './support/pdf-page-text.ts'
 
 import { buildDocumentView } from '../../features/documents/document-view.ts'
 import { loadPdfImages } from '../../features/documents/pdf/load-pdf-images.ts'
@@ -50,20 +50,7 @@ const pageCount = (pdf: Buffer) => (pdf.toString('latin1').match(/\/Type\s*\/Pag
  * which page a piece of text landed on.
  */
 async function pageTexts(pdf: Buffer): Promise<string[]> {
-  const doc = await PDFDocument.load(pdf)
-  return doc.getPages().map((page) => {
-    const contents = page.node.get(PDFName.of('Contents')) as PDFObject
-    const parts = contents instanceof PDFArray ? contents.asArray() : [contents]
-    return parts
-      .map((part) => {
-        const stream = doc.context.lookup(part) as PDFRawStream
-        const raw = Buffer.from(stream.contents)
-        const data = (stream.dict.get(PDFName.of('Filter')) ? inflateSync(raw) : raw).toString('latin1')
-        return [...data.matchAll(/<([0-9a-fA-F]*)>/g)].map((match) => Buffer.from(match[1], 'hex').toString('latin1')).join('')
-      })
-      .join('')
-      .replace(/\s+/g, '')
-  })
+  return (await pdfPageTexts(pdf)).map((text) => text.replace(/\s+/g, ''))
 }
 const pageOf = (pages: string[], text: string) => pages.findIndex((page) => page.includes(text.replace(/\s+/g, '')))
 

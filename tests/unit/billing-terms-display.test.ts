@@ -3,9 +3,8 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import test from 'node:test'
 
-import { PDFArray, PDFDocument, PDFName, type PDFObject, type PDFRawStream } from 'pdf-lib'
-import { inflateSync } from 'node:zlib'
 
+import { pdfPageTexts } from './support/pdf-page-text.ts'
 import { agreementSentence } from '../../features/documents/billing-terms.ts'
 import { buildDocumentView } from '../../features/documents/document-view.ts'
 import { renderDocumentPdf, type PdfImages } from '../../features/documents/pdf/render-document-pdf.ts'
@@ -184,23 +183,7 @@ test('the sentence is the one agreementSentence makes', () => {
 // ---------------------------------------------------------------------------------------------------------------
 
 async function pdfText(pdf: Buffer): Promise<string> {
-  const doc = await PDFDocument.load(pdf)
-  return doc
-    .getPages()
-    .map((page) => {
-      const contents = page.node.get(PDFName.of('Contents')) as PDFObject
-      const parts = contents instanceof PDFArray ? contents.asArray() : [contents]
-      return parts
-        .map((part) => {
-          const stream = doc.context.lookup(part) as PDFRawStream
-          const raw = Buffer.from(stream.contents)
-          const data = (stream.dict.get(PDFName.of('Filter')) ? inflateSync(raw) : raw).toString('latin1')
-          return [...data.matchAll(/<([0-9a-fA-F]*)>/g)].map((match) => Buffer.from(match[1], 'hex').toString('latin1')).join('')
-        })
-        .join('')
-    })
-    .join('')
-    .replace(/\s+/g, '')
+  return (await pdfPageTexts(pdf)).join('').replace(/\s+/g, '')
 }
 const squash = (text: string) => text.replace(/\s+/g, '')
 
