@@ -5,6 +5,7 @@ import { Archive, Eye, MoreHorizontal, Pencil, RotateCcw } from 'lucide-react'
 import Link from 'next/link'
 import { useActionState, useState } from 'react'
 
+import { useConfirmedSubmit } from '@/components/shared/confirm-provider'
 import type { ActionState } from '@/features/crm-workspace/types'
 
 const item =
@@ -30,6 +31,7 @@ export function RegisterRowMenu({
 }) {
   const [open, setOpen] = useState(false)
   const [state, run, pending] = useActionState(action, undefined)
+  const confirmSubmit = useConfirmedSubmit(archived ? null : { title: 'Archive this record?', message: `${name} will leave the active list. You can restore it from the archived view.`, confirmLabel: 'Archive' })
 
   return (
     <Popover.Root open={open} onOpenChange={setOpen}>
@@ -57,11 +59,7 @@ export function RegisterRowMenu({
             </Link>
             <form
               action={run}
-              onSubmit={(event) => {
-                if (!archived && !window.confirm('Archive this record?')) {
-                  event.preventDefault()
-                }
-              }}
+              onSubmit={confirmSubmit}
             >
               <button
                 type="submit"

@@ -1,5 +1,6 @@
 "use client";
 
+import { useConfirmedSubmit } from '@/components/shared/confirm-provider';
 import { useActionState, useEffect, useState } from "react";
 import {
   createRiskAction,
@@ -282,14 +283,11 @@ function DeleteRiskButton({ risk }: { risk: Risk }) {
     deleteRiskAction.bind(null, risk.id),
     undefined,
   );
+  const confirmSubmit = useConfirmedSubmit({ message: `Remove "${risk.title}"? This cannot be undone.`, confirmLabel: 'Remove' });
   return (
     <form
       action={action}
-      onSubmit={(event) => {
-        if (!window.confirm(`Remove "${risk.title}"? This cannot be undone.`)) {
-          event.preventDefault();
-        }
-      }}
+      onSubmit={confirmSubmit}
     >
       <button
         type="submit"

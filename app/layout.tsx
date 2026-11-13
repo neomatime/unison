@@ -1,5 +1,6 @@
 import type React from 'react'
 import type { Metadata, Viewport } from 'next'
+import { ConfirmProvider } from '@/components/shared/confirm-provider'
 import { SafeAnalytics } from '@/components/shared/safe-analytics'
 import { application } from '@/config/constants'
 import '@/styles/globals.css'
@@ -23,7 +24,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="unison-interface bg-background font-sans antialiased">
-        {children}
+        <ConfirmProvider>{children}</ConfirmProvider>
         <SafeAnalytics />
       </body>
     </html>

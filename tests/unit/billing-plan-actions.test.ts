@@ -419,8 +419,9 @@ test('the approve control is a client component that always shows what the actio
   // Called by hand, after the confirm step, with the confirm text from the wording file word for word.
   assert.doesNotMatch(source, /<form\s+action=/)
   assert.match(source, /event\.preventDefault\(\)/)
-  assert.match(source, /if \(!window\.confirm\(BILLING_PLAN_COPY\.approveConfirm\)\) return/)
-  assert.match(source, /startTransition\(\(\) => run\(new FormData\(event\.currentTarget\)\)\)/)
+  assert.match(source, /message: BILLING_PLAN_COPY\.approveConfirm/, 'the confirm text is the wording file\'s, word for word')
+  assert.match(source, /if \(!\(await confirm\(\{[^}]*\}\)\)\) return/, 'it asks in the app\'s own dialog first')
+  assert.match(source, /startTransition\(\(\) => run\(new FormData\(form\)\)\)/)
   // The button is inside the canApprove branch and nowhere else; the label comes from the wording file.
   assert.equal((source.match(/BILLING_PLAN_COPY\.approveLabel/g) ?? []).length, 1, 'one Approve and send button')
   const branch = source.indexOf('{canApprove ? (')
@@ -505,7 +506,7 @@ test('the plan controls are a client form that calls its action by hand, keeps t
   assert.match(source, /name="reason"/)
   assert.match(source, /required=\{control\.reasonRequired\}/)
   assert.match(source, /maxLength=\{500\}/)
-  assert.match(source, /if \(control\.confirmText && !window\.confirm\(control\.confirmText\)\) return/, 'the end button asks first')
+  assert.match(source, /control\.confirmText && !\(await confirm\(\{[\s\S]*?message: control\.confirmText/, 'the end button asks first, in the app\'s own dialog')
   assert.match(source, /<FormError message=\{state\?\.error\} \/>/)
 })
 

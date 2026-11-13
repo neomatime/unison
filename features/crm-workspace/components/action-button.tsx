@@ -2,6 +2,7 @@
 
 import { useActionState } from 'react'
 
+import { useConfirmedSubmit } from '@/components/shared/confirm-provider'
 import type { ActionState } from '../types'
 
 /** A one-click action (archive, make primary, mark done) with its own error line and an optional confirm. */
@@ -20,12 +21,11 @@ export function ActionButton({
   ariaLabel?: string
 }) {
   const [state, run, pending] = useActionState(action, undefined)
+  const confirmSubmit = useConfirmedSubmit(confirmText ? { message: confirmText, confirmLabel: label, tone: tone === 'danger' ? 'danger' : 'default' } : null)
   return (
     <form
       action={run}
-      onSubmit={(event) => {
-        if (confirmText && !window.confirm(confirmText)) event.preventDefault()
-      }}
+      onSubmit={confirmSubmit}
     >
       <button
         type="submit"

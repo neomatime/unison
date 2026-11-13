@@ -886,8 +886,8 @@ test('the evidence register warns that removing evidence also removes its requir
   // by tests/integration/rls/traceability.test.ts). A PM deleting evidence would
   // otherwise lose Traceability coverage with no warning.
   const register = readFileSync(join(workspace, 'features', 'delivery', 'components', 'project-evidence-register.tsx'), 'utf8')
-  // Tied to the window.confirm( call so a comment or dead string cannot satisfy it.
-  assert.match(register, /window\.confirm\(\s*`[^`]*any requirement links to it are removed too/)
+  // Tied to the confirmation dialog call so a comment or dead string cannot satisfy it.
+  assert.match(register, /useConfirmedSubmit\(\{\s*message:\s*`[^`]*any requirement links to it are removed too/)
 })
 
 test('the approvals register offers edit and remove only for Draft approvals', () => {
@@ -905,16 +905,16 @@ test('the approvals register offers edit and remove only for Draft approvals', (
 
 test('the approvals delete confirm says it deletes a draft', () => {
   const register = readFileSync(join(workspace, 'features', 'delivery', 'components', 'project-approvals-register.tsx'), 'utf8')
-  assert.match(register, /window\.confirm\(\s*`[^`]*draft/i)
+  assert.match(register, /useConfirmedSubmit\(\{\s*message:\s*`[^`]*draft/i)
 })
 
 test('the decisions delete confirm names the decision', () => {
   const register = readFileSync(join(workspace, 'features', 'delivery', 'components', 'project-decisions-register.tsx'), 'utf8')
-  assert.match(register, /window\.confirm\(\s*`[^`]*decision[^`]*\$\{decision\.title\}/)
+  assert.match(register, /useConfirmedSubmit\(\{\s*message:\s*`[^`]*decision[^`]*\$\{decision\.title\}/)
 })
 
 test('the gate remove confirm warns that attached evidence is removed too', () => {
   // True because governance_artefacts.gate_id cascades from governance_gates.
   const gates = readFileSync(join(workspace, 'features', 'delivery', 'components', 'framework-governance.tsx'), 'utf8')
-  assert.match(gates, /window\.confirm\(\s*`[^`]*any evidence attached to this gate is removed too/)
+  assert.match(gates, /useConfirmedSubmit\(\{\s*message:\s*`[^`]*any evidence attached to this gate is removed too/)
 })

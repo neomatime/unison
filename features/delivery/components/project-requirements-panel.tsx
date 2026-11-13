@@ -1,5 +1,6 @@
 "use client";
 
+import { useConfirmedSubmit } from '@/components/shared/confirm-provider';
 import { useActionState, useEffect, useState } from "react";
 import {
   createRequirementAction,
@@ -29,7 +30,7 @@ const area = `${input} min-h-24 py-2`;
  * The Requirements tab: a single register, unlike Governance's four-tab
  * sub-nav, since this panel covers only one entity. Add and inline Edit are
  * both real, database-backed forms; Remove is a real delete behind a
- * window.confirm() gate, since it is irreversible.
+ * confirmation dialog, since it is irreversible.
  */
 export function ProjectRequirementsPanel({
   projectId,
@@ -308,16 +309,11 @@ function DeleteRequirementButton({
     deleteRequirementAction.bind(null, requirement.id),
     undefined,
   );
+  const confirmSubmit = useConfirmedSubmit({ message: `Remove "${requirement.title}"? This cannot be undone.`, confirmLabel: 'Remove' });
   return (
     <form
       action={action}
-      onSubmit={(event) => {
-        if (
-          !window.confirm(`Remove "${requirement.title}"? This cannot be undone.`)
-        ) {
-          event.preventDefault();
-        }
-      }}
+      onSubmit={confirmSubmit}
     >
       <button
         type="submit"

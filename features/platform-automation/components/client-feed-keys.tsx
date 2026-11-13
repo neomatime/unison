@@ -3,6 +3,7 @@
 import { KeyRound, LoaderCircle, Trash2 } from 'lucide-react'
 import { useActionState, useState, useTransition } from 'react'
 
+import { useConfirm } from '@/components/shared/confirm-provider'
 import { createClientFeedKeyAction, revokeClientFeedKeyAction } from '../client-feed-actions'
 import type { ClientFeedKey } from '../client-feed-queries'
 
@@ -16,9 +17,10 @@ export function ClientFeedKeys({ keys }: { keys: ClientFeedKey[] }) {
   const [state, action, pending] = useActionState(createClientFeedKeyAction, undefined)
   const [revoking, startRevoke] = useTransition()
   const [error, setError] = useState<string | null>(null)
+  const confirm = useConfirm()
 
-  function revoke(key: ClientFeedKey) {
-    if (!window.confirm(`Revoke "${key.name}"? Anything using it stops receiving clients immediately.`)) return
+  async function revoke(key: ClientFeedKey) {
+    if (!(await confirm({ title: `Revoke "${key.name}"?`, message: 'Anything using it stops receiving clients immediately.', confirmLabel: 'Revoke' }))) return
     setError(null)
     startRevoke(async () => {
       const result = await revokeClientFeedKeyAction(key.id)

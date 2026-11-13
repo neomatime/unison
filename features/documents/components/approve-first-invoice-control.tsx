@@ -2,6 +2,7 @@
 
 import { useActionState, useTransition } from 'react'
 
+import { useConfirm } from '@/components/shared/confirm-provider'
 import { FormError } from '@/components/ui/form-layout'
 import { approveFirstInvoiceAction } from '../actions/billing-plan'
 import { BILLING_PLAN_COPY } from '../billing-plan-view'
@@ -20,14 +21,16 @@ import { BILLING_PLAN_COPY } from '../billing-plan-view'
 export function ApproveFirstInvoiceControl({ itemId, canApprove }: { itemId: string; canApprove: boolean }) {
   const [state, run, pending] = useActionState(approveFirstInvoiceAction.bind(null, itemId), undefined)
   const [, startTransition] = useTransition()
+  const confirm = useConfirm()
   return (
     <>
       {canApprove ? (
         <form
-          onSubmit={(event) => {
+          onSubmit={async (event) => {
             event.preventDefault()
-            if (!window.confirm(BILLING_PLAN_COPY.approveConfirm)) return
-            startTransition(() => run(new FormData(event.currentTarget)))
+            const form = event.currentTarget
+            if (!(await confirm({ title: 'Approve and send the first invoice?', message: BILLING_PLAN_COPY.approveConfirm, confirmLabel: 'Approve and send', tone: 'default' }))) return
+            startTransition(() => run(new FormData(form)))
           }}
         >
           <button

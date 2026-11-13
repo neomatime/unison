@@ -1,6 +1,7 @@
 'use client'
 
 import { KeyRound, LoaderCircle, Play, RefreshCw, Trash2 } from 'lucide-react'
+import { useConfirmedSubmit } from '@/components/shared/confirm-provider'
 import Link from 'next/link'
 import { useActionState } from 'react'
 
@@ -90,7 +91,8 @@ export function AutomationControls({ rule }: { rule: AutomationRule }) {
 }
 
 function ConfirmDeleteForm({ action, id, label }: { action: (formData: FormData) => void | Promise<void>; id: string; label: string }) {
-  return <form action={action} onSubmit={(event) => { if (!window.confirm(`${label}? This cannot be undone.`)) event.preventDefault() }}><input type="hidden" name="id" value={id} /><button type="submit" className="inline-flex items-center gap-2 border border-destructive/30 px-4 py-2 text-sm font-semibold text-destructive"><Trash2 className="size-4" />{label}</button></form>
+  const confirmSubmit = useConfirmedSubmit({ title: `${label}?`, message: 'This cannot be undone.', confirmLabel: label })
+  return <form action={action} onSubmit={confirmSubmit}><input type="hidden" name="id" value={id} /><button type="submit" className="inline-flex items-center gap-2 border border-destructive/30 px-4 py-2 text-sm font-semibold text-destructive"><Trash2 className="size-4" />{label}</button></form>
 }
 
 function Field({ name, label, defaultValue, required, placeholder, help, type = 'text', min, max }: { name: string; label: string; defaultValue?: string | null; required?: boolean; placeholder?: string; help?: string; type?: string; min?: string; max?: string }) {

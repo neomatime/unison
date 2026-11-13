@@ -1,5 +1,6 @@
 "use client";
 
+import { useConfirmedSubmit } from '@/components/shared/confirm-provider';
 import { useActionState, useEffect, useState } from "react";
 import {
   createArtefactAction,
@@ -207,18 +208,11 @@ function DeleteArtefactButton({ artefact }: { artefact: Artefact }) {
     deleteArtefactAction.bind(null, artefact.id),
     undefined,
   );
+  const confirmSubmit = useConfirmedSubmit({ message: `Remove "${artefact.name}"? This cannot be undone, and any requirement links to it are removed too.`, confirmLabel: 'Remove' });
   return (
     <form
       action={action}
-      onSubmit={(event) => {
-        if (
-          !window.confirm(
-            `Remove "${artefact.name}"? This cannot be undone, and any requirement links to it are removed too.`,
-          )
-        ) {
-          event.preventDefault();
-        }
-      }}
+      onSubmit={confirmSubmit}
     >
       <button
         type="submit"

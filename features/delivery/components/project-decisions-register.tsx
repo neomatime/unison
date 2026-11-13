@@ -1,5 +1,6 @@
 "use client";
 
+import { useConfirmedSubmit } from '@/components/shared/confirm-provider';
 import { useActionState, useEffect, useState } from "react";
 import {
   createDecisionAction,
@@ -217,18 +218,11 @@ function DeleteDecisionButton({ decision }: { decision: Decision }) {
     deleteDecisionAction.bind(null, decision.id),
     undefined,
   );
+  const confirmSubmit = useConfirmedSubmit({ message: `Delete the decision "${decision.title}"? This cannot be undone.`, confirmLabel: 'Delete' });
   return (
     <form
       action={action}
-      onSubmit={(event) => {
-        if (
-          !window.confirm(
-            `Delete the decision "${decision.title}"? This cannot be undone.`,
-          )
-        ) {
-          event.preventDefault();
-        }
-      }}
+      onSubmit={confirmSubmit}
     >
       <button
         type="submit"

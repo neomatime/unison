@@ -1,5 +1,6 @@
 "use client";
 
+import { useConfirmedSubmit } from '@/components/shared/confirm-provider';
 import { useActionState, useEffect, useState } from "react";
 import {
   createApprovalAction,
@@ -257,18 +258,11 @@ function DeleteApprovalButton({ approval }: { approval: Approval }) {
     deleteApprovalAction.bind(null, approval.id),
     undefined,
   );
+  const confirmSubmit = useConfirmedSubmit({ message: `Delete the draft "${approval.title}"? This cannot be undone.`, confirmLabel: 'Delete' });
   return (
     <form
       action={action}
-      onSubmit={(event) => {
-        if (
-          !window.confirm(
-            `Delete the draft "${approval.title}"? This cannot be undone.`,
-          )
-        ) {
-          event.preventDefault();
-        }
-      }}
+      onSubmit={confirmSubmit}
     >
       <button
         type="submit"

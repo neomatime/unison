@@ -2,6 +2,7 @@
 
 import { useActionState, useTransition } from 'react'
 
+import { useConfirm } from '@/components/shared/confirm-provider'
 import { FormError } from '@/components/ui/form-layout'
 import { setBillingPlanStateAction } from '../actions/billing-plan'
 import { PLAN_STATE_CONTROLS } from '../billing-plan-view'
@@ -15,12 +16,13 @@ export function BillingPlanStateForm({ planId, action }: { planId: string; actio
   const control = PLAN_STATE_CONTROLS[action]
   const [state, run, pending] = useActionState(setBillingPlanStateAction.bind(null, planId, action), undefined)
   const [, startTransition] = useTransition()
+  const confirm = useConfirm()
   return (
     <form
-      onSubmit={(event) => {
+      onSubmit={async (event) => {
         event.preventDefault()
-        if (control.confirmText && !window.confirm(control.confirmText)) return
         const data = new FormData(event.currentTarget)
+        if (control.confirmText && !(await confirm({ title: `${control.label}?`, message: control.confirmText, confirmLabel: control.label, tone: control.tone === 'danger' ? 'danger' : 'default' }))) return
         startTransition(() => run(data))
       }}
       className="flex flex-wrap items-start gap-2"

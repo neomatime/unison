@@ -1,5 +1,6 @@
 "use client";
 
+import { useConfirmedSubmit } from '@/components/shared/confirm-provider';
 import { useActionState, useEffect, useState } from "react";
 import {
   createGovernanceGateAction,
@@ -104,18 +105,11 @@ function DeleteGateButton({ gate }: { gate: Gate }) {
     deleteGovernanceGateAction.bind(null, gate.id),
     undefined,
   );
+  const confirmSubmit = useConfirmedSubmit({ message: `Remove the gate "${gate.name}"? This cannot be undone, and any evidence attached to this gate is removed too.`, confirmLabel: 'Remove' });
   return (
     <form
       action={action}
-      onSubmit={(event) => {
-        if (
-          !window.confirm(
-            `Remove the gate "${gate.name}"? This cannot be undone, and any evidence attached to this gate is removed too.`,
-          )
-        ) {
-          event.preventDefault();
-        }
-      }}
+      onSubmit={confirmSubmit}
     >
       <button
         type="submit"
