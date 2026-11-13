@@ -251,14 +251,14 @@ test('the summary card has five cells, and a missing project or valid-until date
 })
 
 // Ruling 31: a revision's email says which version it is. Version 1 (versionLabel null) is the email as it was before
-// versions were added, byte for byte: these hashes were taken from the template before the change.
+// versions were added, byte for byte: these hashes were taken from the template before the change (the HTML ones were refreshed once, when every email moved to Calibri; the text ones are untouched).
 test('a version-1 email is byte-identical to the email before the version line was added', () => {
   const sha256 = (value: string) => createHash('sha256').update(value).digest('hex')
   const full = render()
-  assert.equal(sha256(full.html), '4c1123881bc7cdf0cab0516d59ff3db399960e0cae758f900bd492117daa7493', 'html')
+  assert.equal(sha256(full.html), 'fd39a3defdbcfefd20ec23fc1892a9ad8cd45206165f9d35378ffc0e57f2b3b4', 'html')
   assert.equal(sha256(full.text), '33d0ae2f20acd710229b6ec0d733a4ba43e9426c9f0d408ac26fef96d1a6eba8', 'text')
   const sparse = render({ projectName: null, validUntil: null, recipientName: null })
-  assert.equal(sha256(sparse.html), '18164bb2359abe43b8d3308d0ad0d93b482b437eb6c9113d74d6613a53486149', 'sparse html')
+  assert.equal(sha256(sparse.html), 'a6a07f9d8baef472386227fa4780882c0a554006c4ae068206f6f9921e075b94', 'sparse html')
   assert.equal(sha256(sparse.text), 'ea3dac8708a81d93955f7c3292c2ad95f0c24bbefdaa2935200e578fc69d53e6', 'sparse text')
   assert.ok(!/Version \d/.test(full.html) && !/Version \d/.test(full.text), 'no version line')
   assert.deepEqual(render({ versionLabel: '' }), full, 'an empty label is no label')
@@ -345,7 +345,8 @@ test('structure a mail client needs: role=presentation tables, 600 px, inline st
   assert.ok(!/position\s*:/i.test(html), 'no position')
   assert.ok(!/display\s*:\s*(flex|grid|inline-flex|inline-grid)/i.test(html), 'no flex or grid')
   assert.ok(!/float\s*:/i.test(html), 'no float')
-  assert.ok(html.includes('font-family:Georgia'), 'the heading uses a serif stack')
+  assert.ok(html.includes('font-family:Calibri'), 'the heading uses Calibri, like the rest of the email')
+  assert.ok(!/Georgia|Times New Roman|serif/i.test(html.replace(/sans-serif/gi, '')), 'no serif face anywhere')
   assert.ok(!/@font-face|fonts\.googleapis/i.test(html), 'no web fonts')
   assert.ok(!/<link\b/i.test(html), 'no external CSS')
   // The colours of the reference.

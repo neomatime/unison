@@ -74,9 +74,10 @@ const BODY = '#2b3a4b'
 const STRAP = '#a9bdd3'
 const WHITE = '#ffffff'
 
-const SANS = 'Arial,Helvetica,sans-serif'
-const SERIF = "Georgia,'Times New Roman',serif"
-const MONO = "'Courier New',Courier,monospace"
+// One typeface for every email: Calibri, with close fallbacks for mail apps that do not have it.
+const SANS = "Calibri,'Segoe UI',Arial,Helvetica,sans-serif"
+const SERIF = SANS
+const MONO = SANS
 
 const STRAPLINE = 'PEOPLE | STRATEGY | PROGRESS'
 

@@ -32,7 +32,7 @@ export function invitationTemplate(data: {
       '',
       'This link expires in 7 days. If you were not expecting it, you can ignore this email.',
     ].join('\n'),
-    html: `<!doctype html><html><body style="font-family:system-ui,sans-serif;color:#16202e;line-height:1.6">
+    html: `<!doctype html><html><body style="font-family:Calibri,'Segoe UI',Arial,Helvetica,sans-serif;color:#16202e;line-height:1.6">
 <p style="font-size:20px;font-weight:600;letter-spacing:.12em;margin:0 0 24px">UNISON</p>
 <p>${by} has invited you to join <strong>${org}</strong> on UNISON.</p>
 <p style="margin:32px 0"><a href="${url}" style="background:#16202e;color:#fff;padding:12px 20px;border-radius:12px;text-decoration:none;font-weight:600">Accept invitation</a></p>

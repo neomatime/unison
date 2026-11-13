@@ -60,8 +60,9 @@ const OUTLINE = '#b7c3cf'
 const STRAP = '#a9bdd3'
 const WHITE = '#ffffff'
 
-const SANS = 'Arial,Helvetica,sans-serif'
-const SERIF = "Georgia,'Times New Roman',serif"
+// One typeface for every email: Calibri, with close fallbacks for mail apps that do not have it.
+const SANS = "Calibri,'Segoe UI',Arial,Helvetica,sans-serif"
+const SERIF = SANS
 
 const STRAPLINE = 'PEOPLE | STRATEGY | PROGRESS'
 const REVIEW_LABEL = 'REVIEW QUOTATION'

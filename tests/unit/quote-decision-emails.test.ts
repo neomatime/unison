@@ -89,7 +89,7 @@ function everyTemplate() {
 // The confirmation code email
 // ---------------------------------------------------------------------------------------------------------------
 
-test('the code email has the appendix subject and the appendix sentence, with the code large in a monospaced block', () => {
+test('the code email has the appendix subject and the appendix sentence, with the code large in its own cell', () => {
   const mail = code()
   assert.equal(mail.subject, 'Your HIMARK confirmation code')
   const sentence =
@@ -98,8 +98,9 @@ test('the code email has the appendix subject and the appendix sentence, with th
   assert.ok(plain(mail.html).includes(sentence), 'and so it is in the visible text')
   assert.deepEqual(headings(mail.html), ['Your HIMARK confirmation code'], 'the heading')
   assert.ok(mail.text.includes(sentence), 'the sentence in the text')
-  const block = mail.html.match(/<td\b[^>]*monospace[^>]*>\s*482913\s*<\/td>/i)
-  assert.ok(block, 'the code alone in a monospaced cell')
+  const block = mail.html.match(/<td\b[^>]*>\s*482913\s*<\/td>/i)
+  assert.ok(block, 'the code alone in its own cell')
+  assert.ok(/font-family:Calibri/.test(block[0]), 'in Calibri like the rest of the email')
   const fontSize = Number(block[0].match(/font-size:(\d+)px/)?.[1])
   assert.ok(fontSize >= 28, `the code is large (${fontSize}px)`)
 })

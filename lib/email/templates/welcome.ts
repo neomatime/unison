@@ -49,8 +49,9 @@ const STRAP = '#a9bdd3'
 const WHITE = '#ffffff'
 const BANNER_BACKDROP = '#dbe8f4'
 
-const SANS = 'Arial,Helvetica,sans-serif'
-const SERIF = "Georgia,'Times New Roman',serif"
+// One typeface for every email: Calibri, with close fallbacks for mail apps that do not have it.
+const SANS = "Calibri,'Segoe UI',Arial,Helvetica,sans-serif"
+const SERIF = SANS
 
 const WORDMARK_PATH = '/brand/email-wordmark.png'
 const BANNER_PATH = '/brand/email-banner.jpg'
