@@ -53,7 +53,7 @@ test('brand typography is semantic and limited to strong interface hierarchy', (
   assert.match(header, /font-brand text-\[1\.625rem\] leading-tight font-light tracking-tight text-foreground sm:text-\[1\.875rem\]/)
   assert.doesNotMatch(header, /<h1 className="[^"]*unison-page-title/)
   assert.match(contentPanel, /unison-section-title/)
-  assert.match(deliveryPrimitives, /unison-metric-label/)
+  assert.match(deliveryPrimitives, /font-brand mt-3 text-\[2rem\] leading-none font-light/, 'the summary cards on the lists use the light figure style')
   assert.match(collection, /unison-record-name/)
   assert.match(moduleWorkspace, /unison-record-name/)
 })

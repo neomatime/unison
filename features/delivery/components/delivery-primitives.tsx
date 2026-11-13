@@ -12,9 +12,9 @@ export function MetricCard({ label, value, detail, icon: Icon }: { label: string
         it, a label that wraps ("Outstanding approvals") pushes its own value down
         a line while its neighbours' values stay put, and the row of numbers sits
         on three different baselines. */}
-    <div className="flex min-h-8 items-start justify-between gap-3"><p className="unison-metric-label text-[0.675rem] text-muted-foreground">{label}</p>{Icon ? <Icon className="size-4 text-muted-foreground" /> : null}</div>
-    <p className="font-brand mt-3 text-2xl font-medium tracking-tight text-foreground">{value}</p>
-    <p className="mt-1 text-xs text-muted-foreground">{detail}</p>
+    <div className="flex min-h-8 items-start justify-between gap-3"><p className="text-sm text-muted-foreground">{label}</p>{Icon ? <Icon className="size-4 text-muted-foreground" /> : null}</div>
+    <p className="font-brand mt-3 text-[2rem] leading-none font-light tracking-tight text-foreground">{value}</p>
+    <p className="mt-2 text-xs text-muted-foreground">{detail}</p>
   </article>
 }
 

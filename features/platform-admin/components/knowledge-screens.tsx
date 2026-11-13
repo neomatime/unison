@@ -42,5 +42,5 @@ function ArticleStatus({ scope, status }: { scope: 'internal' | 'tenant'; status
   return <StatusDot status={label} tone={status === 'published' ? 'positive' : 'neutral'} />
 }
 
-function Metric({ label, value }: { label: string; value: number }) { return <div className="border border-border bg-card p-4"><p className="text-xs text-muted-foreground">{label}</p><p className="mt-2 font-brand text-xl font-medium">{value}</p></div> }
+function Metric({ label, value }: { label: string; value: number }) { return <div className="border border-border bg-card p-4"><p className="text-xs text-muted-foreground">{label}</p><p className="mt-2 font-brand text-[2rem] leading-none font-light tracking-tight">{value}</p></div> }
 function formatDate(value: string) { return new Intl.DateTimeFormat('en-ZA', { dateStyle: 'medium' }).format(new Date(value)) }
