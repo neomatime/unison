@@ -4,7 +4,7 @@
   /* The wordmark is live text using the product's existing UI stack. Keep a
      named brand face so headings can share that treatment without importing a
      lookalike font or turning body copy into logo typography. */
-  --unison-brand-font: "Aptos Display", "Segoe UI Variable Display", Inter, Aptos, "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+  --unison-brand-font: Calibri, Carlito, "Segoe UI", ui-sans-serif, system-ui, sans-serif;
 
   /* Premium enterprise foundation. These values are intentionally shared by
      the public site, authentication, tenant workspace and internal console. */
