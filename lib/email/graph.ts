@@ -1,5 +1,5 @@
 import 'server-only'
-import { readGraphEnv } from '@/lib/env'
+import { readGraphCredentials, readGraphEnv } from '@/lib/env'
 import { extractAddress } from './mime'
 
 // Microsoft Graph, client-credentials grant. No SDK: this is two fetch calls,
@@ -16,12 +16,17 @@ export function resetGraphTokenCache() {
   cachedToken = undefined
 }
 
+/** The app-only Graph token, shared with the Teams meeting client (lib/integrations/microsoft-teams.ts). */
+export async function getGraphAccessToken(): Promise<string> {
+  return getAccessToken()
+}
+
 async function getAccessToken(): Promise<string> {
   // Tokens last about an hour. Re-fetching per email would be a needless round
   // trip on every send. Expire 60s early so a token cannot lapse in flight.
   if (cachedToken && cachedToken.expiresAt > Date.now() + 60_000) return cachedToken.value
 
-  const env = readGraphEnv(process.env)
+  const env = readGraphCredentials(process.env)
   const response = await fetch(
     `https://login.microsoftonline.com/${env.GRAPH_TENANT_ID}/oauth2/v2.0/token`,
     {

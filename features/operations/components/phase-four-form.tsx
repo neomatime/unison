@@ -3,6 +3,9 @@
 import Link from "next/link";
 import { useActionState } from "react";
 
+import { Video } from "lucide-react";
+
+import { isoToLocalInput, safeJoinUrl } from "@/features/calendar/model";
 import { WorkspaceHeader } from "@/components/shared/workspace-header";
 import { savePhaseFourRecordAction } from "../actions/phase-four";
 import type { PhaseFourKind, PhaseFourRecord, SelectOption } from "../queries/phase-four";
@@ -32,11 +35,14 @@ export function PhaseFourForm({
   record,
   options,
   defaults,
+  teamsConnected,
 }: {
   kind: PhaseFourKind;
   record?: PhaseFourRecord | null;
   options: Options;
   defaults?: Record<string, string | undefined>;
+  /** Calendar events only: whether Microsoft Teams is set up, so the meeting option can be offered or explained. */
+  teamsConnected?: boolean;
 }) {
   const action = savePhaseFourRecordAction.bind(null, kind, record?.id);
   const [state, formAction, pending] = useActionState(action, undefined);
@@ -51,7 +57,7 @@ export function PhaseFourForm({
       />
       <form action={formAction} className="mx-auto max-w-5xl border border-border bg-card">
         <div className="grid gap-5 p-6 md:grid-cols-2 lg:p-8">
-          <Fields kind={kind} record={record} options={options} defaults={defaults} />
+          <Fields kind={kind} record={record} options={options} defaults={defaults} teamsConnected={teamsConnected} />
         </div>
         {state?.error ? <p role="alert" className="mx-6 mb-4 text-sm text-destructive">{state.error}</p> : null}
         <footer className="flex justify-end gap-2 border-t border-border p-5">
@@ -65,7 +71,7 @@ export function PhaseFourForm({
   );
 }
 
-function Fields({ kind, record, options, defaults }: { kind: PhaseFourKind; record?: PhaseFourRecord | null; options: Options; defaults?: Record<string, string | undefined> }) {
+function Fields({ kind, record, options, defaults, teamsConnected }: { kind: PhaseFourKind; record?: PhaseFourRecord | null; options: Options; defaults?: Record<string, string | undefined>; teamsConnected?: boolean }) {
   const value = (key: string, fallback = "") => String(record?.[key] ?? defaults?.[key] ?? fallback);
   if (kind === "team-member") return <>
     <Field name="fullName" label="Full name" required value={value("name")} />
@@ -141,8 +147,8 @@ function Fields({ kind, record, options, defaults }: { kind: PhaseFourKind; reco
   return <>
     <Field name="title" label="Event title" required value={value("title", value("name"))} />
     <Select name="eventType" label="Event type" options={["Internal", "Client Meeting", "Milestone", "Governance", "Delivery"]} value={value("eventType", "Internal")} />
-    <Field name="startAt" label="Starts" type="datetime-local" required value={dateTimeValue(value("startAt"))} />
-    <Field name="endAt" label="Ends" type="datetime-local" required value={dateTimeValue(value("endAt"))} />
+    <Field name="startAt" label="Starts" type="datetime-local" required value={isoToLocalInput(value("startAt"))} />
+    <Field name="endAt" label="Ends" type="datetime-local" required value={isoToLocalInput(value("endAt"))} />
     <Field name="location" label="Location / link" value={value("location")} />
     <OptionSelect name="ownerId" label="Owner" options={options.members} value={value("ownerId")} optional />
     <OptionSelect name="projectId" label="Project" options={options.projects} value={value("projectId")} optional />
@@ -150,11 +156,18 @@ function Fields({ kind, record, options, defaults }: { kind: PhaseFourKind; reco
     <OptionSelect name="onboardingId" label="Onboarding" options={options.onboardings} value={value("onboardingId")} optional />
     <Select name="status" label="Status" options={["Tentative", "Confirmed", "Cancelled", "Complete"]} value={value("status", "Confirmed")} />
     <label className="flex items-center gap-2 text-sm font-medium"><input name="allDay" type="checkbox" defaultChecked={Boolean(record?.allDay)} />All-day event</label>
+    <TeamsOption connected={Boolean(teamsConnected)} joinUrl={safeJoinUrl(String(record?.teamsJoinUrl ?? ""))} />
     <TextArea name="description" label="Description" value={value("description")} />
   </>;
 }
 
 function dateTimeValue(value: string) { return value ? value.slice(0, 16) : ""; }
+
+function TeamsOption({ connected, joinUrl }: { connected: boolean; joinUrl: string | null }) {
+  if (joinUrl) return <div className="flex items-start gap-2 text-sm md:col-span-2"><Video aria-hidden="true" className="mt-0.5 size-4 text-brand" /><div><p className="font-medium">Microsoft Teams meeting attached</p><a href={joinUrl} target="_blank" rel="noopener noreferrer" className="text-brand underline">Join link</a><input type="hidden" name="addTeamsMeeting" value="on" /></div></div>;
+  if (!connected) return <div className="flex items-start gap-2 text-sm md:col-span-2"><Video aria-hidden="true" className="mt-0.5 size-4 text-muted-foreground" /><div><p className="font-medium text-muted-foreground">Teams not connected</p><p className="text-xs text-muted-foreground">An administrator can connect Microsoft Teams to add meeting links to events.</p></div></div>;
+  return <label className="flex items-start gap-2 text-sm font-medium md:col-span-2"><input name="addTeamsMeeting" type="checkbox" className="mt-1" /><span>Add Microsoft Teams meeting<span className="block text-xs font-normal text-muted-foreground">Creates a join link, saves it on the event and adds it to the location and description.</span></span></label>;
+}
 
 function Field({ name, label, value, type = "text", required, min, max }: { name: string; label: string; value?: string; type?: string; required?: boolean; min?: number; max?: number }) {
   return <label className="text-sm font-medium">{label}<AppInput name={name} type={type} required={required} min={min} max={max} defaultValue={value ?? ""} className={inputClass} /></label>;

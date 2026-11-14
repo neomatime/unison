@@ -3,6 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { localInputToIso } from "@/features/calendar/model";
+import { createTeamsMeeting, deleteTeamsMeeting, TeamsNotConnectedError, updateTeamsMeeting } from "@/lib/integrations/microsoft-teams";
+import { withJoinLink } from "@/lib/integrations/teams-meeting";
 import { getSessionContext } from "@/lib/auth/get-session-context";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { isUuid } from "@/lib/utils";
@@ -54,6 +57,8 @@ export async function savePhaseFourRecordAction(
 
   let table: string;
   let values: Record<string, unknown>;
+  // A Teams meeting created for this save; removed again if the event itself cannot be saved.
+  let createdTeamsEventId: string | null = null;
 
   if (kind === "team-member") {
     const fullName = text(form, "fullName");
@@ -170,27 +175,58 @@ export async function savePhaseFourRecordAction(
     };
   } else {
     const title = text(form, "title");
-    const startAt = dateTime(form, "startAt");
-    const endAt = dateTime(form, "endAt");
+    // The form's clock is Africa/Johannesburg, whatever the server's is.
+    const startAt = localInputToIso(optional(form, "startAt"));
+    const endAt = localInputToIso(optional(form, "endAt"));
     if (!title || !startAt || !endAt) {
       return { error: "Event title, start and end are required." };
+    }
+    if (endAt < startAt) return { error: "The event cannot end before it starts." };
+    let location = optional(form, "location");
+    let description = optional(form, "description");
+    const teams: Record<string, unknown> = {};
+    const wantsTeams = form.get("addTeamsMeeting") === "on";
+    if (wantsTeams) {
+      const existing = id && isUuid(id)
+        ? await db.from("calendar_events").select("teams_join_url,teams_event_id").eq("id", id).eq("organization_id", organization.id).maybeSingle()
+        : null;
+      if (existing?.data?.teams_join_url) {
+        // Already has a meeting: keep it and keep its title and time in step.
+        if (existing.data.teams_event_id) {
+          try { await updateTeamsMeeting(existing.data.teams_event_id, { subject: title, startIso: startAt, endIso: endAt }); } catch (error) { console.error("Teams meeting update failed", error); }
+        }
+      } else {
+        try {
+          const meeting = await createTeamsMeeting({ subject: title, startIso: startAt, endIso: endAt, description });
+          createdTeamsEventId = meeting.eventId;
+          teams.teams_join_url = meeting.joinUrl;
+          teams.teams_event_id = meeting.eventId;
+          location = location || meeting.joinUrl;
+          description = withJoinLink(description, meeting.joinUrl);
+        } catch (error) {
+          if (error instanceof TeamsNotConnectedError) return { error: "Microsoft Teams is not connected. Save the event without a Teams meeting, or ask an administrator to connect it." };
+          console.error("Teams meeting creation failed", error);
+          return { error: "The Teams meeting could not be created, so the event was not saved. Try again, or save it without a Teams meeting." };
+        }
+      }
     }
     table = "calendar_events";
     values = {
       organization_id: organization.id,
       title,
-      description: optional(form, "description"),
+      description,
       event_type: text(form, "eventType") || "Internal",
       start_at: startAt,
       end_at: endAt,
       all_day: form.get("allDay") === "on",
-      location: optional(form, "location"),
+      location,
       owner_id: identifier(form, "ownerId"),
       project_id: identifier(form, "projectId"),
       client_id: identifier(form, "clientId"),
       onboarding_id: identifier(form, "onboardingId"),
       created_by: user.id,
       status: text(form, "status") || "Confirmed",
+      ...teams,
     };
   }
 
@@ -199,6 +235,7 @@ export async function savePhaseFourRecordAction(
     : await db.from(table).insert(values).select("id").single();
 
   if (result.error || !result.data) {
+    if (createdTeamsEventId) await deleteTeamsMeeting(createdTeamsEventId).catch((error) => console.error("Teams meeting cleanup failed", error));
     return {
       error: result.error?.code === "23505"
         ? "A record with that unique name or email already exists."

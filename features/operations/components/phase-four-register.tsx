@@ -1,4 +1,5 @@
 
+import { CALENDAR_TIMEZONE } from "@/features/calendar/model";
 import { WorkspaceHeader } from "@/components/shared/workspace-header";
 import { MetricCard } from "@/features/delivery/components/delivery-primitives";
 import { RecordCollectionWorkspace, type CollectionRecord } from "@/features/product-ui/components/record-collection-workspace";
@@ -60,12 +61,12 @@ export async function PersistentTeamScreen() {
   </>;
 }
 
-export async function PhaseFourRegister({ kind, slim }: { kind: Exclude<PhaseFourKind, "team-member" | "assignment">; /** Two summary cards instead of three: the "Updated records" count is dropped. */ slim?: boolean }) {
-  const rows = await loaders[kind]();
+export async function PhaseFourRegister({ kind, slim, hideHeader, rows: given }: { kind: Exclude<PhaseFourKind, "team-member" | "assignment">; /** Two summary cards instead of three: the "Updated records" count is dropped. */ slim?: boolean; /** The page already shows the heading (the calendar page does). */ hideHeader?: boolean; /** Rows the page has already loaded, so they are not fetched twice. */ rows?: PhaseFourRecord[] }) {
+  const rows = given ?? await loaders[kind]();
   const active = rows.filter((row) => !row.archivedAt);
   const config = registerConfig(kind, active);
   return <>
-    <WorkspaceHeader category={config.category} title={config.heading} description={config.description} action={config.action} actionHref={`${config.base}/new`} hideActionOnPhone={active.length === 0} />
+    {hideHeader ? null : <WorkspaceHeader category={config.category} title={config.heading} description={config.description} action={config.action} actionHref={`${config.base}/new`} hideActionOnPhone={active.length === 0} />}
     <div className={slim ? "grid gap-3 sm:grid-cols-2" : "grid gap-3 sm:grid-cols-3"}>
       <MetricCard label={`Active ${config.plural.toLowerCase()}`} value={String(active.length)} detail="Persisted tenant records" />
       <MetricCard label="Needs attention" value={String(active.filter((row) => ["At Risk", "Blocked", "Critical", "Paused"].includes(String(row.status)) || row.health === "At Risk" || row.riskLevel === "Critical").length)} detail="Priority operational focus" />
@@ -102,7 +103,7 @@ function registerConfig(kind: Exclude<PhaseFourKind, "team-member" | "assignment
   return {
     category: "Operations", heading: "Calendar", plural: "Events", singular: "Event", action: "New Event", base: "/operations/calendar",
     description: "Coordinate persistent delivery, client and governance events.", registerDescription: "Tenant-scoped meetings, milestones and operational dates.", empty: "Schedule the first calendar event.",
-    records: rows.map((row) => ({ id: row.id, name: row.name, context: text(row.eventType), owner: text(row.owner), date: row.startAt ? new Date(String(row.startAt)).toLocaleDateString("en-ZA") : "—", time: row.startAt ? new Date(String(row.startAt)).toLocaleTimeString("en-ZA", { hour: "2-digit", minute: "2-digit" }) : "—", location: text(row.location), project: text(row.project), status: row.status, updated: date(row.updatedAt) })),
+    records: rows.map((row) => ({ id: row.id, name: row.name, context: text(row.eventType), owner: text(row.owner), date: row.startAt ? new Date(String(row.startAt)).toLocaleDateString("en-ZA", { timeZone: CALENDAR_TIMEZONE }) : "—", time: row.startAt ? new Date(String(row.startAt)).toLocaleTimeString("en-ZA", { hour: "2-digit", minute: "2-digit", timeZone: CALENDAR_TIMEZONE }) : "—", location: text(row.location), project: text(row.project), status: row.status, updated: date(row.updatedAt) })),
     columns: [{ id: "name", label: "Event" }, { id: "date", label: "Date" }, { id: "time", label: "Time" }, { id: "owner", label: "Owner" }, { id: "location", label: "Location" }, { id: "project", label: "Project" }, { id: "status", label: "Status" }],
   };
 }

@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { Video } from "lucide-react";
+
+import { CALENDAR_TIMEZONE, canJoin, safeJoinUrl } from "@/features/calendar/model";
 import { WorkPage } from "@/components/shared/work-page";
 import { StatusDot } from "@/components/ui/status-dot";
 import { formatCurrency } from "@/lib/utils/format-money";
@@ -21,7 +24,7 @@ const fields: Record<PhaseFourKind, Array<[string, string]>> = {
   onboarding: [["Client", "clientName"], ["Owner", "owner"], ["Type", "onboardingType"], ["Stage", "stage"], ["Progress", "progressPercent"], ["Health", "health"], ["Priority", "priority"], ["Start date", "startDate"], ["Target go-live", "targetGoLive"], ["Required documents", "requiredDocuments"], ["Open tasks", "taskCount"], ["Status", "status"], ["Notes", "notes"]],
   vendor: [["Type", "vendorType"], ["Service category", "serviceCategory"], ["Region", "region"], ["Owner", "owner"], ["Primary contact", "primaryContact"], ["Contact email", "contactEmail"], ["Phone", "phone"], ["Contract start", "contractStart"], ["Contract end", "contractEnd"], ["Contract value", "contractValue"], ["Renewal notice", "renewalNoticeDays"], ["SLA", "slaPercent"], ["Data sensitivity", "dataSensitivity"], ["Risk", "riskLevel"], ["Compliance", "complianceStatus"], ["Status", "status"], ["Notes", "notes"]],
   task: [["Description", "description"], ["Assignee", "assignee"], ["Project", "project"], ["Client", "client"], ["Onboarding", "onboarding"], ["Priority", "priority"], ["Due", "dueAt"], ["Completed", "completedAt"], ["Status", "status"]],
-  "calendar-event": [["Type", "eventType"], ["Starts", "startAt"], ["Ends", "endAt"], ["All day", "allDay"], ["Location", "location"], ["Owner", "owner"], ["Project", "project"], ["Client", "client"], ["Onboarding", "onboarding"], ["Status", "status"], ["Description", "description"]],
+  "calendar-event": [["Type", "eventType"], ["Starts", "startAt"], ["Ends", "endAt"], ["All day", "allDay"], ["Location", "location"], ["Teams meeting", "teamsJoinUrl"], ["Owner", "owner"], ["Project", "project"], ["Client", "client"], ["Onboarding", "onboarding"], ["Status", "status"], ["Description", "description"]],
 };
 
 const statusKeys = new Set(["status", "stage", "health", "riskLevel"]);
@@ -33,7 +36,8 @@ export async function PhaseFourDetail({ kind, id, split }: { kind: PhaseFourKind
   if (split) {
     const shown = fields[kind].filter(([, key]) => formatValue(key, record[key]) !== "—");
     return <WorkPage category={info.category} title={record.name} description={info.description} parent={{ label: info.parent, href: info.base }}>
-      <div className="mt-5 flex justify-end">
+      <div className="mt-5 flex flex-wrap justify-end gap-2">
+        {kind === "calendar-event" && canJoin({ teamsJoinUrl: String(record.teamsJoinUrl ?? ""), status: record.status }) ? <a href={safeJoinUrl(String(record.teamsJoinUrl)) ?? undefined} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 border border-brand px-4 py-2 text-sm font-semibold text-brand"><Video aria-hidden="true" className="size-4" />Join Teams meeting</a> : null}
         <Link href={`${info.base}/${record.id}/edit`} className="bg-brand px-4 py-2 text-sm font-semibold text-white">Edit record</Link>
       </div>
       <section aria-label="Record details" className="mt-5 border border-border bg-card p-6">
@@ -63,7 +67,7 @@ function formatValue(key: string, value: unknown) {
   if (key === "capacityPercent" || key === "allocationPercent" || key === "progressPercent" || key === "slaPercent") return `${value}%`;
   if (key === "renewalNoticeDays") return `${value} days`;
   if (key === "contractValue") return formatCurrency(Number(value), "ZAR");
-  if (key.endsWith("At")) return new Date(String(value)).toLocaleString("en-ZA");
+  if (key.endsWith("At")) return new Date(String(value)).toLocaleString("en-ZA", { timeZone: CALENDAR_TIMEZONE });
   if (key.endsWith("Date") || key === "joinedOn" || key === "targetGoLive" || key === "contractStart" || key === "contractEnd") return new Date(`${value}T00:00:00`).toLocaleDateString("en-ZA");
   return String(value);
 }

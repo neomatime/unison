@@ -39,11 +39,17 @@ export function readCronSecret(source: Source): string {
 // a mailbox password. These are read lazily at send time, never at import: a
 // mail misconfiguration must not be able to break authentication or database
 // access.
-export function readGraphEnv(source: Source) {
+export function readGraphCredentials(source: Source) {
   return {
     GRAPH_TENANT_ID: required(source, 'GRAPH_TENANT_ID'),
     GRAPH_CLIENT_ID: required(source, 'GRAPH_CLIENT_ID'),
     GRAPH_CLIENT_SECRET: required(source, 'GRAPH_CLIENT_SECRET'),
+  } as const
+}
+
+export function readGraphEnv(source: Source) {
+  return {
+    ...readGraphCredentials(source),
     MAIL_FROM: required(source, 'MAIL_FROM'),
   } as const
 }
