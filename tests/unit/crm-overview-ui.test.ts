@@ -22,8 +22,9 @@ const coreMigration = read('supabase', 'migrations', '20260910175724_phase_six_c
 test('the Overview page renders the CRM dashboard from the CRM query, not the delivery briefing', () => {
   assert.match(page, /import \{ CrmOverviewScreen \} from ['"]@\/features\/crm-overview\/components\/crm-overview-screen['"]/)
   assert.match(page, /import \{ getCrmOverview \} from ['"]@\/features\/crm-overview\/queries\/get-crm-overview['"]/)
-  assert.match(page, /await getCrmOverview\(\)/)
-  assert.match(page, /<CrmOverviewScreen overview=\{overview\} \/>/)
+  // The CRM query and the mining market intelligence load side by side.
+  assert.match(page, /await Promise\.all\(\[getCrmOverview\(\), getMarketIntelligence\(\)\]\)/)
+  assert.match(page, /<CrmOverviewScreen overview=\{overview\} market=\{market\} \/>/)
   const sources = [...page.matchAll(/from\s+['"]([^'"]+)['"]/g)].map((match) => match[1])
   assert.equal(sources.some((source) => /features\/delivery|features\/overview/.test(source)), false, 'the Overview must not import delivery or the retired fixture-backed overview')
   assert.equal(sources.some((source) => /(?:^|\/)(?:mocks|fixtures?)(?:\/|$)|(?:^|\/)data$/.test(source)), false, 'the Overview must not import fixture data')

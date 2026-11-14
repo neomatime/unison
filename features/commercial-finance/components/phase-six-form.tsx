@@ -35,10 +35,16 @@ export function PhaseSixForm({
   kind,
   record,
   options,
+  prefill,
+  hidden,
 }: {
   kind: PhaseSixKind;
   record?: PhaseSixRecord | null;
   options: PhaseSixOptions;
+  /** Starting values for a new record (for example a lead started from the market intelligence map). */
+  prefill?: Record<string, string>;
+  /** Extra hidden fields sent with the form. */
+  hidden?: Record<string, string>;
 }) {
   const action = savePhaseSixRecordAction.bind(null, kind, record?.id);
   const [state, formAction, pending] = useActionState(action, undefined);
@@ -53,7 +59,8 @@ export function PhaseSixForm({
       />
       <form action={formAction} className="mx-auto max-w-5xl border border-border bg-card">
         <div className="grid gap-5 p-6 md:grid-cols-2 lg:p-8">
-          <Fields kind={kind} record={record} options={options} />
+          <Fields kind={kind} record={record ?? (prefill as PhaseSixRecord | undefined)} options={options} />
+          {Object.entries(hidden ?? {}).map(([name, value]) => <input key={name} type="hidden" name={name} value={value} />)}
         </div>
         {state?.error ? (
           <p role="alert" className="mx-6 mb-4 text-sm text-destructive">

@@ -1,3 +1,5 @@
+import { MarketIntelligence } from '@/features/market-intelligence/components/market-intelligence'
+import type { MarketIntelligence as MarketIntelligenceResult } from '@/features/market-intelligence/queries/get-market-intelligence'
 import type { CrmOverview } from '../types'
 import { CrmOverviewHeader } from './crm-overview-header'
 import { KpiCards } from './kpi-cards'
@@ -21,7 +23,16 @@ function RevenuePanel({ revenue }: { revenue: CrmOverview['revenue'] }) {
  * and renders its own loading-failed or not-in-plan state, so one failing query
  * leaves the rest of the dashboard standing.
  */
-export function CrmOverviewScreen({ overview }: { overview: CrmOverview }) {
+function MarketPanel({ market }: { market: MarketIntelligenceResult }) {
+  if (market.status === 'ready') return <MarketIntelligence data={market.data} canImport={market.canImport} />
+  return (
+    <Panel title="HIMARK Mining Market Intelligence" description="The mining landscape, commercial opportunities and HIMARK engagement across South Africa.">
+      <ErrorState what="Mining market intelligence" />
+    </Panel>
+  )
+}
+
+export function CrmOverviewScreen({ overview, market }: { overview: CrmOverview; market?: MarketIntelligenceResult }) {
   // The leads link only appears for a tenant whose plan includes Leads.
   const showLeadsLink = overview.kpis.status === 'ready' ? overview.kpis.data.leads !== null : true
   return (
@@ -29,6 +40,7 @@ export function CrmOverviewScreen({ overview }: { overview: CrmOverview }) {
       <CrmOverviewHeader />
       <div className="space-y-4">
         <KpiCards kpis={overview.kpis} />
+        {market ? <MarketPanel market={market} /> : null}
         <div className="grid gap-4 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
           <SalesPipeline pipeline={overview.pipeline} showLeadsLink={showLeadsLink} />
           <RevenuePanel revenue={overview.revenue} />

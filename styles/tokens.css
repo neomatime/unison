@@ -175,3 +175,26 @@
   flex-direction: column;
   justify-content: flex-end;
 }
+
+/* Mining Market Intelligence map: the land, its province borders, and one colour per engagement status. Blue stays the
+   lead colour (prospect, existing client); amber and violet mark work in progress; no green. */
+:root {
+  --market-land: #eef2f7;
+  --market-land-active: #e1e9f3;
+  --market-border: #b4c3d6;
+  --market-client: #0e7fa6;
+  --market-proposal: oklch(0.55 0.14 295);
+  --market-active: oklch(0.72 0.14 72);
+  --market-prospect: #1769aa;
+  --market-unresearched: #97a4b4;
+}
+:root.dark {
+  --market-land: #13233a;
+  --market-land-active: #1a3150;
+  --market-border: #2f5482;
+  --market-client: #38bdf8;
+  --market-proposal: #a78bfa;
+  --market-active: #f2b544;
+  --market-prospect: #3a8ed4;
+  --market-unresearched: #74859c;
+}

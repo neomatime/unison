@@ -1,0 +1,92 @@
+# HIMARK Mining Market Intelligence
+
+The panel under the four KPI cards on the Overview. It maps South Africa's mining operations, shows HIMARK's
+relationship with each mining organisation, and links straight into UNISON's leads, clients and calendar.
+
+The map shows **verified, imported data only**. Nothing is seeded: until a dataset is imported the map shows the
+provinces and says that no operations have been imported yet.
+
+## How the data is held
+
+| Table | What it holds |
+|---|---|
+| `market_organizations` | One row per mining organisation (company): names, parent, registration number, website, commodities, source, verification date, and the two links into the CRM: `client_id` and `lead_id`. |
+| `market_operations` | One row per operating site, belonging to one organisation: name, province, district, coordinates, commodities, type, status, location accuracy, source, verification date. |
+
+* One company with three mines is one organisation row and three operation rows.
+* Market data and CRM records stay separate; they are joined only by `client_id` / `lead_id`.
+* Both tables are per workspace (`organization_id`) with row level security: members read; members can only change the
+  two CRM links; data is written only by `market_import()`, which allows owners and admins only.
+* `industry` is `'mining'` for now, so another sector can use the same tables later.
+
+Migration: `supabase/migrations/20261114110000_market_intelligence.sql`.
+
+## Importing verified data
+
+1. Get a verified dataset. Suitable sources are the Department of Mineral and Petroleum Resources' operating mines
+   directory, Council for Geoscience datasets, Minerals Council South Africa member information and mining companies'
+   own published disclosures (annual reports, mineral resource statements). Check each source's licence before use.
+2. Put it in the template, `docs/market-intelligence/mining-import-template.csv` (CSV or Excel), **one row per
+   operation**. An organisation with no mapped site can be a row with the operation columns left empty.
+3. Sign in as an owner or admin, open the Overview, choose **View full intelligence**, then **Import data**, and upload
+   the file. (When nothing has been imported yet, **Import data** is also on the panel itself.)
+4. The result lists how many operations were added or updated, and every refused row with its line number and reason.
+   Fix those rows and import the file again: rows already imported are updated in place, never added twice.
+
+### Columns
+
+| Column | Required | Notes |
+|---|---|---|
+| `organisation_name` | yes | Registered business name. |
+| `source` | yes | Where the row comes from, e.g. "DMPR Operating Mines Directory 2026". Kept on every row. |
+| `trading_name`, `parent_organisation`, `organisation_type` | | |
+| `registration_number` | | CIPC number. When present it is how the organisation is recognised on the next import. |
+| `website` | | `https://` is added if missing. |
+| `commodities` | | Several separated by `;`. |
+| `operation_name` | for an operation | |
+| `province` | for an operation | One of the nine provinces (KZN is accepted). |
+| `latitude`, `longitude` | for an operation | Decimal degrees, of the **site**, not the head office. Latitude is negative (e.g. `-25.67`). Points outside South Africa are refused. |
+| `district` | | Municipality or district. |
+| `primary_commodity`, `other_commodities` | | `other_commodities` separated by `;`. |
+| `operation_type`, `operating_status` | | e.g. Underground / Open pit; Operating / Care and maintenance. |
+| `location_accuracy` | | `exact` (default), `approximate`, or `district` when only the town or district is known. |
+| `source_reference` | | A page, table or record number in the source. |
+| `verified_on` | | `YYYY-MM-DD`, the date the row was last checked against its source. |
+
+Matching on re-import: an organisation by its registration number, otherwise by its name with punctuation and suffixes
+such as "(Pty) Ltd" removed; an operation by its name within its organisation.
+
+## Engagement status
+
+Worked out each time from UNISON's own records, never stored, so it cannot drift from the CRM. An organisation takes
+the first status that applies:
+
+1. **Existing client**: linked to a client that is not archived, or its lead was converted into a client.
+2. **Proposal submitted**: a quote that is Sent or Accepted, or an open opportunity at Proposal or Negotiation.
+3. **Active engagement**: another open opportunity, or a lead that is Contacted or Qualified.
+4. **Prospect**: linked to a lead, with nothing further.
+5. **Unresearched**: not linked to anything in UNISON.
+
+Opportunities and quotes count when they belong to the linked client or lead. The legend counts operations by their
+organisation's status, so its numbers add up to the operation count. **HIMARK engaged** counts distinct organisations
+that are a client, have a proposal out, or are actively engaged.
+
+## CRM actions
+
+* **View company** opens the linked client, or the linked lead. Not available until the organisation is in UNISON.
+* **Create lead** opens the normal new-lead form with the company name and the verified facts in the notes (no contact
+  details are invented). Saving it links the lead to the organisation. If the organisation already has a lead or client,
+  the form is not offered and the existing record is opened instead.
+* When UNISON already has a client or lead with the same company name, the panel offers **Link to this client/lead**
+  instead, so no duplicate is created.
+* **Schedule engagement** opens the normal new calendar event, titled and linked to the client when there is one.
+
+## Province boundaries
+
+`features/market-intelligence/province-shapes.ts` is generated from geoBoundaries ZAF ADM1 (simplified), licensed
+CC BY 4.0 (https://www.geoboundaries.org). The credit is shown on the map. To regenerate it, download
+`geoBoundaries-ZAF-ADM1_simplified.geojson` and run:
+
+```
+node docs/market-intelligence/tools/build-province-shapes.cjs <path-to-geojson> features/market-intelligence/province-shapes.ts
+```

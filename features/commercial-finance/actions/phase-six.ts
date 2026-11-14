@@ -10,6 +10,7 @@ import type { PhaseSixKind } from "../queries/phase-six";
 import { readBillingTerms } from "@/features/documents/billing-terms";
 import { documentErrorMessage } from "@/features/documents/errors";
 import { readDocumentExtras } from "@/features/documents/fields";
+import { MARKET_ORGANIZATION_FIELD, linkNewLead } from "@/features/market-intelligence/lead-link";
 import {
   QUOTE_DRAFT_STATUSES,
   QUOTE_SENT_STATUSES,
@@ -314,6 +315,12 @@ export async function savePhaseSixRecordAction(
                 ? "Say why this opportunity was lost."
                 : "The record could not be saved. Check related records, dates and amounts."),
     };
+  }
+
+  // A new lead started from the market intelligence map is linked back to the mining organisation it came from.
+  if (kind === "lead" && !(id && isUuid(id))) {
+    await linkNewLead(db, organization.id, optional(form, MARKET_ORGANIZATION_FIELD), result.data.id);
+    revalidatePath("/overview");
   }
 
   const base = routes[kind];
