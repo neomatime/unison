@@ -141,3 +141,11 @@ loaded mines to it by province, farm names, name and commodity; the full result 
   source's owner (for example Bafokeng Rasimone: directory "Impala Platinum Holdings", research "Anglo Platinum & BRPM").
   Owners were **not** changed; the `owner_agrees` column shows each case. Ownership moves, so check before using it.
 * To confirm a "possible" match, set the operation's `operating_status`/`verified_on` the same way, after reading the row.
+
+### Second pass, without the province restriction (2026-11-15)
+
+`tools/match-dmpr-any-province.py` searched the whole directory for the 25 mines the first pass did not find; the result is
+`review/dmpr-d1-2024-second-pass.csv`. Many mines near the Limpopo/Mpumalanga border are filed under the other province in
+the directory. **14 probable, 10 possible, 1 none.** Nothing was changed in the database: these are for a person to confirm.
+Note that some directory entries are works (Vametco, Rhovan) or a prospect (Elandsfontein) rather than a mine, so a listing
+there is not the same as a listed mine.
