@@ -182,3 +182,7 @@ operator rather than by name. **137 listed, 7 unverified.**
 Vlakpoort was marked on 2026-11-15 as listed under Destiny Springs Investment 11 (15528, Afarak Group, shared farm Vlakpoort 388 KQ).
 The directory lists chrome ore there while the research source says platinum; that difference is recorded in `source_ref`.
 **138 listed, 6 unverified.**
+
+ECM Magareng was marked on 2026-11-15 as listed under Magareng Mine (14797, owner Glencore, Lydenburg), found by a wider search of the
+directory by name and farm. **139 listed, 5 unverified.** For ECM Winterveld the directory has only the umbrella entry 10727 Eastern
+Chrome Mines, and for iMpunzi 10633 Tweefontein Complex is a possible fit; both were left unverified.
