@@ -178,3 +178,7 @@ for a platinum mine), so the evidence behind each is visible. **136 listed, 8 un
 
 Crocodile River was marked on 2026-11-15 as listed under Barplats Mines (12158, owner Eastern Platinum, Brits), matched by owner and
 operator rather than by name. **137 listed, 7 unverified.**
+
+Vlakpoort was marked on 2026-11-15 as listed under Destiny Springs Investment 11 (15528, Afarak Group, shared farm Vlakpoort 388 KQ).
+The directory lists chrome ore there while the research source says platinum; that difference is recorded in `source_ref`.
+**138 listed, 6 unverified.**

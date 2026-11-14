@@ -1,7 +1,7 @@
 ﻿fid,mine,our_owner,province,commodity,class,dmpr_code,dmpr_name,dmpr_owner,dmpr_district,dmpr_commodity,owner_agrees,evidence,shared_farms,alternatives,notes
 98,Vlakvarkfontein,AEMFC,Mpumalanga,Coal,strong,11046,NTSHOVELO MINING RESOURCES - VLAKVARKFONTEIN COLLIERY,MBUYELO COAL,WITBANK MPUMALANGA,COAL BITUMINOUS,no,farm names + name,VLAKVARKFONTEIN 213 IR 3 5 13,,
 66,Mecklenburg,Afarak,Limpopo,Chromium,confirmed_by_review,15042,CHROMEX MINING COMPANY (PTY) LTD,AFARAK GROUP,SEKHUKHUNELAND LIMPOPO,CHROME ORE,yes,farm names,MECKLENBURG 112 KT,,
-73,Vlakpoort,Afarak,Limpopo,Platinum,possible,15528,DESTINY SPRINGS INVESTMENT 11 (PTY) LTD,AFARAK GROUP,THABAZIMBI LIMPOPO,CHROME ORE,yes,farm names,VLAKPOORT 388 KQ,,directory commodity does not match
+73,Vlakpoort,Afarak,Limpopo,Platinum,confirmed_by_review,15528,DESTINY SPRINGS INVESTMENT 11 (PTY) LTD,AFARAK GROUP,THABAZIMBI LIMPOPO,CHROME ORE,yes,farm names,VLAKPOORT 388 KQ,,directory commodity does not match
 82,Nkomati,African Rainbow Minerals (ARM),Mpumalanga,Nickel,strong,13139,NKOMATI MINE,AFRICAN RAINBOW MINERALS & NORILSK NICKE,WATERVAL-BOVEN MPUMALANGA,NICKEL; GOLD; SILVER; PGM; CHROME ORE; COBALT METAL IC; COPPER,yes,farm names + name,SLAAIHOEK 540 JT 540 JT NKOMATI,,
 152,Nkomati Anthracite North,Afrimat,Mpumalanga,Coal,confirmed_by_review,13441,NKOMATI ANTHRACITE (PTY) LTD,UNICORN CAPITAL PARTNERS,NKOMAZI MPUMALANGA,COAL ANTHRACITE,no,name,,15818 MAKUNYULA ANTHRACITE MINE,"name-only match, no shared farm"
 153,Nkomati Anthracite South,Afrimat,Mpumalanga,Coal,confirmed_by_review,13441,NKOMATI ANTHRACITE (PTY) LTD,UNICORN CAPITAL PARTNERS,NKOMAZI MPUMALANGA,COAL ANTHRACITE,no,name,,15818 MAKUNYULA ANTHRACITE MINE,"name-only match, no shared farm"
