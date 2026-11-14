@@ -20,6 +20,7 @@ const visibleRoutes = [
   ['vendors', 'delivery/vendors'],
   ['clients', 'operations/clients'],
   ['onboarding', 'operations/onboarding'],
+  ['calendar', 'operations/calendar'],
   ['leads', 'commercial/leads'],
   ['quotes', 'commercial/quotes'],
   ['sales', 'commercial/sales'],
@@ -191,7 +192,7 @@ test('navigation follows the delivery-focused product structure', () => {
   const modules = readFileSync(join(workspace, 'config', 'modules.ts'), 'utf8')
   for (const [moduleId] of visibleRoutes) assert.match(modules, new RegExp(`id: '${moduleId}'.*enabled: true`))
   for (const heading of ['Delivery', 'Operations', 'Commercial', 'Finance', 'People']) assert.match(navigation, new RegExp(heading))
-  for (const removed of ['tasks', 'calendar', 'hr', 'leave', 'knowledge']) assert.doesNotMatch(modules, new RegExp(`id: '${removed}'`))
+  for (const removed of ['tasks', 'hr', 'leave', 'knowledge']) assert.doesNotMatch(modules, new RegExp(`id: '${removed}'`))
 })
 
 test('protected sign-in and client data paths remain connected', () => {
@@ -443,7 +444,7 @@ test('every module a tier can withhold is guarded by its own layout', () => {
     .filter((module) => !(lockedModuleIds as readonly string[]).includes(module.id))
     .map((module) => ({ id: module.id, dir: join(unisonRoot, module.route.replace(/^\//, '')) }))
 
-  assert.equal(gated.length, 9, 'expected exactly the Operations, Commercial and Finance modules')
+  assert.equal(gated.length, 10, 'expected exactly the Operations, Commercial and Finance modules')
 
   for (const { id, dir } of gated) {
     const layout = join(dir, 'layout.tsx')

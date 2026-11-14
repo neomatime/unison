@@ -13,10 +13,10 @@ test('a Core tenant sees Overview, People and the Vendors register under Operati
   assert.deepEqual(headings, [undefined, 'People', 'Operations'])
 })
 
-test('a Framework tenant also gets Clients and Onboarding under Operations', () => {
+test('a Framework tenant also gets Clients, Onboarding and Calendar under Operations', () => {
   const sections = navigationSectionsFor(getEntitledModuleIds('framework'))
   assert.deepEqual(sections.map((section) => section.heading), [undefined, 'People', 'Operations'])
-  assert.deepEqual(sections[2].items.map((item) => item.id), ['clients', 'onboarding', 'vendors'])
+  assert.deepEqual(sections[2].items.map((item) => item.id), ['clients', 'onboarding', 'vendors', 'calendar'])
 })
 
 test('an Enterprise tenant sees every section, in the CRM order', () => {
@@ -31,7 +31,7 @@ test('the sidebar is exactly the CRM structure for a full tenant', () => {
     [
       ['Overview', ['Overview']],
       ['People', ['Team']],
-      ['Operations', ['Clients', 'Onboarding', 'Vendors']],
+      ['Operations', ['Clients', 'Onboarding', 'Vendors', 'Calendar']],
       ['Commercial', ['Leads', 'Acquisition', 'Quotes', 'Sales']],
       ['Finance', ['Invoices', 'Expenses', 'Forecasting']],
     ],
@@ -99,7 +99,7 @@ test('every retained module still has a route', () => {
     assert.ok(!routes.has(module.route), `${module.route} must be listed once`)
     routes.add(module.route)
   }
-  assert.equal(routes.size, 12)
+  assert.equal(routes.size, 13)
 })
 
 test('sections carry no functions, so they survive the RSC boundary', () => {

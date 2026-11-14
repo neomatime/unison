@@ -27,6 +27,7 @@ export const modules = [
   { id: 'clients', label: 'Clients', enabled: true, route: '/operations/clients', category: 'operations' },
   { id: 'onboarding', label: 'Onboarding', enabled: true, route: '/operations/onboarding', category: 'operations' },
   { id: 'vendors', label: 'Vendors', enabled: true, route: '/delivery/vendors', category: 'operations' },
+  { id: 'calendar', label: 'Calendar', enabled: true, route: '/operations/calendar', category: 'operations' },
   { id: 'leads', label: 'Leads', enabled: true, route: '/commercial/leads', category: 'commercial' },
   { id: 'acquisition', label: 'Acquisition', enabled: true, route: '/commercial/acquisition', category: 'commercial' },
   { id: 'quotes', label: 'Quotes', enabled: true, route: '/commercial/quotes', category: 'commercial' },

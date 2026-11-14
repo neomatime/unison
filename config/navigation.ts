@@ -1,6 +1,7 @@
 import {
   BadgeCheck,
   BarChart3,
+  CalendarDays,
   Building2,
   FileStack,
   FileText,
@@ -41,6 +42,7 @@ export const moduleIcons: Record<(typeof modules)[number]['id'], LucideIcon> = {
   vendors: Building2,
   clients: Users,
   onboarding: UserPlus,
+  calendar: CalendarDays,
   leads: Target,
   acquisition: QrCode,
   quotes: FileText,

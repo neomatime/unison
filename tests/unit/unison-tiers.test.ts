@@ -10,11 +10,11 @@ test('Core includes Delivery and Team only', () => {
 })
 
 test('Framework adds Operations to Core', () => {
-  assert.deepEqual(getEntitledModuleIds('framework'), [...deliveryAndTeam, 'clients', 'onboarding'])
+  assert.deepEqual(getEntitledModuleIds('framework'), [...deliveryAndTeam, 'clients', 'onboarding', 'calendar'])
 })
 
 test('Enterprise includes the full current product', () => {
-  assert.deepEqual(getEntitledModuleIds('enterprise'), [...deliveryAndTeam, 'clients', 'onboarding', 'leads', 'acquisition', 'quotes', 'sales', 'invoices', 'expenses', 'forecast'])
+  assert.deepEqual(getEntitledModuleIds('enterprise'), [...deliveryAndTeam, 'clients', 'onboarding', 'calendar', 'leads', 'acquisition', 'quotes', 'sales', 'invoices', 'expenses', 'forecast'])
 })
 
 test('Strategic Enterprise currently receives the full Enterprise module set', () => {
@@ -38,5 +38,5 @@ test('a downgrade removes unavailable modules while preserving required modules'
 })
 
 test('enabled counts reflect the active module set', () => {
-  assert.deepEqual(getEnabledCounts(getEntitledModuleIds('framework')), { delivery: 6, people: 1, operations: 2, commercial: 0, finance: 0 })
+  assert.deepEqual(getEnabledCounts(getEntitledModuleIds('framework')), { delivery: 6, people: 1, operations: 3, commercial: 0, finance: 0 })
 })
