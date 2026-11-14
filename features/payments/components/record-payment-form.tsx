@@ -30,8 +30,13 @@ export function RecordPaymentForm({ invoiceId, balanceLabel, today }: { invoiceI
       }}
       className="space-y-4 px-5 py-4"
     >
-      <div className="grid gap-4 md:grid-cols-4">
-        <TextField name="amount" label={`Amount (balance ${balanceLabel})`} required placeholder="0.00" />
+      {/* items-start: every label is one line, so the four fields sit on one line. The balance is a note under the amount, not part of its label. */}
+      <div className="grid items-start gap-4 md:grid-cols-4">
+        <label className="group block">
+          <FieldLabel label="Amount" required />
+          <input name="amount" required placeholder="0.00" inputMode="decimal" className={fieldClasses} />
+          <span className="mt-1.5 block text-xs text-muted-foreground">Balance {balanceLabel}</span>
+        </label>
         <label className="group block">
           <FieldLabel label="Date received" required />
           <DatePicker name="receivedOn" required defaultValue={today} max={today} className={fieldClasses} />
