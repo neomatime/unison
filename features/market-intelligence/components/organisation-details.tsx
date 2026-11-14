@@ -126,7 +126,7 @@ export function OrganisationDetails({ organization, operation }: { organization:
         {/* Only a status that says "Operating" is shown without a caveat: a listing in an older directory proves the site was registered, not that it works today. */}
         {operation.operatingStatus?.startsWith('Operating') ? null : (
           <p className="border border-border bg-muted/40 px-3 py-2 text-[11px] leading-snug">
-            {operation.operatingStatus?.startsWith('Listed in DMPR')
+            {/^(Listed in|Possible) DMPR/.test(operation.operatingStatus ?? '')
               ? `${operation.operatingStatus}. This does not confirm the site operates today.`
               : 'Location on research map; current operating status unverified. This does not confirm the site operates today.'}
           </p>

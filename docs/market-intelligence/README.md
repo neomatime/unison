@@ -162,3 +162,8 @@ the 144 are listed.** Nchwaning, ECM Magareng, Black Chrome, Vlakpoort and iMpun
 Vametco (10650) and Rhovan (12667) are listed in D1-2024 as **works** and Elandsfontein (15155) as a **prospect**. They were
 marked on 2026-11-15 with that wording ("Listed in DMPR D1-2024 directory as a works/prospect; 2026 status not confirmed"),
 so they are not shown as listed mines. **128 of the 144 now carry a D1-2024 listing**; 16 are unverified.
+
+Seven weak matches were marked on 2026-11-15 at the account owner's request, but as **"Possible DMPR D1-2024 listing (weak
+match: …)"** with `verified_on` left empty, so they are **not** counted as listed: Alexander Bay Mining (10614), Phalaborwa
+(10205), Khomanani (13204), Bakgatla Spud Shaft (14701, a works), Nchwaning (10020), Bokone (12701) and Morula (12701, whose
+commodity does not fit). **128 listed, 7 possible, 9 unverified.**
