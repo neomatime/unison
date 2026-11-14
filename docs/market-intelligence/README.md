@@ -153,3 +153,8 @@ there is not the same as a listed mine.
 The account owner confirmed 11 of the second-pass matches (the ones whose directory entry is a mine) on 2026-11-15; they are
 marked like the others, so **119 of the 144 are listed**. The three works/prospect matches (Vametco, Rhovan, Elandsfontein)
 and the 10 weak ones were left unverified.
+
+Six more were confirmed on 2026-11-15 against the better candidate the first pass had listed as an alternative: Marula
+Clapham and Driekop shafts (13633 Marula Platinum Mine), Western Chrome Mines Mooinooi and Waterkloof (12891 Samancor
+Western Chrome Mines), Kroondal (13204 Kroondal Mine) and Mamatwan (10564 Hotazel Manganese Mines - Mamatwan Mine). **125 of
+the 144 are listed.** Nchwaning, ECM Magareng, Black Chrome, Vlakpoort and iMpunzi stay unverified.
