@@ -177,6 +177,11 @@ export function CalendarWorkspace({ events: saved, initialView, initialDate, tod
             <Video aria-hidden="true" className="size-3.5" />
             Teams {teamsConnected ? 'connected' : 'not connected'}
           </span>
+          {view === 'list' ? null : (
+            <Link href={newEventHref(BASE, slotToRange(view === 'day' ? anchor : today, 9 * 60))} className="inline-flex h-9 items-center gap-2 bg-brand px-4 text-sm font-medium text-white outline-none hover:bg-brand/90 focus-visible:ring-2 focus-visible:ring-ring/50">
+              <Plus aria-hidden="true" className="size-4" />New Event
+            </Link>
+          )}
         </div>
       </div>
 
