@@ -381,9 +381,18 @@ export function safeJoinUrl(value: string | null | undefined): string | null {
   return /^https:\/\/[^\s<>"']+$/i.test(text) ? text : null
 }
 
+/** A plain https link to a Teams meeting (the Teams web, consumer and government hosts). */
+export function teamsLink(value: string | null | undefined): string | null {
+  const url = safeJoinUrl(value)
+  return url && /^https:\/\/(teams\.microsoft\.com|teams\.live\.com|gov\.teams\.microsoft\.us)\//i.test(url) ? url : null
+}
+
+/** The link Join opens: the stored Teams meeting link, or else a Teams link pasted into the location. */
+export const joinUrlOf = (event: Pick<CalendarEvent, 'teamsJoinUrl' | 'location'>): string | null => safeJoinUrl(event.teamsJoinUrl) ?? teamsLink(event.location)
+
 /** Whether Join is worth showing: there is a link and the event is not cancelled or already complete. */
-export const canJoin = (event: Pick<CalendarEvent, 'teamsJoinUrl' | 'status'>): boolean =>
-  safeJoinUrl(event.teamsJoinUrl) !== null && event.status !== 'Cancelled' && event.status !== 'Complete'
+export const canJoin = (event: Pick<CalendarEvent, 'teamsJoinUrl' | 'status'> & { location?: string | null }): boolean =>
+  joinUrlOf(event) !== null && event.status !== 'Cancelled' && event.status !== 'Complete'
 
 /** A start and end for a click on an empty slot: the clicked minute, snapped down to the half hour, for an hour. */
 export function slotToRange(key: DayKey, minute: number, durationMinutes = 60): { start: string; end: string } {

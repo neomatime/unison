@@ -17,6 +17,7 @@ import {
   daysBetween,
   eventTone,
   groupAgenda,
+  joinUrlOf,
   layoutDay,
   layoutWeek,
   legendFor,
@@ -224,7 +225,7 @@ const eventHref = (event: CalendarEvent) => `${BASE}/${event.id}`
 const describe = (span: Span) => `${span.event.title}, ${span.allDay ? 'all day' : `${timeLabel(span.startMs)} to ${timeLabel(span.endMs)}`}, ${span.event.status}`
 
 function JoinButton({ event, compact }: { event: CalendarEvent; compact?: boolean }) {
-  const url = canJoin(event) ? safeJoinUrl(event.teamsJoinUrl) : null
+  const url = canJoin(event) ? joinUrlOf(event) : null
   if (!url) return null
   return (
     <a href={url} target="_blank" rel="noopener noreferrer" aria-label={`Join ${event.title} on Microsoft Teams`} className={cn('inline-flex shrink-0 items-center gap-1 bg-brand font-medium text-white outline-none hover:bg-brand/90 focus-visible:ring-2 focus-visible:ring-ring/50', compact ? 'ml-auto h-full px-1.5 text-[11px] leading-[18px]' : 'px-3 py-1.5 text-xs')}>
@@ -325,7 +326,7 @@ function MonthView({ anchor, spans, today, colorBy, onOpenDay, dnd }: { anchor: 
                     {timed ? <span className="shrink-0 text-muted-foreground">{timeLabel(segment.span.startMs)}</span> : null}
                     <span className="truncate">{event.title}</span>
                   </Link>
-                  {canJoin(event) ? <JoinButton event={event} compact /> : event.teamsJoinUrl ? <Video aria-label="Teams meeting" className="mr-1 size-3 shrink-0 text-brand" /> : null}
+                  {canJoin(event) ? <JoinButton event={event} compact /> : joinUrlOf(event) ? <Video aria-label="Teams meeting" className="mr-1 size-3 shrink-0 text-brand" /> : null}
                 </div>
               )
             })}
@@ -459,7 +460,7 @@ function TimeGrid({ days, spans, today, colorBy, onOpenDay, dnd }: { days: DayKe
                       >
                         <span className="w-full truncate font-medium">{event.title}</span>
                         <span className="w-full truncate text-[11px] text-muted-foreground">{timeLabel(item.span.startMs)}–{timeLabel(item.span.endMs)}</span>
-                        {event.teamsJoinUrl ? <Video aria-label="Teams meeting" className="size-3 text-brand" /> : null}
+                        {joinUrlOf(event) ? <Video aria-label="Teams meeting" className="size-3 text-brand" /> : null}
                       </Link>
                     )
                   })}

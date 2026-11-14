@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 
 import { Video } from "lucide-react";
 
-import { CALENDAR_TIMEZONE, canJoin, safeJoinUrl } from "@/features/calendar/model";
+import { CALENDAR_TIMEZONE, canJoin, joinUrlOf } from "@/features/calendar/model";
 import { WorkPage } from "@/components/shared/work-page";
 import { StatusDot } from "@/components/ui/status-dot";
 import { formatCurrency } from "@/lib/utils/format-money";
@@ -37,7 +37,7 @@ export async function PhaseFourDetail({ kind, id, split }: { kind: PhaseFourKind
     const shown = fields[kind].filter(([, key]) => formatValue(key, record[key]) !== "—");
     return <WorkPage category={info.category} title={record.name} description={info.description} parent={{ label: info.parent, href: info.base }}>
       <div className="mt-5 flex flex-wrap justify-end gap-2">
-        {kind === "calendar-event" && canJoin({ teamsJoinUrl: String(record.teamsJoinUrl ?? ""), status: record.status }) ? <a href={safeJoinUrl(String(record.teamsJoinUrl)) ?? undefined} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 border border-brand px-4 py-2 text-sm font-semibold text-brand"><Video aria-hidden="true" className="size-4" />Join Teams meeting</a> : null}
+        {kind === "calendar-event" && canJoin({ teamsJoinUrl: String(record.teamsJoinUrl ?? ""), location: String(record.location ?? ""), status: record.status }) ? <a href={joinUrlOf({ teamsJoinUrl: String(record.teamsJoinUrl ?? ""), location: String(record.location ?? "") }) ?? undefined} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 border border-brand px-4 py-2 text-sm font-semibold text-brand"><Video aria-hidden="true" className="size-4" />Join Teams meeting</a> : null}
         <Link href={`${info.base}/${record.id}/edit`} className="bg-brand px-4 py-2 text-sm font-semibold text-white">Edit record</Link>
       </div>
       <section aria-label="Record details" className="mt-5 border border-border bg-card p-6">

@@ -268,3 +268,17 @@ test('moving: by days keeps the time of day and the length; to a slot keeps the 
   assert.equal(snapMinute(5000), 1425)
   assert.equal(daysBetween('2026-11-16', '2026-11-20'), 4)
 })
+
+test('joining: a Teams link pasted into the location is a join link, any other link is not', async () => {
+  const { canJoin, joinUrlOf, teamsLink } = await import('../../features/calendar/model.ts')
+  const teams = 'https://teams.microsoft.com/l/meetup-join/abc'
+  assert.equal(teamsLink(teams), teams)
+  assert.equal(teamsLink('https://teams.live.com/meet/123'), 'https://teams.live.com/meet/123')
+  assert.equal(teamsLink('https://zoom.us/j/1'), null)
+  assert.equal(teamsLink('https://teams.microsoft.com.evil.example/x'), null)
+  assert.equal(joinUrlOf({ teamsJoinUrl: null, location: teams }), teams)
+  assert.equal(joinUrlOf({ teamsJoinUrl: 'https://teams.microsoft.com/l/stored', location: teams }), 'https://teams.microsoft.com/l/stored')
+  assert.equal(joinUrlOf({ teamsJoinUrl: null, location: 'In-Person' }), null)
+  assert.equal(canJoin({ teamsJoinUrl: null, location: teams, status: 'Confirmed' }), true)
+  assert.equal(canJoin({ teamsJoinUrl: null, location: teams, status: 'Cancelled' }), false)
+})
