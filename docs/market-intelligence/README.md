@@ -158,3 +158,7 @@ Six more were confirmed on 2026-11-15 against the better candidate the first pas
 Clapham and Driekop shafts (13633 Marula Platinum Mine), Western Chrome Mines Mooinooi and Waterkloof (12891 Samancor
 Western Chrome Mines), Kroondal (13204 Kroondal Mine) and Mamatwan (10564 Hotazel Manganese Mines - Mamatwan Mine). **125 of
 the 144 are listed.** Nchwaning, ECM Magareng, Black Chrome, Vlakpoort and iMpunzi stay unverified.
+
+Vametco (10650) and Rhovan (12667) are listed in D1-2024 as **works** and Elandsfontein (15155) as a **prospect**. They were
+marked on 2026-11-15 with that wording ("Listed in DMPR D1-2024 directory as a works/prospect; 2026 status not confirmed"),
+so they are not shown as listed mines. **128 of the 144 now carry a D1-2024 listing**; 16 are unverified.
