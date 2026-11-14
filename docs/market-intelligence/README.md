@@ -131,7 +131,10 @@ loaded mines to it by province, farm names, name and commodity; the full result 
 * **80 confirmed:** same province, a shared farm name and a matching name. Their status is now "Listed in DMPR D1-2024
   directory; 2026 status not confirmed", with the DMPR mine code in `source_ref`, and `verified_on` 2026-11-15. The panel
   still says this does not confirm the site operates today.
-* **39 for a person to decide** ("possible"): the name matches but no farm does, or the entry has a different owner or
+* **28 more confirmed by review** (2026-11-15): of the 39 "possible" matches, the account owner confirmed 28 (17 clear
+  matches, plus Impala and Marikana shafts that the directory lists as one whole operation each). They are marked the same way
+  and `review/dmpr-d1-2024-matches.csv` shows them as `confirmed_by_review`. In total **108 of the 144 are listed**.
+* **11 still for a person to decide** (the other "possible" matches): the name matches but no farm does, or the entry has a different owner or
   commodity, or two entries fit. Left unverified.
 * **25 not found** (class "none"): no entry in that province looks like it. Left unverified.
 * **Owners often differ.** In 32 of the 80 confirmed matches the directory's owner shares no word with the research
