@@ -186,3 +186,7 @@ The directory lists chrome ore there while the research source says platinum; th
 ECM Magareng was marked on 2026-11-15 as listed under Magareng Mine (14797, owner Glencore, Lydenburg), found by a wider search of the
 directory by name and farm. **139 listed, 5 unverified.** For ECM Winterveld the directory has only the umbrella entry 10727 Eastern
 Chrome Mines, and for iMpunzi 10633 Tweefontein Complex is a possible fit; both were left unverified.
+
+ECM Winterveld (under the Eastern Chrome Mines entry 10727, an umbrella entry) and iMpunzi (under Tweefontein Complex 10633, which
+the directory does not itself say contains iMpunzi) were marked as listed on 2026-11-15 as company-level matches, and the
+`source_ref` of each says so. **141 listed, 3 unverified:** Black Chrome, Sylvania Dump Operations and Kalgold.
