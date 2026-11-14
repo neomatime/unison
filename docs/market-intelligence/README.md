@@ -167,3 +167,6 @@ Seven weak matches were marked on 2026-11-15 at the account owner's request, but
 match: …)"** with `verified_on` left empty, so they are **not** counted as listed: Alexander Bay Mining (10614), Phalaborwa
 (10205), Khomanani (13204), Bakgatla Spud Shaft (14701, a works), Nchwaning (10020), Bokone (12701) and Morula (12701, whose
 commodity does not fit). **128 listed, 7 possible, 9 unverified.**
+
+Ntuane was marked on 2026-11-15 as listed under the Horizon Chrome Mine entry (13263), which the directory uses for both
+Horizon and Ntuane. **129 listed, 7 possible, 8 unverified.**
