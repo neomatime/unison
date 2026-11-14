@@ -2,7 +2,11 @@ import "server-only";
 
 import { Readable } from "node:stream";
 import ExcelJS from "exceljs";
-import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
+import { createElement } from "react";
+import { Document, Page, Text, View, renderToBuffer } from "@react-pdf/renderer";
+
+import { PDF_FONT_FAMILY } from "../documents/pdf/render-document-pdf";
+import { allowLongRunsToWrap, pdfText } from "../documents/pdf/pdf-text";
 
 import type { PortableColumn } from "./portable-collections";
 
@@ -53,81 +57,45 @@ export async function buildXlsx(title: string, columns: PortableColumn[], rows: 
   return Buffer.from(bytes);
 }
 
+const pdfInk = "#10203a";
+const pdfMuted = "#61738c";
+const pdfBody = "#2e3d52";
+
+/** Text for the PDF: control characters dropped, and a long unbroken run (a reference, an address) allowed to wrap. */
 function pdfSafe(value: unknown) {
-  return String(value ?? "")
-    .normalize("NFKD")
-    .replace(/[–—]/g, "-")
-    .replace(/·/g, "|")
-    .replace(/[^\x20-\x7E\n\r]/g, "?");
+  return allowLongRunsToWrap(pdfText(value === null || value === undefined ? "" : value instanceof Date ? value.toISOString() : String(value)));
 }
 
-function wrap(text: string, maxCharacters: number) {
-  const words = text.split(/\s+/).filter(Boolean);
-  const lines: string[] = [];
-  let line = "";
-  for (const word of words) {
-    if (word.length > maxCharacters) {
-      if (line) lines.push(line);
-      for (let index = 0; index < word.length; index += maxCharacters) lines.push(word.slice(index, index + maxCharacters));
-      line = "";
-    } else if (!line || `${line} ${word}`.length <= maxCharacters) {
-      line = line ? `${line} ${word}` : word;
-    } else {
-      lines.push(line);
-      line = word;
-    }
-  }
-  if (line) lines.push(line);
-  return lines.length ? lines : [""];
-}
-
+// Set in Carlito, like every other PDF UNISON makes. Written with createElement so no JSX is needed in a .ts file.
 export async function buildPdf(title: string, columns: PortableColumn[], rows: TabularRow[]) {
-  const document = await PDFDocument.create();
-  const regular = await document.embedFont(StandardFonts.Helvetica);
-  const bold = await document.embedFont(StandardFonts.HelveticaBold);
-  const pageSize: [number, number] = [595.28, 841.89];
-  const margin = 42;
-  const contentWidth = pageSize[0] - margin * 2;
-  let page = document.addPage(pageSize);
-  let y = pageSize[1] - margin;
+  const text = (style: Record<string, unknown>, ...children: unknown[]) => createElement(Text, { style: { fontFamily: PDF_FONT_FAMILY, ...style } }, ...(children as never[]));
+  const record = (row: TabularRow, index: number) =>
+    createElement(
+      View,
+      { key: index, style: { marginBottom: 12 }, wrap: true },
+      createElement(View, { wrap: false, style: { backgroundColor: "#f0f2f7", paddingVertical: 5, paddingHorizontal: 8, marginBottom: 6 } }, text({ fontSize: 10, fontWeight: 700, color: pdfInk }, `Record ${index + 1}`)),
+      ...columns.map((item) =>
+        createElement(
+          View,
+          { key: item.key, wrap: false, style: { marginBottom: 4 } },
+          text({ fontSize: 7, fontWeight: 700, letterSpacing: 0.8, color: pdfMuted }, pdfSafe(item.label).toUpperCase()),
+          text({ fontSize: 9.5, color: pdfBody, lineHeight: 1.3 }, pdfSafe(row[item.key]) || "-"),
+        ),
+      ),
+    );
 
-  const nextPage = () => {
-    page = document.addPage(pageSize);
-    y = pageSize[1] - margin;
-  };
-  const ensure = (height: number) => { if (y - height < margin) nextPage(); };
-  const drawLines = (lines: string[], x: number, size: number, lineHeight: number, font = regular, color = rgb(0.18, 0.24, 0.32)) => {
-    for (const line of lines) {
-      page.drawText(line, { x, y, size, font, color, maxWidth: contentWidth });
-      y -= lineHeight;
-    }
-  };
-
-  drawLines(wrap(pdfSafe(title), 58), margin, 18, 23, bold, rgb(0.06, 0.13, 0.23));
-  y -= 3;
-  drawLines([`${rows.length} record${rows.length === 1 ? "" : "s"} | Generated ${new Date().toISOString()}`], margin, 8, 13, regular, rgb(0.38, 0.45, 0.55));
-  y -= 12;
-
-  if (!rows.length) {
-    drawLines(["No records matched the selected export scope."], margin, 10, 15);
-  }
-
-  rows.forEach((row, rowIndex) => {
-    const estimated = 30 + columns.reduce((total, item) => total + Math.max(1, wrap(pdfSafe(row[item.key]), 82).length) * 12, 0);
-    ensure(Math.min(estimated, 160));
-    page.drawRectangle({ x: margin, y: y - 18, width: contentWidth, height: 22, color: rgb(0.94, 0.95, 0.97) });
-    drawLines([`Record ${rowIndex + 1}`], margin + 8, 10, 28, bold, rgb(0.06, 0.13, 0.23));
-    for (const item of columns) {
-      const valueLines = wrap(pdfSafe(row[item.key]) || "-", 82);
-      ensure(valueLines.length * 12 + 15);
-      drawLines([pdfSafe(item.label).toUpperCase()], margin, 7, 10, bold, rgb(0.38, 0.45, 0.55));
-      drawLines(valueLines, margin, 9, 12);
-      y -= 4;
-    }
-    y -= 10;
-  });
-
-  return Buffer.from(await document.save());
+  const body = createElement(
+    Document,
+    { title: pdfSafe(title), author: "UNISON" },
+    createElement(
+      Page,
+      { size: "A4", style: { paddingVertical: 42, paddingHorizontal: 42 } },
+      text({ fontSize: 18, fontWeight: 700, color: pdfInk, marginBottom: 4 }, pdfSafe(title)),
+      text({ fontSize: 8.5, color: pdfMuted, marginBottom: 14 }, `${rows.length} record${rows.length === 1 ? "" : "s"} | Generated ${new Date().toISOString()}`),
+      ...(rows.length ? rows.map(record) : [text({ fontSize: 10.5, color: pdfBody }, "No records matched the selected export scope.")]),
+    ),
+  );
+  return Buffer.from(await renderToBuffer(body));
 }
 
 function cellValue(value: ExcelJS.CellValue): unknown {

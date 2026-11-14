@@ -17,8 +17,10 @@ export type PdfImages = { header: PdfImage | null; logo: PdfImage | null }
 // Carlito, the free typeface that matches Calibri letter for letter, so a PDF looks like the rest of UNISON. The files ship in
 // public/brand/fonts with the other brand files the PDF routes already include (next.config.mjs).
 const FONT_FOLDER = join(process.cwd(), 'public', 'brand', 'fonts')
+/** The registered family name, for other PDFs (the list exports) that must look the same. */
+export const PDF_FONT_FAMILY = 'Carlito'
 Font.register({
-  family: 'Carlito',
+  family: PDF_FONT_FAMILY,
   fonts: [
     { src: join(FONT_FOLDER, 'Carlito-Regular.ttf'), fontWeight: 400 },
     { src: join(FONT_FOLDER, 'Carlito-Bold.ttf'), fontWeight: 700 },

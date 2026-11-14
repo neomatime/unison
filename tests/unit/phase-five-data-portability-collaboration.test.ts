@@ -27,7 +27,7 @@ test('Phase 5 collaboration tables are tenant isolated and explicitly exposed', 
 
 test('imports and exports use real tabular and document formats', () => {
   assert.match(formats, /ExcelJS\.Workbook/)
-  assert.match(formats, /PDFDocument\.create/)
+  assert.match(formats, /renderToBuffer/)
   assert.match(formats, /dangerousSpreadsheetPrefix/)
   assert.match(importRoute, /parseTabularFile/)
   assert.match(importRoute, /normalizeImportedRows/)
