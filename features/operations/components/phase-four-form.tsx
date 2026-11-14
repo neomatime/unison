@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useActionState } from "react";
 
-import { Video } from "lucide-react";
+import { ArrowLeft, Video } from "lucide-react";
 
 import { isoToLocalInput, safeJoinUrl } from "@/features/calendar/model";
 import { WorkspaceHeader } from "@/components/shared/workspace-header";
@@ -55,6 +55,11 @@ export function PhaseFourForm({
         title={`${record ? "Edit" : "New"} ${info.title}`}
         description={`Capture the governed ${info.title.toLowerCase()} record in the active organization.`}
       />
+      <div className="mx-auto mb-3 max-w-5xl">
+        <Link href={record ? `${info.base}/${record.id}` : info.base} className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40">
+          <ArrowLeft aria-hidden="true" className="size-4" />Back to {record ? info.title.toLowerCase() : info.parent.toLowerCase()}
+        </Link>
+      </div>
       <form action={formAction} className="mx-auto max-w-5xl border border-border bg-card">
         <div className="grid gap-5 p-6 md:grid-cols-2 lg:p-8">
           <Fields kind={kind} record={record} options={options} defaults={defaults} teamsConnected={teamsConnected} />
