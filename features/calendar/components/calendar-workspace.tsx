@@ -223,11 +223,11 @@ function chipClass(event: CalendarEvent, colorBy: ColorBy) {
 const eventHref = (event: CalendarEvent) => `${BASE}/${event.id}`
 const describe = (span: Span) => `${span.event.title}, ${span.allDay ? 'all day' : `${timeLabel(span.startMs)} to ${timeLabel(span.endMs)}`}, ${span.event.status}`
 
-function JoinButton({ event }: { event: CalendarEvent }) {
+function JoinButton({ event, compact }: { event: CalendarEvent; compact?: boolean }) {
   const url = canJoin(event) ? safeJoinUrl(event.teamsJoinUrl) : null
   if (!url) return null
   return (
-    <a href={url} target="_blank" rel="noopener noreferrer" aria-label={`Join ${event.title} on Microsoft Teams`} className="inline-flex shrink-0 items-center gap-1 bg-brand px-3 py-1.5 text-xs font-medium text-white outline-none hover:bg-brand/90 focus-visible:ring-2 focus-visible:ring-ring/50">
+    <a href={url} target="_blank" rel="noopener noreferrer" aria-label={`Join ${event.title} on Microsoft Teams`} className={cn('inline-flex shrink-0 items-center gap-1 bg-brand font-medium text-white outline-none hover:bg-brand/90 focus-visible:ring-2 focus-visible:ring-ring/50', compact ? 'ml-auto h-full px-1.5 text-[11px] leading-[18px]' : 'px-3 py-1.5 text-xs')}>
       <Video aria-hidden="true" className="size-3" />Join
     </a>
   )
@@ -300,29 +300,33 @@ function MonthView({ anchor, spans, today, colorBy, onOpenDay, dnd }: { anchor: 
               const { event } = segment.span
               const timed = !segment.span.allDay && segment.startCol === segment.endCol && !segment.continuesBefore
               return (
-                <Link
+                <div
                   key={`${event.id}-${segment.startCol}`}
-                  href={eventHref(event)}
-                  aria-label={describe(segment.span)}
-                  title={describe(segment.span)}
                   style={{ gridColumn: `${segment.startCol + 1} / ${segment.endCol + 2}`, gridRow: segment.lane + 2 }}
-                  draggable
-                  onDragStart={(drag) => {
-                    const row = drag.currentTarget.closest('[data-week]') as HTMLElement
-                    drag.dataTransfer.effectAllowed = 'move'
-                    drag.dataTransfer.setData('text/plain', segment.span.event.id)
-                    dnd.drag.current = { id: segment.span.event.id, grabDay: days[columnAt(drag, row)] }
-                  }}
-                  onDragEnd={() => {
-                    dnd.drag.current = null
-                    setOver(null)
-                  }}
-                  className={cn(chipClass(event, colorBy), 'relative z-10 mx-1 my-px', segment.continuesBefore && 'border-l-0', segment.continuesAfter && 'border-r-0')}
+                  className={cn(chipClass(event, colorBy), 'relative z-10 mx-1 my-px pr-0 focus-within:ring-2 focus-within:ring-ring/50', segment.continuesBefore && 'border-l-0', segment.continuesAfter && 'border-r-0')}
                 >
-                  {timed ? <span className="shrink-0 text-muted-foreground">{timeLabel(segment.span.startMs)}</span> : null}
-                  <span className="truncate">{event.title}</span>
-                  {event.teamsJoinUrl ? <Video aria-label="Teams meeting" className="ml-auto size-3 shrink-0 text-brand" /> : null}
-                </Link>
+                  <Link
+                    href={eventHref(event)}
+                    aria-label={describe(segment.span)}
+                    title={describe(segment.span)}
+                    draggable
+                    onDragStart={(drag) => {
+                      const row = drag.currentTarget.closest('[data-week]') as HTMLElement
+                      drag.dataTransfer.effectAllowed = 'move'
+                      drag.dataTransfer.setData('text/plain', segment.span.event.id)
+                      dnd.drag.current = { id: segment.span.event.id, grabDay: days[columnAt(drag, row)] }
+                    }}
+                    onDragEnd={() => {
+                      dnd.drag.current = null
+                      setOver(null)
+                    }}
+                    className="flex min-w-0 flex-1 items-center gap-1 outline-none"
+                  >
+                    {timed ? <span className="shrink-0 text-muted-foreground">{timeLabel(segment.span.startMs)}</span> : null}
+                    <span className="truncate">{event.title}</span>
+                  </Link>
+                  {canJoin(event) ? <JoinButton event={event} compact /> : event.teamsJoinUrl ? <Video aria-label="Teams meeting" className="mr-1 size-3 shrink-0 text-brand" /> : null}
+                </div>
               )
             })}
             {layout.hidden.map((count, col) =>
