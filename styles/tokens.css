@@ -164,3 +164,14 @@
   background-color: var(--tenant-brand);
   color: #ffffff;
 }
+
+/* Form fields that share a row line up on their boxes. A label that wraps onto a second line (a long label in a
+   narrow column) used to push its box down and leave the row ragged. Each field in a form's grid now fills the row's
+   height and sits its label and box at the bottom, so every box in the row starts at the same height whatever the
+   labels say. Unlayered on purpose, so it beats the utility classes on the labels. A label that is itself a row (a
+   checkbox and its words) is left alone. */
+.unison-tenant form .grid > label:not(.flex):not(.inline-flex) {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
