@@ -123,9 +123,12 @@ export function OrganisationDetails({ organization, operation }: { organization:
           </Link>
         </div>
 
-        {operation.verifiedOn ? null : (
+        {/* Only a status that says "Operating" is shown without a caveat: a listing in an older directory proves the site was registered, not that it works today. */}
+        {operation.operatingStatus?.startsWith('Operating') ? null : (
           <p className="border border-border bg-muted/40 px-3 py-2 text-[11px] leading-snug">
-            Location on research map; current operating status unverified. This does not confirm the site operates today.
+            {operation.operatingStatus?.startsWith('Listed in DMPR')
+              ? `${operation.operatingStatus}. This does not confirm the site operates today.`
+              : 'Location on research map; current operating status unverified. This does not confirm the site operates today.'}
           </p>
         )}
         <p className="text-[11px] leading-snug text-[var(--briefing-muted)]">

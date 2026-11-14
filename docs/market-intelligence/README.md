@@ -120,3 +120,21 @@ The first dataset on the map is a **research snapshot, not a verified 2026 inven
 Counts: 231 source records; 1 rejected by the fetch script (no usable coordinates); 230 staged; 85 held back because the
 source's two coordinate sets disagree by more than 5 km (`review/review_held_back.csv`); 145 mapped; 1 of those withdrawn
 as a data error (the last line of the held-back list); **144 loaded**, for **83 organisations**.
+
+## Checked against the DMPR directory (D1-2024, 2026-11-15)
+
+`docs/D1 2024__Operationg Mines.xlsx` is the Department's own register, **2024 edition** (2,059 entries: mines, quarries,
+sand and diamond workings, works and prospects). It is not the 2026 directory, which could not be found online, so it
+confirms a mine was **registered in 2024**, not that it operates in 2026. `tools/match-dmpr-directory.py` matched the 144
+loaded mines to it by province, farm names, name and commodity; the full result is `review/dmpr-d1-2024-matches.csv`.
+
+* **80 confirmed:** same province, a shared farm name and a matching name. Their status is now "Listed in DMPR D1-2024
+  directory; 2026 status not confirmed", with the DMPR mine code in `source_ref`, and `verified_on` 2026-11-15. The panel
+  still says this does not confirm the site operates today.
+* **39 for a person to decide** ("possible"): the name matches but no farm does, or the entry has a different owner or
+  commodity, or two entries fit. Left unverified.
+* **25 not found** (class "none"): no entry in that province looks like it. Left unverified.
+* **Owners often differ.** In 32 of the 80 confirmed matches the directory's owner shares no word with the research
+  source's owner (for example Bafokeng Rasimone: directory "Impala Platinum Holdings", research "Anglo Platinum & BRPM").
+  Owners were **not** changed; the `owner_agrees` column shows each case. Ownership moves, so check before using it.
+* To confirm a "possible" match, set the operation's `operating_status`/`verified_on` the same way, after reading the row.
