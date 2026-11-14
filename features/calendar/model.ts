@@ -413,3 +413,25 @@ export function parseNewEventTimes(params: { start?: string; end?: string }): { 
   const resolved = Number.isNaN(endMs) || endMs < startMs ? isoToLocalInput(new Date(startMs + 60 * MINUTE).toISOString()) : (end as string)
   return { startAt: start, endAt: resolved }
 }
+
+// ---- Moving an event (drag and drop) -------------------------------------------------------------------------------
+
+/** Rounds a minute of the day to the nearest step, kept inside the day. */
+export function snapMinute(minute: number, step = 15): number {
+  return Math.max(0, Math.min(1440 - step, Math.round(minute / step) * step))
+}
+
+/** Whole days later (or earlier) at the same time of day. Johannesburg has no daylight saving, so a day is always 24 hours. */
+export function moveByDays(event: Pick<CalendarEvent, 'startAt' | 'endAt'>, days: number): { startAt: string; endAt: string } {
+  const shift = days * DAY_MS
+  return { startAt: new Date(Date.parse(event.startAt) + shift).toISOString(), endAt: new Date(Date.parse(event.endAt) + shift).toISOString() }
+}
+
+/** To a day and a start minute, keeping how long the event lasts. */
+export function moveToSlot(event: Pick<CalendarEvent, 'startAt' | 'endAt'>, key: DayKey, startMinute: number): { startAt: string; endAt: string } {
+  const duration = Math.max(0, Date.parse(event.endAt) - Date.parse(event.startAt))
+  const start = dayStartMs(mustDay(key)) + startMinute * MINUTE
+  return { startAt: new Date(start).toISOString(), endAt: new Date(start + duration).toISOString() }
+}
+
+export const daysBetween = (from: DayKey, to: DayKey): number => mustDay(to) - mustDay(from)

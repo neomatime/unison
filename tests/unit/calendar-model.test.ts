@@ -255,3 +255,16 @@ test('new event: the requested times are checked and completed', () => {
   assert.deepEqual(parseNewEventTimes({ start: 'garbage' }), {})
   assert.deepEqual(parseNewEventTimes({}), {})
 })
+
+test('moving: by days keeps the time of day and the length; to a slot keeps the length', async () => {
+  const { moveByDays, moveToSlot, snapMinute, daysBetween } = await import('../../features/calendar/model.ts')
+  const e = { startAt: '2026-11-16T12:00:00.000Z', endAt: '2026-11-16T14:00:00.000Z' }
+  assert.deepEqual(moveByDays(e, 2), { startAt: '2026-11-18T12:00:00.000Z', endAt: '2026-11-18T14:00:00.000Z' })
+  assert.deepEqual(moveByDays(e, -1), { startAt: '2026-11-15T12:00:00.000Z', endAt: '2026-11-15T14:00:00.000Z' })
+  // 09:30 SAST on the 17th is 07:30Z, and the two hours are kept.
+  assert.deepEqual(moveToSlot(e, '2026-11-17', 9 * 60 + 30), { startAt: '2026-11-17T07:30:00.000Z', endAt: '2026-11-17T09:30:00.000Z' })
+  assert.equal(snapMinute(607), 600)
+  assert.equal(snapMinute(-20), 0)
+  assert.equal(snapMinute(5000), 1425)
+  assert.equal(daysBetween('2026-11-16', '2026-11-20'), 4)
+})

@@ -3,16 +3,18 @@
 import { ChevronLeft, ChevronRight, Plus, Video } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type MouseEvent, type ReactNode } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type DragEvent, type MouseEvent, type MutableRefObject, type ReactNode } from 'react'
 
 import { Dropdown } from '@/components/ui/select'
 import { StatusDot } from '@/components/ui/status-dot'
 import { cn } from '@/lib/utils'
+import { rescheduleEventAction } from '../actions'
 import {
   CALENDAR_VIEWS,
   WEEKDAYS,
   canJoin,
   dayLabel,
+  daysBetween,
   eventTone,
   groupAgenda,
   layoutDay,
@@ -20,9 +22,12 @@ import {
   legendFor,
   minutesLabel,
   monthGrid,
+  moveByDays,
+  moveToSlot,
   newEventHref,
   safeJoinUrl,
   slotToRange,
+  snapMinute,
   spansInRange,
   splitKey,
   stepAnchor,
@@ -62,6 +67,10 @@ const BAR: Record<EventTone, string> = {
   red: 'bg-danger',
 }
 
+/** What is being dragged: the event, and where on it the pointer took hold. */
+type DragInfo = { id: string; grabDay?: DayKey; offsetMinutes?: number }
+type Dnd = { drag: MutableRefObject<DragInfo | null>; move: (id: string, build: (event: CalendarEvent) => { startAt: string; endAt: string }) => void }
+
 const phoneQuery = '(max-width: 639px)'
 function usePhone() {
   return useSyncExternalStore(
@@ -86,11 +95,35 @@ type Props = {
   listPanel: ReactNode
 }
 
-export function CalendarWorkspace({ events, initialView, initialDate, today, teamsConnected, listPanel }: Props) {
+export function CalendarWorkspace({ events: saved, initialView, initialDate, today, teamsConnected, listPanel }: Props) {
   const [view, setView] = useState<CalendarView>(initialView)
   const [anchor, setAnchor] = useState<DayKey>(initialDate)
   const [colorBy, setColorBy] = useState<ColorBy>('status')
   const phone = usePhone()
+  const router = useRouter()
+  // A moved event shows in its new place at once; if saving fails it goes back.
+  const [moved, setMoved] = useState<Record<string, { startAt: string; endAt: string }>>({})
+  const [notice, setNotice] = useState<{ kind: 'saving' | 'error'; text: string } | null>(null)
+  const drag = useRef<DragInfo | null>(null)
+  const events = saved.map((event) => (moved[event.id] ? { ...event, ...moved[event.id] } : event))
+
+  async function move(id: string, build: (event: CalendarEvent) => { startAt: string; endAt: string }) {
+    const current = events.find((event) => event.id === id)
+    if (!current) return
+    const next = build(current)
+    if (next.startAt === current.startAt && next.endAt === current.endAt) return
+    setMoved((all) => ({ ...all, [id]: next }))
+    setNotice({ kind: 'saving', text: 'Saving…' })
+    const result = await rescheduleEventAction(id, next.startAt, next.endAt).catch(() => ({ ok: false as const, error: 'The event could not be moved. Check your connection and try again.' }))
+    if (result.ok) {
+      setNotice(null)
+      router.refresh()
+    } else {
+      setMoved((all) => ({ ...all, [id]: { startAt: current.startAt, endAt: current.endAt } }))
+      setNotice({ kind: 'error', text: result.error })
+    }
+  }
+  const dnd: Dnd = { drag, move }
 
   function go(nextView: CalendarView, nextAnchor: DayKey) {
     setView(nextView)
@@ -148,12 +181,13 @@ export function CalendarWorkspace({ events, initialView, initialDate, today, tea
       </div>
 
       {view === 'list' ? null : <Legend colorBy={colorBy} />}
+      <p aria-live="polite" role={notice?.kind === 'error' ? 'alert' : undefined} className={cn('mt-2 text-xs', notice?.kind === 'error' ? 'border border-danger bg-danger-soft px-3 py-2 text-sm text-foreground' : 'text-muted-foreground', !notice && 'sr-only')}>{notice?.text ?? 'Drag an event to move it.'}</p>
 
       <div className="mt-3">
         {view === 'list' ? listPanel : null}
-        {showing === 'month' ? <MonthView anchor={anchor} spans={spans} today={today} colorBy={colorBy} onOpenDay={(key) => go('day', key)} /> : null}
-        {showing === 'week' ? <TimeGrid days={weekDays(anchor)} spans={spans} today={today} colorBy={colorBy} onOpenDay={(key) => go('day', key)} /> : null}
-        {showing === 'day' ? <TimeGrid days={[anchor]} spans={spans} today={today} colorBy={colorBy} /> : null}
+        {showing === 'month' ? <MonthView anchor={anchor} spans={spans} today={today} colorBy={colorBy} onOpenDay={(key) => go('day', key)} dnd={dnd} /> : null}
+        {showing === 'week' ? <TimeGrid days={weekDays(anchor)} spans={spans} today={today} colorBy={colorBy} onOpenDay={(key) => go('day', key)} dnd={dnd} /> : null}
+        {showing === 'day' ? <TimeGrid days={[anchor]} spans={spans} today={today} colorBy={colorBy} dnd={dnd} /> : null}
         {showing === 'agenda' ? <Agenda spans={spans} range={range} today={today} colorBy={colorBy} /> : null}
       </div>
     </div>
@@ -196,7 +230,13 @@ function JoinButton({ event }: { event: CalendarEvent }) {
 
 // ---- Month ---------------------------------------------------------------------------------------------------------
 
-function MonthView({ anchor, spans, today, colorBy, onOpenDay }: { anchor: DayKey; spans: Span[]; today: DayKey; colorBy: ColorBy; onOpenDay: (key: DayKey) => void }) {
+function columnAt(event: DragEvent<HTMLElement>, row: HTMLElement) {
+  const box = row.getBoundingClientRect()
+  return Math.max(0, Math.min(6, Math.floor(((event.clientX - box.left) / box.width) * 7)))
+}
+
+function MonthView({ anchor, spans, today, colorBy, onOpenDay, dnd }: { anchor: DayKey; spans: Span[]; today: DayKey; colorBy: ColorBy; onOpenDay: (key: DayKey) => void; dnd: Dnd }) {
+  const [over, setOver] = useState<DayKey | null>(null)
   const weeks = monthGrid(anchor)
   const month = splitKey(anchor).month
   const rows: CSSProperties = { gridTemplateRows: `28px repeat(${MONTH_LANES}, 22px) 20px` }
@@ -208,12 +248,36 @@ function MonthView({ anchor, spans, today, colorBy, onOpenDay }: { anchor: DayKe
       {weeks.map((days) => {
         const layout = layoutWeek(days, spans, MONTH_LANES)
         return (
-          <div key={days[0]} className="relative grid grid-cols-7 border-b border-border pb-1 last:border-b-0" style={rows}>
+          <div
+            key={days[0]}
+            data-week=""
+            className="relative grid grid-cols-7 border-b border-border pb-1 last:border-b-0"
+            style={rows}
+            onDragOver={(event) => {
+              if (!dnd.drag.current) return
+              event.preventDefault()
+              event.dataTransfer.dropEffect = 'move'
+              const key = days[columnAt(event, event.currentTarget)]
+              if (key !== over) setOver(key)
+            }}
+            onDragLeave={(event) => {
+              if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setOver(null)
+            }}
+            onDrop={(event) => {
+              const info = dnd.drag.current
+              dnd.drag.current = null
+              setOver(null)
+              if (!info?.grabDay) return
+              event.preventDefault()
+              const delta = daysBetween(info.grabDay, days[columnAt(event, event.currentTarget)])
+              if (delta) dnd.move(info.id, (moving) => moveByDays(moving, delta))
+            }}
+          >
             {days.map((key, col) => {
               const { month: m, date } = splitKey(key)
               const isToday = key === today
               return (
-                <div key={key} style={{ gridColumn: col + 1, gridRow: '1 / -1' }} className={cn('relative min-w-0 border-r border-border last:border-r-0', m !== month && 'bg-muted/50')}>
+                <div key={key} style={{ gridColumn: col + 1, gridRow: '1 / -1' }} className={cn('relative min-w-0 border-r border-border last:border-r-0', m !== month && 'bg-muted/50', over === key && 'bg-brand-soft outline outline-1 -outline-offset-1 outline-brand')}>
                   <Link href={newEventHref(BASE, slotToRange(key, 9 * 60))} aria-label={`New event on ${dayLabel(key, true)}`} className="absolute inset-0 outline-none hover:bg-accent/60 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/50" />
                   <button
                     type="button"
@@ -237,6 +301,17 @@ function MonthView({ anchor, spans, today, colorBy, onOpenDay }: { anchor: DayKe
                   aria-label={describe(segment.span)}
                   title={describe(segment.span)}
                   style={{ gridColumn: `${segment.startCol + 1} / ${segment.endCol + 2}`, gridRow: segment.lane + 2 }}
+                  draggable
+                  onDragStart={(drag) => {
+                    const row = drag.currentTarget.closest('[data-week]') as HTMLElement
+                    drag.dataTransfer.effectAllowed = 'move'
+                    drag.dataTransfer.setData('text/plain', segment.span.event.id)
+                    dnd.drag.current = { id: segment.span.event.id, grabDay: days[columnAt(drag, row)] }
+                  }}
+                  onDragEnd={() => {
+                    dnd.drag.current = null
+                    setOver(null)
+                  }}
                   className={cn(chipClass(event, colorBy), 'relative z-10 mx-1 my-px', segment.continuesBefore && 'border-l-0', segment.continuesAfter && 'border-r-0')}
                 >
                   {timed ? <span className="shrink-0 text-muted-foreground">{timeLabel(segment.span.startMs)}</span> : null}
@@ -268,7 +343,7 @@ function MonthView({ anchor, spans, today, colorBy, onOpenDay }: { anchor: DayKe
 
 // ---- Week and day --------------------------------------------------------------------------------------------------
 
-function TimeGrid({ days, spans, today, colorBy, onOpenDay }: { days: DayKey[]; spans: Span[]; today: DayKey; colorBy: ColorBy; onOpenDay?: (key: DayKey) => void }) {
+function TimeGrid({ days, spans, today, colorBy, onOpenDay, dnd }: { days: DayKey[]; spans: Span[]; today: DayKey; colorBy: ColorBy; onOpenDay?: (key: DayKey) => void; dnd: Dnd }) {
   const router = useRouter()
   const scroller = useRef<HTMLDivElement>(null)
   const [now, setNow] = useState<number | null>(null)
@@ -335,6 +410,20 @@ function TimeGrid({ days, spans, today, colorBy, onOpenDay }: { days: DayKey[]; 
                 <div
                   key={key}
                   onClick={(event) => clickColumn(event, key)}
+                  onDragOver={(event) => {
+                    if (!dnd.drag.current) return
+                    event.preventDefault()
+                    event.dataTransfer.dropEffect = 'move'
+                  }}
+                  onDrop={(event) => {
+                    const info = dnd.drag.current
+                    dnd.drag.current = null
+                    if (!info) return
+                    event.preventDefault()
+                    const box = event.currentTarget.getBoundingClientRect()
+                    const minute = snapMinute(((event.clientY - box.top) / HOUR_PX) * 60 - (info.offsetMinutes ?? 0))
+                    dnd.move(info.id, (moving) => moveToSlot(moving, key, minute))
+                  }}
                   className={cn('relative cursor-cell border-l border-border', key === today && 'bg-brand-soft/40')}
                   style={{ height: 24 * HOUR_PX, backgroundImage: 'repeating-linear-gradient(to bottom, var(--border) 0, var(--border) 1px, transparent 1px, transparent 48px)' }}
                 >
@@ -346,6 +435,16 @@ function TimeGrid({ days, spans, today, colorBy, onOpenDay }: { days: DayKey[]; 
                         href={eventHref(event)}
                         aria-label={describe(item.span)}
                         title={describe(item.span)}
+                        draggable={item.span.firstDay === item.span.lastDay}
+                        onDragStart={(drag) => {
+                          const box = drag.currentTarget.getBoundingClientRect()
+                          drag.dataTransfer.effectAllowed = 'move'
+                          drag.dataTransfer.setData('text/plain', event.id)
+                          dnd.drag.current = { id: event.id, offsetMinutes: Math.max(0, ((drag.clientY - box.top) / HOUR_PX) * 60) }
+                        }}
+                        onDragEnd={() => {
+                          dnd.drag.current = null
+                        }}
                         style={{ top: (item.startMin / 60) * HOUR_PX, height: Math.max(18, ((item.endMin - item.startMin) / 60) * HOUR_PX - 2), left: `calc(${(item.column / item.columns) * 100}% + 1px)`, width: `calc(${100 / item.columns}% - 3px)` }}
                         className={cn(chipClass(event, colorBy), 'absolute z-10 flex-col items-start gap-0 overflow-hidden py-0.5 whitespace-normal')}
                       >
