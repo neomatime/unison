@@ -149,3 +149,7 @@ loaded mines to it by province, farm names, name and commodity; the full result 
 the directory. **14 probable, 10 possible, 1 none.** Nothing was changed in the database: these are for a person to confirm.
 Note that some directory entries are works (Vametco, Rhovan) or a prospect (Elandsfontein) rather than a mine, so a listing
 there is not the same as a listed mine.
+
+The account owner confirmed 11 of the second-pass matches (the ones whose directory entry is a mine) on 2026-11-15; they are
+marked like the others, so **119 of the 144 are listed**. The three works/prospect matches (Vametco, Rhovan, Elandsfontein)
+and the 10 weak ones were left unverified.
