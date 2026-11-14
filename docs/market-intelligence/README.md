@@ -90,3 +90,33 @@ CC BY 4.0 (https://www.geoboundaries.org). The credit is shown on the map. To re
 ```
 node docs/market-intelligence/tools/build-province-shapes.cjs <path-to-geojson> features/market-intelligence/province-shapes.ts
 ```
+
+## Research seed (loaded 2026-11-14)
+
+The first dataset on the map is a **research snapshot, not a verified 2026 inventory**. It was fetched with
+`unison_mining_seed/fetch_mining_seed.py` and converted with `docs/market-intelligence/tools/mining-seed-to-import.py`.
+
+* **Source:** Cole (2024), *Operating Mines and their Closure Risks 2021-2023*, DataFirst, DOI 10.25828/2c2f-s119
+  (stated CC BY), read from the ArcGIS layer *Operating Mines_Feb 2024* (last edited 2024-08-16). Every loaded row keeps
+  that source text, the ArcGIS id in `source_ref`, and **no verification date**, so the panel shows "Location on research
+  map; current operating status unverified" and the status "Unverified (2024 research snapshot)".
+* **Licence:** the original publication states CC BY, but the licence of the ArcGIS-hosted copy has not been confirmed.
+  Confirm it, and keep the attribution, before relying on this data commercially. Do **not** use Cole's Feb 2026 Mendeley
+  dataset: it is CC BY-NC (non-commercial).
+* **Province:** the source has none. It is worked out by testing each point against the geoBoundaries province polygons
+  and recorded in `source_ref`; points within 3 km of a border are flagged there for checking.
+* **Position:** the source publishes two coordinate sets per mine (the point geometry and Latitude/Longitude columns).
+  Where they differ by more than 5 km the mine is **not mapped** and is listed in `review/review_held_back.csv`.
+  Mapped points are marked `approximate`: they are research points, not surveyed entrances.
+* **Organisations:** one per distinct owner string, exactly as the source writes it. Nothing is merged by similarity.
+  Many owner strings name several companies ("Kumba, African Rainbow Minerals, Assmang") and some are spelling variants
+  of one another; `review/review_possible_same_company.csv` lists the likely pairs for a person to decide.
+* **D1-2026:** the DMPR Operating Mines page links to no downloadable D1-2026 file when checked (its link is the
+  placeholder `REPLACE-WITH-D1-2026-PDF-URL`), so names, operators and status could **not** be validated against it.
+  When the Excel is obtained, match it to these rows as candidates (name, province, commodity), have a person confirm
+  each, then re-import with a `verified_on` date and `operating_status` from the directory. Until then every row stays
+  unverified.
+
+Counts: 231 source records; 1 rejected by the fetch script (no usable coordinates); 230 staged; 85 held back because the
+source's two coordinate sets disagree by more than 5 km (`review/review_held_back.csv`); 145 mapped; 1 of those withdrawn
+as a data error (the last line of the held-back list); **144 loaded**, for **83 organisations**.

@@ -1,0 +1,87 @@
+﻿source_id,mine_name,owner,commodity,latitude,longitude,coordinate_sets_apart_km,reason
+cole_2024:37,Aviemore,Buffalo Coal,coal,-27.902916,29.92439,37.2,The source's two coordinate sets are 37 km apart; a person must decide which is the site.
+cole_2024:35,Ballengeich,Southern Coal,coal,-27.602157,30.135032,36.1,The source's two coordinate sets are 36 km apart; a person must decide which is the site.
+cole_2024:9,Beatrix No3 Shaft,Sibanye Stillwater,gold,-26.694111,27.940709,208.0,The source's two coordinate sets are 208 km apart; a person must decide which is the site.
+cole_2024:10,Beatrix No4 Shaft,Sibanye Stillwater,gold,-28.257287,26.783203,10.0,The source's two coordinate sets are 10 km apart; a person must decide which is the site.
+cole_2024:108,Belfast,Exxaro,coal,-26.13625,29.317149,75.0,The source's two coordinate sets are 75 km apart; a person must decide which is the site.
+cole_2024:133,Black Wattle,Bischi PLC,coal,-26.141568,29.480437,34.1,The source's two coordinate sets are 34 km apart; a person must decide which is the site.
+cole_2024:18,Blyvoor,Blyvoor Gold,gold,-26.384319,27.589956,25.0,The source's two coordinate sets are 25 km apart; a person must decide which is the site.
+cole_2024:122,Bosjesspruit,Sasol,coal,-26.46751,29.053644,18.0,The source's two coordinate sets are 18 km apart; a person must decide which is the site.
+cole_2024:25,Cooke surface,Sibanye-Stillwater,gold,-26.417881,27.663308,19.8,The source's two coordinate sets are 20 km apart; a person must decide which is the site.
+cole_2024:27,Cullinan,Petra Diamonds,diamonds,-26.217544,27.790894,94.3,The source's two coordinate sets are 94 km apart; a person must decide which is the site.
+cole_2024:41,Dama,Thutha Amalahle Transport and Construction,coal,-27.870069,30.12645,31.8,The source's two coordinate sets are 32 km apart; a person must decide which is the site.
+cole_2024:136,Delmas Colliery,Kuyasa,coal,-26.108683,29.230581,43.6,The source's two coordinate sets are 44 km apart; a person must decide which is the site.
+cole_2024:26,Doornkop,Harmony,gold,-26.253056,27.739444,6.5,The source's two coordinate sets are 6 km apart; a person must decide which is the site.
+cole_2024:106,Dorstfontein East,Overlooked Colliery,coal,-25.834028,29.987778,81.7,The source's two coordinate sets are 82 km apart; a person must decide which is the site.
+cole_2024:107,Dorstfontein West,Overlooked Colliery,coal,-26.139556,29.316305,9.5,The source's two coordinate sets are 9 km apart; a person must decide which is the site.
+cole_2024:19,Driefontein 1,Sibanye-Stillwater,gold,-26.428339,27.343786,14.9,The source's two coordinate sets are 15 km apart; a person must decide which is the site.
+cole_2024:22,Driefontein 8,Sibanye-Stillwater,gold,-26.419547,27.503822,7.1,The source's two coordinate sets are 7 km apart; a person must decide which is the site.
+cole_2024:145,Elandsfontein,Anker Coal,coal,-26.12513,29.109738,24.3,The source's two coordinate sets are 24 km apart; a person must decide which is the site.
+cole_2024:116,Elandspruit,Wescoal,coal,-25.790623,28.799088,58.7,The source's two coordinate sets are 59 km apart; a person must decide which is the site.
+cole_2024:127,Evander 8 Shaft,Pan African Resources,gold,-26.74915,29.346451,43.1,The source's two coordinate sets are 43 km apart; a person must decide which is the site.
+cole_2024:33,Fairbreeze,Tronox,titanium minerals,-28.304534,32.061643,84.7,The source's two coordinate sets are 85 km apart; a person must decide which is the site.
+cole_2024:137,Fentonia,Joe Singh Group,coal,-25.534684,29.765304,77.4,The source's two coordinate sets are 77 km apart; a person must decide which is the site.
+cole_2024:128,Forzando,Exxaro,coal,-26.577649,30.102459,65.7,The source's two coordinate sets are 66 km apart; a person must decide which is the site.
+cole_2024:114,Hakhano,Canyon Coal,coal,-25.80982,29.38474,27.4,The source's two coordinate sets are 27 km apart; a person must decide which is the site.
+cole_2024:123,Impumelelo,Sasol,coal,-26.409754,29.20106,19.9,The source's two coordinate sets are 20 km apart; a person must decide which is the site.
+cole_2024:138,Impunzi complex,Glencore,coal,-25.812313,29.402987,37.2,The source's two coordinate sets are 37 km apart; a person must decide which is the site.
+cole_2024:104,Isibonelo,Thungela,coal,-26.26345,29.12681,20.8,The source's two coordinate sets are 21 km apart; a person must decide which is the site.
+cole_2024:2,Joel,Harmony,gold,-27.444504,27.124435,97.4,The source's two coordinate sets are 97 km apart; a person must decide which is the site.
+cole_2024:146,Kangala,Universal Coal,coal,-25.694582,30.013851,145.4,The source's two coordinate sets are 145 km apart; a person must decide which is the site.
+cole_2024:29,Khanye,Canyon Coal,coal,-26.245636,28.569333,55.4,The source's two coordinate sets are 55 km apart; a person must decide which is the site.
+cole_2024:131,Kiepersol,Jindal Mining SA,coal,-25.835571,29.455337,181.7,The source's two coordinate sets are 182 km apart; a person must decide which is the site.
+cole_2024:40,Kliprand,Ikwezi,coal,-28.221458,31.672468,156.7,The source's two coordinate sets are 157 km apart; a person must decide which is the site.
+cole_2024:14,Kloof 1,Sibanye-Stillwater,gold,-26.436944,27.429722,17.1,The source's two coordinate sets are 17 km apart; a person must decide which is the site.
+cole_2024:16,Kloof 7,Sibanye-Stillwater,gold,-26.432089,27.621178,5.6,The source's two coordinate sets are 6 km apart; a person must decide which is the site.
+cole_2024:17,Kloof 8,Sibanye-Stillwater,gold,-26.445108,27.566997,7.1,The source's two coordinate sets are 7 km apart; a person must decide which is the site.
+cole_2024:11,Kopanang,Village Main Reef,gold,-28.185066,26.72214,133.7,The source's two coordinate sets are 134 km apart; a person must decide which is the site.
+cole_2024:103,Kriel,Seriti,coal,-26.435276,29.208912,24.4,The source's two coordinate sets are 24 km apart; a person must decide which is the site.
+cole_2024:23,Kusasalethu,Harmony,gold,-26.36305,27.469617,14.9,The source's two coordinate sets are 15 km apart; a person must decide which is the site.
+cole_2024:1,Lace,DiamondCorp,diamonds,-29.4152,24.99233,302.5,The source's two coordinate sets are 302 km apart; a person must decide which is the site.
+cole_2024:117,Leeuwpan,Overlooked Colliery,coal,-26.173803,28.843381,11.5,The source's two coordinate sets are 12 km apart; a person must decide which is the site.
+cole_2024:112,Mafube,Thungela,coal,-25.749662,29.650515,9.9,The source's two coordinate sets are 10 km apart; a person must decide which is the site.
+cole_2024:38,Magdalena,Buffalo Coal,coal,-28.090783,30.237598,9.4,The source's two coordinate sets are 9 km apart; a person must decide which is the site.
+cole_2024:139,Malahleni,Silver Unicorn,coal,-26.154833,28.836805,115.7,The source's two coordinate sets are 116 km apart; a person must decide which is the site.
+cole_2024:121,Manungu,Ichor Coal,coal,-26.581453,29.145008,59.9,The source's two coordinate sets are 60 km apart; a person must decide which is the site.
+cole_2024:3,Masimong 5 shaft,Harmony,gold,-28.276392,26.813437,34.3,The source's two coordinate sets are 34 km apart; a person must decide which is the site.
+cole_2024:105,Matla,Exxaro,coal,-26.223494,29.294597,17.3,The source's two coordinate sets are 17 km apart; a person must decide which is the site.
+cole_2024:147,Mbali,HCI / Hosken,coal,-26.237719,29.527991,43.6,The source's two coordinate sets are 44 km apart; a person must decide which is the site.
+cole_2024:140,Middelburg Complex,Izimbiwa Coal (Glencore),coal,-25.526449,28.776539,70.4,The source's two coordinate sets are 70 km apart; a person must decide which is the site.
+cole_2024:102,MMS South,Seriti,coal,-26.225785,29.136045,15.4,The source's two coordinate sets are 15 km apart; a person must decide which is the site.
+cole_2024:12,Moab Khotsong,Harmony,gold,-26.98305,26.7435,5.6,The source's two coordinate sets are 6 km apart; a person must decide which is the site.
+cole_2024:141,Moabsvelden,Wecoal,coal,-26.095267,28.897542,9.0,The source's two coordinate sets are 9 km apart; a person must decide which is the site.
+cole_2024:7,Mooikraal,"Sasol, Sigma/Whiphold",coal,-27.761782,26.640518,141.1,The source's two coordinate sets are 141 km apart; a person must decide which is the site.
+cole_2024:151,Mooiplaats,Coal of Africa,coal,-26.08727,29.1431,115.2,The source's two coordinate sets are 115 km apart; a person must decide which is the site.
+cole_2024:13,Mponeng,Harmony,gold,-26.986129,26.8,87.4,The source's two coordinate sets are 87 km apart; a person must decide which is the site.
+cole_2024:109,NCC Roodekop,Universal Coal,coal,-26.167872,29.863112,54.7,The source's two coordinate sets are 55 km apart; a person must decide which is the site.
+cole_2024:110,New Clydesdale,Universal Coal,coal,-25.794458,29.735704,56.5,The source's two coordinate sets are 57 km apart; a person must decide which is the site.
+cole_2024:129,New Denmark,Seriti,coal,-27.140952,30.553598,127.3,The source's two coordinate sets are 127 km apart; a person must decide which is the site.
+cole_2024:8,New Vaal,Seriti,coal,-26.942086,27.730793,34.6,The source's two coordinate sets are 35 km apart; a person must decide which is the site.
+cole_2024:134,Nndanganeni,Londani Coal,coal,-26.260831,28.827936,98.7,The source's two coordinate sets are 99 km apart; a person must decide which is the site.
+cole_2024:148,North Block Complex,Universal Coal,coal,-25.705416,29.739185,27.5,The source's two coordinate sets are 28 km apart; a person must decide which is the site.
+cole_2024:149,Overlooked,Overlooked Colliery,coal,-26.666033,30.102497,74.4,The source's two coordinate sets are 74 km apart; a person must decide which is the site.
+cole_2024:142,Palesa,Hosken,coal,-26.221656,28.850291,77.7,The source's two coordinate sets are 78 km apart; a person must decide which is the site.
+cole_2024:118,Phalanndwa,Canyon Coal,coal,-26.221656,28.850291,48.2,The source's two coordinate sets are 48 km apart; a person must decide which is the site.
+cole_2024:113,Rietvlei,Thungela,coal,-25.682194,29.723276,7.2,The source's two coordinate sets are 7 km apart; a person must decide which is the site.
+cole_2024:143,Rirhandzu,IchorCoal,coal,-25.907458,29.09259,28.6,The source's two coordinate sets are 29 km apart; a person must decide which is the site.
+cole_2024:132,Savmore-Maquasa,Kangra Coal,coal,-25.83214,29.693528,150.7,The source's two coordinate sets are 151 km apart; a person must decide which is the site.
+cole_2024:124,Shondoni,Sasol,coal,-26.463292,29.285711,23.1,The source's two coordinate sets are 23 km apart; a person must decide which is the site.
+cole_2024:115,Singani,Canyon Coal,coal,-26.173349,28.727998,113.5,The source's two coordinate sets are 114 km apart; a person must decide which is the site.
+cole_2024:32,Somkhele,Tendele Coal Mining,coal,-28.562532,32.351012,40.3,The source's two coordinate sets are 40 km apart; a person must decide which is the site.
+cole_2024:24,South Deep,Goldfields,gold,-26.453889,27.359167,30.5,The source's two coordinate sets are 31 km apart; a person must decide which is the site.
+cole_2024:125,Syferfontein,Sasol,coal,-26.453522,29.065393,14.4,The source's two coordinate sets are 14 km apart; a person must decide which is the site.
+cole_2024:6,Target 1,Harmony,gold,-27.900261,26.725494,17.5,The source's two coordinate sets are 18 km apart; a person must decide which is the site.
+cole_2024:227,Tormin,MRC,titanium minerals,-31.555036,18.088568,0.0,The point is outside every province boundary.
+cole_2024:4,Tshepong North,Harmony,gold,-27.973325,26.877733,20.2,The source's two coordinate sets are 20 km apart; a person must decide which is the site.
+cole_2024:126,Twistdraai Thubelisha,Sasol,coal,-26.286869,29.527687,31.1,The source's two coordinate sets are 31 km apart; a person must decide which is the site.
+cole_2024:120,Ubuntu,Universal Coal,coal,-26.562832,29.199815,51.5,The source's two coordinate sets are 51 km apart; a person must decide which is the site.
+cole_2024:144,Ubuntu,Universal Coal,coal,-26.190762,28.668496,18.5,The source's two coordinate sets are 18 km apart; a person must decide which is the site.
+cole_2024:34,Uitkomst,MCMining,coal,-28.99835,31.70248,218.3,The source's two coordinate sets are 218 km apart; a person must decide which is the site.
+cole_2024:28,Ukufisa,Canyon Coal,coal,-25.670241,28.510933,64.2,The source's two coordinate sets are 64 km apart; a person must decide which is the site.
+cole_2024:130,Usutu,Ichor Coal,coal,-27.022643,30.416541,58.5,The source's two coordinate sets are 58 km apart; a person must decide which is the site.
+cole_2024:119,Vanggatfontein,Wescoal,coal,-26.225642,28.692984,16.1,The source's two coordinate sets are 16 km apart; a person must decide which is the site.
+cole_2024:111,Welgemeend,Ichor Coal,coal,-25.666781,29.653379,59.5,The source's two coordinate sets are 60 km apart; a person must decide which is the site.
+cole_2024:150,Zonnebloem,Glencore,coal,-26.084187,29.29594,61.2,The source's two coordinate sets are 61 km apart; a person must decide which is the site.
+cole_2024:31,Zulti North,Richards Bay Minerals - Rio Tinto,titanium minerals,-25.790623,28.799088,467.4,The source's two coordinate sets are 467 km apart; a person must decide which is the site.
+cole_2024:39,Zululand Anthracite,Menar,coal,-28.17335,30.255949,138.9,The source's two coordinate sets are 139 km apart; a person must decide which is the site.
+cole_2024:231,Nkomati,met coal,domestic smelters,-25.778013,31.800561,,"Not loaded: the owner is ""met coal"" (not a company), the commodity is ""Domestic smelters"", and the point is identical to Afrimat's Nkomati Anthracite North."
