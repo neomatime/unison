@@ -175,3 +175,6 @@ On 2026-11-15 the account owner then asked for the 7 weak matches (Alexander Bay
 Shaft, Nchwaning, Bokone, Morula) to be marked as **listed**. They are, with `verified_on` set; Bakgatla Spud keeps "as a works".
 Their `source_ref` still records that the match was weak (an owner-name or company-entry match, and for Morula a chrome entry
 for a platinum mine), so the evidence behind each is visible. **136 listed, 8 unverified.**
+
+Crocodile River was marked on 2026-11-15 as listed under Barplats Mines (12158, owner Eastern Platinum, Brits), matched by owner and
+operator rather than by name. **137 listed, 7 unverified.**
