@@ -232,7 +232,7 @@ export async function savePhaseFourRecordAction(
       all_day: form.get("allDay") === "on",
       location,
       owner_id: identifier(form, "ownerId"),
-      project_id: identifier(form, "projectId"),
+      // The form no longer has a project field, so an event keeps whatever project it already has.
       client_id: identifier(form, "clientId"),
       onboarding_id: identifier(form, "onboardingId"),
       created_by: user.id,

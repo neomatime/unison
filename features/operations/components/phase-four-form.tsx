@@ -156,7 +156,6 @@ function Fields({ kind, record, options, defaults, teamsConnected }: { kind: Pha
     <Field name="endAt" label="Ends" type="datetime-local" required value={isoToLocalInput(value("endAt"))} />
     <OnlineMeeting connected={Boolean(teamsConnected)} joinUrl={safeJoinUrl(String(record?.teamsJoinUrl ?? ""))} location={value("location")} />
     <OptionSelect name="ownerId" label="Owner" options={options.members} value={value("ownerId")} optional />
-    <OptionSelect name="projectId" label="Project" options={options.projects} value={value("projectId")} optional />
     <OptionSelect name="clientId" label="Client" options={options.clients} value={value("clientId")} optional />
     <OptionSelect name="onboardingId" label="Onboarding" options={options.onboardings} value={value("onboardingId")} optional />
     <Select name="status" label="Status" options={["Tentative", "Confirmed", "Cancelled", "Complete"]} value={value("status", "Confirmed")} />
