@@ -15,6 +15,7 @@ export function TeamsConnectionCard({ status, organizer, canManage }: { status: 
   const headingId = useId()
   const [result, setResult] = useState<TeamsTestResult | null>(null)
   const [pending, start] = useTransition()
+  const partly = !status.connected && status.missing.length > 0 && status.missing.length < VARIABLES.length
 
   return (
     <section className="mt-5 overflow-hidden border border-border bg-card" aria-labelledby={headingId}>
@@ -23,7 +24,7 @@ export function TeamsConnectionCard({ status, organizer, canManage }: { status: 
           <Video className="size-5 text-brand" aria-hidden="true" />
           <h2 id={headingId} className="unison-section-title text-sm">Microsoft Teams</h2>
         </div>
-        <StatusDot status={status.connected ? 'Connected' : 'Not connected'} tone={status.connected ? 'positive' : 'attention'} />
+        <StatusDot status={status.connected ? 'Connected' : partly ? 'Needs attention' : 'Not connected'} tone={status.connected ? 'positive' : partly ? 'attention' : 'neutral'} />
       </header>
 
       <div className="space-y-4 p-5 text-sm">
