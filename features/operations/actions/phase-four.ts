@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { parseAttendees } from "@/features/calendar/attendees";
 import { invitationHtml, parseAgenda } from "@/features/calendar/description";
 import { localInputToIso, teamsLink } from "@/features/calendar/model";
 import { createTeamsMeeting, deleteTeamsMeeting, TeamsGraphError, TeamsNotConnectedError, updateTeamsMeeting } from "@/lib/integrations/microsoft-teams";
@@ -186,6 +187,7 @@ export async function savePhaseFourRecordAction(
     let location = optional(form, "location");
     let description = optional(form, "description");
     const agenda = parseAgenda(form.get("agenda"));
+    const attendees = parseAttendees(form.get("attendees"));
     const bodyHtml = invitationHtml(description, agenda);
     const teams: Record<string, unknown> = {};
     const online = form.get("onlineMeeting") === "on";
@@ -199,14 +201,14 @@ export async function savePhaseFourRecordAction(
         // Already has a meeting: keep it and keep its title and time in step.
         location = existing.teams_join_url;
         if (existing.teams_event_id) {
-          try { await updateTeamsMeeting(existing.teams_event_id, { subject: title, startIso: startAt, endIso: endAt, bodyHtml }); } catch (error) { console.error("Teams meeting update failed", error); }
+          try { await updateTeamsMeeting(existing.teams_event_id, { subject: title, startIso: startAt, endIso: endAt, bodyHtml, attendees }); } catch (error) { console.error("Teams meeting update failed", error); }
         }
       } else if (pasted) {
         // A Teams link that was typed into the location by hand: keep it, there is nothing to create.
         location = pasted;
       } else {
         try {
-          const meeting = await createTeamsMeeting({ subject: title, startIso: startAt, endIso: endAt, bodyHtml });
+          const meeting = await createTeamsMeeting({ subject: title, startIso: startAt, endIso: endAt, bodyHtml, attendees });
           createdTeamsEventId = meeting.eventId;
           teams.teams_join_url = meeting.joinUrl;
           teams.teams_event_id = meeting.eventId;
@@ -243,6 +245,7 @@ export async function savePhaseFourRecordAction(
       ...teams,
       // Written only when there is an agenda, or there was one to clear, so an event without one saves as it always did.
       ...(agenda.length || integer(form, "agendaWas") > 0 ? { agenda } : {}),
+      ...(attendees.length || integer(form, "attendeesWas") > 0 ? { attendees } : {}),
     };
   }
 

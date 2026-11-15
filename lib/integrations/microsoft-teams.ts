@@ -55,7 +55,7 @@ export async function createTeamsMeeting(input: TeamsMeetingInput): Promise<Team
 }
 
 /** Keeps the Teams event's title and time in step with an edited event. */
-export async function updateTeamsMeeting(eventId: string, input: Pick<TeamsMeetingInput, 'subject' | 'startIso' | 'endIso' | 'bodyHtml'>): Promise<void> {
+export async function updateTeamsMeeting(eventId: string, input: Pick<TeamsMeetingInput, 'subject' | 'startIso' | 'endIso' | 'bodyHtml' | 'attendees'>): Promise<void> {
   const user = organizer()
   await graph('PATCH', `/users/${user}/events/${encodeURIComponent(eventId)}`, buildTeamsEventUpdate(input))
 }

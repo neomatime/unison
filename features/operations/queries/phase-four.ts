@@ -2,6 +2,7 @@ import "server-only";
 
 import { getSessionContext } from "@/lib/auth/get-session-context";
 import { createServerSupabase } from "@/lib/supabase/server";
+import type { Person } from "@/features/calendar/attendees";
 import { isUuid } from "@/lib/utils";
 
 export type PhaseFourKind =
@@ -227,6 +228,7 @@ export async function listCalendarEvents(): Promise<PhaseFourRecord[]> {
       ? row.client_onboardings[0]?.client_name
       : row.client_onboardings?.client_name,
     agenda: Array.isArray(row.agenda) ? row.agenda : [],
+    attendees: Array.isArray(row.attendees) ? row.attendees : [],
     teamsJoinUrl: row.teams_join_url ?? null,
     teamsEventId: row.teams_event_id ?? null,
     status: row.status,
@@ -266,4 +268,21 @@ export async function getPhaseFourOptions() {
     clients: (clients.data ?? []).map((row: any) => ({ id: row.id, label: row.name })),
     onboardings: (onboardings.data ?? []).map((row: any) => ({ id: row.id, label: row.client_name })),
   } satisfies Record<string, SelectOption[]>;
+}
+
+/** The people an event can invite by name: active team members and the contacts of clients and leads, each with an email. */
+export async function getInvitablePeople(): Promise<Person[]> {
+  const { organization, db } = await context();
+  const [members, contacts] = await Promise.all([
+    db.from("team_members").select("full_name,email").eq("organization_id", organization.id).eq("status", "Active").is("archived_at", null).order("full_name"),
+    db.from("contacts").select("full_name,email,clients(name),leads(company_name)").eq("organization_id", organization.id).is("archived_at", null).not("email", "is", null).order("full_name"),
+  ]);
+  if (members.error) throw members.error;
+  // A contact list that cannot be read must not stop an event being written: people can still be typed in by email.
+  const contactRows = contacts.error ? [] : contacts.data ?? [];
+  const one = (value: any) => (Array.isArray(value) ? value[0] : value);
+  return [
+    ...(members.data ?? []).map((row: any) => ({ name: row.full_name, email: row.email, group: "Team" })),
+    ...contactRows.map((row: any) => ({ name: row.full_name, email: row.email, group: one(row.clients)?.name ?? one(row.leads)?.company_name ?? "Contact" })),
+  ].filter((person: Person) => person.email);
 }

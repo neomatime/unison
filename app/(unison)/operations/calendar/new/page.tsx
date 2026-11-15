@@ -1,6 +1,6 @@
 import { parseNewEventTimes, rowToCalendarEvent } from '@/features/calendar/model'
 import { PhaseFourForm } from '@/features/operations/components/phase-four-form'
-import { getPhaseFourOptions, listCalendarEvents } from '@/features/operations/queries/phase-four'
+import { getInvitablePeople, getPhaseFourOptions, listCalendarEvents } from '@/features/operations/queries/phase-four'
 import { getTeamsStatus } from '@/lib/integrations/microsoft-teams'
 import { isUuid } from '@/lib/utils'
 
@@ -17,7 +17,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ t
     eventType: params.eventType === 'Client Meeting' ? 'Client Meeting' : undefined,
     ...parseNewEventTimes({ start: clip(params.start, 16), end: clip(params.end, 16) }),
   }
-  const [options, rows] = await Promise.all([getPhaseFourOptions(), listCalendarEvents()])
+  const [options, rows, people] = await Promise.all([getPhaseFourOptions(), listCalendarEvents(), getInvitablePeople()])
   const scheduleEvents = rows.filter((row) => !row.archivedAt).map(rowToCalendarEvent)
-  return <PhaseFourForm kind="calendar-event" options={options} defaults={defaults} teamsConnected={getTeamsStatus().connected} scheduleEvents={scheduleEvents} />
+  return <PhaseFourForm kind="calendar-event" options={options} defaults={defaults} teamsConnected={getTeamsStatus().connected} scheduleEvents={scheduleEvents} people={people} />
 }

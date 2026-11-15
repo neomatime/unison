@@ -59,3 +59,15 @@ test('failure: the Exchange access policy 403 is told apart, anything else is ge
   // The messages never carry Graph's own text.
   assert.ok(!Object.values(TEAMS_FAILURE_MESSAGES).some((message) => /ErrorAccessDenied|RAOP|OData/.test(message)))
 })
+
+test('attendees: they go on the Graph event as required attendees, and an update can clear them', () => {
+  const people = [{ name: 'Thandi', email: 'thandi@example.com' }]
+  const times = { subject: 'Kick-off', startIso: '2026-11-16T10:00:00.000Z', endIso: '2026-11-16T11:00:00.000Z' }
+  const body = buildTeamsEventBody({ ...times, attendees: people })
+  assert.deepEqual(body.attendees, [{ emailAddress: { address: 'thandi@example.com', name: 'Thandi' }, type: 'required' }])
+  // No one invited: no attendees key at all, so no invitation goes out.
+  assert.ok(!('attendees' in buildTeamsEventBody({ ...times, attendees: [] })))
+  assert.ok(!('attendees' in buildTeamsEventUpdate(times)))
+  assert.deepEqual(buildTeamsEventUpdate({ ...times, attendees: [] }).attendees, [])
+  assert.equal(buildTeamsEventUpdate({ ...times, attendees: people }).attendees?.length, 1)
+})

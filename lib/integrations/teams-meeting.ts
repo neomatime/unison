@@ -15,7 +15,10 @@ export function teamsConnectionStatus(source: Record<string, string | undefined>
 }
 
 /** bodyHtml is the invitation text, already written as escaped HTML (features/calendar/description.ts). */
-export type TeamsMeetingInput = { subject: string; startIso: string; endIso: string; bodyHtml?: string | null }
+export type TeamsAttendee = { name: string; email: string }
+export type TeamsMeetingInput = { subject: string; startIso: string; endIso: string; bodyHtml?: string | null; /** Who Microsoft invites. Omitted on an update means the list is left as it is. */ attendees?: TeamsAttendee[] }
+
+const graphAttendees = (list: TeamsAttendee[]) => list.map((person) => ({ emailAddress: { address: person.email, name: person.name }, type: 'required' }))
 
 /** The Graph "create event" body that makes an event with a Teams meeting attached. Times go as UTC, which Graph reads
  *  without a timezone lookup. No attendees: the join link is shared by the person who creates the event. */
@@ -29,13 +32,21 @@ export function buildTeamsEventBody(input: TeamsMeetingInput) {
     isOnlineMeeting: true,
     onlineMeetingProvider: 'teamsForBusiness',
     allowNewTimeProposals: false,
+    ...(input.attendees?.length ? { attendees: graphAttendees(input.attendees) } : {}),
   }
 }
 
 /** The part of the body that changes when an event is edited later: title, time and, when given, the invitation text. */
-export function buildTeamsEventUpdate(input: Pick<TeamsMeetingInput, 'subject' | 'startIso' | 'endIso' | 'bodyHtml'>) {
+export function buildTeamsEventUpdate(input: Pick<TeamsMeetingInput, 'subject' | 'startIso' | 'endIso' | 'bodyHtml' | 'attendees'>) {
   const { subject, start, end, body } = buildTeamsEventBody(input)
-  return input.bodyHtml == null ? { subject, start, end } : { subject, start, end, body }
+  return {
+    subject,
+    start,
+    end,
+    ...(input.bodyHtml == null ? {} : { body }),
+    // An empty list is sent too: it removes everyone who was invited before.
+    ...(input.attendees ? { attendees: graphAttendees(input.attendees) } : {}),
+  }
 }
 
 export type TeamsMeeting = { eventId: string; joinUrl: string }
