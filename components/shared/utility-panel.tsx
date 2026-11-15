@@ -1,9 +1,10 @@
 'use client'
 
 import Link from 'next/link'
-import { Bell, BookOpen, CheckCircle2, ChevronRight, CircleHelp, Command, FileQuestion, LifeBuoy, LoaderCircle, Search, X } from 'lucide-react'
+import { Bell, BookOpen, CheckCircle2, ChevronRight, CircleHelp, Command, Download, FileQuestion, LifeBuoy, LoaderCircle, Search, X } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react'
 
+import { useInstallApp } from '@/components/layout/install-app'
 import { useShellContext } from '@/components/layout/shell-context'
 import { createBrowserSupabase } from '@/lib/supabase/client'
 import { groupNotifications } from '@/lib/ui/notification-groups'
@@ -34,6 +35,7 @@ export function UtilityPanel({ kind, open, onClose }: { kind: UtilityPanelKind; 
 }
 
 function HelpContent({ onClose }: { onClose: () => void }) {
+  const { canInstall, installed, install } = useInstallApp()
   return <div>
     <h3 className="mb-2 text-xs font-medium text-muted-foreground">Get help</h3>
     <ul className="divide-y divide-border/70 border border-border">
@@ -41,6 +43,17 @@ function HelpContent({ onClose }: { onClose: () => void }) {
       <li><ResourceLink href="/support/new" icon={<FileQuestion className="size-[1.125rem]" strokeWidth={1.75} />} title="Contact support" description="Create a support request" onClick={onClose} /></li>
       <li><ResourceLink href="/support" icon={<LifeBuoy className="size-[1.125rem]" strokeWidth={1.75} />} title="Your support tickets" description="Follow your open requests" onClick={onClose} /></li>
     </ul>
+    {installed ? null : <>
+      <h3 className="mt-6 mb-2 text-xs font-medium text-muted-foreground">Install UNISON as an app</h3>
+      <div className="border border-border p-4 text-sm">
+        <p className="text-muted-foreground">Open UNISON from its own icon, in its own window, without the browser around it.</p>
+        {canInstall ? <button type="button" onClick={() => void install()} className="mt-3 inline-flex h-9 items-center gap-2 bg-brand px-3 text-xs font-semibold text-white outline-none hover:bg-brand/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"><Download className="size-3.5" aria-hidden="true" />Install app</button> : <ul className="mt-3 list-disc space-y-1 pl-5 text-xs text-muted-foreground">
+          <li><span className="font-medium text-foreground">Chrome or Edge:</span> use the install icon at the right of the address bar, or the browser menu, then Install UNISON.</li>
+          <li><span className="font-medium text-foreground">Safari on iPhone or iPad:</span> tap Share, then Add to Home Screen.</li>
+          <li><span className="font-medium text-foreground">Safari on a Mac:</span> File, then Add to Dock.</li>
+        </ul>}
+      </div>
+    </>}
     <h3 className="mt-6 mb-2 text-xs font-medium text-muted-foreground">Keyboard shortcuts</h3>
     <dl className="divide-y divide-border/70 border border-border text-sm">
       <div className="flex items-center justify-between px-4 py-3"><dt className="text-foreground">Open search</dt><dd><kbd className="border border-border bg-muted px-1.5 py-0.5 font-mono text-xs text-muted-foreground">Ctrl / ⌘ K</kbd></dd></div>

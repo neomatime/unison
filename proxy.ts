@@ -114,5 +114,6 @@ function withRefreshedCookies(redirectResponse: NextResponse, response: NextResp
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|webp)$).*)'],
+  // The web app manifest is read by the browser without a session, so it must not be sent to sign-in (that would break Install app).
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|manifest\\.webmanifest|.*\\.(?:svg|png|jpg|jpeg|webp)$).*)'],
 }

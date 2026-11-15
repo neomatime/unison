@@ -1,7 +1,8 @@
 'use client'
 
-import { Bell, CircleHelp, Moon, Search, Sun } from 'lucide-react'
+import { Bell, CircleHelp, Download, Moon, Search, Sun } from 'lucide-react'
 
+import { useInstallApp } from '@/components/layout/install-app'
 import { useTheme } from '@/components/layout/theme'
 import { useUtilities } from '@/components/layout/utility-context'
 import { cn } from '@/lib/utils'
@@ -13,11 +14,24 @@ const iconButton =
 export function UtilityIcons({ withSearch, className }: { withSearch?: boolean; className?: string }) {
   const { open, unread } = useUtilities()
   const { theme, toggle } = useTheme()
+  const { canInstall, install } = useInstallApp()
   return (
     <div className={cn('flex items-center gap-1', className)}>
       {withSearch ? (
         <button type="button" aria-label="Search" title="Search" onClick={() => open('search')} className={iconButton}>
           <Search className="size-[1.125rem]" strokeWidth={1.75} />
+        </button>
+      ) : null}
+      {canInstall ? (
+        <button
+          type="button"
+          aria-label="Install UNISON as an app"
+          title="Install UNISON as an app on this computer"
+          onClick={() => void install()}
+          className="unison-action-control inline-flex h-10 items-center gap-2 px-3 text-sm font-medium text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+        >
+          <Download className="size-[1.125rem]" strokeWidth={1.75} aria-hidden="true" />
+          <span className="hidden xl:inline">Install app</span>
         </button>
       ) : null}
       <button
