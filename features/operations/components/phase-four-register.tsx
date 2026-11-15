@@ -103,7 +103,7 @@ function registerConfig(kind: Exclude<PhaseFourKind, "team-member" | "assignment
   return {
     category: "Operations", heading: "Calendar", plural: "Events", singular: "Event", action: "New Event", base: "/operations/calendar",
     description: "Coordinate persistent delivery, client and governance events.", registerDescription: "Tenant-scoped meetings, milestones and operational dates.", empty: "Schedule the first calendar event.",
-    records: rows.map((row) => ({ id: row.id, name: row.name, context: text(row.eventType), owner: text(row.owner), date: row.startAt ? new Date(String(row.startAt)).toLocaleDateString("en-ZA", { timeZone: CALENDAR_TIMEZONE }) : "—", time: row.startAt ? new Date(String(row.startAt)).toLocaleTimeString("en-ZA", { hour: "2-digit", minute: "2-digit", timeZone: CALENDAR_TIMEZONE }) : "—", location: text(row.location), project: text(row.project), status: row.status, updated: date(row.updatedAt) })),
-    columns: [{ id: "name", label: "Event" }, { id: "date", label: "Date" }, { id: "time", label: "Time" }, { id: "owner", label: "Owner" }, { id: "location", label: "Location" }, { id: "project", label: "Project" }, { id: "status", label: "Status" }],
+    records: rows.map((row) => ({ id: row.id, name: row.name, context: text(row.eventType), owner: text(row.owner), date: row.startAt ? new Date(String(row.startAt)).toLocaleDateString("en-ZA", { timeZone: CALENDAR_TIMEZONE }) : "—", time: row.startAt ? new Date(String(row.startAt)).toLocaleTimeString("en-ZA", { hour: "2-digit", minute: "2-digit", timeZone: CALENDAR_TIMEZONE }) : "—", location: text(row.location), status: row.status, updated: date(row.updatedAt) })),
+    columns: [{ id: "name", label: "Event" }, { id: "date", label: "Date" }, { id: "time", label: "Time" }, { id: "owner", label: "Owner" }, { id: "location", label: "Location" }, { id: "status", label: "Status" }],
   };
 }

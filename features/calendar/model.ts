@@ -497,3 +497,41 @@ export function rowToCalendarEvent(row: Record<string, unknown>): CalendarEvent 
     teamsJoinUrl: textOrNull(row.teamsJoinUrl),
   }
 }
+
+// ---- Dragging across slots, and resizing -----------------------------------------------------------------------------
+
+/** The minutes covered by dragging from one point to another (either way round), snapped to the step and at least one step long. */
+export function selectionRange(a: number, b: number, step = 15): { startMin: number; endMin: number } {
+  const lo = Math.max(0, Math.floor(Math.min(a, b) / step) * step)
+  const hi = Math.min(1440, Math.floor(Math.max(a, b) / step) * step + step)
+  return { startMin: Math.min(lo, 1440 - step), endMin: Math.max(hi, Math.min(lo, 1440 - step) + step) }
+}
+
+/** The moments for a day and a range of minutes. */
+export function timesForMinutes(key: DayKey, startMin: number, endMin: number): { startAt: string; endAt: string } {
+  const base = dayStartMs(mustDay(key))
+  return { startAt: new Date(base + startMin * MINUTE).toISOString(), endAt: new Date(base + endMin * MINUTE).toISOString() }
+}
+
+/** An event's minutes after one of its edges is dragged to a pointer position: snapped, never shorter than one step, and kept inside the day. */
+export function resizeMinutes(edge: 'start' | 'end', startMin: number, endMin: number, pointerMin: number, step = 15): { startMin: number; endMin: number } {
+  const snapped = Math.round(pointerMin / step) * step
+  return edge === 'end'
+    ? { startMin, endMin: Math.max(startMin + step, Math.min(1440, snapped)) }
+    : { startMin: Math.min(endMin - step, Math.max(0, snapped)), endMin }
+}
+
+// ---- Filters -------------------------------------------------------------------------------------------------------
+
+export type EventFilter = { owner: string; client: string }
+export const NO_FILTER: EventFilter = { owner: '', client: '' }
+
+/** The events for one owner and/or one client; an empty choice means everyone. */
+export function filterEvents(events: readonly CalendarEvent[], filter: EventFilter): CalendarEvent[] {
+  return events.filter((event) => (!filter.owner || event.owner === filter.owner) && (!filter.client || event.client === filter.client))
+}
+
+/** The owners (or clients) that appear on the events, alphabetically, for the filter's choices. */
+export function filterChoices(events: readonly CalendarEvent[], field: 'owner' | 'client'): string[] {
+  return [...new Set(events.map((event) => event[field]).filter((value): value is string => Boolean(value)))].sort((a, b) => a.localeCompare(b))
+}

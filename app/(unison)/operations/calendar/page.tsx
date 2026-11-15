@@ -5,10 +5,11 @@ import { PhaseFourRegister } from '@/features/operations/components/phase-four-r
 import { listCalendarEvents } from '@/features/operations/queries/phase-four'
 import { getTeamsStatus } from '@/lib/integrations/microsoft-teams'
 
-export default async function Page({ searchParams }: { searchParams: Promise<{ view?: string; date?: string }> }) {
+export default async function Page({ searchParams }: { searchParams: Promise<{ view?: string; date?: string; owner?: string; client?: string }> }) {
   const rows = await listCalendarEvents()
   const now = Date.now()
-  const { view, date } = parseCalendarParams(await searchParams, now)
+  const params = await searchParams
+  const { view, date } = parseCalendarParams(params, now)
   const events: CalendarEvent[] = rows.filter((row) => !row.archivedAt).map(rowToCalendarEvent)
   return (
     <>
@@ -18,6 +19,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ v
         initialView={view}
         initialDate={date}
         today={todayKey(now)}
+        initialOwner={typeof params.owner === 'string' ? params.owner.slice(0, 120) : ''}
+        initialClient={typeof params.client === 'string' ? params.client.slice(0, 120) : ''}
         teamsConnected={getTeamsStatus().connected}
         listPanel={<PhaseFourRegister kind="calendar-event" slim hideHeader rows={rows} />}
       />

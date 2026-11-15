@@ -3,7 +3,7 @@
 import { ChevronLeft, ChevronRight, Plus, Video } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type DragEvent, type MouseEvent, type MutableRefObject, type ReactNode } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type DragEvent, type MouseEvent, type MutableRefObject, type PointerEvent, type ReactNode } from 'react'
 
 import { Dropdown } from '@/components/ui/select'
 import { StatusDot } from '@/components/ui/status-dot'
@@ -16,7 +16,10 @@ import {
   dayLabel,
   daysBetween,
   eventTone,
+  filterChoices,
+  filterEvents,
   groupAgenda,
+  isoToLocalInput,
   joinUrlOf,
   layoutDay,
   layoutWeek,
@@ -26,13 +29,16 @@ import {
   moveByDays,
   moveToSlot,
   newEventHref,
+  resizeMinutes,
   safeJoinUrl,
+  selectionRange,
   slotToRange,
   snapMinute,
   spansInRange,
   splitKey,
   stepAnchor,
   timeLabel,
+  timesForMinutes,
   viewRange,
   viewTitle,
   weekDays,
@@ -72,6 +78,15 @@ const BAR: Record<EventTone, string> = {
 type DragInfo = { id: string; grabDay?: DayKey; offsetMinutes?: number }
 type Dnd = { drag: MutableRefObject<DragInfo | null>; move: (id: string, build: (event: CalendarEvent) => { startAt: string; endAt: string }) => void }
 
+/** Keeps a drag's pointer events on the element that started it, even when the pointer leaves it. Not being able to is harmless. */
+function capture(element: HTMLElement, pointerId: number) {
+  try {
+    element.setPointerCapture(pointerId)
+  } catch {
+    // The pointer is already gone.
+  }
+}
+
 const phoneQuery = '(max-width: 639px)'
 function usePhone() {
   return useSyncExternalStore(
@@ -91,15 +106,20 @@ type Props = {
   initialDate: DayKey
   /** Today on the Johannesburg calendar, worked out on the server so the first paint matches. */
   today: DayKey
+  /** Owner and client the page was opened filtered to, from the address. */
+  initialOwner?: string
+  initialClient?: string
   teamsConnected: boolean
   /** The existing register, kept as the List view with its import, export and archive features. */
   listPanel: ReactNode
 }
 
-export function CalendarWorkspace({ events: saved, initialView, initialDate, today, teamsConnected, listPanel }: Props) {
+export function CalendarWorkspace({ events: saved, initialView, initialDate, today, initialOwner = '', initialClient = '', teamsConnected, listPanel }: Props) {
   const [view, setView] = useState<CalendarView>(initialView)
   const [anchor, setAnchor] = useState<DayKey>(initialDate)
   const [colorBy, setColorBy] = useState<ColorBy>('status')
+  const [owner, setOwner] = useState(initialOwner)
+  const [client, setClient] = useState(initialClient)
   const phone = usePhone()
   const router = useRouter()
   // A moved event shows in its new place at once; if saving fails it goes back.
@@ -126,19 +146,34 @@ export function CalendarWorkspace({ events: saved, initialView, initialDate, tod
   }
   const dnd: Dnd = { drag, move }
 
+  function writeUrl(patch: Record<string, string>) {
+    const url = new URL(window.location.href)
+    for (const [name, value] of Object.entries(patch)) {
+      if (value) url.searchParams.set(name, value)
+      else url.searchParams.delete(name)
+    }
+    window.history.replaceState(null, '', url)
+  }
+
   function go(nextView: CalendarView, nextAnchor: DayKey) {
     setView(nextView)
     setAnchor(nextAnchor)
-    const url = new URL(window.location.href)
-    url.searchParams.set('view', nextView)
-    url.searchParams.set('date', nextAnchor)
-    window.history.replaceState(null, '', url)
+    writeUrl({ view: nextView, date: nextAnchor })
+  }
+
+  function pick(field: 'owner' | 'client', value: string) {
+    if (field === 'owner') setOwner(value)
+    else setClient(value)
+    writeUrl({ [field]: value })
   }
 
   // On a phone the month and week grids are too small to read, so they show as an agenda over the same days.
   const showing: CalendarView = phone && (view === 'month' || view === 'week') ? 'agenda' : view
   const range = viewRange(showing === 'agenda' && view !== 'agenda' ? view : showing, anchor)
-  const spans = spansInRange(events, range)
+  const owners = filterChoices(events, 'owner')
+  const clients = filterChoices(events, 'client')
+  const filter = { owner: owners.includes(owner) ? owner : '', client: clients.includes(client) ? client : '' }
+  const spans = spansInRange(filterEvents(events, filter), range)
 
   return (
     <div>
@@ -173,6 +208,25 @@ export function CalendarWorkspace({ events: saved, initialView, initialDate, tod
                 <option value="type">Type</option>
               </Dropdown>
             </label>
+          )}
+          {view === 'list' ? null : (
+            <>
+              <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                Owner
+                <Dropdown value={filter.owner} onChange={(event) => pick('owner', event.target.value)} className="h-9 w-36 text-sm">
+                  <option value="">All owners</option>
+                  {owners.map((name) => <option key={name} value={name}>{name}</option>)}
+                </Dropdown>
+              </label>
+              <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                Client
+                <Dropdown value={filter.client} onChange={(event) => pick('client', event.target.value)} className="h-9 w-40 text-sm">
+                  <option value="">All clients</option>
+                  {clients.map((name) => <option key={name} value={name}>{name}</option>)}
+                </Dropdown>
+              </label>
+              {filter.owner || filter.client ? <button type="button" onClick={() => { pick('owner', ''); pick('client', '') }} className="h-9 px-2 text-xs font-medium text-brand underline">Clear filters</button> : null}
+            </>
           )}
           <span title={teamsConnected ? 'Events can be created with a Microsoft Teams meeting.' : 'Microsoft Teams is not connected, so events cannot be given a meeting link yet.'} className="inline-flex h-9 items-center gap-2 border border-border px-3 text-xs text-muted-foreground">
             <Video aria-hidden="true" className="size-3.5" />
@@ -357,6 +411,11 @@ function TimeGrid({ days, spans, today, colorBy, onOpenDay, dnd }: { days: DayKe
   const router = useRouter()
   const scroller = useRef<HTMLDivElement>(null)
   const [now, setNow] = useState<number | null>(null)
+  // Dragging across empty time to make an event, and dragging an event's edge to change its length.
+  const [sel, setSel] = useState<{ key: DayKey; a: number; b: number } | null>(null)
+  const [resize, setResize] = useState<{ id: string; key: DayKey; origStart: number; origEnd: number; startMin: number; endMin: number } | null>(null)
+  const pointer = useRef({ moved: false, y: 0, suppressClick: false })
+  const minuteAt = (el: HTMLElement, clientY: number) => ((clientY - el.getBoundingClientRect().top) / HOUR_PX) * 60
   const single = days.length === 1
   const columns = `56px repeat(${days.length}, minmax(0, 1fr))`
 
@@ -419,7 +478,37 @@ function TimeGrid({ days, spans, today, colorBy, onOpenDay, dnd }: { days: DayKe
               return (
                 <div
                   key={key}
-                  onClick={(event) => clickColumn(event, key)}
+                  data-column=""
+                  onPointerDown={(event) => {
+                    if (event.button !== 0 || event.pointerType === 'touch' || (event.target as HTMLElement).closest('a, [data-handle]')) return
+                    const minute = minuteAt(event.currentTarget, event.clientY)
+                    pointer.current = { moved: false, y: event.clientY, suppressClick: false }
+                    capture(event.currentTarget, event.pointerId)
+                    setSel({ key, a: minute, b: minute })
+                  }}
+                  onPointerMove={(event) => {
+                    if (!sel || sel.key !== key) return
+                    if (Math.abs(event.clientY - pointer.current.y) > 6) pointer.current.moved = true
+                    setSel({ ...sel, b: minuteAt(event.currentTarget, event.clientY) })
+                  }}
+                  onPointerUp={() => {
+                    if (!sel || sel.key !== key) return
+                    const done = sel
+                    setSel(null)
+                    if (!pointer.current.moved) return
+                    pointer.current.suppressClick = true
+                    const { startMin, endMin } = selectionRange(done.a, done.b)
+                    const times = timesForMinutes(key, startMin, endMin)
+                    router.push(newEventHref(BASE, { start: isoToLocalInput(times.startAt), end: isoToLocalInput(times.endAt) }))
+                  }}
+                  onPointerCancel={() => setSel(null)}
+                  onClick={(event) => {
+                    if (pointer.current.suppressClick) {
+                      pointer.current.suppressClick = false
+                      return
+                    }
+                    clickColumn(event, key)
+                  }}
                   onDragOver={(event) => {
                     if (!dnd.drag.current) return
                     event.preventDefault()
@@ -434,36 +523,79 @@ function TimeGrid({ days, spans, today, colorBy, onOpenDay, dnd }: { days: DayKe
                     const minute = snapMinute(((event.clientY - box.top) / HOUR_PX) * 60 - (info.offsetMinutes ?? 0))
                     dnd.move(info.id, (moving) => moveToSlot(moving, key, minute))
                   }}
-                  className={cn('relative cursor-cell border-l border-border', key === today && 'bg-brand-soft/40')}
+                  className={cn('relative cursor-cell border-l border-border select-none', key === today && 'bg-brand-soft/40')}
                   style={{ height: 24 * HOUR_PX, backgroundImage: 'repeating-linear-gradient(to bottom, var(--border) 0, var(--border) 1px, transparent 1px, transparent 48px)' }}
                 >
                   {timed.map((item) => {
                     const { event } = item.span
+                    const editable = item.span.firstDay === item.span.lastDay
+                    const live = resize && resize.id === event.id && resize.key === key ? resize : null
+                    const startMin = live ? live.startMin : item.startMin
+                    const endMin = live ? live.endMin : item.endMin
+                    const handle = (side: 'start' | 'end') => ({
+                      onPointerDown: (down: PointerEvent<HTMLElement>) => {
+                        down.preventDefault()
+                        down.stopPropagation()
+                        capture(down.currentTarget, down.pointerId)
+                        setResize({ id: event.id, key, origStart: item.startMin, origEnd: item.endMin, startMin: item.startMin, endMin: item.endMin })
+                      },
+                      onPointerMove: (move: PointerEvent<HTMLElement>) => {
+                        if (!resize || resize.id !== event.id) return
+                        const column = move.currentTarget.closest('[data-column]') as HTMLElement
+                        setResize({ ...resize, ...resizeMinutes(side, resize.origStart, resize.origEnd, minuteAt(column, move.clientY)) })
+                      },
+                      onPointerUp: () => {
+                        if (!resize || resize.id !== event.id) return
+                        const done = resize
+                        setResize(null)
+                        if (done.startMin === done.origStart && done.endMin === done.origEnd) return
+                        dnd.move(event.id, () => timesForMinutes(key, done.startMin, done.endMin))
+                      },
+                      onPointerCancel: () => setResize(null),
+                    })
                     return (
-                      <Link
+                      <div
                         key={`${event.id}-${item.startMin}`}
-                        href={eventHref(event)}
-                        aria-label={describe(item.span)}
-                        title={describe(item.span)}
-                        draggable={item.span.firstDay === item.span.lastDay}
-                        onDragStart={(drag) => {
-                          const box = drag.currentTarget.getBoundingClientRect()
-                          drag.dataTransfer.effectAllowed = 'move'
-                          drag.dataTransfer.setData('text/plain', event.id)
-                          dnd.drag.current = { id: event.id, offsetMinutes: Math.max(0, ((drag.clientY - box.top) / HOUR_PX) * 60) }
-                        }}
-                        onDragEnd={() => {
-                          dnd.drag.current = null
-                        }}
-                        style={{ top: (item.startMin / 60) * HOUR_PX, height: Math.max(18, ((item.endMin - item.startMin) / 60) * HOUR_PX - 2), left: `calc(${(item.column / item.columns) * 100}% + 1px)`, width: `calc(${100 / item.columns}% - 3px)` }}
-                        className={cn(chipClass(event, colorBy), 'absolute z-10 flex-col items-start gap-0 overflow-hidden py-0.5 whitespace-normal')}
+                        style={{ top: (startMin / 60) * HOUR_PX, height: Math.max(18, ((endMin - startMin) / 60) * HOUR_PX - 2), left: `calc(${(item.column / item.columns) * 100}% + 1px)`, width: `calc(${100 / item.columns}% - 3px)` }}
+                        className={cn('absolute z-10', live && 'z-30')}
                       >
-                        <span className="w-full truncate font-medium">{event.title}</span>
-                        <span className="w-full truncate text-[11px] text-muted-foreground">{timeLabel(item.span.startMs)}–{timeLabel(item.span.endMs)}</span>
-                        {joinUrlOf(event) ? <Video aria-label="Teams meeting" className="size-3 text-brand" /> : null}
-                      </Link>
+                        <Link
+                          href={eventHref(event)}
+                          aria-label={describe(item.span)}
+                          title={describe(item.span)}
+                          draggable={editable && !live}
+                          onDragStart={(drag) => {
+                            const box = drag.currentTarget.getBoundingClientRect()
+                            drag.dataTransfer.effectAllowed = 'move'
+                            drag.dataTransfer.setData('text/plain', event.id)
+                            dnd.drag.current = { id: event.id, offsetMinutes: Math.max(0, ((drag.clientY - box.top) / HOUR_PX) * 60) }
+                          }}
+                          onDragEnd={() => {
+                            dnd.drag.current = null
+                          }}
+                          className={cn(chipClass(event, colorBy), 'absolute inset-0 flex-col items-start gap-0 overflow-hidden py-0.5 whitespace-normal')}
+                        >
+                          <span className="w-full truncate font-medium">{event.title}</span>
+                          <span className="w-full truncate text-[11px] text-muted-foreground">{minutesLabel(startMin)}–{minutesLabel(endMin)}</span>
+                          {joinUrlOf(event) ? <Video aria-label="Teams meeting" className="size-3 text-brand" /> : null}
+                        </Link>
+                        {editable ? (
+                          <>
+                            <div data-handle="" aria-hidden="true" title="Drag to change the start" className="absolute inset-x-0 top-0 z-20 h-1.5 cursor-ns-resize touch-none hover:bg-foreground/25" {...handle('start')} />
+                            <div data-handle="" aria-hidden="true" title="Drag to change the end" className="absolute inset-x-0 bottom-0 z-20 h-1.5 cursor-ns-resize touch-none hover:bg-foreground/25" {...handle('end')} />
+                          </>
+                        ) : null}
+                      </div>
                     )
                   })}
+                  {sel && sel.key === key && pointer.current.moved ? (() => {
+                    const range = selectionRange(sel.a, sel.b)
+                    return (
+                      <div aria-hidden="true" style={{ top: (range.startMin / 60) * HOUR_PX, height: ((range.endMin - range.startMin) / 60) * HOUR_PX - 1 }} className="pointer-events-none absolute right-0.5 left-0.5 z-30 border border-dashed border-brand bg-brand-soft/80 px-1.5 text-[11px] text-brand">
+                        {minutesLabel(range.startMin)}–{minutesLabel(range.endMin)}
+                      </div>
+                    )
+                  })() : null}
                   {key === today && nowMinutes !== null ? <div aria-hidden="true" style={{ top: (nowMinutes / 60) * HOUR_PX }} className="pointer-events-none absolute right-0 left-0 z-20 h-px bg-danger"><span className="absolute -top-[3px] -left-1 size-[7px] rounded-full bg-danger" /></div> : null}
                 </div>
               )

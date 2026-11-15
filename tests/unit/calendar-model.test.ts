@@ -309,3 +309,40 @@ test('form times: the end follows the start and keeps the length', async () => {
   assert.deepEqual(at('2026-11-18T09:00:00Z', '2026-11-18T10:00:00Z'), [])
   assert.deepEqual(findClashes(events, '2026-11-18T07:30:00Z', '2026-11-18T08:30:00Z', 'a').map((event) => event.id), ['b'])
 })
+
+test('selection: dragging either way gives a snapped range of at least one step, inside the day', async () => {
+  const { selectionRange, timesForMinutes, resizeMinutes } = await import('../../features/calendar/model.ts')
+  assert.deepEqual(selectionRange(9 * 60 + 5, 10 * 60 + 40), { startMin: 540, endMin: 645 })
+  assert.deepEqual(selectionRange(10 * 60 + 40, 9 * 60 + 5), { startMin: 540, endMin: 645 })
+  assert.deepEqual(selectionRange(600, 600), { startMin: 600, endMin: 615 })
+  assert.deepEqual(selectionRange(-30, 20), { startMin: 0, endMin: 30 })
+  assert.deepEqual(selectionRange(1430, 2000), { startMin: 1425, endMin: 1440 })
+  // 09:00-10:15 SAST on the 18th is 07:00-08:15Z.
+  assert.deepEqual(timesForMinutes('2026-11-18', 540, 615), { startAt: '2026-11-18T07:00:00.000Z', endAt: '2026-11-18T08:15:00.000Z' })
+})
+
+test('resize: an edge follows the pointer, snapped, and never crosses the other edge', async () => {
+  const { resizeMinutes } = await import('../../features/calendar/model.ts')
+  assert.deepEqual(resizeMinutes('end', 540, 600, 667), { startMin: 540, endMin: 660 })
+  assert.deepEqual(resizeMinutes('end', 540, 600, 500), { startMin: 540, endMin: 555 })
+  assert.deepEqual(resizeMinutes('end', 540, 600, 5000), { startMin: 540, endMin: 1440 })
+  assert.deepEqual(resizeMinutes('start', 540, 600, 500), { startMin: 495, endMin: 600 })
+  assert.deepEqual(resizeMinutes('start', 540, 600, 700), { startMin: 585, endMin: 600 })
+  assert.deepEqual(resizeMinutes('start', 540, 600, -50), { startMin: 0, endMin: 600 })
+})
+
+test('filters: by owner and client, with an empty choice meaning everyone, and choices come from the events', async () => {
+  const { filterEvents, filterChoices, NO_FILTER } = await import('../../features/calendar/model.ts')
+  const base = { eventType: 'Internal', startAt: '2026-11-18T07:00:00Z', endAt: '2026-11-18T08:00:00Z', allDay: false, status: 'Confirmed' }
+  const events = [
+    { ...base, id: '1', title: 'A', owner: 'Neo', client: 'Kopano Ridge' },
+    { ...base, id: '2', title: 'B', owner: 'Thandi', client: 'Kopano Ridge' },
+    { ...base, id: '3', title: 'C', owner: 'Neo', client: null },
+  ]
+  assert.equal(filterEvents(events, NO_FILTER).length, 3)
+  assert.deepEqual(filterEvents(events, { owner: 'Neo', client: '' }).map((e) => e.id), ['1', '3'])
+  assert.deepEqual(filterEvents(events, { owner: 'Neo', client: 'Kopano Ridge' }).map((e) => e.id), ['1'])
+  assert.deepEqual(filterEvents(events, { owner: '', client: 'Nobody' }), [])
+  assert.deepEqual(filterChoices(events, 'owner'), ['Neo', 'Thandi'])
+  assert.deepEqual(filterChoices(events, 'client'), ['Kopano Ridge'])
+})
