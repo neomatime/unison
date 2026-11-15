@@ -109,12 +109,11 @@ type Props = {
   /** Owner and client the page was opened filtered to, from the address. */
   initialOwner?: string
   initialClient?: string
-  teamsConnected: boolean
   /** The existing register, kept as the List view with its import, export and archive features. */
   listPanel: ReactNode
 }
 
-export function CalendarWorkspace({ events: saved, initialView, initialDate, today, initialOwner = '', initialClient = '', teamsConnected, listPanel }: Props) {
+export function CalendarWorkspace({ events: saved, initialView, initialDate, today, initialOwner = '', initialClient = '', listPanel }: Props) {
   const [view, setView] = useState<CalendarView>(initialView)
   const [anchor, setAnchor] = useState<DayKey>(initialDate)
   const [colorBy, setColorBy] = useState<ColorBy>('status')
@@ -228,10 +227,6 @@ export function CalendarWorkspace({ events: saved, initialView, initialDate, tod
               {filter.owner || filter.client ? <button type="button" onClick={() => { pick('owner', ''); pick('client', '') }} className="h-9 px-2 text-xs font-medium text-brand underline">Clear filters</button> : null}
             </>
           )}
-          <span title={teamsConnected ? 'Events can be created with a Microsoft Teams meeting.' : 'Microsoft Teams is not connected, so events cannot be given a meeting link yet.'} className="inline-flex h-9 items-center gap-2 border border-border px-3 text-xs text-muted-foreground">
-            <Video aria-hidden="true" className="size-3.5" />
-            Teams {teamsConnected ? 'connected' : 'not connected'}
-          </span>
           {view === 'list' ? null : (
             <Link href={newEventHref(BASE, slotToRange(view === 'day' ? anchor : today, 9 * 60))} className="inline-flex h-9 items-center gap-2 bg-brand px-4 text-sm font-medium text-white outline-none hover:bg-brand/90 focus-visible:ring-2 focus-visible:ring-ring/50">
               <Plus aria-hidden="true" className="size-4" />New Event

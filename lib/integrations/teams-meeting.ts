@@ -69,17 +69,39 @@ export function withJoinLink(description: string | null | undefined, joinUrl: st
   return text ? `${text}\n\n${line}` : line
 }
 
-export type GraphFailure = 'access-policy' | 'other'
+export type GraphFailure = 'access-policy' | 'permission' | 'mailbox' | 'other'
 
-/** Why Graph refused. Exchange's application access policy answers 403 ErrorAccessDenied with "AppOnly AccessPolicy" in
- *  the message; that one an administrator can fix, so it is told apart from every other failure. */
+/** Why Graph refused. Exchange's application access policy answers 403 ErrorAccessDenied with "AppOnly AccessPolicy" in the
+ *  message; any other 403 is a missing or unconsented permission; 404 is a mailbox that does not exist. Each of these an
+ *  administrator can fix, so they are told apart from every other failure. */
 export function classifyGraphFailure(status: number, body: string): GraphFailure {
-  return status === 403 && /AccessPolicy|RAOP/i.test(body) ? 'access-policy' : 'other'
+  if (status === 403) return /AccessPolicy|RAOP/i.test(body) ? 'access-policy' : 'permission'
+  if (status === 404) return 'mailbox'
+  return 'other'
 }
 
-/** What the form says for each failure. Never Graph's own text, which can carry identifiers. */
+const POLICY = 'Microsoft Exchange is blocking the app (access policy). An administrator should check the application access policy for the organiser mailbox: see docs/calendar/teams-setup.md.'
+const PERMISSION = 'Microsoft refused the app access to calendars. An administrator should check that Calendars.ReadWrite is added as an application permission and has admin consent.'
+const MAILBOX = 'The organiser mailbox was not found. Check that TEAMS_ORGANIZER_UPN is a licensed user in the Microsoft 365 tenant.'
+
+/** What the event form says when a meeting could not be created. Never Graph's own text, which can carry identifiers. */
 export const TEAMS_FAILURE_MESSAGES: Record<GraphFailure, string> = {
-  'access-policy':
-    'Microsoft Exchange is blocking the app (access policy). An administrator should check the application access policy for the organiser mailbox: see docs/calendar/teams-setup.md. The event was not saved.',
+  'access-policy': `${POLICY} The event was not saved.`,
+  permission: `${PERMISSION} The event was not saved.`,
+  mailbox: `${MAILBOX} The event was not saved.`,
   other: 'The Teams meeting could not be created, so the event was not saved. Try again, or turn off Online meeting to save it without one.',
 }
+
+export type TeamsTestReason = GraphFailure | 'token' | 'not-configured'
+
+/** What the Settings "Test connection" button says for each way the test can fail. */
+export const TEAMS_TEST_MESSAGES: Record<TeamsTestReason, string> = {
+  'not-configured': 'Teams is not connected: some settings are missing (listed above).',
+  token: 'Microsoft would not sign the app in. Check GRAPH_TENANT_ID and GRAPH_CLIENT_ID, and that GRAPH_CLIENT_SECRET is current (secrets expire).',
+  'access-policy': POLICY,
+  permission: PERMISSION,
+  mailbox: MAILBOX,
+  other: 'Microsoft Graph could not be reached or answered with an error. Try again; the server log has the detail.',
+}
+
+export type TeamsTestResult = { ok: true; message: string } | { ok: false; reason: TeamsTestReason; message: string }

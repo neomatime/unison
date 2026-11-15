@@ -2,8 +2,10 @@
 
 import { revalidatePath } from 'next/cache'
 
+import { getPlatformAutomationAccess } from '@/features/platform-automation/queries'
 import { getSessionContext } from '@/lib/auth/get-session-context'
-import { updateTeamsMeeting } from '@/lib/integrations/microsoft-teams'
+import { testTeamsConnection, updateTeamsMeeting } from '@/lib/integrations/microsoft-teams'
+import type { TeamsTestResult } from '@/lib/integrations/teams-meeting'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { isUuid } from '@/lib/utils'
 
@@ -36,4 +38,10 @@ export async function rescheduleEventAction(id: string, startAt: string, endAt: 
   }
   revalidatePath('/operations/calendar')
   return { ok: true }
+}
+
+/** Settings > Integrations > Microsoft Teams > Test connection. Owners and admins only; it reads the organiser's calendar and creates nothing. */
+export async function testTeamsConnectionAction(): Promise<TeamsTestResult> {
+  if (!(await getPlatformAutomationAccess()).canManage) return { ok: false, reason: 'other', message: 'Only an owner or an admin can test the connection.' }
+  return testTeamsConnection()
 }

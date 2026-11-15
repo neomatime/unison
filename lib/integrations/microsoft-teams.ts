@@ -1,6 +1,6 @@
 import 'server-only'
 import { getGraphAccessToken } from '@/lib/email/graph'
-import { buildTeamsEventBody, classifyGraphFailure, type GraphFailure, buildTeamsEventUpdate, readTeamsMeeting, teamsConnectionStatus, type TeamsMeeting, type TeamsMeetingInput, type TeamsStatus } from './teams-meeting'
+import { buildTeamsEventBody, classifyGraphFailure, TEAMS_TEST_MESSAGES, type GraphFailure, type TeamsTestResult, buildTeamsEventUpdate, readTeamsMeeting, teamsConnectionStatus, type TeamsMeeting, type TeamsMeetingInput, type TeamsStatus } from './teams-meeting'
 
 // Creates Teams meetings as events in one organiser mailbox, using the app registration that already sends UNISON's
 // mail (client-credentials grant, no sign-in involved). Needs the Calendars.ReadWrite application permission with admin
@@ -19,9 +19,12 @@ export class TeamsNotConnectedError extends Error {
 
 /** A Graph call that was refused. The message keeps Graph's own detail for the server log; `reason` is what the form acts on. */
 export class TeamsGraphError extends Error {
-  constructor(message: string, readonly reason: GraphFailure) {
+  reason: GraphFailure
+
+  constructor(message: string, reason: GraphFailure) {
     super(message)
     this.name = 'TeamsGraphError'
+    this.reason = reason
   }
 }
 
@@ -35,7 +38,7 @@ function organizer(): string {
   return encodeURIComponent(String(process.env.TEAMS_ORGANIZER_UPN).trim())
 }
 
-async function graph(method: 'POST' | 'PATCH' | 'DELETE', path: string, body?: unknown): Promise<unknown> {
+async function graph(method: 'GET' | 'POST' | 'PATCH' | 'DELETE', path: string, body?: unknown): Promise<unknown> {
   const response = await fetch(`https://graph.microsoft.com/v1.0${path}`, {
     method,
     headers: { authorization: `Bearer ${await getGraphAccessToken()}`, 'content-type': 'application/json' },
@@ -64,4 +67,28 @@ export async function updateTeamsMeeting(eventId: string, input: Pick<TeamsMeeti
 export async function deleteTeamsMeeting(eventId: string): Promise<void> {
   const user = organizer()
   await graph('DELETE', `/users/${user}/events/${encodeURIComponent(eventId)}`)
+}
+
+/** The organiser mailbox, for display. An address, never a secret. */
+export function getTeamsOrganizer(): string | null {
+  return String(process.env.TEAMS_ORGANIZER_UPN ?? '').trim() || null
+}
+
+/** Asks Microsoft for a token and then for the organiser mailbox's calendar. A read only: no meeting or event is created. */
+export async function testTeamsConnection(): Promise<TeamsTestResult> {
+  const fail = (reason: keyof typeof TEAMS_TEST_MESSAGES): TeamsTestResult => ({ ok: false, reason, message: TEAMS_TEST_MESSAGES[reason] })
+  if (!getTeamsStatus().connected) return fail('not-configured')
+  try {
+    await getGraphAccessToken()
+  } catch (error) {
+    console.error('Teams connection test: token request failed', error instanceof Error ? error.message : error)
+    return fail('token')
+  }
+  try {
+    await graph('GET', `/users/${organizer()}/calendar?$select=id,name`)
+    return { ok: true, message: `Connected. UNISON can reach the calendar of ${getTeamsOrganizer()}.` }
+  } catch (error) {
+    console.error('Teams connection test failed', error)
+    return fail(error instanceof TeamsGraphError ? error.reason : 'other')
+  }
 }

@@ -127,6 +127,9 @@ installComponentLoader({
     export async function listAutomationRuns() { return [] }
     export async function listAutomationSchedules() { return [] }`,
   './automation-nav': 'export function AutomationSettingsNav() { return null }',
+  // The Microsoft Teams card on the same page has its own tests; here it is a stand-in.
+  '@/features/calendar/components/teams-connection-card': 'export function TeamsConnectionCard() { return null }',
+  '@/lib/integrations/microsoft-teams': 'export function getTeamsStatus() { return { connected: false, missing: [] } } export function getTeamsOrganizer() { return null }',
   './platform-forms': 'export function AutomationControls() { return null }\nexport function IntegrationControls() { return null }\nexport function IntegrationSecretControl() { return null }',
   '@/components/shared/workspace-header': 'export function WorkspaceHeader() { return null }',
   '@/components/ui/content-panel': 'export function ContentPanel() { return null }',

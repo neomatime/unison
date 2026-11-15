@@ -41,7 +41,7 @@ These need a Microsoft 365 / Entra administrator and cannot be done from the cod
    | `TEAMS_ORGANIZER_UPN` | The organiser mailbox's user principal name, e.g. `meetings@yourdomain` |
 
 5. **Apply the database migration** `supabase/migrations/20261115100000_calendar_teams_meetings.sql` to the UNISON project (adds `teams_join_url` and `teams_event_id` to `calendar_events`). It is additive.
-6. Redeploy. The calendar toolbar then reads **Teams connected**.
+6. Redeploy. **Settings > Integrations > Microsoft Teams** then reads **Connected** and shows the organiser mailbox. Press **Test connection** there: it asks Microsoft for a token and reads the organiser's calendar (no meeting is created) and says plainly what is wrong if it fails.
 
 ## Behaviour and limits
 

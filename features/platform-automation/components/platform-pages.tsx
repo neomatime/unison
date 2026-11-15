@@ -27,6 +27,8 @@ import { AutomationSettingsNav } from './automation-nav'
 import { getClientFeedGate, listClientFeedKeys } from '../client-feed-queries'
 import { ClientFeedGate } from './client-feed-gate'
 import { ClientFeedKeys } from './client-feed-keys'
+import { TeamsConnectionCard } from '@/features/calendar/components/teams-connection-card'
+import { getTeamsOrganizer, getTeamsStatus } from '@/lib/integrations/microsoft-teams'
 import { AutomationControls, IntegrationControls, IntegrationSecretControl } from './platform-forms'
 
 export async function IntegrationsPage() {
@@ -42,6 +44,7 @@ export async function IntegrationsPage() {
       <header className="flex items-center justify-between border-b border-border px-5 py-4"><div><h2 className="unison-section-title text-sm">Connection register</h2><p className="mt-1 text-xs text-muted-foreground">Secrets remain masked after generation.</p></div></header>
       {connections.length ? <div className="overflow-x-auto"><table className="w-full min-w-[760px] text-left"><thead><tr className="bg-muted/30 text-xs text-muted-foreground"><th className="px-5 py-3">Connection</th><th className="px-5 py-3">Provider</th><th className="px-5 py-3">Event key</th><th className="px-5 py-3">Last event</th><th className="px-5 py-3">Status</th></tr></thead><tbody>{connections.map((connection) => <tr key={connection.id} className="border-t border-border"><td className="px-5 py-4"><Link href={`/settings/integrations/${connection.id}`} className="font-semibold hover:text-brand">{connection.name}</Link>{connection.lastError ? <p className="mt-1 max-w-sm truncate text-xs text-destructive">{connection.lastError}</p> : null}</td><td className="px-5 py-4 text-sm">{connection.provider}</td><td className="px-5 py-4"><code className="text-xs text-muted-foreground">{connection.eventKey}</code></td><td className="px-5 py-4 text-sm text-muted-foreground">{dateTime(connection.lastEventAt)}</td><td className="px-5 py-4"><ConnectionStatus status={connection.status} /></td></tr>)}</tbody></table></div> : <Empty icon={Link2} title="No integrations connected" description="Create an integration to receive external events and connect them to automation rules." href={access.canManage ? '/settings/integrations/new' : undefined} action="Create integration" />}
     </section>
+    <TeamsConnectionCard status={getTeamsStatus()} organizer={getTeamsOrganizer()} canManage={access.canManage} />
     {access.canManage && feedGate ? <ClientFeedGate gate={feedGate} /> : null}
     {access.canManage ? <ClientFeedKeys keys={feedKeys} /> : null}
   </>

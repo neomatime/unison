@@ -3,7 +3,6 @@ import { CalendarWorkspace } from '@/features/calendar/components/calendar-works
 import { parseCalendarParams, rowToCalendarEvent, todayKey, type CalendarEvent } from '@/features/calendar/model'
 import { PhaseFourRegister } from '@/features/operations/components/phase-four-register'
 import { listCalendarEvents } from '@/features/operations/queries/phase-four'
-import { getTeamsStatus } from '@/lib/integrations/microsoft-teams'
 
 export default async function Page({ searchParams }: { searchParams: Promise<{ view?: string; date?: string; owner?: string; client?: string }> }) {
   const rows = await listCalendarEvents()
@@ -21,7 +20,6 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ v
         today={todayKey(now)}
         initialOwner={typeof params.owner === 'string' ? params.owner.slice(0, 120) : ''}
         initialClient={typeof params.client === 'string' ? params.client.slice(0, 120) : ''}
-        teamsConnected={getTeamsStatus().connected}
         listPanel={<PhaseFourRegister kind="calendar-event" slim hideHeader rows={rows} />}
       />
     </>

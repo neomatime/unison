@@ -51,7 +51,8 @@ test('failure: the Exchange access policy 403 is told apart, anything else is ge
   const { classifyGraphFailure, TEAMS_FAILURE_MESSAGES } = await import('../../lib/integrations/teams-meeting.ts')
   const policy = '{"error":{"code":"ErrorAccessDenied","message":"Access to OData is disabled: [RAOP] : Blocked by tenant configured AppOnly AccessPolicy settings."}}'
   assert.equal(classifyGraphFailure(403, policy), 'access-policy')
-  assert.equal(classifyGraphFailure(403, '{"error":{"code":"Authorization_RequestDenied"}}'), 'other')
+  assert.equal(classifyGraphFailure(403, '{"error":{"code":"Authorization_RequestDenied"}}'), 'permission')
+  assert.equal(classifyGraphFailure(404, '{"error":{"code":"ErrorInvalidUser"}}'), 'mailbox')
   assert.equal(classifyGraphFailure(500, policy), 'other')
   assert.equal(classifyGraphFailure(401, ''), 'other')
   assert.match(TEAMS_FAILURE_MESSAGES['access-policy'], /^Microsoft Exchange is blocking the app \(access policy\)\./)
@@ -70,4 +71,14 @@ test('attendees: they go on the Graph event as required attendees, and an update
   assert.ok(!('attendees' in buildTeamsEventUpdate(times)))
   assert.deepEqual(buildTeamsEventUpdate({ ...times, attendees: [] }).attendees, [])
   assert.equal(buildTeamsEventUpdate({ ...times, attendees: people }).attendees?.length, 1)
+})
+
+test('connection test: every failure has a plain message that never carries Graph text or a secret', async () => {
+  const { TEAMS_TEST_MESSAGES, TEAMS_FAILURE_MESSAGES } = await import('../../lib/integrations/teams-meeting.ts')
+  assert.deepEqual(Object.keys(TEAMS_TEST_MESSAGES).sort(), ['access-policy', 'mailbox', 'not-configured', 'other', 'permission', 'token'])
+  assert.match(TEAMS_TEST_MESSAGES['access-policy'], /^Microsoft Exchange is blocking the app \(access policy\)\./)
+  assert.match(TEAMS_FAILURE_MESSAGES.permission, /Calendars\.ReadWrite/)
+  for (const message of [...Object.values(TEAMS_TEST_MESSAGES), ...Object.values(TEAMS_FAILURE_MESSAGES)]) assert.ok(!/ErrorAccessDenied|RAOP|OData|Bearer|eyJ/.test(message))
+  // Naming a setting is fine; no message holds a value.
+  assert.ok(!Object.values(TEAMS_TEST_MESSAGES).some((message) => /@/.test(message)))
 })
