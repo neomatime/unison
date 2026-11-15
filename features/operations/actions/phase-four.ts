@@ -240,7 +240,7 @@ export async function savePhaseFourRecordAction(
       owner_id: identifier(form, "ownerId"),
       // The form no longer has a project field, so an event keeps whatever project it already has.
       client_id: identifier(form, "clientId"),
-      onboarding_id: identifier(form, "onboardingId"),
+      // The form has no onboarding field, so an event keeps the onboarding it already has.
       created_by: user.id,
       status: text(form, "status") || "Confirmed",
       ...teams,

@@ -287,3 +287,17 @@ export async function getInvitablePeople(): Promise<Person[]> {
     ...contactRows.map((row: any) => ({ name: row.full_name, email: row.email, group: one(row.clients)?.name ?? one(row.leads)?.company_name ?? "Contact" })),
   ].filter((person: Person) => person.email);
 }
+
+/** The active team member that is the signed-in person: the one linked to their user, or else the one with their email address.
+ *  Null when there is none, and the event's owner is then left unassigned. */
+export async function getCurrentTeamMemberId(): Promise<string | null> {
+  const { organization, user } = await getSessionContext();
+  const db = (await createServerSupabase()) as any;
+  const active = () => db.from("team_members").select("id").eq("organization_id", organization.id).eq("status", "Active").is("archived_at", null);
+  const byUser = await active().eq("user_id", user.id).limit(1);
+  if (!byUser.error && byUser.data?.[0]?.id) return byUser.data[0].id;
+  const email = String(user.email ?? "").trim();
+  if (!email) return null;
+  const byEmail = await active().ilike("email", email.replace(/[\\%_]/g, (character) => `\\${character}`)).limit(1);
+  return !byEmail.error && byEmail.data?.[0]?.id ? byEmail.data[0].id : null;
+}

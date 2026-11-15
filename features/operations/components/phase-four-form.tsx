@@ -169,7 +169,6 @@ function Fields({ kind, record, options, defaults, teamsConnected, scheduleEvent
     <OnlineMeeting connected={Boolean(teamsConnected)} joinUrl={safeJoinUrl(String(record?.teamsJoinUrl ?? ""))} location={value("location")} />
     <OptionSelect name="ownerId" label="Owner" options={options.members} value={value("ownerId")} optional />
     <OptionSelect name="clientId" label="Client" options={options.clients} value={value("clientId")} optional />
-    <OptionSelect name="onboardingId" label="Onboarding" options={options.onboardings} value={value("onboardingId")} optional />
     <Select name="status" label="Status" options={["Tentative", "Confirmed", "Cancelled", "Complete"]} value={value("status", "Confirmed")} />
     <label className="flex items-center gap-2 text-sm font-medium"><input name="allDay" type="checkbox" defaultChecked={Boolean(record?.allDay)} />All-day event</label>
     <AttendeesEditor value={record?.attendees} people={people ?? []} />

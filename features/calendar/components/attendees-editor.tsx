@@ -31,7 +31,7 @@ export function AttendeesEditor({ value, people }: { value: unknown; people: Per
 
   return (
     <fieldset className="flex flex-col gap-2 md:col-span-2">
-      <legend className="mb-1.5 text-sm font-medium">Attendees</legend>
+      <legend className="mb-1.5 text-sm font-medium">Attendees <span className="font-normal text-muted-foreground">(optional)</span></legend>
       <input type="hidden" name="attendees" value={JSON.stringify(invited)} />
       <input type="hidden" name="attendeesWas" value={initial.length} />
       {invited.length ? (
