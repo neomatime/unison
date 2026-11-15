@@ -56,3 +56,18 @@ export function withJoinLink(description: string | null | undefined, joinUrl: st
   const line = `Join Microsoft Teams meeting: ${joinUrl}`
   return text ? `${text}\n\n${line}` : line
 }
+
+export type GraphFailure = 'access-policy' | 'other'
+
+/** Why Graph refused. Exchange's application access policy answers 403 ErrorAccessDenied with "AppOnly AccessPolicy" in
+ *  the message; that one an administrator can fix, so it is told apart from every other failure. */
+export function classifyGraphFailure(status: number, body: string): GraphFailure {
+  return status === 403 && /AccessPolicy|RAOP/i.test(body) ? 'access-policy' : 'other'
+}
+
+/** What the form says for each failure. Never Graph's own text, which can carry identifiers. */
+export const TEAMS_FAILURE_MESSAGES: Record<GraphFailure, string> = {
+  'access-policy':
+    'Microsoft Exchange is blocking the app (access policy). An administrator should check the application access policy for the organiser mailbox: see docs/calendar/teams-setup.md. The event was not saved.',
+  other: 'The Teams meeting could not be created, so the event was not saved. Try again, or turn off Online meeting to save it without one.',
+}

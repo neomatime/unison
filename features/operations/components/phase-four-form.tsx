@@ -1,11 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 
 import { ArrowLeft, Video } from "lucide-react";
 
-import { isoToLocalInput, safeJoinUrl } from "@/features/calendar/model";
+import { isoToLocalInput, safeJoinUrl, teamsLink } from "@/features/calendar/model";
 import { WorkspaceHeader } from "@/components/shared/workspace-header";
 import { savePhaseFourRecordAction } from "../actions/phase-four";
 import type { PhaseFourKind, PhaseFourRecord, SelectOption } from "../queries/phase-four";
@@ -154,24 +154,43 @@ function Fields({ kind, record, options, defaults, teamsConnected }: { kind: Pha
     <Select name="eventType" label="Event type" options={["Internal", "Client Meeting", "Milestone", "Governance", "Delivery"]} value={value("eventType", "Internal")} />
     <Field name="startAt" label="Starts" type="datetime-local" required value={isoToLocalInput(value("startAt"))} />
     <Field name="endAt" label="Ends" type="datetime-local" required value={isoToLocalInput(value("endAt"))} />
-    <Field name="location" label="Location / link" value={value("location")} />
+    <OnlineMeeting connected={Boolean(teamsConnected)} joinUrl={safeJoinUrl(String(record?.teamsJoinUrl ?? ""))} location={value("location")} />
     <OptionSelect name="ownerId" label="Owner" options={options.members} value={value("ownerId")} optional />
     <OptionSelect name="projectId" label="Project" options={options.projects} value={value("projectId")} optional />
     <OptionSelect name="clientId" label="Client" options={options.clients} value={value("clientId")} optional />
     <OptionSelect name="onboardingId" label="Onboarding" options={options.onboardings} value={value("onboardingId")} optional />
     <Select name="status" label="Status" options={["Tentative", "Confirmed", "Cancelled", "Complete"]} value={value("status", "Confirmed")} />
     <label className="flex items-center gap-2 text-sm font-medium"><input name="allDay" type="checkbox" defaultChecked={Boolean(record?.allDay)} />All-day event</label>
-    <TeamsOption connected={Boolean(teamsConnected)} joinUrl={safeJoinUrl(String(record?.teamsJoinUrl ?? ""))} />
     <TextArea name="description" label="Description" value={value("description")} />
   </>;
 }
 
 function dateTimeValue(value: string) { return value ? value.slice(0, 16) : ""; }
 
-function TeamsOption({ connected, joinUrl }: { connected: boolean; joinUrl: string | null }) {
-  if (joinUrl) return <div className="flex items-start gap-2 text-sm md:col-span-2"><Video aria-hidden="true" className="mt-0.5 size-4 text-brand" /><div><p className="font-medium">Microsoft Teams meeting attached</p><a href={joinUrl} target="_blank" rel="noopener noreferrer" className="text-brand underline">Join link</a><input type="hidden" name="addTeamsMeeting" value="on" /></div></div>;
-  if (!connected) return <div className="flex items-start gap-2 text-sm md:col-span-2"><Video aria-hidden="true" className="mt-0.5 size-4 text-muted-foreground" /><div><p className="font-medium text-muted-foreground">Teams not connected</p><p className="text-xs text-muted-foreground">An administrator can connect Microsoft Teams to add meeting links to events.</p></div></div>;
-  return <label className="flex items-start gap-2 text-sm font-medium md:col-span-2"><input name="addTeamsMeeting" type="checkbox" className="mt-1" /><span>Add Microsoft Teams meeting<span className="block text-xs font-normal text-muted-foreground">Creates a join link, saves it on the event and adds it to the location and description.</span></span></label>;
+/** One switch for the place: on, the event gets a Microsoft Teams meeting and its link is the location; off, a plain location. */
+function OnlineMeeting({ connected, joinUrl, location }: { connected: boolean; joinUrl: string | null; location: string }) {
+  const pasted = teamsLink(location);
+  const attached = joinUrl ?? pasted;
+  const [online, setOnline] = useState(Boolean(attached));
+  // Without a connection a new meeting cannot be made, but an event that already has a link can still keep or drop it.
+  const canToggle = connected || Boolean(attached);
+  return <div className="flex flex-col gap-3 md:col-span-2">
+    <label className="flex items-start gap-3 text-sm font-medium">
+      <input type="checkbox" role="switch" name="onlineMeeting" checked={online} disabled={!canToggle} onChange={(event) => setOnline(event.target.checked)} className="peer sr-only" />
+      <span aria-hidden="true" className="relative mt-0.5 inline-block h-5 w-9 shrink-0 border border-border bg-muted transition-colors after:absolute after:top-0.5 after:left-0.5 after:size-3.5 after:bg-white after:transition-transform peer-checked:border-brand peer-checked:bg-brand peer-checked:after:translate-x-4 peer-disabled:opacity-50 peer-focus-visible:ring-2 peer-focus-visible:ring-ring/40" />
+      <span>
+        <span className="flex items-center gap-2"><Video aria-hidden="true" className="size-4 text-brand" />Online meeting (Microsoft Teams)</span>
+        <span className="block text-xs font-normal text-muted-foreground">
+          {!canToggle ? "Teams not connected. An administrator can connect Microsoft Teams to create meeting links." : online ? "A Teams meeting is created when you save, and its link becomes the location." : "Turn on to create a Teams meeting instead of a place."}
+        </span>
+      </span>
+    </label>
+    {online
+      ? attached
+        ? <p className="text-sm"><a href={attached} target="_blank" rel="noopener noreferrer" className="text-brand underline">Teams meeting link</a>{!joinUrl && pasted ? <input type="hidden" name="pastedLink" value={pasted} /> : null}</p>
+        : null
+      : <Field name="location" label="Location" value={pasted ? "" : location} />}
+  </div>;
 }
 
 function Field({ name, label, value, type = "text", required, min, max }: { name: string; label: string; value?: string; type?: string; required?: boolean; min?: number; max?: number }) {

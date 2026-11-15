@@ -1,8 +1,8 @@
 # Microsoft Teams meetings on the calendar: setup
 
-UNISON can attach a Microsoft Teams meeting to a calendar event. Tick **Add Microsoft Teams meeting** on the event form and UNISON asks Microsoft Graph for a meeting, stores the join link on the event (`calendar_events.teams_join_url`), puts it in the location (when that is blank) and the description, and shows a **Join** button in the calendar (agenda and week/day blocks) and on the event page.
+UNISON can attach a Microsoft Teams meeting to a calendar event. Turn on **Online meeting** on the event form and UNISON asks Microsoft Graph for a meeting, stores the join link on the event (`calendar_events.teams_join_url`), makes it the event's location (the Location field is hidden while it is on), adds it to the description, and shows a **Join** button in the calendar (agenda and week/day blocks) and on the event page.
 
-Until the steps below are done the calendar works as before and the form says **Teams not connected**. Nothing is faked: with no credentials, no meeting is created, and ticking the option is not offered.
+Until the steps below are done the calendar works as before and the form says **Teams not connected**. Nothing is faked: with no credentials, no meeting is created and the Online meeting switch is disabled.
 
 ## How sign-in relates to this
 
@@ -50,3 +50,10 @@ These need a Microsoft 365 / Entra administrator and cannot be done from the cod
 - If Graph fails, the event is **not** saved and the form says why, so an event never claims a meeting it does not have. If the event cannot be saved after the meeting was made, the meeting is removed again.
 - Times are Africa/Johannesburg (UTC+2) throughout.
 - Secrets are read only from the environment, at the moment a meeting is requested. Nothing is committed.
+
+## Troubleshooting
+
+| What the form says | Cause | Fix |
+| --- | --- | --- |
+| "Microsoft Exchange is blocking the app (access policy)" | Graph answered 403 `ErrorAccessDenied` with "Blocked by tenant configured AppOnly AccessPolicy settings". The Exchange application access policy does not allow this app to use the organiser mailbox, or has not taken effect yet. | Check `Get-ApplicationAccessPolicy`, that the organiser mailbox is a member of the policy's group, and that no second policy (for example `DenyAccess`) names the same app. A new policy or group can take 30 minutes to a few hours to apply. `Test-ApplicationAccessPolicy` should report `Granted`. |
+| "The Teams meeting could not be created" | Any other Graph failure (missing consent, expired secret, wrong mailbox). | The server log has Microsoft's own message (it is never shown in the form). |

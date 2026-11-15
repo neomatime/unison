@@ -44,3 +44,16 @@ test('description: the join line is added once', () => {
   assert.equal(once, `Agenda\n\nJoin Microsoft Teams meeting: ${url}`)
   assert.equal(withJoinLink(once, url), once)
 })
+
+test('failure: the Exchange access policy 403 is told apart, anything else is generic', async () => {
+  const { classifyGraphFailure, TEAMS_FAILURE_MESSAGES } = await import('../../lib/integrations/teams-meeting.ts')
+  const policy = '{"error":{"code":"ErrorAccessDenied","message":"Access to OData is disabled: [RAOP] : Blocked by tenant configured AppOnly AccessPolicy settings."}}'
+  assert.equal(classifyGraphFailure(403, policy), 'access-policy')
+  assert.equal(classifyGraphFailure(403, '{"error":{"code":"Authorization_RequestDenied"}}'), 'other')
+  assert.equal(classifyGraphFailure(500, policy), 'other')
+  assert.equal(classifyGraphFailure(401, ''), 'other')
+  assert.match(TEAMS_FAILURE_MESSAGES['access-policy'], /^Microsoft Exchange is blocking the app \(access policy\)\./)
+  assert.match(TEAMS_FAILURE_MESSAGES['access-policy'], /teams-setup\.md/)
+  // The messages never carry Graph's own text.
+  assert.ok(!Object.values(TEAMS_FAILURE_MESSAGES).some((message) => /ErrorAccessDenied|RAOP|OData/.test(message)))
+})

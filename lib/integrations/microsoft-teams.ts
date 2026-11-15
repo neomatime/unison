@@ -1,6 +1,6 @@
 import 'server-only'
 import { getGraphAccessToken } from '@/lib/email/graph'
-import { buildTeamsEventBody, buildTeamsEventUpdate, readTeamsMeeting, teamsConnectionStatus, type TeamsMeeting, type TeamsMeetingInput, type TeamsStatus } from './teams-meeting'
+import { buildTeamsEventBody, classifyGraphFailure, type GraphFailure, buildTeamsEventUpdate, readTeamsMeeting, teamsConnectionStatus, type TeamsMeeting, type TeamsMeetingInput, type TeamsStatus } from './teams-meeting'
 
 // Creates Teams meetings as events in one organiser mailbox, using the app registration that already sends UNISON's
 // mail (client-credentials grant, no sign-in involved). Needs the Calendars.ReadWrite application permission with admin
@@ -14,6 +14,14 @@ export class TeamsNotConnectedError extends Error {
   constructor() {
     super('Microsoft Teams is not connected for this workspace.')
     this.name = 'TeamsNotConnectedError'
+  }
+}
+
+/** A Graph call that was refused. The message keeps Graph's own detail for the server log; `reason` is what the form acts on. */
+export class TeamsGraphError extends Error {
+  constructor(message: string, readonly reason: GraphFailure) {
+    super(message)
+    this.name = 'TeamsGraphError'
   }
 }
 
@@ -35,7 +43,7 @@ async function graph(method: 'POST' | 'PATCH' | 'DELETE', path: string, body?: u
   })
   if (!response.ok) {
     const detail = await response.text().catch(() => '')
-    throw new Error(`Microsoft Graph ${method} ${path.split('/').slice(-1)[0]} failed (${response.status}): ${detail.slice(0, 400)}`)
+    throw new TeamsGraphError(`Microsoft Graph ${method} ${path.split('/').slice(-1)[0]} failed (${response.status}): ${detail.slice(0, 400)}`, classifyGraphFailure(response.status, detail))
   }
   return response.status === 204 ? null : response.json()
 }

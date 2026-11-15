@@ -3,9 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { localInputToIso } from "@/features/calendar/model";
-import { createTeamsMeeting, deleteTeamsMeeting, TeamsNotConnectedError, updateTeamsMeeting } from "@/lib/integrations/microsoft-teams";
-import { withJoinLink } from "@/lib/integrations/teams-meeting";
+import { localInputToIso, teamsLink } from "@/features/calendar/model";
+import { createTeamsMeeting, deleteTeamsMeeting, TeamsGraphError, TeamsNotConnectedError, updateTeamsMeeting } from "@/lib/integrations/microsoft-teams";
+import { TEAMS_FAILURE_MESSAGES, withJoinLink } from "@/lib/integrations/teams-meeting";
 import { getSessionContext } from "@/lib/auth/get-session-context";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { isUuid } from "@/lib/utils";
@@ -185,30 +185,41 @@ export async function savePhaseFourRecordAction(
     let location = optional(form, "location");
     let description = optional(form, "description");
     const teams: Record<string, unknown> = {};
-    const wantsTeams = form.get("addTeamsMeeting") === "on";
-    if (wantsTeams) {
-      const existing = id && isUuid(id)
-        ? await db.from("calendar_events").select("teams_join_url,teams_event_id").eq("id", id).eq("organization_id", organization.id).maybeSingle()
-        : null;
-      if (existing?.data?.teams_join_url) {
+    const online = form.get("onlineMeeting") === "on";
+    const existing = id && isUuid(id)
+      ? (await db.from("calendar_events").select("teams_join_url,teams_event_id").eq("id", id).eq("organization_id", organization.id).maybeSingle()).data
+      : null;
+    if (online) {
+      // The link is the location, so the form sends no location text while Online meeting is on.
+      const pasted = teamsLink(optional(form, "pastedLink"));
+      if (existing?.teams_join_url) {
         // Already has a meeting: keep it and keep its title and time in step.
-        if (existing.data.teams_event_id) {
-          try { await updateTeamsMeeting(existing.data.teams_event_id, { subject: title, startIso: startAt, endIso: endAt }); } catch (error) { console.error("Teams meeting update failed", error); }
+        location = existing.teams_join_url;
+        if (existing.teams_event_id) {
+          try { await updateTeamsMeeting(existing.teams_event_id, { subject: title, startIso: startAt, endIso: endAt }); } catch (error) { console.error("Teams meeting update failed", error); }
         }
+      } else if (pasted) {
+        // A Teams link that was typed into the location by hand: keep it, there is nothing to create.
+        location = pasted;
       } else {
         try {
           const meeting = await createTeamsMeeting({ subject: title, startIso: startAt, endIso: endAt, description });
           createdTeamsEventId = meeting.eventId;
           teams.teams_join_url = meeting.joinUrl;
           teams.teams_event_id = meeting.eventId;
-          location = location || meeting.joinUrl;
+          location = meeting.joinUrl;
           description = withJoinLink(description, meeting.joinUrl);
         } catch (error) {
-          if (error instanceof TeamsNotConnectedError) return { error: "Microsoft Teams is not connected. Save the event without a Teams meeting, or ask an administrator to connect it." };
+          if (error instanceof TeamsNotConnectedError) return { error: "Microsoft Teams is not connected, so an online meeting cannot be created. Turn off Online meeting, or ask an administrator to connect Teams." };
           console.error("Teams meeting creation failed", error);
-          return { error: "The Teams meeting could not be created, so the event was not saved. Try again, or save it without a Teams meeting." };
+          return { error: TEAMS_FAILURE_MESSAGES[error instanceof TeamsGraphError ? error.reason : "other"] };
         }
       }
+    } else if (existing?.teams_join_url) {
+      // Online meeting was turned off: the event goes back to a plain location and the Teams meeting is removed.
+      teams.teams_join_url = null;
+      teams.teams_event_id = null;
+      if (existing.teams_event_id) await deleteTeamsMeeting(existing.teams_event_id).catch((error) => console.error("Teams meeting removal failed", error));
     }
     table = "calendar_events";
     values = {
