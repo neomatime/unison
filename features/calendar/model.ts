@@ -444,3 +444,56 @@ export function moveToSlot(event: Pick<CalendarEvent, 'startAt' | 'endAt'>, key:
 }
 
 export const daysBetween = (from: DayKey, to: DayKey): number => mustDay(to) - mustDay(from)
+
+// ---- The event form's times ----------------------------------------------------------------------------------------
+
+/** A datetime-local value moved by minutes, or '' when it is not a valid value. */
+export function addMinutesToInput(input: string, minutes: number): string {
+  const iso = localInputToIso(input)
+  return iso ? isoToLocalInput(new Date(Date.parse(iso) + minutes * MINUTE).toISOString()) : ''
+}
+
+/** Minutes from a start to an end (both datetime-local values), or null when either is invalid. */
+export function durationOfInputs(start: string, end: string): number | null {
+  const a = localInputToIso(start)
+  const b = localInputToIso(end)
+  return a && b ? Math.round((Date.parse(b) - Date.parse(a)) / MINUTE) : null
+}
+
+/** The end to use when the start moves: the same length as before, or an hour when there was no sensible length. */
+export function shiftEnd(previousStart: string, previousEnd: string, newStart: string): string {
+  const length = durationOfInputs(previousStart, previousEnd)
+  return addMinutesToInput(newStart, length !== null && length > 0 ? length : 60)
+}
+
+/** The timed events that overlap a proposed time. Cancelled and all-day events, and the event being edited, do not count. */
+export function findClashes(events: readonly CalendarEvent[], startAt: string, endAt: string, ignoreId?: string): CalendarEvent[] {
+  const start = Date.parse(startAt)
+  const end = Date.parse(endAt)
+  if (Number.isNaN(start) || Number.isNaN(end)) return []
+  return events.filter((event) => {
+    if (event.id === ignoreId || event.allDay || event.status === 'Cancelled') return false
+    const span = toSpan(event)
+    return span !== null && span.startMs < end && span.endMs > start
+  })
+}
+
+const textOrNull = (value: unknown) => (value === null || value === undefined || value === '' || value === '—' ? null : String(value))
+
+/** A calendar_events row, as the queries return it, to the fields the calendar and the form's day preview use. */
+export function rowToCalendarEvent(row: Record<string, unknown>): CalendarEvent {
+  return {
+    id: String(row.id),
+    title: String(row.title ?? row.name ?? ''),
+    eventType: String(row.eventType ?? 'Internal'),
+    startAt: String(row.startAt),
+    endAt: String(row.endAt),
+    allDay: Boolean(row.allDay),
+    status: String(row.status ?? 'Confirmed'),
+    location: textOrNull(row.location),
+    owner: textOrNull(row.owner),
+    client: textOrNull(row.client),
+    project: textOrNull(row.project),
+    teamsJoinUrl: textOrNull(row.teamsJoinUrl),
+  }
+}

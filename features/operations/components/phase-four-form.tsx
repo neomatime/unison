@@ -6,7 +6,9 @@ import { useActionState, useState } from "react";
 import { ArrowLeft, Video } from "lucide-react";
 
 import { isoToLocalInput, safeJoinUrl, teamsLink } from "@/features/calendar/model";
+import { ScheduleFields } from "@/features/calendar/components/event-schedule-fields";
 import { AgendaEditor, DescriptionEditor } from "@/features/calendar/components/event-text-fields";
+import type { CalendarEvent } from "@/features/calendar/model";
 import { WorkspaceHeader } from "@/components/shared/workspace-header";
 import { savePhaseFourRecordAction } from "../actions/phase-four";
 import type { PhaseFourKind, PhaseFourRecord, SelectOption } from "../queries/phase-four";
@@ -37,6 +39,7 @@ export function PhaseFourForm({
   options,
   defaults,
   teamsConnected,
+  scheduleEvents,
 }: {
   kind: PhaseFourKind;
   record?: PhaseFourRecord | null;
@@ -44,6 +47,8 @@ export function PhaseFourForm({
   defaults?: Record<string, string | undefined>;
   /** Calendar events only: whether Microsoft Teams is set up, so the meeting option can be offered or explained. */
   teamsConnected?: boolean;
+  /** Calendar events only: the other events, for the day preview and the clash warning. */
+  scheduleEvents?: CalendarEvent[];
 }) {
   const action = savePhaseFourRecordAction.bind(null, kind, record?.id);
   const [state, formAction, pending] = useActionState(action, undefined);
@@ -63,7 +68,7 @@ export function PhaseFourForm({
       </div>
       <form action={formAction} className="mx-auto max-w-5xl border border-border bg-card">
         <div className="grid gap-5 p-6 md:grid-cols-2 lg:p-8">
-          <Fields kind={kind} record={record} options={options} defaults={defaults} teamsConnected={teamsConnected} />
+          <Fields kind={kind} record={record} options={options} defaults={defaults} teamsConnected={teamsConnected} scheduleEvents={scheduleEvents} />
         </div>
         {state?.error ? <p role="alert" className="mx-6 mb-4 text-sm text-destructive">{state.error}</p> : null}
         <footer className="flex justify-end gap-2 border-t border-border p-5">
@@ -77,7 +82,7 @@ export function PhaseFourForm({
   );
 }
 
-function Fields({ kind, record, options, defaults, teamsConnected }: { kind: PhaseFourKind; record?: PhaseFourRecord | null; options: Options; defaults?: Record<string, string | undefined>; teamsConnected?: boolean }) {
+function Fields({ kind, record, options, defaults, teamsConnected, scheduleEvents }: { kind: PhaseFourKind; record?: PhaseFourRecord | null; options: Options; defaults?: Record<string, string | undefined>; teamsConnected?: boolean; scheduleEvents?: CalendarEvent[] }) {
   const value = (key: string, fallback = "") => String(record?.[key] ?? defaults?.[key] ?? fallback);
   if (kind === "team-member") return <>
     <Field name="fullName" label="Full name" required value={value("name")} />
@@ -153,8 +158,7 @@ function Fields({ kind, record, options, defaults, teamsConnected }: { kind: Pha
   return <>
     <Field name="title" label="Event title" required value={value("title", value("name"))} />
     <Select name="eventType" label="Event type" options={["Internal", "Client Meeting", "Milestone", "Governance", "Delivery"]} value={value("eventType", "Internal")} />
-    <Field name="startAt" label="Starts" type="datetime-local" required value={isoToLocalInput(value("startAt"))} />
-    <Field name="endAt" label="Ends" type="datetime-local" required value={isoToLocalInput(value("endAt"))} />
+    <ScheduleFields startValue={isoToLocalInput(value("startAt"))} endValue={isoToLocalInput(value("endAt"))} events={scheduleEvents ?? []} ignoreId={record?.id} />
     <OnlineMeeting connected={Boolean(teamsConnected)} joinUrl={safeJoinUrl(String(record?.teamsJoinUrl ?? ""))} location={value("location")} />
     <OptionSelect name="ownerId" label="Owner" options={options.members} value={value("ownerId")} optional />
     <OptionSelect name="clientId" label="Client" options={options.clients} value={value("clientId")} optional />

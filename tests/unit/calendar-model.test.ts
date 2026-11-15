@@ -282,3 +282,30 @@ test('joining: a Teams link pasted into the location is a join link, any other l
   assert.equal(canJoin({ teamsJoinUrl: null, location: teams, status: 'Confirmed' }), true)
   assert.equal(canJoin({ teamsJoinUrl: null, location: teams, status: 'Cancelled' }), false)
 })
+
+test('form times: the end follows the start and keeps the length', async () => {
+  const { addMinutesToInput, durationOfInputs, shiftEnd, findClashes } = await import('../../features/calendar/model.ts')
+  assert.equal(addMinutesToInput('2026-11-18T09:00', 90), '2026-11-18T10:30')
+  assert.equal(addMinutesToInput('2026-11-18T23:30', 60), '2026-11-19T00:30')
+  assert.equal(addMinutesToInput('nope', 60), '')
+  assert.equal(durationOfInputs('2026-11-18T09:00', '2026-11-18T10:30'), 90)
+  assert.equal(durationOfInputs('', '2026-11-18T10:30'), null)
+  assert.equal(shiftEnd('2026-11-18T09:00', '2026-11-18T10:30', '2026-11-19T14:00'), '2026-11-19T15:30')
+  // No length to keep (end before start, or nothing yet): an hour.
+  assert.equal(shiftEnd('2026-11-18T09:00', '2026-11-18T08:00', '2026-11-19T14:00'), '2026-11-19T15:00')
+  assert.equal(shiftEnd('', '', '2026-11-19T14:00'), '2026-11-19T15:00')
+
+  const base = { eventType: 'Internal', allDay: false, status: 'Confirmed' }
+  const events = [
+    { ...base, id: 'a', title: 'A', startAt: '2026-11-18T07:00:00Z', endAt: '2026-11-18T08:00:00Z' }, // 09:00-10:00
+    { ...base, id: 'b', title: 'B', startAt: '2026-11-18T08:00:00Z', endAt: '2026-11-18T09:00:00Z' }, // 10:00-11:00
+    { ...base, id: 'c', title: 'C', startAt: '2026-11-18T07:30:00Z', endAt: '2026-11-18T08:30:00Z', status: 'Cancelled' },
+    { ...base, id: 'd', title: 'D', startAt: '2026-11-18T00:00:00Z', endAt: '2026-11-18T00:00:00Z', allDay: true },
+  ]
+  const at = (a: string, b: string) => findClashes(events, a, b).map((event) => event.id)
+  assert.deepEqual(at('2026-11-18T07:30:00Z', '2026-11-18T08:30:00Z'), ['a', 'b'])
+  // Touching is not clashing.
+  assert.deepEqual(at('2026-11-18T08:00:00Z', '2026-11-18T08:30:00Z'), ['b'])
+  assert.deepEqual(at('2026-11-18T09:00:00Z', '2026-11-18T10:00:00Z'), [])
+  assert.deepEqual(findClashes(events, '2026-11-18T07:30:00Z', '2026-11-18T08:30:00Z', 'a').map((event) => event.id), ['b'])
+})
