@@ -194,3 +194,7 @@ the directory does not itself say contains iMpunzi) were marked as listed on 202
 Black Chrome, Sylvania Dump Operations and Kalgold were labelled on 2026-11-15 "Not found in DMPR D1-2024 directory; 2026 status
 not confirmed": the directory was searched by name, owner and farm and the closest entries are other mines. They keep
 `verified_on` empty. **141 listed, 3 not found.**
+
+On 2026-11-15 the account owner confirmed that Black Chrome, Sylvania Dump Operations and Kalgold are **not found** in the D1-2024
+directory; their status reads "Not found in DMPR D1-2024 directory (confirmed by the account owner); 2026 status not confirmed".
+They stay without a verification date. **141 listed, 3 not found (confirmed), none open.**
