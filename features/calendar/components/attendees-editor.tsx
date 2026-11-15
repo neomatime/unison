@@ -1,14 +1,15 @@
 'use client'
 
 import { Mail, X } from 'lucide-react'
-import { useId, useState, type KeyboardEvent } from 'react'
+import { useEffect, useId, useState, type KeyboardEvent } from 'react'
 
-import { isEmail, MAX_ATTENDEES, parseAttendees, suggestPeople, type Attendee, type Person } from '../attendees'
+import { cleanSearch, isEmail, MAX_ATTENDEES, parseAttendees, type Attendee, type Person } from '../attendees'
 
-/** Who is invited, as in Teams: required attendees, and optional attendees below them. Type a name to pick a team member or a
- *  client's contact, or type any email address and press Enter. Both lists go in one JSON field, `attendees`, each optional
- *  one marked `optional: true`. Someone is in one list or the other, not both. */
-export function AttendeesEditor({ value, people }: { value: unknown; people: Person[] }) {
+/** Who is invited, as in Teams: required attendees, and optional attendees below them. Type to search team members and clients'
+ *  contacts (nothing is listed until something is typed, and only a few matches come back), then click one; or type a whole email
+ *  address and press Enter. Both lists go in one JSON field, `attendees`, each optional one marked `optional: true`. Someone is in
+ *  one list or the other, not both. */
+export function AttendeesEditor({ value }: { value: unknown }) {
   const initial = parseAttendees(value)
   const [invited, setInvited] = useState<Attendee[]>(initial)
 
@@ -19,28 +20,59 @@ export function AttendeesEditor({ value, people }: { value: unknown; people: Per
     <div className="flex flex-col gap-5 md:col-span-2">
       <input type="hidden" name="attendees" value={JSON.stringify(invited)} />
       <input type="hidden" name="attendeesWas" value={initial.length} />
-      <AttendeeList title="Required attendees" hint="Microsoft Teams emails each of them the invitation when you save, if Online meeting is on. Changes you make later update it." optional={false} invited={invited} people={people} onAdd={add} onRemove={remove} />
-      <AttendeeList title="Optional attendees" hint="Invited too, marked optional in their invitation." optional invited={invited} people={people} onAdd={add} onRemove={remove} />
+      <AttendeeList title="Required attendees" hint="Microsoft Teams emails each of them the invitation when you save, if Online meeting is on. Changes you make later update it." optional={false} invited={invited} onAdd={add} onRemove={remove} />
+      <AttendeeList title="Optional attendees" hint="Invited too, marked optional in their invitation." optional invited={invited} onAdd={add} onRemove={remove} />
     </div>
   )
 }
 
-function AttendeeList({ title, hint, optional, invited, people, onAdd, onRemove }: {
+type Search = { state: 'idle' } | { state: 'loading' } | { state: 'done'; people: Person[] } | { state: 'failed' }
+
+function AttendeeList({ title, hint, optional, invited, onAdd, onRemove }: {
   title: string
   hint: string
   optional: boolean
   invited: Attendee[]
-  people: Person[]
   onAdd: (person: Attendee) => void
   onRemove: (email: string) => void
 }) {
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
+  const [search, setSearch] = useState<Search>({ state: 'idle' })
   const listId = useId()
   const mine = invited.filter((person) => Boolean(person.optional) === optional)
-  // Everyone already invited, in either list, is left out of the suggestions.
-  const matches = open ? suggestPeople(people, query, invited) : []
+  const term = cleanSearch(query)
   const typedEmail = isEmail(query) && !invited.some((person) => person.email === query.trim().toLowerCase())
+
+  // Search the server a moment after typing stops. Nothing is asked for fewer than two characters, and an answer that arrives after
+  // the text has changed again is thrown away.
+  useEffect(() => {
+    if (!term) {
+      setSearch({ state: 'idle' })
+      return
+    }
+    setSearch({ state: 'loading' })
+    const controller = new AbortController()
+    const timer = setTimeout(async () => {
+      try {
+        const response = await fetch(`/api/calendar/people?q=${encodeURIComponent(term)}`, { signal: controller.signal, cache: 'no-store' })
+        if (!response.ok) throw new Error('search failed')
+        const payload = (await response.json()) as { people?: Person[] }
+        setSearch({ state: 'done', people: payload.people ?? [] })
+      } catch (error) {
+        if ((error as { name?: string }).name !== 'AbortError') setSearch({ state: 'failed' })
+      }
+    }, 250)
+    return () => {
+      clearTimeout(timer)
+      controller.abort()
+    }
+  }, [term])
+
+  // Everyone already invited, in either list, is left out of the results.
+  const taken = new Set(invited.map((person) => person.email.toLowerCase()))
+  const matches = search.state === 'done' ? search.people.filter((person) => !taken.has(person.email.toLowerCase())) : []
+  const showPanel = open && term !== ''
 
   const add = (person: Attendee) => {
     onAdd(optional ? { ...person, optional: true } : person)
@@ -51,8 +83,8 @@ function AttendeeList({ title, hint, optional, invited, people, onAdd, onRemove 
     if (event.key === 'Escape') setOpen(false)
     if (event.key !== 'Enter' && event.key !== ',') return
     event.preventDefault()
-    if (matches[0] && !isEmail(query)) add({ name: matches[0].name, email: matches[0].email })
-    else if (typedEmail) add({ name: query.trim(), email: query.trim() })
+    if (typedEmail) add({ name: query.trim(), email: query.trim() })
+    else if (matches[0] && !isEmail(query)) add({ name: matches[0].name, email: matches[0].email })
   }
 
   return (
@@ -72,12 +104,12 @@ function AttendeeList({ title, hint, optional, invited, people, onAdd, onRemove 
         <input
           type="text"
           role="combobox"
-          aria-expanded={matches.length > 0}
+          aria-expanded={showPanel}
           aria-controls={listId}
-          aria-label={`Add to ${title.toLowerCase()} by name or email`}
+          aria-label={`Search ${title.toLowerCase()} by name, client or email`}
           autoComplete="off"
           value={query}
-          placeholder="Add a name or an email address"
+          placeholder="Search by name, client or email"
           onChange={(event) => {
             setQuery(event.target.value)
             setOpen(true)
@@ -87,8 +119,10 @@ function AttendeeList({ title, hint, optional, invited, people, onAdd, onRemove 
           onKeyDown={onKeyDown}
           className="h-11 w-full border border-border bg-background px-3 text-sm outline-none focus:border-brand"
         />
-        {matches.length || typedEmail ? (
+        {showPanel ? (
           <ul id={listId} role="listbox" className="absolute z-20 mt-1 max-h-60 w-full overflow-y-auto border border-border bg-popover shadow-lg">
+            {search.state === 'loading' ? <li role="presentation" className="px-3 py-2 text-sm text-muted-foreground">Searching…</li> : null}
+            {search.state === 'failed' ? <li role="presentation" className="px-3 py-2 text-sm text-muted-foreground">The search is unavailable. You can still type a whole email address.</li> : null}
             {matches.map((person) => (
               <li key={person.email} role="option" aria-selected="false">
                 <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => add({ name: person.name, email: person.email })} className="flex w-full items-baseline justify-between gap-3 px-3 py-2 text-left text-sm hover:bg-accent">
@@ -97,6 +131,7 @@ function AttendeeList({ title, hint, optional, invited, people, onAdd, onRemove 
                 </button>
               </li>
             ))}
+            {search.state === 'done' && !matches.length && !typedEmail ? <li role="presentation" className="px-3 py-2 text-sm text-muted-foreground">No one found. Type a whole email address to invite someone new.</li> : null}
             {typedEmail ? (
               <li role="option" aria-selected="false">
                 <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => add({ name: query.trim(), email: query.trim() })} className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-brand hover:bg-accent">

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { isEmail, parseAttendees, suggestPeople } from '../../features/calendar/attendees.ts'
+import { isEmail, parseAttendees } from '../../features/calendar/attendees.ts'
 
 test('email: a plain address is accepted; spaces, a missing domain or an angle-bracket form are not', () => {
   assert.equal(isEmail('thandi@example.com'), true)
@@ -26,18 +26,6 @@ test('attendees: invalid entries dropped, addresses lower-cased and kept once, t
   assert.equal(parseAttendees(Array.from({ length: 80 }, (_, i) => ({ email: `p${i}@example.com` }))).length, 50)
 })
 
-test('suggestions: match name, email or group, skip people already invited, best matches first', () => {
-  const people = [
-    { name: 'Neo Matime', email: 'neo@himark.co.za', group: 'Team' },
-    { name: 'Thandi Nkosi', email: 'thandi@kopano.example', group: 'Kopano Ridge' },
-    { name: 'Anthony Dlamini', email: 'ant@kopano.example', group: 'Kopano Ridge' },
-  ]
-  assert.deepEqual(suggestPeople(people, 'kopano', []).map((p) => p.name), ['Anthony Dlamini', 'Thandi Nkosi'])
-  assert.deepEqual(suggestPeople(people, 'th', []).map((p) => p.name), ['Thandi Nkosi', 'Anthony Dlamini'])
-  assert.deepEqual(suggestPeople(people, '', [{ name: 'Neo', email: 'NEO@himark.co.za' }]).map((p) => p.name), ['Anthony Dlamini', 'Thandi Nkosi'])
-  assert.deepEqual(suggestPeople(people, 'zzz', []), [])
-})
-
 test('optional attendees: kept as optional, and someone listed as both is required', () => {
   const list = parseAttendees([
     { name: 'Thandi', email: 'thandi@example.com' },
@@ -54,4 +42,18 @@ test('optional attendees: kept as optional, and someone listed as both is requir
     { name: 'Odd', email: 'odd@example.com' },
   ])
   assert.ok(!('optional' in list[1]))
+})
+
+test('search text: plain letters and address marks only, long enough, so it can only be matched as text', async () => {
+  const { cleanSearch } = await import('../../features/calendar/attendees.ts')
+  assert.equal(cleanSearch('  Thandi   Nkosi '), 'Thandi Nkosi')
+  assert.equal(cleanSearch('thandi@kopano.example'), 'thandi@kopano.example')
+  assert.equal(cleanSearch("O'Brien-Smith"), "O'Brien-Smith")
+  assert.equal(cleanSearch('Ñandi Ångström'), 'Ñandi Ångström')
+  // Characters that mean something in a database filter are dropped.
+  assert.equal(cleanSearch('a,b),full_name.eq.x%_*'), 'abfullname.eq.x')
+  assert.equal(cleanSearch('x'), '')
+  assert.equal(cleanSearch('%%'), '')
+  assert.equal(cleanSearch(null), '')
+  assert.equal(cleanSearch('a'.repeat(200)).length, 60)
 })

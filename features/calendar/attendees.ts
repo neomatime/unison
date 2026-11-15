@@ -44,13 +44,12 @@ export function parseAttendees(value: unknown): Attendee[] {
 /** A person someone can be invited from: a team member or a client's contact. */
 export type Person = { name: string; email: string; group: string }
 
-/** The people that match what was typed (name, email or group), not already invited, best matches first. */
-export function suggestPeople(people: readonly Person[], query: string, invited: readonly Attendee[], limit = 8): Person[] {
-  const taken = new Set(invited.map((attendee) => attendee.email.toLowerCase()))
-  const needle = query.trim().toLowerCase()
-  return people
-    .filter((person) => !taken.has(person.email.toLowerCase()))
-    .filter((person) => !needle || `${person.name} ${person.email} ${person.group}`.toLowerCase().includes(needle))
-    .sort((a, b) => Number(b.name.toLowerCase().startsWith(needle)) - Number(a.name.toLowerCase().startsWith(needle)) || a.name.localeCompare(b.name))
-    .slice(0, limit)
+export const MIN_SEARCH_LENGTH = 2
+
+/** What may reach a database filter from the search box: letters, digits, spaces and the few marks in a name or address. The
+ *  characters that mean something in a filter (commas, brackets, % and _, asterisks) are dropped, so what is typed can only ever
+ *  be matched as plain text. Empty when there is too little to search for. */
+export function cleanSearch(value: string | null | undefined): string {
+  const text = String(value ?? '').normalize('NFKC').replace(/[^\p{L}\p{N} @.+'-]/gu, '').replace(/\s+/g, ' ').trim().slice(0, 60)
+  return text.length >= MIN_SEARCH_LENGTH ? text : ''
 }

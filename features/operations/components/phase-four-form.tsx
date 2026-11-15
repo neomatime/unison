@@ -6,7 +6,6 @@ import { useActionState, useState } from "react";
 import { ArrowLeft, Video } from "lucide-react";
 
 import { isoToLocalInput, safeJoinUrl, teamsLink } from "@/features/calendar/model";
-import type { Person } from "@/features/calendar/attendees";
 import { AttendeesEditor } from "@/features/calendar/components/attendees-editor";
 import { DEFAULT_REMINDER_MINUTES, REMINDER_OPTIONS } from "@/features/calendar/reminders";
 import { EventFormTabs } from "@/features/calendar/components/event-form-tabs";
@@ -44,7 +43,6 @@ export function PhaseFourForm({
   defaults,
   teamsConnected,
   scheduleEvents,
-  people,
 }: {
   kind: PhaseFourKind;
   record?: PhaseFourRecord | null;
@@ -54,8 +52,6 @@ export function PhaseFourForm({
   teamsConnected?: boolean;
   /** Calendar events only: the other events, for the day preview and the clash warning. */
   scheduleEvents?: CalendarEvent[];
-  /** Calendar events only: team members and contacts that can be invited by name. */
-  people?: Person[];
 }) {
   const action = savePhaseFourRecordAction.bind(null, kind, record?.id);
   const [state, formAction, pending] = useActionState(action, undefined);
@@ -75,7 +71,7 @@ export function PhaseFourForm({
       </div>
       <form action={formAction} className="mx-auto max-w-5xl border border-border bg-card">
         <div className="grid gap-5 p-6 md:grid-cols-2 lg:p-8">
-          <Fields kind={kind} record={record} options={options} defaults={defaults} teamsConnected={teamsConnected} scheduleEvents={scheduleEvents} people={people} />
+          <Fields kind={kind} record={record} options={options} defaults={defaults} teamsConnected={teamsConnected} scheduleEvents={scheduleEvents} />
         </div>
         {state?.error ? <p role="alert" className="mx-6 mb-4 text-sm text-destructive">{state.error}</p> : null}
         <footer className="flex justify-end gap-2 border-t border-border p-5">
@@ -89,7 +85,7 @@ export function PhaseFourForm({
   );
 }
 
-function Fields({ kind, record, options, defaults, teamsConnected, scheduleEvents, people }: { kind: PhaseFourKind; record?: PhaseFourRecord | null; options: Options; defaults?: Record<string, string | undefined>; teamsConnected?: boolean; scheduleEvents?: CalendarEvent[]; people?: Person[] }) {
+function Fields({ kind, record, options, defaults, teamsConnected, scheduleEvents }: { kind: PhaseFourKind; record?: PhaseFourRecord | null; options: Options; defaults?: Record<string, string | undefined>; teamsConnected?: boolean; scheduleEvents?: CalendarEvent[] }) {
   const value = (key: string, fallback = "") => String(record?.[key] ?? defaults?.[key] ?? fallback);
   if (kind === "team-member") return <>
     <Field name="fullName" label="Full name" required value={value("name")} />
@@ -172,7 +168,7 @@ function Fields({ kind, record, options, defaults, teamsConnected, scheduleEvent
     <OptionSelect name="clientId" label="Client" options={options.clients} value={value("clientId")} optional />
     <Select name="status" label="Status" options={["Tentative", "Confirmed", "Cancelled", "Complete"]} value={value("status", "Confirmed")} />
     <label className="flex items-center gap-2 text-sm font-medium"><input name="allDay" type="checkbox" defaultChecked={Boolean(record?.allDay)} />All-day event</label>
-    <AttendeesEditor value={record?.attendees} people={people ?? []} />
+    <AttendeesEditor value={record?.attendees} />
     <DescriptionEditor value={value("description")} />
     <AgendaEditor value={record?.agenda} />
   </>} />;

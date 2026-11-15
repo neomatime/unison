@@ -2,7 +2,7 @@ import "server-only";
 
 import { getSessionContext } from "@/lib/auth/get-session-context";
 import { createServerSupabase } from "@/lib/supabase/server";
-import type { Person } from "@/features/calendar/attendees";
+import { cleanSearch, type Person } from "@/features/calendar/attendees";
 import { isUuid } from "@/lib/utils";
 
 export type PhaseFourKind =
@@ -271,21 +271,34 @@ export async function getPhaseFourOptions() {
   } satisfies Record<string, SelectOption[]>;
 }
 
-/** The people an event can invite by name: active team members and the contacts of clients and leads, each with an email. */
-export async function getInvitablePeople(): Promise<Person[]> {
+/** People an event can invite, found by what was typed: active team members and the contacts of clients and leads that have an email,
+ *  matched on name, email or the client's name. At most `limit` come back, so the list stays short however many clients there are.
+ *  The search text is cleaned first (cleanSearch), so it can only match as plain text. */
+export async function searchInvitablePeople(query: string, limit = 8): Promise<Person[]> {
+  const text = cleanSearch(query);
+  if (!text) return [];
   const { organization, db } = await context();
-  const [members, contacts] = await Promise.all([
-    db.from("team_members").select("full_name,email").eq("organization_id", organization.id).eq("status", "Active").is("archived_at", null).order("full_name"),
-    db.from("contacts").select("full_name,email,clients(name),leads(company_name)").eq("organization_id", organization.id).is("archived_at", null).not("email", "is", null).order("full_name"),
-  ]);
-  if (members.error) throw members.error;
-  // A contact list that cannot be read must not stop an event being written: people can still be typed in by email.
-  const contactRows = contacts.error ? [] : contacts.data ?? [];
+  const like = `%${text}%`;
+  const members = db.from("team_members").select("full_name,email").eq("organization_id", organization.id).eq("status", "Active").is("archived_at", null)
+    .or(`full_name.ilike.${like},email.ilike.${like}`).order("full_name").limit(limit);
+  const byPerson = db.from("contacts").select("full_name,email,clients(name),leads(company_name)").eq("organization_id", organization.id).is("archived_at", null).not("email", "is", null)
+    .or(`full_name.ilike.${like},email.ilike.${like}`).order("full_name").limit(limit);
+  // A client's name finds its contacts: first the clients, then the contacts that belong to them.
+  const clientMatches = await db.from("clients").select("id").eq("organization_id", organization.id).is("archived_at", null).ilike("name", like).limit(10);
+  const clientIds = (clientMatches.data ?? []).map((row: any) => row.id);
+  const byClient = clientIds.length
+    ? db.from("contacts").select("full_name,email,clients(name),leads(company_name)").eq("organization_id", organization.id).is("archived_at", null).not("email", "is", null).in("client_id", clientIds).order("full_name").limit(limit)
+    : Promise.resolve({ data: [], error: null });
+  const [memberRows, personRows, clientRows] = await Promise.all([members, byPerson, byClient]);
+  if (memberRows.error) throw memberRows.error;
+  // A contact search that fails must not stop team members being found: people can still be typed in by email.
   const one = (value: any) => (Array.isArray(value) ? value[0] : value);
-  return [
-    ...(members.data ?? []).map((row: any) => ({ name: row.full_name, email: row.email, group: "Team" })),
-    ...contactRows.map((row: any) => ({ name: row.full_name, email: row.email, group: one(row.clients)?.name ?? one(row.leads)?.company_name ?? "Contact" })),
+  const found: Person[] = [
+    ...(memberRows.data ?? []).map((row: any) => ({ name: row.full_name, email: row.email, group: "Team" })),
+    ...[...(personRows.error ? [] : personRows.data ?? []), ...(clientRows.error ? [] : clientRows.data ?? [])].map((row: any) => ({ name: row.full_name, email: row.email, group: one(row.clients)?.name ?? one(row.leads)?.company_name ?? "Contact" })),
   ].filter((person: Person) => person.email);
+  const seen = new Set<string>();
+  return found.filter((person) => (seen.has(person.email.toLowerCase()) ? false : (seen.add(person.email.toLowerCase()), true))).slice(0, limit);
 }
 
 /** The active team member that is the signed-in person: the one linked to their user, or else the one with their email address.

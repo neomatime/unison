@@ -1,6 +1,6 @@
 import { parseNewEventTimes, rowToCalendarEvent } from '@/features/calendar/model'
 import { PhaseFourForm } from '@/features/operations/components/phase-four-form'
-import { getCurrentTeamMemberId, getInvitablePeople, getPhaseFourOptions, listCalendarEvents } from '@/features/operations/queries/phase-four'
+import { getCurrentTeamMemberId, getPhaseFourOptions, listCalendarEvents } from '@/features/operations/queries/phase-four'
 import { getTeamsStatus } from '@/lib/integrations/microsoft-teams'
 import { isUuid } from '@/lib/utils'
 
@@ -10,7 +10,7 @@ const clip = (value: string | undefined, length: number) => (value ? value.slice
 // and with a start and end (YYYY-MM-DDTHH:mm on the Johannesburg clock), as a click on an empty slot in the calendar does.
 export default async function Page({ searchParams }: { searchParams: Promise<{ title?: string; clientId?: string; description?: string; eventType?: string; start?: string; end?: string }> }) {
   const params = await searchParams
-  const [options, rows, people, me] = await Promise.all([getPhaseFourOptions(), listCalendarEvents(), getInvitablePeople(), getCurrentTeamMemberId()])
+  const [options, rows, me] = await Promise.all([getPhaseFourOptions(), listCalendarEvents(), getCurrentTeamMemberId()])
   const defaults = {
     title: clip(params.title, 200),
     clientId: params.clientId && isUuid(params.clientId) ? params.clientId : undefined,
@@ -21,5 +21,5 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ t
     ...parseNewEventTimes({ start: clip(params.start, 16), end: clip(params.end, 16) }),
   }
   const scheduleEvents = rows.filter((row) => !row.archivedAt).map(rowToCalendarEvent)
-  return <PhaseFourForm kind="calendar-event" options={options} defaults={defaults} teamsConnected={getTeamsStatus().connected} scheduleEvents={scheduleEvents} people={people} />
+  return <PhaseFourForm kind="calendar-event" options={options} defaults={defaults} teamsConnected={getTeamsStatus().connected} scheduleEvents={scheduleEvents} />
 }
