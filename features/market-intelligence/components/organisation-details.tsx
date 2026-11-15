@@ -33,10 +33,10 @@ export function OrganisationDetails({ organization, operation }: { organization:
 
   return (
     <div className="flex h-full flex-col">
-      {/* A general photograph of an underground mine (public/brand/mining-tunnel.jpg), not a picture of this operation: none is held. The shade keeps the icon and the status badge readable. */}
-      <div role="presentation" className="relative flex h-24 items-center justify-center overflow-hidden border-b border-border bg-muted bg-cover bg-center" style={{ backgroundImage: "url('/brand/mining-tunnel.jpg')" }}>
-        <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-b from-black/35 to-black/60" />
-        <Mountain className="relative size-7 text-white/80" aria-hidden="true" />
+      {/* A general photograph of a haul truck at a mine (public/brand/mining-haul-truck.jpg), not a picture of this operation: none is held. The photo is bright, so only a light shade is laid over its foot, under the icon. */}
+      <div role="presentation" className="relative flex h-24 items-center justify-center overflow-hidden border-b border-border bg-muted bg-cover" style={{ backgroundImage: "url('/brand/mining-haul-truck.jpg')", backgroundPosition: 'center 86%' }}>
+        <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/30" />
+        <Mountain className="relative size-7 text-white drop-shadow" aria-hidden="true" />
         <span className="absolute right-2 top-2 inline-flex items-center gap-1.5 border border-border bg-card px-2 py-0.5 text-[11px] font-medium">
           <span aria-hidden="true" className="size-2 rounded-full" style={{ background: STATUS_COLORS[organization.status] }} />
           {STATUS_LABELS[organization.status]}
