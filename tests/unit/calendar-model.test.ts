@@ -346,3 +346,37 @@ test('filters: by owner and client, with an empty choice meaning everyone, and c
   assert.deepEqual(filterChoices(events, 'owner'), ['Neo', 'Thandi'])
   assert.deepEqual(filterChoices(events, 'client'), ['Kopano Ridge'])
 })
+
+test('scheduler: a form time as a day and a minute and back, carrying past midnight', async () => {
+  const { inputToKeyMinute, inputFromKeyMinute } = await import('../../features/calendar/model.ts')
+  assert.deepEqual(inputToKeyMinute('2026-11-19T09:30'), { key: '2026-11-19', minute: 570 })
+  assert.equal(inputToKeyMinute('nope'), null)
+  assert.equal(inputFromKeyMinute('2026-11-19', 570), '2026-11-19T09:30')
+  assert.equal(inputFromKeyMinute('2026-11-19', 1440 + 30), '2026-11-20T00:30')
+  assert.equal(inputFromKeyMinute('2026-11-19', 0), '2026-11-19T00:00')
+})
+
+test('scheduler: free times are on weekdays, in working hours, clear of other events', async () => {
+  const { findFreeSlots } = await import('../../features/calendar/model.ts')
+  const base = { eventType: 'Internal', allDay: false, status: 'Confirmed' }
+  // Thursday 19 Nov 2026: busy 08:00-09:30 and 10:00-11:00 (SAST), as UTC 06:00-07:30 and 08:00-09:00.
+  const events = [
+    { ...base, id: 'a', title: 'A', startAt: '2026-11-19T06:00:00Z', endAt: '2026-11-19T07:30:00Z' },
+    { ...base, id: 'b', title: 'B', startAt: '2026-11-19T08:00:00Z', endAt: '2026-11-19T09:00:00Z' },
+    { ...base, id: 'c', title: 'Cancelled', startAt: '2026-11-19T10:00:00Z', endAt: '2026-11-19T11:00:00Z', status: 'Cancelled' },
+  ]
+  assert.deepEqual(findFreeSlots(events, 60, '2026-11-19', { count: 3 }), [
+    { key: '2026-11-19', startMin: 11 * 60 },
+    { key: '2026-11-19', startMin: 11 * 60 + 30 },
+    { key: '2026-11-19', startMin: 12 * 60 },
+  ])
+  // 09:30 is not offered: an hour from there runs into the 10:00 event.
+  // The event being edited does not block its own slot.
+  assert.equal(findFreeSlots(events, 90, '2026-11-19', { count: 1, ignoreId: 'a' })[0].startMin, 8 * 60)
+  // Friday evening onwards skips the weekend: the next slot after 17:00 is Monday.
+  const none = findFreeSlots([], 60, '2026-11-20', { count: 20, days: 4 })
+  assert.ok(none.every((slot) => slot.key === '2026-11-20' || slot.key === '2026-11-23'))
+  assert.ok(!none.some((slot) => slot.key === '2026-11-21' || slot.key === '2026-11-22'))
+  // A 9-hour event does not fit between 08:00 and 17:00 plus a minute.
+  assert.deepEqual(findFreeSlots([], 600, '2026-11-19'), [])
+})

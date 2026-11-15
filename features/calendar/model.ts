@@ -535,3 +535,49 @@ export function filterEvents(events: readonly CalendarEvent[], filter: EventFilt
 export function filterChoices(events: readonly CalendarEvent[], field: 'owner' | 'client'): string[] {
   return [...new Set(events.map((event) => event[field]).filter((value): value is string => Boolean(value)))].sort((a, b) => a.localeCompare(b))
 }
+
+// ---- The scheduler: a day as a line of minutes ---------------------------------------------------------------------------
+
+/** A datetime-local value as its day and the minute of that day, or null when it is not valid. */
+export function inputToKeyMinute(input: string): { key: DayKey; minute: number } | null {
+  const iso = localInputToIso(input)
+  if (!iso) return null
+  const ms = Date.parse(iso)
+  const day = dayNumberOf(ms)
+  return { key: dayToKey(day), minute: Math.round((ms - dayStartMs(day)) / MINUTE) }
+}
+
+/** The datetime-local value for a day and a minute. A minute past the end of the day carries into the next day. */
+export function inputFromKeyMinute(key: DayKey, minute: number): string {
+  return isoToLocalInput(timesForMinutes(key, minute, minute).startAt)
+}
+
+export type FreeSlot = { key: DayKey; startMin: number }
+
+/** The first free times of a given length, on weekdays between 08:00 and 17:00, on the half hour, starting from a day. Cancelled
+ *  and all-day events, and the event being edited, do not make a time busy. */
+export function findFreeSlots(
+  events: readonly CalendarEvent[],
+  durationMinutes: number,
+  fromKey: DayKey,
+  options: { count?: number; days?: number; ignoreId?: string; from?: number; to?: number } = {},
+): FreeSlot[] {
+  const { count = 4, days = 14, ignoreId, from = 8 * 60, to = 17 * 60 } = options
+  const busy = events
+    .filter((event) => event.id !== ignoreId && !event.allDay && event.status !== 'Cancelled')
+    .map(toSpan)
+    .filter((span): span is Span => span !== null)
+  const slots: FreeSlot[] = []
+  const first = mustDay(fromKey)
+  for (let offset = 0; offset < days && slots.length < count; offset += 1) {
+    const key = dayToKey(first + offset)
+    if (weekdayIndex(key) > 4) continue
+    const base = dayStartMs(first + offset)
+    for (let start = from; start + durationMinutes <= to && slots.length < count; start += 30) {
+      const slotStart = base + start * MINUTE
+      const slotEnd = slotStart + durationMinutes * MINUTE
+      if (!busy.some((span) => span.startMs < slotEnd && span.endMs > slotStart)) slots.push({ key, startMin: start })
+    }
+  }
+  return slots
+}
