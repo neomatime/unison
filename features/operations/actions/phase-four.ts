@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 
 import { parseAttendees } from "@/features/calendar/attendees";
 import { invitationHtml, parseAgenda } from "@/features/calendar/description";
+import { parseReminder } from "@/features/calendar/reminders";
 import { localInputToIso, teamsLink } from "@/features/calendar/model";
 import { createTeamsMeeting, deleteTeamsMeeting, TeamsGraphError, TeamsNotConnectedError, updateTeamsMeeting } from "@/lib/integrations/microsoft-teams";
 import { TEAMS_FAILURE_MESSAGES, withJoinLink } from "@/lib/integrations/teams-meeting";
@@ -244,6 +245,7 @@ export async function savePhaseFourRecordAction(
       status: text(form, "status") || "Confirmed",
       ...teams,
       // Written only when there is an agenda, or there was one to clear, so an event without one saves as it always did.
+      reminder_minutes: parseReminder(form.get("reminderMinutes")),
       ...(agenda.length || integer(form, "agendaWas") > 0 ? { agenda } : {}),
       ...(attendees.length || integer(form, "attendeesWas") > 0 ? { attendees } : {}),
     };

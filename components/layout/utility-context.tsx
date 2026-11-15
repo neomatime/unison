@@ -38,7 +38,17 @@ export function UtilityProvider({ children }: { children: React.ReactNode }) {
       const payload = (await response.json()) as { notifications?: Array<{ read_at: string | null }> }
       setUnread((payload.notifications ?? []).filter((item) => !item.read_at).length)
     })
+    // Refresh the count once a minute while the tab is showing, so a calendar reminder arrives when it is due.
+    const refresh = setInterval(() => {
+      if (document.visibilityState !== 'visible') return
+      void fetch('/api/notifications', { cache: 'no-store' }).then(async (response) => {
+        if (!response.ok) return
+        const payload = (await response.json()) as { notifications?: Array<{ read_at: string | null }> }
+        setUnread((payload.notifications ?? []).filter((item) => !item.read_at).length)
+      })
+    }, 60_000)
     return () => {
+      clearInterval(refresh)
       document.removeEventListener('keydown', handleKeyDown)
       window.removeEventListener('unison:notification-count', handleCount)
     }

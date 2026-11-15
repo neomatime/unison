@@ -8,6 +8,7 @@ import { ArrowLeft, Video } from "lucide-react";
 import { isoToLocalInput, safeJoinUrl, teamsLink } from "@/features/calendar/model";
 import type { Person } from "@/features/calendar/attendees";
 import { AttendeesEditor } from "@/features/calendar/components/attendees-editor";
+import { DEFAULT_REMINDER_MINUTES, REMINDER_OPTIONS } from "@/features/calendar/reminders";
 import { ScheduleFields } from "@/features/calendar/components/event-schedule-fields";
 import { AgendaEditor, DescriptionEditor } from "@/features/calendar/components/event-text-fields";
 import type { CalendarEvent } from "@/features/calendar/model";
@@ -164,6 +165,7 @@ function Fields({ kind, record, options, defaults, teamsConnected, scheduleEvent
     <Field name="title" label="Event title" required value={value("title", value("name"))} />
     <Select name="eventType" label="Event type" options={["Internal", "Client Meeting", "Milestone", "Governance", "Delivery"]} value={value("eventType", "Internal")} />
     <ScheduleFields startValue={isoToLocalInput(value("startAt"))} endValue={isoToLocalInput(value("endAt"))} events={scheduleEvents ?? []} ignoreId={record?.id} />
+    <label className="text-sm font-medium">Reminder<Dropdown name="reminderMinutes" defaultValue={record ? String(record.reminderMinutes ?? "") : String(DEFAULT_REMINDER_MINUTES)} className={inputClass}><option value="">No reminder</option>{REMINDER_OPTIONS.map((option) => <option key={option.minutes} value={String(option.minutes)}>{option.label}</option>)}</Dropdown></label>
     <OnlineMeeting connected={Boolean(teamsConnected)} joinUrl={safeJoinUrl(String(record?.teamsJoinUrl ?? ""))} location={value("location")} />
     <OptionSelect name="ownerId" label="Owner" options={options.members} value={value("ownerId")} optional />
     <OptionSelect name="clientId" label="Client" options={options.clients} value={value("clientId")} optional />

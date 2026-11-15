@@ -9,6 +9,10 @@ export async function GET() {
   try {
     const { organization, user } = await getSessionContext()
     const supabase = await createServerSupabase()
+    // Calendar reminders whose time has come are written as notifications here, so the bell is always current. A failure
+    // (for example the function not being installed yet) must not stop the notifications loading.
+    const reminders = await (supabase as any).rpc('deliver_calendar_reminders', { p_organization_id: organization.id })
+    if (reminders.error) console.error('Calendar reminders were not delivered', reminders.error.message)
     const { data, error } = await (supabase as any).from('notifications')
       .select('id,title,body,category,href,read_at,created_at')
       .eq('organization_id', organization.id)

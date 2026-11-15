@@ -5,6 +5,7 @@ import { Video } from "lucide-react";
 
 import { CALENDAR_TIMEZONE, canJoin, joinUrlOf } from "@/features/calendar/model";
 import { parseAttendees } from "@/features/calendar/attendees";
+import { reminderLabel } from "@/features/calendar/reminders";
 import { RichText } from "@/features/calendar/components/rich-text";
 import { agendaMinutes, formatMinutes, parseAgenda } from "@/features/calendar/description";
 import { WorkPage } from "@/components/shared/work-page";
@@ -27,7 +28,7 @@ const fields: Record<PhaseFourKind, Array<[string, string]>> = {
   onboarding: [["Client", "clientName"], ["Owner", "owner"], ["Type", "onboardingType"], ["Stage", "stage"], ["Progress", "progressPercent"], ["Health", "health"], ["Priority", "priority"], ["Start date", "startDate"], ["Target go-live", "targetGoLive"], ["Required documents", "requiredDocuments"], ["Open tasks", "taskCount"], ["Status", "status"], ["Notes", "notes"]],
   vendor: [["Type", "vendorType"], ["Service category", "serviceCategory"], ["Region", "region"], ["Owner", "owner"], ["Primary contact", "primaryContact"], ["Contact email", "contactEmail"], ["Phone", "phone"], ["Contract start", "contractStart"], ["Contract end", "contractEnd"], ["Contract value", "contractValue"], ["Renewal notice", "renewalNoticeDays"], ["SLA", "slaPercent"], ["Data sensitivity", "dataSensitivity"], ["Risk", "riskLevel"], ["Compliance", "complianceStatus"], ["Status", "status"], ["Notes", "notes"]],
   task: [["Description", "description"], ["Assignee", "assignee"], ["Project", "project"], ["Client", "client"], ["Onboarding", "onboarding"], ["Priority", "priority"], ["Due", "dueAt"], ["Completed", "completedAt"], ["Status", "status"]],
-  "calendar-event": [["Type", "eventType"], ["Starts", "startAt"], ["Ends", "endAt"], ["All day", "allDay"], ["Location", "location"], ["Teams meeting", "teamsJoinUrl"], ["Owner", "owner"], ["Project", "project"], ["Client", "client"], ["Onboarding", "onboarding"], ["Status", "status"]],
+  "calendar-event": [["Type", "eventType"], ["Starts", "startAt"], ["Ends", "endAt"], ["All day", "allDay"], ["Location", "location"], ["Teams meeting", "teamsJoinUrl"], ["Reminder", "reminderMinutes"], ["Owner", "owner"], ["Project", "project"], ["Client", "client"], ["Onboarding", "onboarding"], ["Status", "status"]],
 };
 
 const statusKeys = new Set(["status", "stage", "health", "riskLevel"]);
@@ -69,6 +70,7 @@ function formatValue(key: string, value: unknown) {
   if (value === null || value === undefined || value === "") return "—";
   if (typeof value === "boolean") return value ? "Yes" : "No";
   if (key === "capacityPercent" || key === "allocationPercent" || key === "progressPercent" || key === "slaPercent") return `${value}%`;
+  if (key === "reminderMinutes") return reminderLabel(Number(value));
   if (key === "renewalNoticeDays") return `${value} days`;
   if (key === "contractValue") return formatCurrency(Number(value), "ZAR");
   if (key.endsWith("At")) return new Date(String(value)).toLocaleString("en-ZA", { timeZone: CALENDAR_TIMEZONE });
