@@ -6,6 +6,7 @@ import { useActionState, useState } from "react";
 import { ArrowLeft, Video } from "lucide-react";
 
 import { isoToLocalInput, safeJoinUrl, teamsLink } from "@/features/calendar/model";
+import { AgendaEditor, DescriptionEditor } from "@/features/calendar/components/event-text-fields";
 import { WorkspaceHeader } from "@/components/shared/workspace-header";
 import { savePhaseFourRecordAction } from "../actions/phase-four";
 import type { PhaseFourKind, PhaseFourRecord, SelectOption } from "../queries/phase-four";
@@ -160,7 +161,8 @@ function Fields({ kind, record, options, defaults, teamsConnected }: { kind: Pha
     <OptionSelect name="onboardingId" label="Onboarding" options={options.onboardings} value={value("onboardingId")} optional />
     <Select name="status" label="Status" options={["Tentative", "Confirmed", "Cancelled", "Complete"]} value={value("status", "Confirmed")} />
     <label className="flex items-center gap-2 text-sm font-medium"><input name="allDay" type="checkbox" defaultChecked={Boolean(record?.allDay)} />All-day event</label>
-    <TextArea name="description" label="Description" value={value("description")} />
+    <DescriptionEditor value={value("description")} />
+    <AgendaEditor value={record?.agenda} />
   </>;
 }
 

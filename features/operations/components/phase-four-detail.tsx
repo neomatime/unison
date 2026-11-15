@@ -4,6 +4,8 @@ import { notFound } from "next/navigation";
 import { Video } from "lucide-react";
 
 import { CALENDAR_TIMEZONE, canJoin, joinUrlOf } from "@/features/calendar/model";
+import { RichText } from "@/features/calendar/components/rich-text";
+import { agendaMinutes, formatMinutes, parseAgenda } from "@/features/calendar/description";
 import { WorkPage } from "@/components/shared/work-page";
 import { StatusDot } from "@/components/ui/status-dot";
 import { formatCurrency } from "@/lib/utils/format-money";
@@ -24,7 +26,7 @@ const fields: Record<PhaseFourKind, Array<[string, string]>> = {
   onboarding: [["Client", "clientName"], ["Owner", "owner"], ["Type", "onboardingType"], ["Stage", "stage"], ["Progress", "progressPercent"], ["Health", "health"], ["Priority", "priority"], ["Start date", "startDate"], ["Target go-live", "targetGoLive"], ["Required documents", "requiredDocuments"], ["Open tasks", "taskCount"], ["Status", "status"], ["Notes", "notes"]],
   vendor: [["Type", "vendorType"], ["Service category", "serviceCategory"], ["Region", "region"], ["Owner", "owner"], ["Primary contact", "primaryContact"], ["Contact email", "contactEmail"], ["Phone", "phone"], ["Contract start", "contractStart"], ["Contract end", "contractEnd"], ["Contract value", "contractValue"], ["Renewal notice", "renewalNoticeDays"], ["SLA", "slaPercent"], ["Data sensitivity", "dataSensitivity"], ["Risk", "riskLevel"], ["Compliance", "complianceStatus"], ["Status", "status"], ["Notes", "notes"]],
   task: [["Description", "description"], ["Assignee", "assignee"], ["Project", "project"], ["Client", "client"], ["Onboarding", "onboarding"], ["Priority", "priority"], ["Due", "dueAt"], ["Completed", "completedAt"], ["Status", "status"]],
-  "calendar-event": [["Type", "eventType"], ["Starts", "startAt"], ["Ends", "endAt"], ["All day", "allDay"], ["Location", "location"], ["Teams meeting", "teamsJoinUrl"], ["Owner", "owner"], ["Project", "project"], ["Client", "client"], ["Onboarding", "onboarding"], ["Status", "status"], ["Description", "description"]],
+  "calendar-event": [["Type", "eventType"], ["Starts", "startAt"], ["Ends", "endAt"], ["All day", "allDay"], ["Location", "location"], ["Teams meeting", "teamsJoinUrl"], ["Owner", "owner"], ["Project", "project"], ["Client", "client"], ["Onboarding", "onboarding"], ["Status", "status"]],
 };
 
 const statusKeys = new Set(["status", "stage", "health", "riskLevel"]);
@@ -46,6 +48,7 @@ export async function PhaseFourDetail({ kind, id, split }: { kind: PhaseFourKind
           {shown.map(([label, key]) => <div key={key}><dt className="text-xs text-muted-foreground">{label}</dt><dd className="mt-1 text-sm break-words whitespace-pre-wrap text-foreground">{statusKeys.has(key) ? <StatusDot status={formatValue(key, record[key])} /> : formatValue(key, record[key])}</dd></div>)}
         </dl>
       </section>
+      {kind === "calendar-event" ? <EventNotes description={String(record.description ?? "")} agenda={parseAgenda(record.agenda)} /> : null}
     </WorkPage>;
   }
   return <WorkPage category={info.category} title={record.name} description={info.description} parent={{ label: info.parent, href: info.base }}>
@@ -70,4 +73,21 @@ function formatValue(key: string, value: unknown) {
   if (key.endsWith("At")) return new Date(String(value)).toLocaleString("en-ZA", { timeZone: CALENDAR_TIMEZONE });
   if (key.endsWith("Date") || key === "joinedOn" || key === "targetGoLive" || key === "contractStart" || key === "contractEnd") return new Date(`${value}T00:00:00`).toLocaleDateString("en-ZA");
   return String(value);
+}
+
+function EventNotes({ description, agenda }: { description: string; agenda: ReturnType<typeof parseAgenda> }) {
+  if (!description.trim() && !agenda.length) return null;
+  const total = agendaMinutes(agenda);
+  return <>
+    {description.trim() ? <section aria-label="Description" className="mt-5 border border-border bg-card p-6">
+      <h2 className="text-sm font-medium text-foreground">Description</h2>
+      <div className="mt-3"><RichText text={description} /></div>
+    </section> : null}
+    {agenda.length ? <section aria-label="Agenda" className="mt-5 border border-border bg-card p-6">
+      <h2 className="flex items-baseline justify-between text-sm font-medium text-foreground">Agenda{total ? <span className="text-xs font-normal text-muted-foreground">{formatMinutes(total)} planned</span> : null}</h2>
+      <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm text-foreground">
+        {agenda.map((item, index) => <li key={index}>{item.title}{item.minutes ? <span className="ml-2 text-xs text-muted-foreground">{formatMinutes(item.minutes)}</span> : null}</li>)}
+      </ol>
+    </section> : null}
+  </>;
 }

@@ -14,7 +14,8 @@ export function teamsConnectionStatus(source: Record<string, string | undefined>
   return { connected: missing.length === 0, missing }
 }
 
-export type TeamsMeetingInput = { subject: string; startIso: string; endIso: string; description?: string | null }
+/** bodyHtml is the invitation text, already written as escaped HTML (features/calendar/description.ts). */
+export type TeamsMeetingInput = { subject: string; startIso: string; endIso: string; bodyHtml?: string | null }
 
 /** The Graph "create event" body that makes an event with a Teams meeting attached. Times go as UTC, which Graph reads
  *  without a timezone lookup. No attendees: the join link is shared by the person who creates the event. */
@@ -22,7 +23,7 @@ export function buildTeamsEventBody(input: TeamsMeetingInput) {
   const graphTime = (iso: string) => ({ dateTime: new Date(iso).toISOString().replace('Z', ''), timeZone: 'UTC' })
   return {
     subject: input.subject.slice(0, 255),
-    body: { contentType: 'text', content: (input.description ?? '').slice(0, 4000) },
+    body: { contentType: 'html', content: (input.bodyHtml ?? '').slice(0, 20000) },
     start: graphTime(input.startIso),
     end: graphTime(input.endIso),
     isOnlineMeeting: true,
@@ -31,10 +32,10 @@ export function buildTeamsEventBody(input: TeamsMeetingInput) {
   }
 }
 
-/** The part of the body that changes when an event's title or time is edited later. */
-export function buildTeamsEventUpdate(input: Pick<TeamsMeetingInput, 'subject' | 'startIso' | 'endIso'>) {
-  const { subject, start, end } = buildTeamsEventBody({ ...input, description: null })
-  return { subject, start, end }
+/** The part of the body that changes when an event is edited later: title, time and, when given, the invitation text. */
+export function buildTeamsEventUpdate(input: Pick<TeamsMeetingInput, 'subject' | 'startIso' | 'endIso' | 'bodyHtml'>) {
+  const { subject, start, end, body } = buildTeamsEventBody(input)
+  return input.bodyHtml == null ? { subject, start, end } : { subject, start, end, body }
 }
 
 export type TeamsMeeting = { eventId: string; joinUrl: string }

@@ -16,18 +16,20 @@ test('connection: the status never carries a value', () => {
 })
 
 test('request: a Teams meeting event is sent in UTC with the Teams provider', () => {
-  const body = buildTeamsEventBody({ subject: 'Kick-off', startIso: '2026-11-16T10:00:00.000Z', endIso: '2026-11-16T11:00:00.000Z', description: 'Agenda' })
+  const body = buildTeamsEventBody({ subject: 'Kick-off', startIso: '2026-11-16T10:00:00.000Z', endIso: '2026-11-16T11:00:00.000Z', bodyHtml: '<p>Agenda</p>' })
   assert.equal(body.isOnlineMeeting, true)
   assert.equal(body.onlineMeetingProvider, 'teamsForBusiness')
   assert.deepEqual(body.start, { dateTime: '2026-11-16T10:00:00.000', timeZone: 'UTC' })
   assert.deepEqual(body.end, { dateTime: '2026-11-16T11:00:00.000', timeZone: 'UTC' })
-  assert.equal(body.body.content, 'Agenda')
+  assert.deepEqual(body.body, { contentType: 'html', content: '<p>Agenda</p>' })
   assert.ok(!('attendees' in body))
 })
 
-test('request: an update carries only the title and times', () => {
+test('request: an update carries the title and times, and the text only when given', () => {
   const update = buildTeamsEventUpdate({ subject: 'Moved', startIso: '2026-11-17T10:00:00.000Z', endIso: '2026-11-17T11:00:00.000Z' })
   assert.deepEqual(Object.keys(update).sort(), ['end', 'start', 'subject'])
+  const withText = buildTeamsEventUpdate({ subject: 'Moved', startIso: '2026-11-17T10:00:00.000Z', endIso: '2026-11-17T11:00:00.000Z', bodyHtml: '<p>x</p>' })
+  assert.deepEqual(Object.keys(withText).sort(), ['body', 'end', 'start', 'subject'])
 })
 
 test('response: the event id and join link are read, and a missing link is an error', () => {

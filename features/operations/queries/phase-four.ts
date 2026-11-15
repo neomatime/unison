@@ -226,6 +226,7 @@ export async function listCalendarEvents(): Promise<PhaseFourRecord[]> {
     onboarding: Array.isArray(row.client_onboardings)
       ? row.client_onboardings[0]?.client_name
       : row.client_onboardings?.client_name,
+    agenda: Array.isArray(row.agenda) ? row.agenda : [],
     teamsJoinUrl: row.teams_join_url ?? null,
     teamsEventId: row.teams_event_id ?? null,
     status: row.status,
