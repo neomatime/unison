@@ -5,19 +5,45 @@ import { useId, useState, type KeyboardEvent } from 'react'
 
 import { isEmail, MAX_ATTENDEES, parseAttendees, suggestPeople, type Attendee, type Person } from '../attendees'
 
-/** Who is invited. Type a name to pick a team member or a client's contact, or type any email address and press Enter.
- *  The list goes in one JSON field, `attendees`. */
+/** Who is invited, as in Teams: required attendees, and optional attendees below them. Type a name to pick a team member or a
+ *  client's contact, or type any email address and press Enter. Both lists go in one JSON field, `attendees`, each optional
+ *  one marked `optional: true`. Someone is in one list or the other, not both. */
 export function AttendeesEditor({ value, people }: { value: unknown; people: Person[] }) {
   const initial = parseAttendees(value)
   const [invited, setInvited] = useState<Attendee[]>(initial)
+
+  const add = (person: Attendee) => setInvited((all) => (all.length >= MAX_ATTENDEES ? all : parseAttendees([...all.filter((one) => one.email !== person.email.toLowerCase()), person])))
+  const remove = (email: string) => setInvited((all) => all.filter((one) => one.email !== email))
+
+  return (
+    <div className="flex flex-col gap-5 md:col-span-2">
+      <input type="hidden" name="attendees" value={JSON.stringify(invited)} />
+      <input type="hidden" name="attendeesWas" value={initial.length} />
+      <AttendeeList title="Required attendees" hint="Microsoft Teams emails each of them the invitation when you save, if Online meeting is on. Changes you make later update it." optional={false} invited={invited} people={people} onAdd={add} onRemove={remove} />
+      <AttendeeList title="Optional attendees" hint="Invited too, marked optional in their invitation." optional invited={invited} people={people} onAdd={add} onRemove={remove} />
+    </div>
+  )
+}
+
+function AttendeeList({ title, hint, optional, invited, people, onAdd, onRemove }: {
+  title: string
+  hint: string
+  optional: boolean
+  invited: Attendee[]
+  people: Person[]
+  onAdd: (person: Attendee) => void
+  onRemove: (email: string) => void
+}) {
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
   const listId = useId()
+  const mine = invited.filter((person) => Boolean(person.optional) === optional)
+  // Everyone already invited, in either list, is left out of the suggestions.
   const matches = open ? suggestPeople(people, query, invited) : []
   const typedEmail = isEmail(query) && !invited.some((person) => person.email === query.trim().toLowerCase())
 
   const add = (person: Attendee) => {
-    setInvited((all) => (all.length >= MAX_ATTENDEES ? all : parseAttendees([...all, person])))
+    onAdd(optional ? { ...person, optional: true } : person)
     setQuery('')
   }
 
@@ -30,16 +56,14 @@ export function AttendeesEditor({ value, people }: { value: unknown; people: Per
   }
 
   return (
-    <fieldset className="flex flex-col gap-2 md:col-span-2">
-      <legend className="mb-1.5 text-sm font-medium">Attendees <span className="font-normal text-muted-foreground">(optional)</span></legend>
-      <input type="hidden" name="attendees" value={JSON.stringify(invited)} />
-      <input type="hidden" name="attendeesWas" value={initial.length} />
-      {invited.length ? (
+    <fieldset className="flex flex-col gap-2">
+      <legend className="mb-1.5 text-sm font-medium">{title}</legend>
+      {mine.length ? (
         <ul className="flex flex-wrap gap-2">
-          {invited.map((person) => (
+          {mine.map((person) => (
             <li key={person.email} className="inline-flex max-w-full items-center gap-2 border border-border bg-muted py-1 pr-1 pl-2.5 text-sm">
               <span className="truncate" title={person.email}>{person.name}</span>
-              <button type="button" onClick={() => setInvited((all) => all.filter((p) => p.email !== person.email))} aria-label={`Remove ${person.name}`} className="inline-flex size-6 items-center justify-center outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring/40"><X aria-hidden="true" className="size-3.5" /></button>
+              <button type="button" onClick={() => onRemove(person.email)} aria-label={`Remove ${person.name}`} className="inline-flex size-6 items-center justify-center outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring/40"><X aria-hidden="true" className="size-3.5" /></button>
             </li>
           ))}
         </ul>
@@ -50,7 +74,7 @@ export function AttendeesEditor({ value, people }: { value: unknown; people: Per
           role="combobox"
           aria-expanded={matches.length > 0}
           aria-controls={listId}
-          aria-label="Add an attendee by name or email"
+          aria-label={`Add to ${title.toLowerCase()} by name or email`}
           autoComplete="off"
           value={query}
           placeholder="Add a name or an email address"
@@ -83,7 +107,7 @@ export function AttendeesEditor({ value, people }: { value: unknown; people: Per
           </ul>
         ) : null}
       </div>
-      <p className="text-xs text-muted-foreground">With Online meeting on, Microsoft Teams emails each person the invitation, from the organiser mailbox, when you save. Changes you make later update their invitation.</p>
+      <p className="text-xs text-muted-foreground">{hint}</p>
     </fieldset>
   )
 }

@@ -37,3 +37,21 @@ test('suggestions: match name, email or group, skip people already invited, best
   assert.deepEqual(suggestPeople(people, '', [{ name: 'Neo', email: 'NEO@himark.co.za' }]).map((p) => p.name), ['Anthony Dlamini', 'Thandi Nkosi'])
   assert.deepEqual(suggestPeople(people, 'zzz', []), [])
 })
+
+test('optional attendees: kept as optional, and someone listed as both is required', () => {
+  const list = parseAttendees([
+    { name: 'Thandi', email: 'thandi@example.com' },
+    { name: 'Sam', email: 'sam@example.com', optional: true },
+    { name: 'Sam again', email: 'sam@example.com' },
+    { name: 'Lee', email: 'lee@example.com', optional: true },
+    { name: 'Lee again', email: 'lee@example.com', optional: true },
+    { name: 'Odd', email: 'odd@example.com', optional: 'yes' },
+  ])
+  assert.deepEqual(list, [
+    { name: 'Thandi', email: 'thandi@example.com' },
+    { name: 'Sam', email: 'sam@example.com' },
+    { name: 'Lee', email: 'lee@example.com', optional: true },
+    { name: 'Odd', email: 'odd@example.com' },
+  ])
+  assert.ok(!('optional' in list[1]))
+})

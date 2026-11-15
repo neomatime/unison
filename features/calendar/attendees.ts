@@ -1,6 +1,7 @@
 // The people invited to an event. Pure: no directive, no imports, so the tests load it directly.
 
-export type Attendee = { name: string; email: string }
+/** `optional` is true for someone invited as an optional attendee; otherwise they are required. */
+export type Attendee = { name: string; email: string; optional?: boolean }
 export const MAX_ATTENDEES = 50
 
 const EMAIL = /^[^\s@<>",;]+@[^\s@<>",;]+\.[^\s@<>",;]{2,}$/
@@ -19,15 +20,22 @@ export function parseAttendees(value: unknown): Attendee[] {
     }
   }
   if (!Array.isArray(list)) return []
-  const seen = new Set<string>()
+  const seen = new Map<string, number>()
   const out: Attendee[] = []
   for (const entry of list) {
     const record = (entry && typeof entry === 'object' ? entry : {}) as { name?: unknown; email?: unknown }
     const email = typeof record.email === 'string' ? record.email.trim().toLowerCase() : ''
-    if (!isEmail(email) || seen.has(email)) continue
-    seen.add(email)
+    if (!isEmail(email)) continue
+    const optional = (entry as { optional?: unknown }).optional === true
+    const at = seen.get(email)
+    if (at !== undefined) {
+      // Listed twice: required wins over optional.
+      if (!optional) out[at] = { name: out[at].name, email: out[at].email }
+      continue
+    }
+    seen.set(email, out.length)
     const name = typeof record.name === 'string' ? record.name.trim().slice(0, 120) : ''
-    out.push({ name: name || email, email })
+    out.push(optional ? { name: name || email, email, optional: true } : { name: name || email, email })
     if (out.length === MAX_ATTENDEES) break
   }
   return out

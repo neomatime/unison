@@ -15,10 +15,10 @@ export function teamsConnectionStatus(source: Record<string, string | undefined>
 }
 
 /** bodyHtml is the invitation text, already written as escaped HTML (features/calendar/description.ts). */
-export type TeamsAttendee = { name: string; email: string }
+export type TeamsAttendee = { name: string; email: string; optional?: boolean }
 export type TeamsMeetingInput = { subject: string; startIso: string; endIso: string; bodyHtml?: string | null; /** Who Microsoft invites. Omitted on an update means the list is left as it is. */ attendees?: TeamsAttendee[] }
 
-const graphAttendees = (list: TeamsAttendee[]) => list.map((person) => ({ emailAddress: { address: person.email, name: person.name }, type: 'required' }))
+const graphAttendees = (list: TeamsAttendee[]) => list.map((person) => ({ emailAddress: { address: person.email, name: person.name }, type: person.optional ? 'optional' : 'required' }))
 
 /** The Graph "create event" body that makes an event with a Teams meeting attached. Times go as UTC, which Graph reads
  *  without a timezone lookup. No attendees: the join link is shared by the person who creates the event. */

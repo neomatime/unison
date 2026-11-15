@@ -82,3 +82,13 @@ test('connection test: every failure has a plain message that never carries Grap
   // Naming a setting is fine; no message holds a value.
   assert.ok(!Object.values(TEAMS_TEST_MESSAGES).some((message) => /@/.test(message)))
 })
+
+test('attendees: an optional attendee goes to Microsoft as optional, the rest as required', () => {
+  const body = buildTeamsEventBody({
+    subject: 'Kick-off',
+    startIso: '2026-11-16T10:00:00.000Z',
+    endIso: '2026-11-16T11:00:00.000Z',
+    attendees: [{ name: 'Thandi', email: 'thandi@example.com' }, { name: 'Sam', email: 'sam@example.com', optional: true }],
+  })
+  assert.deepEqual(body.attendees?.map((person) => person.type), ['required', 'optional'])
+})

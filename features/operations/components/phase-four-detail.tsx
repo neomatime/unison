@@ -89,7 +89,7 @@ function EventNotes({ description, agenda, attendees, invited }: { description: 
     {attendees.length ? <section aria-label="Attendees" className="mt-5 border border-border bg-card p-6">
       <h2 className="flex items-baseline justify-between text-sm font-medium text-foreground">Attendees<span className="text-xs font-normal text-muted-foreground">{invited ? "Invited through Microsoft Teams" : "Not invited: invitations are sent for Teams meetings"}</span></h2>
       <ul className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
-        {attendees.map((person) => <li key={person.email} className="min-w-0"><span className="block truncate text-foreground">{person.name}</span>{person.name !== person.email ? <span className="block truncate text-xs text-muted-foreground">{person.email}</span> : null}</li>)}
+        {attendees.map((person) => <li key={person.email} className="min-w-0"><span className="block truncate text-foreground">{person.name}{person.optional ? <span className="ml-2 text-xs text-muted-foreground">Optional</span> : null}</span>{person.name !== person.email ? <span className="block truncate text-xs text-muted-foreground">{person.email}</span> : null}</li>)}
       </ul>
     </section> : null}
     {agenda.length ? <section aria-label="Agenda" className="mt-5 border border-border bg-card p-6">
