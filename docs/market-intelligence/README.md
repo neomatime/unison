@@ -190,3 +190,7 @@ Chrome Mines, and for iMpunzi 10633 Tweefontein Complex is a possible fit; both 
 ECM Winterveld (under the Eastern Chrome Mines entry 10727, an umbrella entry) and iMpunzi (under Tweefontein Complex 10633, which
 the directory does not itself say contains iMpunzi) were marked as listed on 2026-11-15 as company-level matches, and the
 `source_ref` of each says so. **141 listed, 3 unverified:** Black Chrome, Sylvania Dump Operations and Kalgold.
+
+Black Chrome, Sylvania Dump Operations and Kalgold were labelled on 2026-11-15 "Not found in DMPR D1-2024 directory; 2026 status
+not confirmed": the directory was searched by name, owner and farm and the closest entries are other mines. They keep
+`verified_on` empty. **141 listed, 3 not found.**
