@@ -6,7 +6,6 @@ import { useRouter } from 'next/navigation'
 import { useState, useTransition, type ReactNode } from 'react'
 
 import { linkMarketOrganizationAction } from '../actions'
-import { TopographyBackdrop } from './topography-backdrop'
 import { STATUS_COLORS, STATUS_LABELS, operationCommodities, type MarketOperation, type MarketOrganization } from '../model'
 
 const primary = 'inline-flex h-9 items-center justify-center gap-1.5 bg-brand px-3 text-xs font-semibold text-white outline-none hover:bg-brand/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand'
@@ -34,10 +33,10 @@ export function OrganisationDetails({ organization, operation }: { organization:
 
   return (
     <div className="flex h-full flex-col">
-      {/* No verified photograph of the site is held, so contour lines stand in for one rather than a stock picture of somewhere else. */}
-      <div className="relative flex h-24 items-center justify-center overflow-hidden border-b border-border bg-muted">
-        <TopographyBackdrop />
-        <Mountain className="relative size-7 text-[var(--briefing-muted)]" aria-hidden="true" />
+      {/* A general photograph of an underground mine (public/brand/mining-tunnel.jpg), not a picture of this operation: none is held. The shade keeps the icon and the status badge readable. */}
+      <div role="presentation" className="relative flex h-24 items-center justify-center overflow-hidden border-b border-border bg-muted bg-cover bg-center" style={{ backgroundImage: "url('/brand/mining-tunnel.jpg')" }}>
+        <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-b from-black/35 to-black/60" />
+        <Mountain className="relative size-7 text-white/80" aria-hidden="true" />
         <span className="absolute right-2 top-2 inline-flex items-center gap-1.5 border border-border bg-card px-2 py-0.5 text-[11px] font-medium">
           <span aria-hidden="true" className="size-2 rounded-full" style={{ background: STATUS_COLORS[organization.status] }} />
           {STATUS_LABELS[organization.status]}
