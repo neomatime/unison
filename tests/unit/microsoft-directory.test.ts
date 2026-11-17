@@ -39,3 +39,24 @@ test('the Team page reads the directory, falls back honestly and never deletes',
   assert.match(graph, /method|headers/)
   assert.doesNotMatch(graph, /method: '(POST|PATCH|PUT|DELETE)'/, 'read only')
 })
+
+import { normalizeHiddenEmail, withoutHidden } from '../../features/operations/team-hidden.ts'
+
+test('the hide list matches addresses without regard to case and only accepts real addresses', () => {
+  assert.equal(normalizeHiddenEmail('  Info@HIMARK.co.za '), 'info@himark.co.za')
+  assert.equal(normalizeHiddenEmail('not an email'), null)
+  assert.equal(normalizeHiddenEmail(''), null)
+  const people = [{ email: 'Info@himark.co.za', name: 'a' }, { email: 'neo@himark.co.za', name: 'b' }]
+  assert.deepEqual(withoutHidden(people, ['info@himark.co.za']).map((p) => p.name), ['b'])
+  assert.equal(withoutHidden(people, []).length, 2)
+})
+
+test('only an Owner or Admin may change the hide list, and nothing is deleted from team_members', () => {
+  const action = readFileSync('features/operations/actions/team-hidden.ts', 'utf8')
+  assert.match(action, /members\.manage/)
+  assert.doesNotMatch(action, /from\("team_members"\)/)
+  const sql = readFileSync('supabase/migrations/20261117110000_team_hidden_addresses.sql', 'utf8')
+  assert.match(sql, /has_role\(organization_id, array\['owner','admin'\]\)/)
+  const register = readFileSync('features/operations/components/phase-four-register.tsx', 'utf8')
+  assert.match(register, /canManage \? <HiddenAddresses/)
+})

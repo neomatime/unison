@@ -5,6 +5,9 @@ import { CALENDAR_TIMEZONE } from "@/features/calendar/model";
 import { WorkspaceHeader } from "@/components/shared/workspace-header";
 import { MetricCard } from "@/features/delivery/components/delivery-primitives";
 import { RecordCollectionWorkspace, type CollectionRecord } from "@/features/product-ui/components/record-collection-workspace";
+import { roleHasPermission } from "@/config/roles";
+import { getSessionContext } from "@/lib/auth/get-session-context";
+import { hideTeamAddressAction, unhideTeamAddressAction } from "../actions/team-hidden";
 import { OnboardingBoard } from "./onboarding-board";
 import { isOnboardingStage, type BoardCard } from "../onboarding-board";
 import {
@@ -35,7 +38,9 @@ const portableCollectionByKind = {
 } as const;
 
 export async function PersistentTeamScreen() {
-  const { members, notice } = await listMicrosoftTeamMembers();
+  const { members, notice, hidden } = await listMicrosoftTeamMembers();
+  const { role } = await getSessionContext();
+  const canManage = roleHasPermission(String(role), "members.manage");
   const active = members.filter((member) => member.status === "Active" && !member.archivedAt);
   const records: CollectionRecord[] = members.map((row) => ({
         id: row.id, name: row.name, context: text(row.jobTitle), owner: text(row.deliveryRole),
@@ -50,6 +55,7 @@ export async function PersistentTeamScreen() {
       <MetricCard label="Active members" value={String(active.length)} detail="Available for accountable delivery" />
       <MetricCard label="Capacity allocated" value={`${active.length ? Math.round(active.reduce((sum, item) => sum + Number(item.capacityPercent ?? 0), 0) / active.length) : 0}%`} detail="Average member allocation" />
     </div>
+    {canManage ? <HiddenAddresses hidden={hidden} /> : null}
     <div className="mt-5"><RecordCollectionWorkspace config={{
       title: "Team Directory",
       singular: "Team Member",
@@ -62,6 +68,26 @@ export async function PersistentTeamScreen() {
       emptyDescription: "Team members come from the HIMARK Microsoft account directory.",
     }} /></div>
   </>;
+}
+
+/** Owners and Admins: addresses kept off the Team page (a shared mailbox is in the directory but is not a person). */
+function HiddenAddresses({ hidden }: { hidden: string[] }) {
+  return <details className="mt-3 border border-border bg-card text-sm">
+    <summary className="cursor-pointer px-4 py-2.5 font-medium">Hidden from this page ({hidden.length})</summary>
+    <div className="border-t border-border px-4 py-3">
+      <p className="text-xs text-muted-foreground">Addresses listed here never appear on the Team page, even though they are in the Microsoft directory. Hiding does not delete anything.</p>
+      {hidden.length ? <ul className="mt-3 divide-y divide-border">
+        {hidden.map((email) => <li key={email} className="flex items-center justify-between gap-3 py-2">
+          <span>{email}</span>
+          <form action={unhideTeamAddressAction}><input type="hidden" name="email" value={email} /><button type="submit" className="text-xs font-medium text-brand hover:underline">Show again</button></form>
+        </li>)}
+      </ul> : null}
+      <form action={hideTeamAddressAction} className="mt-3 flex gap-2">
+        <input type="email" name="email" required placeholder="name@himark.co.za" aria-label="Email address to hide" className="h-9 min-w-0 flex-1 border border-border bg-background px-3 text-sm" />
+        <button type="submit" className="h-9 bg-brand px-4 text-xs font-semibold text-white hover:bg-brand/90">Hide</button>
+      </form>
+    </div>
+  </details>;
 }
 
 export async function PhaseFourRegister({ kind, slim, hideHeader, rows: given, view = "list" }: { /** Onboarding only: the list register or the stage board. */ view?: "list" | "board"; kind: Exclude<PhaseFourKind, "team-member" | "assignment">; /** Two summary cards instead of three: the "Updated records" count is dropped. */ slim?: boolean; /** The page already shows the heading (the calendar page does). */ hideHeader?: boolean; /** Rows the page has already loaded, so they are not fetched twice. */ rows?: PhaseFourRecord[] }) {

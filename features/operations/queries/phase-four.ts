@@ -4,6 +4,7 @@ import { getSessionContext } from "@/lib/auth/get-session-context";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { cleanSearch, type Person } from "@/features/calendar/attendees";
 import { isUuid } from "@/lib/utils";
+import { withoutHidden } from "@/features/operations/team-hidden";
 import { listDirectoryPeople } from "@/lib/integrations/microsoft-directory";
 
 export type PhaseFourKind =
@@ -45,7 +46,7 @@ async function context() {
   };
 }
 
-export type TeamListing = { members: PhaseFourRecord[]; source: "directory" | "sign-ins"; notice: string | null };
+export type TeamListing = { members: PhaseFourRecord[]; source: "directory" | "sign-ins"; notice: string | null; hidden: string[] };
 
 /**
  * The Team page lists the people in the organisation's Microsoft 365 directory (HIMARK work accounts), whether or not they have
@@ -56,7 +57,10 @@ export type TeamListing = { members: PhaseFourRecord[]; source: "directory" | "s
 export async function listMicrosoftTeamMembers(): Promise<TeamListing> {
   const { organization, db } = await context();
   const org = await db.from("organizations").select("email_domain").eq("id", organization.id).maybeSingle();
-  const directory = await listDirectoryPeople(org.data?.email_domain);
+  const hiddenRows = await db.from("team_hidden_addresses").select("email").eq("organization_id", organization.id).order("email");
+  const hidden = ((hiddenRows.data ?? []) as { email: string }[]).map((row) => row.email);
+  const directory = (await listDirectoryPeople(org.data?.email_domain));
+  if (directory.ok) directory.people = withoutHidden(directory.people, hidden);
   if (directory.ok) {
     const emails = new Set(directory.people.map((person) => person.email));
     const existing = await db.from("team_members").select("email").eq("organization_id", organization.id);
@@ -69,7 +73,7 @@ export async function listMicrosoftTeamMembers(): Promise<TeamListing> {
       if (added.error) console.error("Team: could not add directory people", added.error.message);
     }
     const all = await listTeamMembers();
-    return { members: all.filter((row) => emails.has(String(row.email ?? "").toLowerCase())), source: "directory", notice: null };
+    return { members: withoutHidden(all.filter((row) => emails.has(String(row.email ?? "").toLowerCase())), hidden), source: "directory", notice: null, hidden };
   }
   const ids = await db.rpc("team_microsoft_user_ids", { p_organization_id: organization.id });
   if (ids.error) throw ids.error;
@@ -77,7 +81,7 @@ export async function listMicrosoftTeamMembers(): Promise<TeamListing> {
   const notice = directory.reason === "permission"
     ? "Showing people who have signed in with Microsoft. To list everyone in the HIMARK directory, an administrator must grant UNISON the User.Read.All permission."
     : "Showing people who have signed in with Microsoft. The Microsoft directory could not be read just now.";
-  return { members: userIds.length ? await listTeamMembers(userIds) : [], source: "sign-ins", notice };
+  return { members: withoutHidden(userIds.length ? await listTeamMembers(userIds) : [], hidden), source: "sign-ins", notice, hidden };
 }
 
 export async function listTeamMembers(onlyUserIds?: string[]): Promise<PhaseFourRecord[]> {
