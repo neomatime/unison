@@ -11,7 +11,7 @@ import {
   listCalendarEvents,
   listClientOnboardings,
   listTasks,
-  listTeamMembers,
+  listMicrosoftTeamMembers,
   listVendors,
   type PhaseFourKind,
   type PhaseFourRecord,
@@ -35,7 +35,7 @@ const portableCollectionByKind = {
 } as const;
 
 export async function PersistentTeamScreen() {
-  const members = await listTeamMembers();
+  const members = await listMicrosoftTeamMembers();
   const active = members.filter((member) => member.status === "Active" && !member.archivedAt);
   const records: CollectionRecord[] = members.map((row) => ({
         id: row.id, name: row.name, context: text(row.jobTitle), owner: text(row.deliveryRole),
@@ -44,7 +44,7 @@ export async function PersistentTeamScreen() {
         updated: date(row.updatedAt), archived: Boolean(row.archivedAt),
       }));
   return <>
-    <WorkspaceHeader category="People" title="Team" description="Persistent people, capacity and project accountability for the active organization." action="New Team Member" actionHref="/people/team/new" />
+    <WorkspaceHeader category="People" title="Team" description="People who sign in with their HIMARK Microsoft account, with their capacity and project accountability. Someone appears here when they first sign in." />
     <div className="grid gap-3 sm:grid-cols-2">
       <MetricCard label="Active members" value={String(active.length)} detail="Available for accountable delivery" />
       <MetricCard label="Capacity allocated" value={`${active.length ? Math.round(active.reduce((sum, item) => sum + Number(item.capacityPercent ?? 0), 0) / active.length) : 0}%`} detail="Average member allocation" />
@@ -53,14 +53,12 @@ export async function PersistentTeamScreen() {
       title: "Team Directory",
       singular: "Team Member",
       description: "People, delivery roles, capacity and availability.",
-      primaryAction: "New Team Member",
+      hideHeaderAction: true,
       records,
       recordHrefBase: "/people/team",
       columns: [{ id: "name", label: "Member" }, { id: "owner", label: "Delivery Role" }, { id: "department", label: "Department" }, { id: "capacity", label: "Capacity" }, { id: "availability", label: "Availability" }, { id: "status", label: "Status" }],
       fields: [], contextualActions: [],
-      allowImport: true,
-      portableCollection: "team-members",
-      emptyDescription: "Add the first team member to the organization directory.",
+      emptyDescription: "Team members appear here when they sign in with their HIMARK Microsoft account.",
     }} /></div>
   </>;
 }

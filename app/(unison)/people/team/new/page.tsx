@@ -1,6 +1,6 @@
-import { PhaseFourForm } from '@/features/operations/components/phase-four-form'
-import { getPhaseFourOptions } from '@/features/operations/queries/phase-four'
+import { redirect } from 'next/navigation'
 
-export default async function Page() {
-  return <PhaseFourForm kind="team-member" options={await getPhaseFourOptions()} />
+// Team members are not added by hand: a person appears on the Team page when they sign in with their HIMARK Microsoft account.
+export default function Page() {
+  redirect('/people/team')
 }

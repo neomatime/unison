@@ -44,13 +44,24 @@ async function context() {
   };
 }
 
-export async function listTeamMembers(): Promise<PhaseFourRecord[]> {
+/** The Team page lists only people with a Microsoft sign-in (a HIMARK work account). Profiles added by hand stay in the table but are not listed. */
+export async function listMicrosoftTeamMembers(): Promise<PhaseFourRecord[]> {
   const { organization, db } = await context();
-  const { data, error } = await db
+  const ids = await db.rpc("team_microsoft_user_ids", { p_organization_id: organization.id });
+  if (ids.error) throw ids.error;
+  const userIds = (ids.data ?? []) as string[];
+  if (userIds.length === 0) return [];
+  return listTeamMembers(userIds);
+}
+
+export async function listTeamMembers(onlyUserIds?: string[]): Promise<PhaseFourRecord[]> {
+  const { organization, db } = await context();
+  let query = db
     .from("team_members")
     .select("*,project_assignments(count)")
-    .eq("organization_id", organization.id)
-    .order("full_name");
+    .eq("organization_id", organization.id);
+  if (onlyUserIds) query = query.in("user_id", onlyUserIds);
+  const { data, error } = await query.order("full_name");
   if (error) throw error;
   return (data ?? []).map((row: any) => ({
     id: row.id,
