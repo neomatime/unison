@@ -35,7 +35,7 @@ const portableCollectionByKind = {
 } as const;
 
 export async function PersistentTeamScreen() {
-  const members = await listMicrosoftTeamMembers();
+  const { members, notice } = await listMicrosoftTeamMembers();
   const active = members.filter((member) => member.status === "Active" && !member.archivedAt);
   const records: CollectionRecord[] = members.map((row) => ({
         id: row.id, name: row.name, context: text(row.jobTitle), owner: text(row.deliveryRole),
@@ -44,7 +44,8 @@ export async function PersistentTeamScreen() {
         updated: date(row.updatedAt), archived: Boolean(row.archivedAt),
       }));
   return <>
-    <WorkspaceHeader category="People" title="Team" description="People who sign in with their HIMARK Microsoft account, with their capacity and project accountability. Someone appears here when they first sign in." />
+    <WorkspaceHeader category="People" title="Team" description="Everyone with a HIMARK Microsoft account, with their capacity and project accountability." />
+    {notice ? <p role="status" className="mb-3 border-l-2 border-brand bg-brand-soft/40 px-4 py-2.5 text-sm text-foreground">{notice}</p> : null}
     <div className="grid gap-3 sm:grid-cols-2">
       <MetricCard label="Active members" value={String(active.length)} detail="Available for accountable delivery" />
       <MetricCard label="Capacity allocated" value={`${active.length ? Math.round(active.reduce((sum, item) => sum + Number(item.capacityPercent ?? 0), 0) / active.length) : 0}%`} detail="Average member allocation" />
@@ -58,7 +59,7 @@ export async function PersistentTeamScreen() {
       recordHrefBase: "/people/team",
       columns: [{ id: "name", label: "Member" }, { id: "owner", label: "Delivery Role" }, { id: "department", label: "Department" }, { id: "capacity", label: "Capacity" }, { id: "availability", label: "Availability" }, { id: "status", label: "Status" }],
       fields: [], contextualActions: [],
-      emptyDescription: "Team members appear here when they sign in with their HIMARK Microsoft account.",
+      emptyDescription: "Team members come from the HIMARK Microsoft account directory.",
     }} /></div>
   </>;
 }
