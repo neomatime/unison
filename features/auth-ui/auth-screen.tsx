@@ -11,6 +11,7 @@ import { PublicThemeEffect } from '@/components/layout/public-theme-effect'
 import { Reveal } from '@/features/marketing/components/reveal'
 import { stagger } from '@/features/marketing/components/motion'
 import { cn } from '@/lib/utils'
+import { ADMIN_MANAGED_MESSAGE } from './password-policy'
 import { acceptInvitationAction } from '@/features/invitations/actions/accept-invitation'
 
 import { signInAction } from './actions/sign-in'
@@ -26,7 +27,7 @@ type CompletionMethod = 'email' | null
 
 const copy: Record<AuthKind, { title: string; description: string; action: string }> = {
   'sign-in': { title: 'Sign in', description: 'Access your client relationship workspace.', action: 'Sign in' },
-  forgot: { title: 'Reset your password', description: 'Enter your work email and we’ll prepare a reset link.', action: 'Continue' },
+  forgot: { title: 'Passwords are managed for you', description: 'Your UNISON administrator looks after passwords.', action: 'Continue' },
   reset: { title: 'Choose a new password', description: 'Use a strong password you have not used before.', action: 'Update password' },
   // The invitation names the tenant when it can be resolved. These generic
   // strings remain truthful for expired or otherwise unresolved invitations.
@@ -114,9 +115,7 @@ export function AuthScreen({ kind, next, token, message, organizationName }: { k
                   </div>
                 </div>
 
-                <div className="flex justify-end">
-                  <Link href="/forgot-password" className="text-sm font-medium text-[color:var(--pub-text-1769aa)] transition-colors duration-150 hover:text-[color:var(--pub-text-0f4c7d)] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1769aa] motion-reduce:transition-none">Forgot password?</Link>
-                </div>
+                <p className="text-xs leading-5 text-[color:var(--pub-text-657590)]">Forgotten your password? Your UNISON administrator can send you a reset link.</p>
 
                 {signInState?.error ? <p role="alert" className="border-l-2 border-red-500 bg-[color:var(--pub-error-bg)] px-4 py-3 text-sm text-[color:var(--pub-error-text)]">{signInState.error}</p> : null}
 
@@ -153,7 +152,7 @@ export function AuthScreen({ kind, next, token, message, organizationName }: { k
           <h1 className="font-brand text-3xl font-light tracking-tight">{content.title}</h1>
           <p className="mt-3 text-sm leading-6 text-muted-foreground">{content.description}</p>
 
-          {completion || accountAccessComplete ? <CompletionState kind={kind} /> : (
+          {isForgot ? <AdminManagedNotice /> : completion || accountAccessComplete ? <CompletionState kind={kind} /> : (
             <form
               action={isAccept ? acceptFormAction : accountAccessAction}
               onSubmit={isAccept || accountAccessAction ? undefined : (event) => { event.preventDefault(); setCompletion('email') }}
@@ -257,6 +256,18 @@ function MicrosoftSignInButton() {
 
 function MicrosoftMark() {
   return <span className="grid size-4 grid-cols-2 gap-[2px]" aria-hidden="true"><span className="bg-[#f25022]" /><span className="bg-[#7fba00]" /><span className="bg-[#00a4ef]" /><span className="bg-[#ffb900]" /></span>
+}
+
+/** Shown in place of the old "forgot password" form: nobody resets their own password; an administrator sends the link. */
+function AdminManagedNotice() {
+  return (
+    <div className="mt-8 border-l-2 border-brand bg-brand-soft p-5">
+      <ShieldCheck className="size-5 text-brand" />
+      <h2 className="mt-3 font-medium">Ask your administrator</h2>
+      <p className="mt-1 text-sm leading-6 text-muted-foreground">{ADMIN_MANAGED_MESSAGE}</p>
+      <Link href="/sign-in" className="mt-5 inline-flex items-center gap-2 text-sm font-medium"><ArrowLeft className="size-4" /> Back to sign in</Link>
+    </div>
+  )
 }
 
 function CompletionState({ kind }: { kind: AuthKind }) {

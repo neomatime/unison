@@ -1,10 +1,9 @@
 'use server'
 
-import { headers } from 'next/headers'
-
-import { resolveAppOrigin } from '@/lib/auth/app-origin'
-import { readAppUrl } from '@/lib/env'
 import { createServerSupabase } from '@/lib/supabase/server'
+
+import { callbackUrl } from '../callback-url'
+import { ADMIN_MANAGED_MESSAGE, mayChoosePassword } from '../password-policy'
 
 import { accountEmailSchema, passwordResetSchema } from '../schemas/account-access'
 
@@ -14,35 +13,15 @@ export type AccountAccessState = {
   updated?: boolean
 }
 
-async function callbackUrl(next: string, flow: 'recovery' | 'verification') {
-  const requestOrigin = (await headers()).get('origin')
-  const origin = resolveAppOrigin(readAppUrl(process.env), requestOrigin)
-  const callback = new URL('/auth/callback', origin)
-  callback.searchParams.set('next', next)
-  callback.searchParams.set('flow', flow)
-  return callback.toString()
-}
-
 export async function requestPasswordResetAction(
   _previous: AccountAccessState | undefined,
   formData: FormData,
 ): Promise<AccountAccessState> {
-  const email = accountEmailSchema.safeParse(formData.get('email'))
-  if (!email.success) return { error: email.error.issues[0].message }
-
-  const supabase = await createServerSupabase()
-  const { error } = await supabase.auth.resetPasswordForEmail(email.data, {
-    redirectTo: await callbackUrl('/reset-password', 'recovery'),
-  })
-
-  if (error) {
-    console.warn('[password-reset] reset email request failed:', error.code ?? error.name)
-    return { error: 'A reset email could not be sent right now. Please try again shortly.' }
-  }
-
-  // Supabase deliberately does not disclose whether the address exists. Keep
-  // the application response equally neutral to prevent account enumeration.
-  return { sent: true }
+  // Passwords are reset by an administrator (Settings, Users & access), never by the person themselves, so a visitor cannot ask for
+  // a reset email here. Kept as an action only so any old form that still posts to it gets a plain answer.
+  void _previous
+  void formData
+  return { error: ADMIN_MANAGED_MESSAGE }
 }
 
 export async function updatePasswordAction(
@@ -56,6 +35,10 @@ export async function updatePasswordAction(
   if (!parsed.success) return { error: parsed.error.issues[0].message }
 
   const supabase = await createServerSupabase()
+  // Only a session started from a reset link an administrator sent may set a password. Someone who is merely signed in cannot
+  // change theirs here, even by going straight to this action.
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!mayChoosePassword(user)) return { error: ADMIN_MANAGED_MESSAGE }
   const { error } = await supabase.auth.updateUser({ password: parsed.data.password })
   if (error) {
     const expired = error.code === 'session_not_found' || error.code === 'bad_jwt'

@@ -22,15 +22,17 @@ test('a replacement password meets the shared floor and must be confirmed', () =
   assert.equal(passwordResetSchema.safeParse({ password, confirmPassword: `${password}!` }).success, false)
 })
 
-test('the three account-access screens call Supabase instead of local completion state', () => {
-  assert.match(actions, /auth\.resetPasswordForEmail\(/)
+test('the account-access screens call Supabase instead of local completion state', () => {
+  // A password is reset by an administrator (features/memberships/actions/send-reset-link.ts), never requested from this screen,
+  // so the request action no longer calls resetPasswordForEmail; the reset page itself and email verification still do their work.
+  assert.doesNotMatch(actions, /auth\.resetPasswordForEmail\(/)
   assert.match(actions, /auth\.updateUser\(\{ password:/)
   assert.match(actions, /auth\.resend\(\{\s*type: 'signup'/)
-  assert.match(actions, /callbackUrl\('\/reset-password', 'recovery'\)/)
+  assert.match(readFileSync('features/memberships/actions/send-reset-link.ts', 'utf8'), /callbackUrl\('\/reset-password', 'recovery'\)/)
 
   assert.match(screen, /action=\{isAccept \? acceptFormAction : accountAccessAction\}/)
   assert.match(screen, /name="confirmPassword"/)
-  assert.match(screen, /If an account matches that address/)
+  assert.match(screen, /AdminManagedNotice/)
 })
 
 test('account-access callbacks never pass through the Microsoft membership claim', () => {

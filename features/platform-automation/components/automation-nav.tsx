@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils'
 
 const items = [
   { href: '/settings', label: 'Overview' },
+  { href: '/settings/access', label: 'Users & access' },
   { href: '/settings/integrations', label: 'Integrations' },
   { href: '/settings/automations', label: 'Automations' },
   { href: '/settings/jobs', label: 'Jobs & schedules' },
