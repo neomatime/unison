@@ -187,10 +187,10 @@ function formatValue(key: string, value: unknown, record: PhaseSixRecord) {
   if (value === null || value === undefined || value === "") return "—";
   if (Array.isArray(value)) return value.join(", ");
   if (key === "qualificationSignals" && typeof value === "object") {
-    return Object.entries(value as Record<string, unknown>)
-      .map(([signal, active]) => `${signal}: ${active ? "yes" : "no"}`)
-      .join("\n");
+    return signalRows(value).map((row) => `${row.met ? "Yes" : "No"}: ${row.label}`).join("\n");
   }
+  if (key === "qualificationScore") return scoreLabel(value);
+  if (key === "qualificationOutcome") return outcomeLabel(value);
   if (key === "manualReviewRequired") return value ? "Required" : "No";
   if ((key === "quoteNumber" || key === "invoiceNumber") && isDraftReference(value)) {
     return key === "invoiceNumber" ? "Assigned when it is issued" : "Assigned when it is sent";

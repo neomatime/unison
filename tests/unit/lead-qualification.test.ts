@@ -34,3 +34,10 @@ test('outcomes read as words and the field is called Qualification outcome', () 
   assert.match(detail, /\["Manual review", "manualReviewRequired"\]/, 'manual review keeps its name')
   for (const label of ['Qualification outcome', 'Qualification score', 'Signals', 'Manual review']) assert.ok(LEAD_FIELD_HINTS[label], `${label} has a hint`)
 })
+
+test('the lead detail really formats the score and outcome through the helpers', () => {
+  const detail = readFileSync('features/commercial-finance/components/phase-six-detail.tsx', 'utf8')
+  assert.match(detail, /key === "qualificationScore"\) return scoreLabel\(value\)/)
+  assert.match(detail, /key === "qualificationOutcome"\) return outcomeLabel\(value\)/)
+  assert.match(detail, /signalRows\(value\)\.map/)
+})
