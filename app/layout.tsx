@@ -22,7 +22,8 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
+    // A saved dark choice is applied to <html> by a script before React starts, so the class differs from the server's HTML on purpose.
+    <html lang="en" suppressHydrationWarning>
       <body className="unison-interface bg-background font-sans antialiased">
         <ConfirmProvider>{children}</ConfirmProvider>
         <SafeAnalytics />

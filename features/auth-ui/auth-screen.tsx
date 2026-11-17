@@ -6,6 +6,11 @@ import { ArrowLeft, ArrowRight, CheckCircle2, Eye, EyeOff, LockKeyhole, Mail, Sh
 import { useActionState, useState } from 'react'
 import { useFormStatus } from 'react-dom'
 
+import { UnisonWordmark } from '@/components/brand/unison-wordmark'
+import { PublicThemeEffect } from '@/components/layout/public-theme-effect'
+import { Reveal } from '@/features/marketing/components/reveal'
+import { stagger } from '@/features/marketing/components/motion'
+import { cn } from '@/lib/utils'
 import { acceptInvitationAction } from '@/features/invitations/actions/accept-invitation'
 
 import { signInAction } from './actions/sign-in'
@@ -31,7 +36,7 @@ const copy: Record<AuthKind, { title: string; description: string; action: strin
   'join-organization': { title: 'Join an organization', description: 'Enter the invitation code supplied by your administrator.', action: 'Join organization' },
 }
 
-const controlClass = 'h-12 w-full border border-[#cfd8e4] bg-white text-sm outline-none transition-[border-color,box-shadow] duration-150 ease-out placeholder:text-[#8392a8] focus:border-[#1769aa] focus:ring-2 focus:ring-[#1769aa]/10 motion-reduce:transition-none'
+const controlClass = 'h-12 w-full border border-[color:var(--pub-border-cfd8e4)] bg-[color:var(--pub-surface)] text-sm outline-none transition-[border-color,box-shadow] duration-150 ease-out placeholder:text-[color:var(--pub-text-8392a8)] focus:border-[#1769aa] focus:ring-2 focus:ring-[#1769aa]/10 motion-reduce:transition-none'
 
 export function AuthScreen({ kind, next, token, message, organizationName }: { kind: AuthKind; next?: string; token?: string; message?: string; organizationName?: string }) {
   const [completion, setCompletion] = useState<CompletionMethod>(null)
@@ -55,6 +60,8 @@ export function AuthScreen({ kind, next, token, message, organizationName }: { k
   const isForgot = kind === 'forgot'
   const isReset = kind === 'reset'
   const isVerify = kind === 'verify'
+  // Forgot and reset password keep their own look for now: the new wordmark and dark mode are for sign-in, invitations and verification.
+  const useBrand = !isForgot && !isReset
   const accountAccessComplete = recoveryState?.sent || resetState?.updated || verificationState?.sent
   const accountAccessError = recoveryState?.error || resetState?.error || verificationState?.error
   const accountAccessPending = recoveryPending || resetPending || verificationPending
@@ -62,33 +69,36 @@ export function AuthScreen({ kind, next, token, message, organizationName }: { k
 
   if (isSignIn) {
     return (
-      <main className="grid min-h-screen bg-[#fafbfd] text-[#0d2340] lg:grid-cols-[1.12fr_0.88fr]">
+      <main className="lux-page grid min-h-screen bg-[color:var(--pub-bg-fafbfd)] text-[color:var(--pub-text-0d2340)] lg:grid-cols-[1.12fr_0.88fr]">
+        <PublicThemeEffect />
+        {/* Without JavaScript nothing can reveal itself, so show everything. */}
+        <noscript><style>{'.lux-reveal,.lux-mask>span,.lux-draw{opacity:1!important;transform:none!important;filter:none!important}'}</style></noscript>
         <SignInBrandPanel />
 
-        <section className="relative flex min-h-screen flex-col border-l border-[#dce3eb] bg-white">
-          <div className="flex h-16 items-center justify-between border-b border-[#edf0f4] px-6 sm:px-10 lg:border-b-0 lg:px-12">
-            <Link href="/" className="text-lg font-medium tracking-[0.24em] lg:hidden">UNISON</Link>
-            <Link href="/" className="ml-auto inline-flex items-center gap-2 text-sm font-medium text-[#51647e] transition-colors duration-150 ease-out hover:text-[#0d2340] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#1769aa] motion-reduce:transition-none">
+        <section className="relative flex min-h-screen flex-col border-l border-[color:var(--pub-border-dce3eb)] bg-[color:var(--pub-surface)]">
+          <div className="flex h-16 items-center justify-between border-b border-[color:var(--pub-border-edf0f4)] px-6 sm:px-10 lg:border-b-0 lg:px-12">
+            <Link href="/" aria-label="UNISON home" className="lg:hidden"><UnisonWordmark className="h-4" priority /></Link>
+            <Link href="/" className="ml-auto inline-flex items-center gap-2 text-sm font-medium text-[color:var(--pub-text-51647e)] transition-colors duration-150 ease-out hover:text-[color:var(--pub-text-0d2340)] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#1769aa] motion-reduce:transition-none">
               <ArrowLeft className="size-4" /> Back to site
             </Link>
           </div>
 
           <div className="flex flex-1 items-center px-6 py-7 sm:px-10 lg:px-[clamp(3rem,7vw,7rem)] lg:py-8">
-            <div className="w-full max-w-[36.5rem]">
-              <p className="text-sm font-medium text-[#56749a]">Welcome to UNISON</p>
-              <h1 className="mt-3 font-brand text-[2.65rem] leading-none font-light tracking-tight sm:text-[3rem]">Sign in</h1>
-              <p className="mt-3 max-w-[26rem] text-sm leading-6 text-[#657590]">Access your client relationship workspace.</p>
+            <Reveal variant="plain" className="w-full max-w-[36.5rem]">
+              <p style={stagger(0, 90, 300)} className="lux-reveal text-sm font-medium text-[color:var(--pub-text-56749a)]">Welcome to UNISON</p>
+              <h1 style={stagger(1, 90, 300)} className="lux-reveal mt-3 font-brand text-[2.65rem] leading-none font-light tracking-tight sm:text-[3rem]">Sign in</h1>
+              <p style={stagger(2, 90, 300)} className="lux-reveal mt-3 max-w-[26rem] text-sm leading-6 text-[color:var(--pub-text-657590)]">Access your client relationship workspace.</p>
 
-              {message ? <p role="alert" className="mt-7 border-l-2 border-red-500 bg-red-50 px-4 py-3 text-sm text-red-700">{message}</p> : null}
+              {message ? <p role="alert" className="mt-7 border-l-2 border-red-500 bg-[color:var(--pub-error-bg)] px-4 py-3 text-sm text-[color:var(--pub-error-text)]">{message}</p> : null}
 
-              <MicrosoftSignIn next={next ?? '/overview'} />
+              <div className="lux-reveal" style={stagger(3, 90, 300)}><MicrosoftSignIn next={next ?? '/overview'} /></div>
 
-              <form action={signInFormAction} className="mt-5 space-y-3">
+              <form action={signInFormAction} style={stagger(4, 90, 300)} className="lux-reveal mt-5 space-y-3">
                 <input type="hidden" name="next" value={next ?? '/overview'} />
                 <div>
                   <label htmlFor="sign-in-email" className="text-sm font-medium">Work email</label>
                   <div className="relative mt-1.5">
-                    <Mail className="pointer-events-none absolute top-1/2 left-4 size-[1.125rem] -translate-y-1/2 text-[#8192aa]" />
+                    <Mail className="pointer-events-none absolute top-1/2 left-4 size-[1.125rem] -translate-y-1/2 text-[color:var(--pub-text-8192aa)]" />
                     <input id="sign-in-email" required autoComplete="email" type="email" name="email" placeholder="you@company.com" className={`${controlClass} pr-4 pl-11`} />
                   </div>
                 </div>
@@ -96,31 +106,31 @@ export function AuthScreen({ kind, next, token, message, organizationName }: { k
                 <div>
                   <label htmlFor="sign-in-password" className="text-sm font-medium">Password</label>
                   <div className="relative mt-1.5">
-                    <LockKeyhole className="pointer-events-none absolute top-1/2 left-4 size-[1.125rem] -translate-y-1/2 text-[#8192aa]" />
+                    <LockKeyhole className="pointer-events-none absolute top-1/2 left-4 size-[1.125rem] -translate-y-1/2 text-[color:var(--pub-text-8192aa)]" />
                     <input id="sign-in-password" required autoComplete="current-password" type={passwordVisible ? 'text' : 'password'} name="password" className={`${controlClass} pr-12 pl-11`} />
-                    <button type="button" aria-label={passwordVisible ? 'Hide password' : 'Show password'} onClick={() => setPasswordVisible((visible) => !visible)} className="absolute top-1/2 right-2.5 flex size-9 -translate-y-1/2 items-center justify-center text-[#8192aa] transition-colors duration-150 hover:bg-[#f2f5f8] hover:text-[#0d2340] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#1769aa] motion-reduce:transition-none">
+                    <button type="button" aria-label={passwordVisible ? 'Hide password' : 'Show password'} onClick={() => setPasswordVisible((visible) => !visible)} className="absolute top-1/2 right-2.5 flex size-9 -translate-y-1/2 items-center justify-center text-[color:var(--pub-text-8192aa)] transition-colors duration-150 hover:bg-[color:var(--pub-bg-f2f5f8)] hover:text-[color:var(--pub-text-0d2340)] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#1769aa] motion-reduce:transition-none">
                       {passwordVisible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                     </button>
                   </div>
                 </div>
 
                 <div className="flex justify-end">
-                  <Link href="/forgot-password" className="text-sm font-medium text-[#1769aa] transition-colors duration-150 hover:text-[#0f4c7d] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1769aa] motion-reduce:transition-none">Forgot password?</Link>
+                  <Link href="/forgot-password" className="text-sm font-medium text-[color:var(--pub-text-1769aa)] transition-colors duration-150 hover:text-[color:var(--pub-text-0f4c7d)] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1769aa] motion-reduce:transition-none">Forgot password?</Link>
                 </div>
 
-                {signInState?.error ? <p role="alert" className="border-l-2 border-red-500 bg-red-50 px-4 py-3 text-sm text-red-700">{signInState.error}</p> : null}
+                {signInState?.error ? <p role="alert" className="border-l-2 border-red-500 bg-[color:var(--pub-error-bg)] px-4 py-3 text-sm text-[color:var(--pub-error-text)]">{signInState.error}</p> : null}
 
-                <button type="submit" disabled={signInPending} className="flex h-12 w-full items-center justify-center gap-4 bg-[#1769aa] text-sm font-medium text-white transition-colors duration-150 ease-out hover:bg-[#125486] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0d2340] disabled:cursor-wait disabled:opacity-60 motion-reduce:transition-none">
+                <button type="submit" disabled={signInPending} className="flex h-12 w-full items-center justify-center gap-4 bg-[#1769aa] text-sm font-medium text-white transition-colors duration-150 ease-out hover:bg-[#125486] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--pub-outline-0d2340)] disabled:cursor-wait disabled:opacity-60 motion-reduce:transition-none">
                   {signInPending ? 'Signing in…' : 'Sign in'} <ArrowRight className="size-4" />
                 </button>
               </form>
 
-              <div className="mt-5 flex items-start gap-4 border-t border-[#dce3eb] pt-4 text-xs leading-5 text-[#657590]">
-                <ShieldCheck className="mt-0.5 size-5 shrink-0 text-[#1769aa]" />
-                <span aria-hidden="true" className="h-10 w-px shrink-0 bg-[#dce3eb]" />
+              <div style={stagger(5, 90, 300)} className="lux-reveal mt-5 flex items-start gap-4 border-t border-[color:var(--pub-border-dce3eb)] pt-4 text-xs leading-5 text-[color:var(--pub-text-657590)]">
+                <ShieldCheck className="mt-0.5 size-5 shrink-0 text-[color:var(--pub-text-1769aa)]" />
+                <span aria-hidden="true" className="h-10 w-px shrink-0 bg-[color:var(--pub-bg-dce3eb)]" />
                 <p>Invitation-only access. Accounts are provisioned by your UNISON administrator.</p>
               </div>
-            </div>
+            </Reveal>
           </div>
         </section>
       </main>
@@ -128,13 +138,15 @@ export function AuthScreen({ kind, next, token, message, organizationName }: { k
   }
 
   return (
-    <main className="grid min-h-screen bg-[#fafbfd] text-[#0d2340] lg:grid-cols-[1.12fr_0.88fr]">
-      <SignInBrandPanel />
+    <main className="lux-page grid min-h-screen bg-[color:var(--pub-bg-fafbfd)] text-[color:var(--pub-text-0d2340)] lg:grid-cols-[1.12fr_0.88fr]">
+      <noscript><style>{'.lux-reveal,.lux-mask>span,.lux-draw{opacity:1!important;transform:none!important;filter:none!important}'}</style></noscript>
+      {useBrand ? <PublicThemeEffect /> : null}
+      <SignInBrandPanel brand={useBrand} />
 
-      <section className="flex items-center justify-center border-l border-[#dce3eb] bg-white px-6 py-10 sm:px-10 lg:px-12">
+      <section className="flex items-center justify-center border-l border-[color:var(--pub-border-dce3eb)] bg-[color:var(--pub-surface)] px-6 py-10 sm:px-10 lg:px-12">
         <div className="w-full max-w-md">
           <div className="mb-10 flex items-center justify-between lg:hidden">
-            <Link href="/" className="text-lg font-medium tracking-[0.2em]">UNISON</Link>
+            {useBrand ? <Link href="/" aria-label="UNISON home"><UnisonWordmark className="h-4" priority /></Link> : <Link href="/" className="text-lg font-medium tracking-[0.2em]">UNISON</Link>}
             <span className="flex items-center gap-2 text-xs font-medium tracking-[0.14em] text-muted-foreground"><Image src="/brand/himark-mark.png" alt="" width={28} height={28} />HIMARK</span>
           </div>
 
@@ -167,36 +179,36 @@ export function AuthScreen({ kind, next, token, message, organizationName }: { k
 }
 
 // Exported so the invitation signup screen can share the same light panel as sign-in.
-export function SignInBrandPanel() {
+export function SignInBrandPanel({ brand = true }: { brand?: boolean } = {}) {
   const principles = ['Capture', 'Qualify', 'Propose', 'Win', 'Invoice', 'Collect', 'Retain']
 
   return (
-    <section className="relative hidden min-h-screen overflow-hidden bg-[#f7fafe] lg:flex lg:flex-col">
+    <section className="relative hidden min-h-screen overflow-hidden bg-[color:var(--pub-bg-f7fafe)] lg:flex lg:flex-col">
       <svg aria-hidden="true" viewBox="0 0 1000 1000" preserveAspectRatio="none" className="absolute inset-0 size-full" fill="none">
-        <path d="M730 236 1000 64V1000H730V236Z" fill="#e1edf9" />
-        <path d="M730 236 1000 64V574L730 707V236Z" fill="#d5e6f7" />
-        <path d="M0 1000 730 707V1000H0Z" fill="#edf4fb" />
-        <path d="M730 0V1000M876 0V1000" stroke="#9db9d7" strokeWidth="1" />
-        <path d="M678 382V777" stroke="#b4c8df" strokeWidth="1" />
+        <path d="M730 236 1000 64V1000H730V236Z" fill="var(--pub-bg-e1edf9)" />
+        <path d="M730 236 1000 64V574L730 707V236Z" fill="var(--pub-bg-d5e6f7)" />
+        <path d="M0 1000 730 707V1000H0Z" fill="var(--pub-bg-edf4fb)" />
+        <path d="M730 0V1000M876 0V1000" stroke="var(--pub-stroke-9db9d7)" strokeWidth="1" />
+        <path d="M678 382V777" stroke="var(--pub-stroke-b4c8df)" strokeWidth="1" />
       </svg>
 
-      <div className="relative z-10 flex min-h-screen flex-col px-[clamp(3.5rem,6vw,7rem)] py-[clamp(3rem,6vw,5rem)]">
-        <Link href="/" className="self-start text-[1.75rem] font-medium tracking-[0.28em] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#1769aa]">UNISON</Link>
+      <Reveal variant="plain" className="relative z-10 flex min-h-screen flex-col px-[clamp(3.5rem,6vw,7rem)] py-[clamp(3rem,6vw,5rem)]">
+        {brand ? <Link href="/" aria-label="UNISON home" style={stagger(0, 0, 100)} className="lux-reveal self-start focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#1769aa]"><UnisonWordmark className="h-[1.35rem]" priority /></Link> : <Link href="/" className="self-start text-[1.75rem] font-medium tracking-[0.28em] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#1769aa]">UNISON</Link>}
 
         <div className="my-auto max-w-[35rem] py-16">
-          <span className="block h-0.5 w-9 bg-[#1769aa]" />
-          <p className="mt-7 max-w-[22rem] text-sm leading-5 text-[#5e7290]">The client relationship platform.</p>
-          <h2 className="mt-14 font-brand text-[clamp(3.25rem,5vw,5.35rem)] leading-[1] font-light tracking-tight text-[#0d2340]">Every client.<br />One relationship.</h2>
-          <p className="mt-8 max-w-[31rem] text-lg leading-8 text-[#657590]">One workspace. Complete visibility.<br />From first hello to final payment.</p>
+          <span aria-hidden="true" style={brand ? stagger(0, 0, 250) : undefined} className={cn('block h-0.5 w-9 bg-[#1769aa]', brand && 'lux-draw')} />
+          <p style={brand ? stagger(0, 0, 350) : undefined} className={cn('mt-7 max-w-[22rem] text-sm leading-5 text-[color:var(--pub-text-5e7290)]', brand && 'lux-reveal')}>The client relationship platform.</p>
+          <h2 className="mt-14 font-brand text-[clamp(3.25rem,5vw,5.35rem)] leading-[1] font-light tracking-tight text-[color:var(--pub-text-0d2340)]">{brand ? <><span className="lux-mask"><span style={stagger(0, 0, 450)}>Every client.</span></span><span className="lux-mask"><span style={stagger(0, 0, 620)}>One relationship.</span></span></> : <>Every client.<br />One relationship.</>}</h2>
+          <p style={brand ? stagger(0, 0, 900) : undefined} className={cn('mt-8 max-w-[31rem] text-lg leading-8 text-[color:var(--pub-text-657590)]', brand && 'lux-reveal')}>One workspace. Complete visibility.<br />From first hello to final payment.</p>
         </div>
 
-        <div>
+        <div style={brand ? stagger(0, 0, 1100) : undefined} className={cn(brand && 'lux-reveal')}>
           <span className="block h-0.5 w-10 bg-[#1769aa]" />
-          <div className="mt-7 flex flex-nowrap items-center text-[0.5rem] font-medium tracking-[0.08em] text-[#5e7290] uppercase">
-            {principles.map((principle, index) => <span key={principle} className="flex items-center whitespace-nowrap"><span>{principle}</span>{index < principles.length - 1 ? <span aria-hidden="true" className="mx-3 h-4 w-px bg-[#b8c6d7]" /> : null}</span>)}
+          <div className="mt-7 flex flex-nowrap items-center text-[0.5rem] font-medium tracking-[0.08em] text-[color:var(--pub-text-5e7290)] uppercase">
+            {principles.map((principle, index) => <span key={principle} className="flex items-center whitespace-nowrap"><span>{principle}</span>{index < principles.length - 1 ? <span aria-hidden="true" className="mx-3 h-4 w-px bg-[color:var(--pub-bg-b8c6d7)]" /> : null}</span>)}
           </div>
         </div>
-      </div>
+      </Reveal>
     </section>
   )
 }
@@ -210,7 +222,7 @@ export function BrandPanel() {
         <div className="absolute inset-0 bg-[#06121d]/30" />
       </div>
 
-      <span className="relative z-10 text-xl font-medium tracking-[0.22em]">UNISON</span>
+      <span className="relative z-10"><UnisonWordmark white className="h-5" /></span>
 
       <div className="relative z-10 flex flex-1 flex-col items-center justify-center pb-12">
         <div className="flex flex-col items-center border border-white/20 bg-[#07131e]/58 px-10 py-9">
@@ -233,14 +245,14 @@ function MicrosoftSignIn({ next }: { next: string }) {
         <input type="hidden" name="next" value={next} />
         <MicrosoftSignInButton />
       </form>
-      <div className="mt-5 flex items-center gap-5"><span className="h-px flex-1 bg-[#dce3eb]" /><span className="text-xs text-[#657590]">or</span><span className="h-px flex-1 bg-[#dce3eb]" /></div>
+      <div className="mt-5 flex items-center gap-5"><span className="h-px flex-1 bg-[color:var(--pub-bg-dce3eb)]" /><span className="text-xs text-[color:var(--pub-text-657590)]">or</span><span className="h-px flex-1 bg-[color:var(--pub-bg-dce3eb)]" /></div>
     </div>
   )
 }
 
 function MicrosoftSignInButton() {
   const { pending } = useFormStatus()
-  return <button type="submit" disabled={pending} className="flex h-12 w-full items-center justify-center gap-3 border border-[#cfd8e4] bg-white text-sm font-medium transition-[background-color,border-color] duration-150 ease-out hover:border-[#9fb0c6] hover:bg-[#fafbfd] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1769aa] disabled:cursor-wait disabled:opacity-60 motion-reduce:transition-none"><MicrosoftMark />{pending ? 'Connecting…' : 'Continue with Microsoft'}</button>
+  return <button type="submit" disabled={pending} className="flex h-12 w-full items-center justify-center gap-3 border border-[color:var(--pub-border-cfd8e4)] bg-[color:var(--pub-surface)] text-sm font-medium transition-[background-color,border-color] duration-150 ease-out hover:border-[color:var(--pub-border-9fb0c6)] hover:bg-[color:var(--pub-bg-fafbfd)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1769aa] disabled:cursor-wait disabled:opacity-60 motion-reduce:transition-none"><MicrosoftMark />{pending ? 'Connecting…' : 'Continue with Microsoft'}</button>
 }
 
 function MicrosoftMark() {

@@ -1,3 +1,4 @@
+import { PublicThemeScript } from '@/components/layout/public-theme'
 import { AuthScreen } from '@/features/auth-ui/auth-screen'
 import { InvitationSignUpScreen } from '@/features/invitations/components/invitation-signup-screen'
 import { createServerSupabase } from '@/lib/supabase/server'
@@ -26,7 +27,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ t
   // Already signed in: accept directly. The RPC still re-checks that the
   // invitation was addressed to this account — the name shown here is copy,
   // never authorisation.
-  if (user) return <AuthScreen kind="accept" token={token} organizationName={invitation?.organization_name} />
+  if (user) return <><PublicThemeScript /><AuthScreen kind="accept" token={token} organizationName={invitation?.organization_name} /></>
 
   // Signed out with a token that still resolves: this is a new person, and
   // there is otherwise no way for them to get in — sign-up was removed when
@@ -34,11 +35,14 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ t
   // address the invitation names.
   if (token) {
     if (invitation) {
-      return <InvitationSignUpScreen
-        token={token}
-        email={invitation.email}
-        organizationName={invitation.organization_name}
-      />
+      return <>
+        <PublicThemeScript />
+        <InvitationSignUpScreen
+          token={token}
+          email={invitation.email}
+          organizationName={invitation.organization_name}
+        />
+      </>
     }
   }
 
@@ -47,5 +51,5 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ t
   // existing user whose invitation has lapsed can still get to their account,
   // and nothing here distinguishes the four failure cases.
   const next = safeRedirectPath(`/accept-invitation${token ? `?token=${encodeURIComponent(token)}` : ''}`)
-  return <AuthScreen kind="sign-in" next={next} />
+  return <><PublicThemeScript /><AuthScreen kind="sign-in" next={next} /></>
 }

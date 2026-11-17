@@ -1,0 +1,102 @@
+/* Public pages (landing, sign-in, invitation): the same blues and greys they always had, as variables, with a dark value used when
+   the page is in dark mode (:root.dark, set by components/layout/public-theme.tsx). */
+:root {
+  --pub-bg-b8c6d7: #b8c6d7;
+  --pub-bg-c9d6e4: #c9d6e4;
+  --pub-bg-d5e6f7: #d5e6f7;
+  --pub-bg-dce3eb: #dce3eb;
+  --pub-bg-e1edf9: #e1edf9;
+  --pub-bg-edf3f8: #edf3f8;
+  --pub-bg-edf4fb: #edf4fb;
+  --pub-bg-eef3f8: #eef3f8;
+  --pub-bg-f2f5f8: #f2f5f8;
+  --pub-bg-f7fafe: #f7fafe;
+  --pub-bg-fafbfd: #fafbfd;
+  --pub-bg-fbfcfe: #fbfcfe;
+  --pub-border-9fb0c6: #9fb0c6;
+  --pub-border-aebbc9: #aebbc9;
+  --pub-border-b9c2cc: #b9c2cc;
+  --pub-border-c9d4e1: #c9d4e1;
+  --pub-border-cfd8e4: #cfd8e4;
+  --pub-border-dce3eb: #dce3eb;
+  --pub-border-edf0f4: #edf0f4;
+  --pub-outline-0d2340: #0d2340;
+  --pub-stroke-9db9d7: #9db9d7;
+  --pub-stroke-b4c8df: #b4c8df;
+  --pub-text-0d2340: #0d2340;
+  --pub-text-0f4c7d: #0f4c7d;
+  --pub-text-1769aa: #1769aa;
+  --pub-text-274364: #274364;
+  --pub-text-334d6d: #334d6d;
+  --pub-text-34714f: #34714f;
+  --pub-text-49617f: #49617f;
+  --pub-text-51647e: #51647e;
+  --pub-text-55749a: #55749a;
+  --pub-text-56749a: #56749a;
+  --pub-text-5e7290: #5e7290;
+  --pub-text-5f7390: #5f7390;
+  --pub-text-657590: #657590;
+  --pub-text-71839a: #71839a;
+  --pub-text-8192aa: #8192aa;
+  --pub-text-8392a8: #8392a8;
+  --pub-text-aebbc9: #aebbc9;
+  --pub-surface: #ffffff;
+  --pub-error-bg: #fef2f2;
+  --pub-error-text: #b91c1c;
+}
+:root.dark {
+  --pub-bg-b8c6d7: #2a3d5a;
+  --pub-bg-c9d6e4: #2a3d5a;
+  --pub-bg-d5e6f7: #1a3050;
+  --pub-bg-dce3eb: #25344d;
+  --pub-bg-e1edf9: #13233b;
+  --pub-bg-edf3f8: #16263e;
+  --pub-bg-edf4fb: #0f1b2e;
+  --pub-bg-eef3f8: #14233a;
+  --pub-bg-f2f5f8: #16233a;
+  --pub-bg-f7fafe: #0c1627;
+  --pub-bg-fafbfd: #0a1220;
+  --pub-bg-fbfcfe: #0a1220;
+  --pub-border-9fb0c6: #4a6385;
+  --pub-border-aebbc9: #3a4b66;
+  --pub-border-b9c2cc: #3a4b66;
+  --pub-border-c9d4e1: #34496b;
+  --pub-border-cfd8e4: #2f4262;
+  --pub-border-dce3eb: #25344d;
+  --pub-border-edf0f4: #1b2940;
+  --pub-outline-0d2340: #e6ecf4;
+  --pub-stroke-9db9d7: #25405f;
+  --pub-stroke-b4c8df: #1e3552;
+  --pub-text-0d2340: #e6ecf4;
+  --pub-text-0f4c7d: #9ccbf2;
+  --pub-text-1769aa: #6db1ec;
+  --pub-text-274364: #cbd7e6;
+  --pub-text-334d6d: #c3d0e0;
+  --pub-text-34714f: #8fd3ac;
+  --pub-text-49617f: #b3c2d6;
+  --pub-text-51647e: #aebdd0;
+  --pub-text-55749a: #8fa8c6;
+  --pub-text-56749a: #8fa8c6;
+  --pub-text-5e7290: #a3b3c7;
+  --pub-text-5f7390: #a3b3c7;
+  --pub-text-657590: #a3b3c7;
+  --pub-text-71839a: #8fa1b8;
+  --pub-text-8192aa: #7f93ad;
+  --pub-text-8392a8: #7f93ad;
+  --pub-text-aebbc9: #7f93ad;
+  --pub-surface: #101a2b;
+  --pub-error-bg: #2a1316;
+  --pub-error-text: #fca5a5;
+}
+
+/* The landing page's hover card and light sweep, which were written for a white page. */
+:root.dark .lux-card:hover {
+  background: #101a2b;
+  box-shadow: 0 28px 60px -30px rgb(0 0 0 / 0.6);
+}
+:root.dark .lux-sheen {
+  background: linear-gradient(105deg, transparent 38%, rgb(255 255 255 / 0.07) 50%, transparent 62%);
+}
+:root.dark .lux-glow {
+  opacity: 0.55;
+}

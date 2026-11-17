@@ -4,6 +4,8 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { ArrowRight } from 'lucide-react'
 import { useActionState } from 'react'
+import { UnisonWordmark } from '@/components/brand/unison-wordmark'
+import { PublicThemeEffect } from '@/components/layout/public-theme-effect'
 import { SignInBrandPanel } from '@/features/auth-ui/auth-screen'
 import { signUpFromInvitationAction } from '../actions/sign-up-from-invitation'
 import { MIN_PASSWORD_LENGTH } from '../schemas/signup'
@@ -28,13 +30,15 @@ export function InvitationSignUpScreen({
 }) {
   const [state, formAction, pending] = useActionState(signUpFromInvitationAction, undefined)
 
-  return <main className="grid min-h-screen bg-[#fafbfd] text-[#0d2340] lg:grid-cols-[1.12fr_0.88fr]">
+  return <main className="lux-page grid min-h-screen bg-[color:var(--pub-bg-fafbfd)] text-[color:var(--pub-text-0d2340)] lg:grid-cols-[1.12fr_0.88fr]">
+    <PublicThemeEffect />
+    <noscript><style>{'.lux-reveal,.lux-mask>span,.lux-draw{opacity:1!important;transform:none!important;filter:none!important}'}</style></noscript>
     <SignInBrandPanel />
 
-    <section className="flex items-center justify-center border-l border-[#dce3eb] bg-white px-6 py-10 sm:px-10 lg:px-12">
+    <section className="flex items-center justify-center border-l border-[color:var(--pub-border-dce3eb)] bg-[color:var(--pub-surface)] px-6 py-10 sm:px-10 lg:px-12">
       <div className="w-full max-w-md">
         <div className="mb-10 flex items-center justify-between lg:hidden">
-          <span className="text-lg font-medium tracking-[0.2em]">UNISON</span>
+          <UnisonWordmark className="h-4" priority />
           <span className="flex items-center gap-2 text-xs font-semibold tracking-[0.14em] text-muted-foreground"><Image src="/brand/himark-mark.png" alt="" width={28} height={28} className="rounded-md" />HIMARK</span>
         </div>
 
