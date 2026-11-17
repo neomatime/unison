@@ -3,7 +3,9 @@ import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { WorkPage } from "@/components/shared/work-page";
+import { InfoHint } from "@/components/ui/info-hint";
 import { StatusDot } from "@/components/ui/status-dot";
+import { LEAD_FIELD_HINTS, outcomeLabel, scoreLabel, signalRows } from "../lead-qualification";
 import { formatCurrency } from "@/lib/utils/format-money";
 import { BILLING_TERMS_COPY, formatTermMonths } from "@/features/documents/billing-terms";
 import { isDraftReference } from "@/features/documents/vocabulary";
@@ -31,7 +33,7 @@ const fields: Record<PhaseSixKind, Array<[string, string]>> = {
     ["Areas of interest", "areasOfInterest"], ["Primary challenge", "primaryChallenge"],
     ["Business impact", "businessImpact"], ["Impact severity", "impactSeverity"],
     ["Urgency", "urgency"], ["Buying stage", "buyingStage"],
-    ["Engagement preference", "engagementType"], ["Qualification", "qualificationOutcome"],
+    ["Engagement preference", "engagementType"], ["Qualification outcome", "qualificationOutcome"],
     ["Qualification score", "qualificationScore"], ["Signals", "qualificationSignals"],
     ["Manual review", "manualReviewRequired"], ["Review override", "reviewOverride"],
     ["Website submitted", "websiteSubmittedAt"], ["Source", "source"], ["Owner", "owner"],
@@ -132,9 +134,9 @@ export async function PhaseSixDetail({
             <dl className={after ? "mt-4 space-y-5" : "mt-4 grid gap-x-8 gap-y-5 sm:grid-cols-2"}>
               {shown.map(([label, key]) => (
                 <div key={key}>
-                  <dt className="text-xs text-muted-foreground">{label}</dt>
+                  <dt className="text-xs text-muted-foreground">{label}{kind === "lead" && LEAD_FIELD_HINTS[label] ? <> <InfoHint label={label.toLowerCase()} text={LEAD_FIELD_HINTS[label]} /></> : null}</dt>
                   <dd className="mt-1 text-sm break-words whitespace-pre-wrap text-foreground">
-                    {statusKeys.has(key) ? <StatusDot status={formatValue(key, record[key], record)} /> : formatValue(key, record[key], record)}
+                    {key === "qualificationSignals" ? <SignalList value={record[key]} /> : statusKeys.has(key) ? <StatusDot status={formatValue(key, record[key], record)} /> : formatValue(key, record[key], record)}
                   </dd>
                 </div>
               ))}
@@ -168,9 +170,9 @@ export async function PhaseSixDetail({
         <dl className="grid sm:grid-cols-2">
           {fields[kind].map(([label, key]) => (
             <div key={key} className="border-b border-border p-6 sm:odd:border-r">
-              <dt className="text-xs tracking-[0.12em] text-muted-foreground uppercase">{label}</dt>
+              <dt className="text-xs tracking-[0.12em] text-muted-foreground uppercase">{label}{kind === "lead" && LEAD_FIELD_HINTS[label] ? <> <InfoHint label={label.toLowerCase()} text={LEAD_FIELD_HINTS[label]} /></> : null}</dt>
               <dd className="mt-2 whitespace-pre-wrap text-sm font-semibold">
-                {statusKeys.has(key) && formatValue(key, record[key], record) !== "—" ? <StatusDot status={formatValue(key, record[key], record)} /> : formatValue(key, record[key], record)}
+                {key === "qualificationSignals" ? <SignalList value={record[key]} /> : statusKeys.has(key) && formatValue(key, record[key], record) !== "—" ? <StatusDot status={formatValue(key, record[key], record)} /> : formatValue(key, record[key], record)}
               </dd>
             </div>
           ))}
@@ -212,4 +214,19 @@ function formatValue(key: string, value: unknown, record: PhaseSixRecord) {
     return new Date(`${value}T00:00:00`).toLocaleDateString("en-ZA");
   }
   return String(value);
+}
+
+/** The five qualification signals, each with a tick or a cross, a plain label and a hint on what "yes" means. */
+function SignalList({ value }: { value: unknown }) {
+  return (
+    <ul className="space-y-1.5 font-normal">
+      {signalRows(value).map((row) => (
+        <li key={row.key} className="flex items-center gap-2">
+          <span aria-hidden="true" className={row.met ? "text-success" : "text-muted-foreground"}>{row.met ? "✓" : "✗"}</span>
+          <span className={row.met ? "text-foreground" : "text-muted-foreground"}>{row.label}<span className="sr-only">: {row.met ? "yes" : "no"}</span></span>
+          {row.hint ? <InfoHint label={row.label.toLowerCase()} text={row.hint} /> : null}
+        </li>
+      ))}
+    </ul>
+  );
 }
