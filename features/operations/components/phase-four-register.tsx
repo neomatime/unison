@@ -1,8 +1,12 @@
 
+import Link from "next/link";
+
 import { CALENDAR_TIMEZONE } from "@/features/calendar/model";
 import { WorkspaceHeader } from "@/components/shared/workspace-header";
 import { MetricCard } from "@/features/delivery/components/delivery-primitives";
 import { RecordCollectionWorkspace, type CollectionRecord } from "@/features/product-ui/components/record-collection-workspace";
+import { OnboardingBoard } from "./onboarding-board";
+import { isOnboardingStage, type BoardCard } from "../onboarding-board";
 import {
   listCalendarEvents,
   listClientOnboardings,
@@ -61,7 +65,7 @@ export async function PersistentTeamScreen() {
   </>;
 }
 
-export async function PhaseFourRegister({ kind, slim, hideHeader, rows: given }: { kind: Exclude<PhaseFourKind, "team-member" | "assignment">; /** Two summary cards instead of three: the "Updated records" count is dropped. */ slim?: boolean; /** The page already shows the heading (the calendar page does). */ hideHeader?: boolean; /** Rows the page has already loaded, so they are not fetched twice. */ rows?: PhaseFourRecord[] }) {
+export async function PhaseFourRegister({ kind, slim, hideHeader, rows: given, view = "list" }: { /** Onboarding only: the list register or the stage board. */ view?: "list" | "board"; kind: Exclude<PhaseFourKind, "team-member" | "assignment">; /** Two summary cards instead of three: the "Updated records" count is dropped. */ slim?: boolean; /** The page already shows the heading (the calendar page does). */ hideHeader?: boolean; /** Rows the page has already loaded, so they are not fetched twice. */ rows?: PhaseFourRecord[] }) {
   const rows = given ?? await loaders[kind]();
   const active = rows.filter((row) => !row.archivedAt);
   const config = registerConfig(kind, active);
@@ -72,13 +76,40 @@ export async function PhaseFourRegister({ kind, slim, hideHeader, rows: given }:
       <MetricCard label="Needs attention" value={String(active.filter((row) => ["At Risk", "Blocked", "Critical", "Paused"].includes(String(row.status)) || row.health === "At Risk" || row.riskLevel === "Critical").length)} detail="Priority operational focus" />
       {slim ? null : <MetricCard label="Updated records" value={String(active.filter((row) => row.updatedAt).length)} detail="Auditable current state" />}
     </div>
-    <div className="mt-5"><RecordCollectionWorkspace config={{
+    {kind === "onboarding" ? <ViewSwitch view={view} /> : null}
+    {kind === "onboarding" && view === "board" ? <div className="mt-4"><OnboardingBoard cards={boardCards(active)} /></div> : <div className="mt-5"><RecordCollectionWorkspace config={{
       title: `${config.singular} Register`, singular: config.singular, description: config.registerDescription,
       primaryAction: config.action, records: config.records, recordHrefBase: config.base,
       columns: config.columns, fields: [], contextualActions: [], emptyDescription: config.empty,
       allowImport: true, portableCollection: portableCollectionByKind[kind],
-    }} /></div>
+    }} /></div>}
   </>;
+}
+
+/** List or Board, as links so the choice is in the address and survives a reload. */
+function ViewSwitch({ view }: { view: "list" | "board" }) {
+  const item = (name: "list" | "board", label: string) => (
+    <Link
+      href={name === "list" ? "/operations/onboarding" : "/operations/onboarding?view=board"}
+      aria-current={view === name ? "page" : undefined}
+      className={`px-4 py-2 text-sm font-medium outline-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand ${view === name ? "bg-brand text-white" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}
+    >{label}</Link>
+  );
+  return <nav aria-label="Onboarding view" className="mt-5 inline-flex border border-border bg-card">{item("list", "List")}{item("board", "Board")}</nav>;
+}
+
+/** The cards on the board: onboardings that are not archived, with the stage the database holds. */
+function boardCards(rows: PhaseFourRecord[]): BoardCard[] {
+  return rows.filter((row) => !row.archivedAt && isOnboardingStage(row.stage)).map((row) => ({
+    id: row.id,
+    client: text(row.name),
+    type: text(row.onboardingType),
+    owner: text(row.owner),
+    stage: row.stage as BoardCard["stage"],
+    progress: Number(row.progressPercent ?? 0),
+    health: text(row.health, "On Track"),
+    goLive: date(row.targetGoLive),
+  }));
 }
 
 function registerConfig(kind: Exclude<PhaseFourKind, "team-member" | "assignment">, rows: PhaseFourRecord[]) {
