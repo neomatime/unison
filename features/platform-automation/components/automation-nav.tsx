@@ -13,9 +13,9 @@ const items = [
   { href: '/settings/jobs', label: 'Jobs & schedules' },
 ]
 
-export function AutomationSettingsNav() {
+export function AutomationSettingsNav({ className }: { className?: string } = {}) {
   const pathname = usePathname()
-  return <nav aria-label="Platform settings" className="mb-5 overflow-x-auto border-b border-border">
+  return <nav aria-label="Platform settings" className={cn('mb-5 overflow-x-auto border-b border-border', className)}>
     <div className="flex min-w-max items-end gap-1">
       {items.map((item) => {
         const active = item.href === '/settings' ? pathname === item.href : pathname.startsWith(item.href)

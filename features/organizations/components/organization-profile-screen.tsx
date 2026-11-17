@@ -22,6 +22,7 @@ import { InitialAvatar } from '@/components/ui/initial-avatar'
 import { StatusDot } from '@/components/ui/status-dot'
 import type { OrganizationProfileData } from '@/features/organizations/types'
 import { getInitials } from '@/lib/utils'
+import { AutomationSettingsNav } from '@/features/platform-automation/components/automation-nav'
 import { OrganizationMenu } from './organization-menu'
 
 type OrganizationProfileScreenProps = {
@@ -29,7 +30,11 @@ type OrganizationProfileScreenProps = {
   saved?: boolean
 }
 
-export function OrganizationProfileScreen({ profile, saved = false }: OrganizationProfileScreenProps) {
+/**
+ * The frame every Settings tab shares: the page heading, the organisation card and the tab bar. It is rendered once by the
+ * settings layout, so moving between tabs changes only what is under the tabs.
+ */
+export function OrganizationSettingsFrame({ profile, children }: { profile: OrganizationProfileData; children: React.ReactNode }) {
   const headerActions = (
     <>
       {profile.canEdit ? (
@@ -53,7 +58,17 @@ export function OrganizationProfileScreen({ profile, saved = false }: Organizati
         description="Manage your organisation’s details, settings and preferences."
         actions={headerActions}
       />
+      <OrganisationProfileHeader profile={profile} />
+      <AutomationSettingsNav className="mt-1" />
+      {children}
+    </>
+  )
+}
 
+/** The Overview tab: the summary and the panels. The heading, organisation card and tabs come from the frame. */
+export function OrganizationProfileScreen({ profile, saved = false }: OrganizationProfileScreenProps) {
+  return (
+    <>
       {saved ? (
         <div role="status" className="mb-4 flex items-center gap-2 border border-success/25 bg-success-soft/45 px-4 py-3 text-sm text-success">
           <Check className="size-4 shrink-0" />
@@ -61,8 +76,6 @@ export function OrganizationProfileScreen({ profile, saved = false }: Organizati
         </div>
       ) : null}
 
-      <OrganisationProfileHeader profile={profile} />
-      <OrganisationTabs />
       <OrganisationSummaryMetrics profile={profile} />
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[22rem_minmax(0,1fr)] lg:items-start">
@@ -120,27 +133,6 @@ function IdentityFact({ icon: Icon, label, value }: { icon: typeof Building2; la
       <dt className="sr-only">{label}</dt>
       <dd className="truncate">{value}</dd>
     </div>
-  )
-}
-
-function OrganisationTabs() {
-  return (
-    <nav aria-label="Organisation profile sections" className="mt-1 overflow-x-auto border-b border-border">
-      <div className="flex min-w-max items-end gap-1">
-        <Link href="/settings" aria-current="page" className="border-b-2 border-foreground px-4 py-3 text-sm font-medium text-foreground">
-          Overview
-        </Link>
-        <Link href="/settings/integrations" className="border-b-2 border-transparent px-4 py-3 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
-          Integrations
-        </Link>
-        <Link href="/settings/automations" className="border-b-2 border-transparent px-4 py-3 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
-          Automations
-        </Link>
-        <Link href="/people/team" className="border-b-2 border-transparent px-4 py-3 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
-          Users
-        </Link>
-      </div>
-    </nav>
   )
 }
 

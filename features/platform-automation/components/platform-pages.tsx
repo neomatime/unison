@@ -42,8 +42,7 @@ export async function IntegrationsPage() {
   const builtIns = [teamsIntegration(teamsStatus, teamsOrganizer), hiveIntegration(feedGate)]
   const counts = countIntegrations(builtIns, { total: connections.length, connected, errors })
   return <>
-    <WorkspaceHeader category="Settings" title="Integrations" description="Connect external systems to authenticated UNISON event channels." action={access.canManage ? 'New integration' : undefined} actionHref={access.canManage ? '/settings/integrations/new' : undefined} />
-    <AutomationSettingsNav />
+    {access.canManage ? <div className="mb-4 flex justify-end"><Link href="/settings/integrations/new" className="unison-action-control inline-flex h-10 items-center bg-brand px-4 text-sm font-medium text-white hover:bg-brand/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">New integration</Link></div> : null}
     <div className="grid gap-3 sm:grid-cols-3"><Metric label="Connections" value={counts.connections} detail="Built-in and tenant-created" /><Metric label="Active" value={counts.active} detail="Connected and in use" /><Metric label="Needs attention" value={counts.attention} detail="Partly set up, or reporting an error" /></div>
     <section className="mt-5 overflow-hidden border border-border bg-card">
       <header className="flex items-center justify-between border-b border-border px-5 py-4"><div><h2 className="unison-section-title text-sm">Connection register</h2><p className="mt-1 text-xs text-muted-foreground">Secrets remain masked after generation.</p></div></header>
@@ -73,8 +72,7 @@ export async function IntegrationDetailPage({ connection }: { connection: Integr
 export async function AutomationsPage() {
   const [rules, metrics, access] = await Promise.all([listAutomationRules(), getAutomationMetrics(), getPlatformAutomationAccess()])
   return <>
-    <WorkspaceHeader category="Settings" title="Automations" description="Turn manual, scheduled, and integration events into persistent UNISON actions." action={access.canManage ? 'New automation' : undefined} actionHref={access.canManage ? '/settings/automations/new' : undefined} />
-    <AutomationSettingsNav />
+    {access.canManage ? <div className="mb-4 flex justify-end"><Link href="/settings/automations/new" className="unison-action-control inline-flex h-10 items-center bg-brand px-4 text-sm font-medium text-white hover:bg-brand/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">New automation</Link></div> : null}
     <div className="grid gap-3 sm:grid-cols-3"><Metric label="Rules" value={rules.length} detail="Configured automation rules" /><Metric label="Active" value={metrics.activeRules} detail="Rules accepting triggers" /><Metric label="Runs (24h)" value={metrics.runsLast24Hours} detail="Real queued and completed runs" /></div>
     <section className="mt-5 overflow-hidden border border-border bg-card">
       <header className="border-b border-border px-5 py-4"><h2 className="unison-section-title text-sm">Automation register</h2><p className="mt-1 text-xs text-muted-foreground">Every execution is queued and retained in run history.</p></header>
@@ -102,8 +100,6 @@ export async function AutomationDetailPage({ rule }: { rule: AutomationRule }) {
 export async function JobsPage({ queued = false }: { queued?: boolean }) {
   const [metrics, schedules, runs] = await Promise.all([getAutomationMetrics(), listAutomationSchedules(), listAutomationRuns()])
   return <>
-    <WorkspaceHeader category="Settings" title="Jobs & schedules" description="Observe durable automation execution, failures, retries, and upcoming scheduled work." />
-    <AutomationSettingsNav />
     {queued ? <div role="status" className="mb-5 flex items-center gap-2 border border-success/25 bg-success-soft/40 px-4 py-3 text-sm text-success"><CheckCircle2 className="size-4" />Automation queued for background execution.</div> : null}
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"><Metric label="Enabled schedules" value={metrics.enabledSchedules} detail="Eligible for background enqueue" /><Metric label="Runs (24h)" value={metrics.runsLast24Hours} detail="All triggers" /><Metric label="Successful (24h)" value={metrics.succeededLast24Hours} detail="Completed without error" /><Metric label="Failed (24h)" value={metrics.failedLast24Hours} detail="Require review or retry" /></div>
     <div className="mt-6 grid gap-6 lg:grid-cols-[22rem_minmax(0,1fr)] lg:items-start">

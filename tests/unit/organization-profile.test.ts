@@ -5,7 +5,7 @@ import test from 'node:test'
 import { roleHasPermission } from '../../config/roles.ts'
 import { organizationProfileInputSchema } from '../../features/organizations/schemas/organization-profile.ts'
 
-const route = readFileSync('app/(unison)/settings/page.tsx', 'utf8')
+const route = readFileSync('app/(unison)/settings/(tabs)/page.tsx', 'utf8')
 const query = readFileSync('features/organizations/queries/get-organization-profile.ts', 'utf8')
 const action = readFileSync('features/organizations/actions/update-organization-profile.ts', 'utf8')
 const screen = readFileSync('features/organizations/components/organization-profile-screen.tsx', 'utf8')
