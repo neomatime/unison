@@ -1,3 +1,4 @@
+import { InfoHint } from '@/components/ui/info-hint'
 import type { LucideIcon } from 'lucide-react'
 import type { ReactNode } from 'react'
 
@@ -6,13 +7,13 @@ import { StatusDot } from '@/components/ui/status-dot'
 import { cn } from '@/lib/utils'
 import type { DeliveryHealth } from '../data'
 
-export function MetricCard({ label, value, detail, icon: Icon }: { label: string; value: string; detail: string; icon?: LucideIcon }) {
-  return <article className="overflow-hidden rounded-none border border-border bg-card px-4 py-4">
+export function MetricCard({ label, value, detail, icon: Icon, hint }: { label: string; value: string; detail: string; icon?: LucideIcon; /** A plain-language explanation of the label, shown from a small "i". */ hint?: string }) {
+  return <article className={cn("rounded-none border border-border bg-card px-4 py-4", !hint && "overflow-hidden")}>
     {/* The label block reserves two lines whether or not it needs them. Without
         it, a label that wraps ("Outstanding approvals") pushes its own value down
         a line while its neighbours' values stay put, and the row of numbers sits
         on three different baselines. */}
-    <div className="flex min-h-8 items-start justify-between gap-3"><p className="text-sm text-muted-foreground">{label}</p>{Icon ? <Icon className="size-4 text-muted-foreground" /> : null}</div>
+    <div className="flex min-h-8 items-start justify-between gap-3"><p className="text-sm text-muted-foreground">{label}{hint ? <> <InfoHint label={label} text={hint} /></> : null}</p>{Icon ? <Icon className="size-4 text-muted-foreground" /> : null}</div>
     <p className="font-brand mt-3 text-[2rem] leading-none font-light tracking-tight text-foreground">{value}</p>
     <p className="mt-2 text-xs text-muted-foreground">{detail}</p>
   </article>

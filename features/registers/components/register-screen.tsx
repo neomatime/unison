@@ -1,5 +1,6 @@
 import Link from 'next/link'
 
+import { InfoHint } from '@/components/ui/info-hint'
 import { WorkspaceHeader } from '@/components/shared/workspace-header'
 import { StatusDot } from '@/components/ui/status-dot'
 import { portableDefinitions, type PortableCollection } from '@/features/data-portability/portable-collections'
@@ -13,6 +14,9 @@ import { queryRegister } from '../queries/query-register'
 import { REGISTER_FRAMES, toRegisterRow } from '../register-view'
 import { REGISTERS, type RegisterKind } from '../register-spec'
 import { buildCards } from '../summary'
+import { hintFor } from '../hints'
+import { SalesBoard } from '@/features/crm-workspace/components/sales-board'
+import { listSalesBoardCards } from '@/features/crm-workspace/queries/sales-board'
 import { RegisterExport } from './register-export'
 import { RegisterRowMenu } from './register-row-menu'
 import { RegisterToolbar } from './register-toolbar'
@@ -30,6 +34,21 @@ export async function RegisterScreen({ kind, searchParams }: { kind: RegisterKin
   const params = readRegisterParams(kind, searchParams)
   // The search box shows what was typed in the address (so it agrees with "Enter at least 2 characters"), not the cleaned text.
   const typed = typedSearch(searchParams)
+  const rawView = searchParams instanceof URLSearchParams ? searchParams.get('view') : searchParams.view
+  const board = kind === 'opportunity' && (Array.isArray(rawView) ? rawView[0] : rawView) === 'board'
+  if (board) {
+    const [summary, cards] = await Promise.all([getRegisterSummary(kind), listSalesBoardCards()])
+    return (
+      <>
+        <WorkspaceHeader category={frame.category} title={frame.heading} description={frame.description} action={frame.action} actionHref={`${frame.base}/new`} hideActionOnPhone={cards.length === 0} />
+        <div className="grid gap-3 sm:grid-cols-3">
+          {buildCards(kind, summary).map((card) => <MetricCard key={card.label} label={card.label} value={card.value} detail={card.detail} hint={hintFor(kind, card.label)} />)}
+        </div>
+        <ViewSwitch base={frame.base} view="board" />
+        <div className="mt-4"><SalesBoard cards={cards} /></div>
+      </>
+    )
+  }
   const [{ records, total, window }, summary, owners] = await Promise.all([queryRegister(kind, params), getRegisterSummary(kind), listOwners()])
   const cards = buildCards(kind, summary)
   const rows = records.map((record) => toRegisterRow(kind, record))
@@ -50,8 +69,9 @@ export async function RegisterScreen({ kind, searchParams }: { kind: RegisterKin
         hideActionOnPhone={total === 0 && !filtered}
       />
       <div className="grid gap-3 sm:grid-cols-3">
-        {cards.map((card) => <MetricCard key={card.label} label={card.label} value={card.value} detail={card.detail} />)}
+        {cards.map((card) => <MetricCard key={card.label} label={card.label} value={card.value} detail={card.detail} hint={hintFor(kind, card.label)} />)}
       </div>
+      {kind === 'opportunity' ? <ViewSwitch base={frame.base} view="list" /> : null}
       <section className="mt-5 overflow-hidden rounded-none border border-border bg-card">
         <RegisterToolbar
           key={typed}
@@ -107,6 +127,7 @@ export async function RegisterScreen({ kind, searchParams }: { kind: RegisterKin
                             {active ? <span aria-hidden="true"> {params.dir === 'asc' ? '↑' : '↓'}</span> : null}
                           </Link>
                         ) : column.label}
+                        {hintFor(kind, column.label) ? <> <InfoHint label={column.label.toLowerCase()} text={hintFor(kind, column.label)!} /></> : null}
                       </th>
                     )
                   })}
@@ -163,4 +184,16 @@ export async function RegisterScreen({ kind, searchParams }: { kind: RegisterKin
       </section>
     </>
   )
+}
+
+/** List or Board, as links so the choice is in the address and survives a reload. */
+function ViewSwitch({ base, view }: { base: string; view: 'list' | 'board' }) {
+  const item = (name: 'list' | 'board', label: string) => (
+    <Link
+      href={name === 'list' ? base : `${base}?view=board`}
+      aria-current={view === name ? 'page' : undefined}
+      className={`px-4 py-2 text-sm font-medium outline-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand ${view === name ? 'bg-brand text-white' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}
+    >{label}</Link>
+  )
+  return <nav aria-label="Sales view" className="mt-5 inline-flex border border-border bg-card">{item('list', 'List')}{item('board', 'Board')}</nav>
 }
