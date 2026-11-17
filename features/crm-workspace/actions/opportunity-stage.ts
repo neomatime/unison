@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 
+import { rightDenied } from '@/features/rights/server'
 import { isUuid } from '@/lib/utils'
 import { readStageChange } from '../fields'
 import { revalidateWorkspacePages } from '../revalidate'
@@ -9,6 +10,8 @@ import { writeContext } from '../server-context'
 import type { ActionState } from '../types'
 
 export async function changeOpportunityStageAction(opportunityId: string, _previous: ActionState, form: FormData): Promise<ActionState> {
+  const denied = await rightDenied('sales', 'edit')
+  if (denied) return { error: denied }
   if (!isUuid(opportunityId)) return { error: 'That opportunity is invalid.' }
   const change = readStageChange(form)
   if ('error' in change) return { error: change.error }

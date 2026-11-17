@@ -1,3 +1,4 @@
+import { requireViewOrRedirect } from '@/features/rights/server'
 import { WorkspaceHeader } from '@/components/shared/workspace-header'
 import { CalendarWorkspace } from '@/features/calendar/components/calendar-workspace'
 import { parseCalendarParams, rowToCalendarEvent, todayKey, type CalendarEvent } from '@/features/calendar/model'
@@ -5,6 +6,7 @@ import { PhaseFourRegister } from '@/features/operations/components/phase-four-r
 import { listCalendarEvents } from '@/features/operations/queries/phase-four'
 
 export default async function Page({ searchParams }: { searchParams: Promise<{ view?: string; date?: string; owner?: string; client?: string }> }) {
+  await requireViewOrRedirect('calendar')
   const rows = await listCalendarEvents()
   const now = Date.now()
   const params = await searchParams

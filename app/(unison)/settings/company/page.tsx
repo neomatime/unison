@@ -1,3 +1,4 @@
+import { requireViewOrRedirect } from '@/features/rights/server'
 import { BillingAutoSendSwitch } from '@/features/documents/components/billing-auto-send-switch'
 import { BillingRemindersSwitch } from '@/features/documents/components/billing-reminders-switch'
 import { BillingPlansSwitch } from '@/features/documents/components/billing-plans-switch'
@@ -8,6 +9,7 @@ import { documentContext } from '@/features/documents/server-context'
 import { companyTermsManaged } from '@/features/terms/queries/company-terms'
 
 export default async function Page() {
+  await requireViewOrRedirect('settings')
   const { settings, canEdit } = await getCompanySettings()
   const { organization, db } = await documentContext()
   const managed = await companyTermsManaged(db, organization.id)

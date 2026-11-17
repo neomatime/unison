@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { rightDenied } from "@/features/rights/server";
+import { PHASE_SIX_MODULES } from "@/features/rights/modules";
 import { getSessionContext } from "@/lib/auth/get-session-context";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { isUuid } from "@/lib/utils";
@@ -88,6 +90,8 @@ export async function savePhaseSixRecordAction(
   _previous: PhaseSixActionState,
   form: FormData,
 ): Promise<PhaseSixActionState> {
+  const denied = await rightDenied(PHASE_SIX_MODULES[kind], id ? "edit" : "create");
+  if (denied) return { error: denied };
   const { organization } = await getSessionContext();
   const db = (await createServerSupabase()) as any;
   let table: string;

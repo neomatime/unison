@@ -4,6 +4,8 @@ import { buildCsv, buildPdf, buildXlsx } from "@/features/data-portability/file-
 import { isPortableCollection, portableDefinitions } from "@/features/data-portability/portable-collections";
 import { applyRegisterFilters, applyRegisterOrder } from "@/features/registers/apply-filters";
 import { EXPORT_LIMIT, EXPORT_TOO_MANY, isOverCap, readAllRows, readExportRequest } from "@/features/registers/export-query";
+import { EXPORT_MODULES } from "@/features/rights/modules";
+import { myRight } from "@/features/rights/server";
 import { getSessionContext } from "@/lib/auth/get-session-context";
 import { createServerSupabase } from "@/lib/supabase/server";
 
@@ -20,6 +22,8 @@ export async function GET(request: Request) {
     const format = exportRequest.format;
     if (!isPortableCollection(collection)) return NextResponse.json({ message: "Unknown export collection." }, { status: 400 });
     if (!format) return NextResponse.json({ message: "Choose CSV, XLSX or PDF." }, { status: 400 });
+    const exportModule = EXPORT_MODULES[collection];
+    if (exportModule && !(await myRight(exportModule, "export"))) return NextResponse.json({ message: "You do not have permission to export this." }, { status: 403 });
     const definition = portableDefinitions[collection];
     const ids = (url.searchParams.get("ids") ?? "").split(",").map((item) => item.trim()).filter(Boolean);
     if (ids.some((id) => !uuidPattern.test(id))) return NextResponse.json({ message: "The export contains an invalid record identifier." }, { status: 400 });

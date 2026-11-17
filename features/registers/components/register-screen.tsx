@@ -14,6 +14,8 @@ import { queryRegister } from '../queries/query-register'
 import { REGISTER_FRAMES, toRegisterRow } from '../register-view'
 import { REGISTERS, type RegisterKind } from '../register-spec'
 import { buildCards } from '../summary'
+import { requireViewOrRedirect } from '@/features/rights/server'
+import { REGISTER_MODULES } from '@/features/rights/modules'
 import { hintFor } from '../hints'
 import { SalesBoard } from '@/features/crm-workspace/components/sales-board'
 import { listSalesBoardCards } from '@/features/crm-workspace/queries/sales-board'
@@ -29,6 +31,7 @@ const STATUS_COLUMNS = new Set(['status', 'stage'])
  * error boundary (app/error.tsx): it is never shown as an empty register or as zero totals.
  */
 export async function RegisterScreen({ kind, searchParams }: { kind: RegisterKind; searchParams: RawParams }) {
+  await requireViewOrRedirect(REGISTER_MODULES[kind])
   const frame = REGISTER_FRAMES[kind]
   const spec = REGISTERS[kind]
   const params = readRegisterParams(kind, searchParams)

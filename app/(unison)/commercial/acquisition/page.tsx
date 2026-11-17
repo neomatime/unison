@@ -1,3 +1,4 @@
+import { requireViewOrRedirect } from '@/features/rights/server'
 import Link from 'next/link'
 import { ArrowRight, ExternalLink, Plus, QrCode, Settings2 } from 'lucide-react'
 
@@ -6,6 +7,7 @@ import { ACQUISITION_CHANNELS, labelForIndustry, labelForService } from '@/featu
 import { getAcquisitionAdminData } from '@/features/prospect-engagement/admin-data'
 
 export default async function Page() {
+  await requireViewOrRedirect('acquisition')
   const data = await getAcquisitionAdminData()
   return (
     <WorkPage category="Commercial" title="Acquisition" description="Traceable prospect engagement links, genuine QR codes and source-to-opportunity reporting." parent={{ label: 'Overview', href: '/overview' }}>

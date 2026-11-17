@@ -1,6 +1,7 @@
 'use server'
 
 import { roleHasPermission } from '@/config/roles'
+import { rightDenied } from '@/features/rights/server'
 import { isUuid } from '@/lib/utils'
 import { failureState } from '../action-failure'
 import { BILLING_PLAN_COPY, approvedNotEmailedSentence, parseChecksFailed } from '../billing-plan-view'
@@ -28,6 +29,8 @@ import { emailDocumentAction } from './email'
  */
 export async function approveFirstInvoiceAction(itemId: string, _previous: ActionState, _form: FormData): Promise<ActionState> {
   if (!isUuid(itemId)) return { error: 'That billing item was not found.' }
+  const denied = await rightDenied('invoices', 'approve')
+  if (denied) return { error: denied }
   const { organization, role, db } = await documentContext()
   if (!roleHasPermission(role, 'company.manage')) return { error: BILLING_PLAN_COPY.approveAdminOnly }
 

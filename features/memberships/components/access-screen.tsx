@@ -29,7 +29,7 @@ export type AccessRow = {
  * Users and their passwords. Nobody changes their own password in UNISON: an Owner or Admin sends the person a reset link from
  * here. The button is shown only where the signed-in person is allowed to use it, and the server checks that again.
  */
-export function AccessScreen({ rows: initial, canManage, notice }: { rows: AccessRow[]; canManage: boolean; notice?: string | null }) {
+export function AccessScreen({ rows: initial, canManage, notice, onManage, selectedKey }: { rows: AccessRow[]; canManage: boolean; notice?: string | null; /** Opens this person in User rights management. */ onManage?: (key: string) => void; selectedKey?: string | null }) {
   const [rows, setRows] = useState(initial)
   const confirm = useConfirm()
   const [pending, startTransition] = useTransition()
@@ -92,6 +92,7 @@ export function AccessScreen({ rows: initial, canManage, notice }: { rows: Acces
               <th className="px-5 py-3 font-medium">Role</th>
               <th className="px-5 py-3 font-medium">Status</th>
               <th className="px-5 py-3 text-right font-medium">Password</th>
+              {onManage ? <th className="px-5 py-3 text-right font-medium">Rights</th> : null}
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
@@ -122,6 +123,7 @@ export function AccessScreen({ rows: initial, canManage, notice }: { rows: Acces
                     <span className="text-xs text-muted-foreground">{canManage ? 'Not available for this person' : '—'}</span>
                   )}
                 </td>
+                {onManage ? <td className="px-5 py-3 text-right"><button type="button" onClick={() => onManage(row.key)} aria-pressed={selectedKey === row.key} className={`inline-flex h-9 items-center gap-2 border px-3 text-xs font-medium hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${selectedKey === row.key ? 'border-brand text-brand' : 'border-border'}`}>Manage rights</button></td> : null}
               </tr>
             ))}
           </tbody>

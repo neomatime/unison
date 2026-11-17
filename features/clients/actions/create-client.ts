@@ -1,11 +1,14 @@
 'use server'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
+import { rightDenied } from '@/features/rights/server'
 import { getSessionContext } from '@/lib/auth/get-session-context'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { clientInputSchema } from '../schemas/client'
 
 export async function createClientAction(_prev: { error?: string } | undefined, formData: FormData) {
+  const denied = await rightDenied('clients', 'create')
+  if (denied) return { error: denied }
   const parsed = clientInputSchema.safeParse(Object.fromEntries(formData))
   if (!parsed.success) return { error: parsed.error.issues[0].message }
 

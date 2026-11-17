@@ -4,6 +4,8 @@ import { redirect } from 'next/navigation'
 import { AppShell } from '@/components/layout/app-shell'
 import type { ShellUser } from '@/components/layout/shell-context'
 import { navigationSectionsFor } from '@/config/navigation'
+import { NAV_MODULES } from '@/features/rights/modules'
+import { myRight } from '@/features/rights/server'
 import { entitledModuleIds } from '@/lib/auth/entitlement'
 import { resolveDisplayName } from '@/lib/auth/display-name'
 import { getSessionContext } from '@/lib/auth/get-session-context'
@@ -30,7 +32,12 @@ export default async function UnisonLayout({ children }: { children: React.React
       avatarUrl: user.user_metadata?.avatar_url ?? null,
     }
 
+    // Areas the person may not view are left out of the menu (the pages refuse them as well).
+    const allowed = await Promise.all(Object.entries(NAV_MODULES).map(async ([id, area]) => [id, await myRight(area, 'view')] as const))
+    const hidden = new Set(allowed.filter(([, ok]) => !ok).map(([id]) => id))
     const navigationSections = navigationSectionsFor(await entitledModuleIds())
+      .map((section) => ({ ...section, items: section.items.filter((item) => !hidden.has(item.id)) }))
+      .filter((section) => section.items.length > 0)
 
     return (
       <>

@@ -1,10 +1,14 @@
 'use server'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
+import { rightDenied } from '@/features/rights/server'
 import { getSessionContext } from '@/lib/auth/get-session-context'
 import { createServerSupabase } from '@/lib/supabase/server'
 
 export async function archiveClientAction(id: string) {
+  const denied = await rightDenied('clients', 'edit')
+  // A plain form action cannot return text, so a refusal takes the same road as a failed write.
+  if (denied) redirect(`/operations/clients/${id}?archiveError=1`)
   const { organization } = await getSessionContext()
   const supabase = await createServerSupabase()
 

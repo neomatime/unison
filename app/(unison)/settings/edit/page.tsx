@@ -1,3 +1,4 @@
+import { requireViewOrRedirect } from '@/features/rights/server'
 import { redirect } from 'next/navigation'
 
 import { updateOrganizationProfileAction } from '@/features/organizations/actions/update-organization-profile'
@@ -5,6 +6,7 @@ import { OrganizationProfileEditForm } from '@/features/organizations/components
 import { getOrganizationProfile } from '@/features/organizations/queries/get-organization-profile'
 
 export default async function Page() {
+  await requireViewOrRedirect('settings')
   const profile = await getOrganizationProfile()
   if (!profile.canEdit) redirect('/settings')
 

@@ -45,6 +45,6 @@ test('the administrator action checks the role, the target and the workspace, an
   assert.match(action, /resetPasswordForEmail/)
   assert.match(action, /status !== 'active'/)
   const page = readFileSync('app/(unison)/settings/(tabs)/access/page.tsx', 'utf8')
-  assert.match(page, /AccessScreen/)
+  assert.match(page, /AccessWorkspace/)
   assert.match(readFileSync('features/platform-automation/components/automation-nav.tsx', 'utf8'), /\/settings\/access/)
 })

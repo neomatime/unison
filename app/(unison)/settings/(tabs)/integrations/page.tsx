@@ -1,3 +1,7 @@
+import { requireIntegrationsOrRedirect } from '@/features/rights/server'
 import { IntegrationsPage } from '@/features/platform-automation/components/platform-pages'
 
-export default function Page() { return <IntegrationsPage /> }
+export default async function Page() {
+  await requireIntegrationsOrRedirect()
+  return <IntegrationsPage />
+}

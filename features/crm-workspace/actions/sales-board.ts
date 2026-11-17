@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 
+import { rightDenied } from '@/features/rights/server'
 import { isUuid } from '@/lib/utils'
 import { readStageChange } from '../fields'
 import { revalidateWorkspacePages } from '../revalidate'
@@ -14,6 +15,8 @@ export type MoveSalesResult = { ok: true; probability: number } | { ok: false; e
  * opportunity (a valid stage, and a reason when it is Lost), limited to this workspace and to opportunities that are not archived.
  */
 export async function moveOpportunityStageBoardAction(id: string, stage: string, lostReason?: string): Promise<MoveSalesResult> {
+  const denied = await rightDenied('sales', 'edit')
+  if (denied) return { ok: false, error: denied }
   if (!isUuid(id)) return { ok: false, error: 'That move is not valid.' }
   const form = new FormData()
   form.set('stage', stage)

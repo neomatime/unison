@@ -5,6 +5,8 @@ import { revalidatePath } from 'next/cache'
 import { documentContext } from '@/features/documents/server-context'
 import type { ActionState } from '@/features/documents/types'
 import { isUuid } from '@/lib/utils'
+import { rightDenied } from '@/features/rights/server'
+import { REGISTER_MODULES } from '@/features/rights/modules'
 import { REGISTER_FRAMES } from '../register-view'
 import { REGISTERS, isRegisterKind, type RegisterKind } from '../register-spec'
 
@@ -19,6 +21,8 @@ function refresh(kind: RegisterKind, id: string) {
 async function setArchived(kind: string, id: string, archive: boolean): Promise<ActionState> {
   if (!isRegisterKind(kind)) return { error: 'That register was not found.' }
   if (!isUuid(id)) return { error: 'That record was not found.' }
+  const denied = await rightDenied(REGISTER_MODULES[kind], 'edit')
+  if (denied) return { error: denied }
   const { organization, db } = await documentContext()
   const table = REGISTERS[kind].table
   const found = await db.from(table).select('id,archived_at').eq('id', id).eq('organization_id', organization.id).maybeSingle()

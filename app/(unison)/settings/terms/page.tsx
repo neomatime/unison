@@ -1,5 +1,7 @@
+import { requireViewOrRedirect } from '@/features/rights/server'
 import { TermsListScreen } from '@/features/terms/components/terms-list-screen'
 
-export default function Page() {
+export default async function Page() {
+  await requireViewOrRedirect('settings')
   return <TermsListScreen />
 }

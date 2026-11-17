@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 
 import { roles } from '@/config/roles'
+import { listOrganizationMembers } from '@/features/memberships/queries/list-organization-members'
 import { getSessionContext } from '@/lib/auth/get-session-context'
 import { listDirectoryPeople } from '@/lib/integrations/microsoft-directory'
 import { createServerSupabase } from '@/lib/supabase/server'
@@ -10,6 +11,24 @@ import { isUuid } from '@/lib/utils'
 import { ROLE_CHANGE_DENIED_MESSAGE, mayChangeRole, mayChooseAdvanceRole } from '../access-model'
 
 export type SetRoleResult = { ok: true } | { ok: false; error: string }
+
+/** Writes the role change to the rights activity history. A failure here never undoes the change. */
+async function recordRoleChange(db: any, organizationId: string, actorId: string, targetId: string, roleId: string, members: Awaited<ReturnType<typeof listOrganizationMembers>>) {
+  try {
+    // `members` was read before the change, so the target still shows the old role.
+    const target = members.find((m) => m.userId === targetId)
+    const actor = members.find((m) => m.userId === actorId)
+    const label = roles.find((r) => r.id === roleId)?.label ?? roleId
+    await db.from('rights_audit').insert({
+      organization_id: organizationId, subject_user_id: targetId, subject_email: target?.email ?? null, subject_name: target?.displayName ?? 'Unknown',
+      actor_id: actorId, actor_name: actor?.displayName ?? 'Unknown', kind: 'role.changed',
+      summary: `Role changed: ${roles.find((r) => r.id === target?.roleId)?.label ?? target?.roleId ?? '—'} → ${label}`,
+      changes: [{ label: 'Role', before: roles.find((r) => r.id === target?.roleId)?.label ?? String(target?.roleId ?? ''), after: label }],
+    })
+  } catch (error) {
+    console.error('rights audit: role change not recorded', error instanceof Error ? error.message : error)
+  }
+}
 
 const knownRole = (roleId: string) => roles.some((role) => role.id === roleId)
 
@@ -22,8 +41,10 @@ export async function setMemberRoleAction(userId: string, roleId: string): Promi
   const { organization, role, user } = await getSessionContext()
   if (!mayChangeRole(String(role), user.id, userId)) return { ok: false, error: ROLE_CHANGE_DENIED_MESSAGE }
   const db = (await createServerSupabase()) as any
+  const membersBefore = await listOrganizationMembers()
   const result = await db.from('memberships').update({ role_id: roleId }).eq('organization_id', organization.id).eq('user_id', userId).eq('status', 'active').select('id').maybeSingle()
   if (result.error || !result.data) return { ok: false, error: 'The role could not be changed. A workspace must keep at least one Owner.' }
+  await recordRoleChange(db, organization.id, user.id, userId, roleId, membersBefore)
   revalidatePath('/settings/access')
   return { ok: true }
 }
