@@ -15,6 +15,7 @@ import {
   Search,
   X,
 } from 'lucide-react'
+import { Popover } from '@base-ui/react/popover'
 import { useEffect, useMemo, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 
@@ -219,8 +220,7 @@ export function RecordCollectionWorkspace({ config, compact = false, onPrimaryAc
           <button type="button" onClick={() => setSortAscending((value) => !value)} className="unison-action-control inline-flex h-10 items-center gap-2 rounded-lg border border-border px-3 text-xs font-semibold hover:bg-muted"><ArrowDownUp className="size-3.5" />{sortAscending ? 'A–Z' : 'Z–A'}</button>
         </div>
         <div className="relative flex items-center gap-2">
-          <button type="button" aria-expanded={columnsOpen} onClick={() => setColumnsOpen((value) => !value)} className="unison-action-control inline-flex h-10 items-center gap-2 rounded-lg px-3 text-xs font-semibold hover:bg-muted"><Columns3 className="size-3.5" />Columns</button>
-          {columnsOpen ? <div className="absolute top-full right-0 z-30 mt-2 w-56 rounded-xl border border-border bg-card p-3 shadow-xl"><p className="text-xs font-semibold">Visible columns</p>{columns.map((column) => <label key={column.id} className="mt-2 flex items-center gap-2 text-xs"><input type="checkbox" defaultChecked />{column.label}</label>)}</div> : null}
+          <Popover.Root open={columnsOpen} onOpenChange={setColumnsOpen}><Popover.Trigger className="unison-action-control inline-flex h-10 items-center gap-2 rounded-lg px-3 text-xs font-semibold hover:bg-muted"><Columns3 className="size-3.5" />Columns</Popover.Trigger><Popover.Portal><Popover.Positioner side="bottom" align="end" sideOffset={8} collisionPadding={8} className="z-[80]"><Popover.Popup className="w-56 rounded-xl border border-border bg-card p-3 shadow-xl outline-none"><p className="text-xs font-semibold">Visible columns</p>{columns.map((column) => <label key={column.id} className="mt-2 flex items-center gap-2 text-xs"><input type="checkbox" defaultChecked />{column.label}</label>)}</Popover.Popup></Popover.Positioner></Popover.Portal></Popover.Root>
           {config.portableCollection ? <button type="button" onClick={() => setExportOpen(true)} className="unison-action-control inline-flex h-10 items-center gap-2 rounded-lg px-3 text-xs font-semibold hover:bg-muted"><FileText className="size-3.5" />Export</button> : null}
           <button type="button" onClick={() => { setArchived((value) => !value); setSelected([]); setPage(1) }} className={`inline-flex h-10 items-center gap-2 rounded-lg border px-3 text-xs font-semibold ${archived ? 'border-brand bg-brand-soft text-brand' : 'border-transparent hover:bg-muted'}`}>{archived ? <RotateCcw className="size-3.5" /> : <Archive className="size-3.5" />}{archived ? 'Active' : 'Archived'}</button>
         </div>

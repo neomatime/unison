@@ -35,7 +35,9 @@ test('menus, drawers and confirmations provide keyboard escape hatches', () => {
   const dialog = source('components', 'shared', 'confirmation-dialog.tsx')
   const drawer = source('components', 'shared', 'utility-panel.tsx')
   assert.match(menu, /ArrowDown/)
-  assert.match(menu, /aria-controls/)
+  // Base UI's Popover owns Escape, focus return and the trigger's aria wiring; the menu keeps its own arrow-key movement.
+  assert.match(menu, /Popover.Root/)
+  assert.match(menu, /aria-haspopup="menu"/)
   assert.match(dialog, /previousFocus/)
   assert.match(dialog, /event\.key !== 'Tab'/)
   assert.match(drawer, /event\.key === 'Escape'/)
