@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import { AppShell } from '@/components/layout/app-shell'
 import type { ShellUser } from '@/components/layout/shell-context'
 import { navigationSectionsFor } from '@/config/navigation'
+import { getNavigationCounts } from '@/features/navigation/counts'
 import { NAV_MODULES } from '@/features/rights/modules'
 import { myRight } from '@/features/rights/server'
 import { entitledModuleIds } from '@/lib/auth/entitlement'
@@ -35,9 +36,12 @@ export default async function UnisonLayout({ children }: { children: React.React
     // Areas the person may not view are left out of the menu (the pages refuse them as well).
     const allowed = await Promise.all(Object.entries(NAV_MODULES).map(async ([id, area]) => [id, await myRight(area, 'view')] as const))
     const hidden = new Set(allowed.filter(([, ok]) => !ok).map(([id]) => id))
-    const navigationSections = navigationSectionsFor(await entitledModuleIds())
+    const visibleSections = navigationSectionsFor(await entitledModuleIds())
       .map((section) => ({ ...section, items: section.items.filter((item) => !hidden.has(item.id)) }))
       .filter((section) => section.items.length > 0)
+    // The number of records each list page holds, shown beside its name in the menu.
+    const counts = await getNavigationCounts(visibleSections.flatMap((section) => section.items.map((item) => item.id)))
+    const navigationSections = visibleSections.map((section) => ({ ...section, items: section.items.map((item) => (item.id in counts ? { ...item, count: counts[item.id] } : item)) }))
 
     return (
       <>

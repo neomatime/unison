@@ -26,6 +26,8 @@ export type NavigationItem = {
   label: string
   route: string
   enabled: boolean
+  /** How many records the page lists, when the menu can say. */
+  count?: number
 }
 
 export type NavigationSection = {

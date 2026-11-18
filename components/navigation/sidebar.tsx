@@ -189,6 +189,11 @@ export function Sidebar({ onNavigate, floating }: SidebarProps = {}) {
                   >
                     <Icon className="size-[1.125rem] shrink-0" strokeWidth={1.75} />
                     <span className={cn(collapsed && 'sr-only')}>{item.label}</span>
+                    {typeof item.count === 'number' ? (
+                      <span className={cn('ml-auto min-w-6 px-1.5 text-center text-[0.6875rem] tabular-nums', isActive ? 'bg-tenant-sidebar-foreground/15' : 'bg-tenant-sidebar-hover', collapsed && 'sr-only')}>
+                        <span className="sr-only">, </span>{item.count}<span className="sr-only"> records</span>
+                      </span>
+                    ) : null}
                   </Link>
                 </li>
               })}
