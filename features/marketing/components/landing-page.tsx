@@ -33,7 +33,7 @@ export function LandingPage() {
 
       <header className="sticky top-0 z-30 border-b border-[color:var(--pub-border-dce3eb)]/80 bg-[color:var(--pub-surface)]/80 backdrop-blur-xl">
         <div className="mx-auto flex h-20 max-w-[100rem] items-center justify-between px-5 sm:px-8 lg:px-12">
-          <Link href="/" aria-label="UNISON home" className="focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#1769aa]"><UnisonWordmark className="h-[1.15rem] sm:h-5" priority /></Link>
+          <Link href="/" aria-label="UNISON home" className="focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#1769aa]"><UnisonWordmark className="h-3.5 sm:h-4" priority /></Link>
           <nav aria-label="Main navigation" className="lux-nav hidden items-center gap-10 text-sm text-[color:var(--pub-text-334d6d)] md:flex">
             <a href="#platform" className={`${interactionClass} hover:text-[color:var(--pub-text-1769aa)]`}>Platform</a>
             <a href="#journey" className={`${interactionClass} hover:text-[color:var(--pub-text-1769aa)]`}>Client journey</a>

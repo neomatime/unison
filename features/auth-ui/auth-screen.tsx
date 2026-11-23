@@ -192,7 +192,7 @@ export function SignInBrandPanel({ brand = true }: { brand?: boolean } = {}) {
       </svg>
 
       <Reveal variant="plain" className="relative z-10 flex min-h-screen flex-col px-[clamp(3.5rem,6vw,7rem)] py-[clamp(3rem,6vw,5rem)]">
-        {brand ? <Link href="/" aria-label="UNISON home" style={stagger(0, 0, 100)} className="lux-reveal self-start focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#1769aa]"><UnisonWordmark className="h-[1.35rem]" priority /></Link> : <Link href="/" className="self-start text-[1.75rem] font-medium tracking-[0.28em] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#1769aa]">UNISON</Link>}
+        {brand ? <Link href="/" aria-label="UNISON home" style={stagger(0, 0, 100)} className="lux-reveal self-start focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#1769aa]"><UnisonWordmark className="h-4" priority /></Link> : <Link href="/" className="self-start text-[1.75rem] font-medium tracking-[0.28em] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#1769aa]">UNISON</Link>}
 
         <div className="my-auto max-w-[35rem] py-16">
           <span aria-hidden="true" style={brand ? stagger(0, 0, 250) : undefined} className={cn('block h-0.5 w-9 bg-[#1769aa]', brand && 'lux-draw')} />

@@ -28,10 +28,16 @@ test('the landing page, sign-in and invitation screens use the wordmark image, n
   assert.match(auth, /tracking-\[0\.28em\][^"]*">UNISON<\/Link>/)
 })
 
-test('the signed-in app keeps its own logo', () => {
-  for (const file of ['components/navigation/sidebar.tsx', 'components/layout/app-shell.tsx']) {
-    assert.doesNotMatch(read(file), /UnisonWordmark/, `${file} must not use the new wordmark`)
-  }
+test('the signed-in sidebar shows the UNISON wordmark (as asked on 2026-11-23), at a size that fits beside the menu button', () => {
+  const sidebar = read('components/navigation/sidebar.tsx')
+  assert.match(sidebar, /<UnisonWordmark className="h-3\.5" \/>/)
+  assert.doesNotMatch(sidebar, /tracking-\[0\.2em\][\s\S]{0,120}>\s*UNISON\s*</, 'the plain text logo is gone')
+  assert.doesNotMatch(read('components/layout/app-shell.tsx'), /UnisonWordmark/)
+})
+
+test('the sign-in and landing logos are the smaller size', () => {
+  assert.match(read('features/auth-ui/auth-screen.tsx'), /<UnisonWordmark className="h-4" priority \/>/)
+  assert.match(read('features/marketing/components/landing-page.tsx'), /<UnisonWordmark className="h-3\.5 sm:h-4" priority \/>/)
 })
 
 test('dark mode applies to the public pages only through the shared theme, and is taken off again', () => {

@@ -4,6 +4,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Menu, ChevronDown } from 'lucide-react'
+import { UnisonWordmark } from '@/components/brand/unison-wordmark'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { cn, getInitials } from '@/lib/utils'
 import { useShellContext } from '@/components/layout/shell-context'
@@ -118,9 +119,9 @@ export function Sidebar({ onNavigate, floating }: SidebarProps = {}) {
     <><aside className={cn('flex h-full shrink-0 flex-col border-r border-tenant-sidebar-border bg-tenant-sidebar text-tenant-sidebar-foreground transition-[width] duration-200 ease-out', collapsed ? 'w-20' : 'w-64', floating && 'border shadow-[0_10px_36px_-14px_rgb(13_35_64_/_0.22)]')}>
       {/* Brand */}
       <div className={cn('flex items-center justify-between py-4', collapsed ? 'px-6' : 'px-6')}>
-        <span className={cn('font-brand text-xl font-medium tracking-[0.2em] text-tenant-sidebar-foreground', collapsed && 'hidden')}>
-          UNISON
-        </span>
+        <Link href="/overview" aria-label="UNISON home" className={cn('inline-flex items-center focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand', collapsed && 'hidden')}>
+          <UnisonWordmark className="h-3.5" />
+        </Link>
         <button
           type="button"
           onClick={() => setCollapsed((value) => !value)}
