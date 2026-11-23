@@ -30,7 +30,7 @@ test('the landing page, sign-in and invitation screens use the wordmark image, n
 
 test('the signed-in sidebar shows the UNISON wordmark (as asked on 2026-11-23), at a size that fits beside the menu button', () => {
   const sidebar = read('components/navigation/sidebar.tsx')
-  assert.match(sidebar, /<UnisonWordmark className="h-3\.5" \/>/)
+  assert.match(sidebar, /<UnisonWordmark className="h-2\.5" \/>/)
   assert.doesNotMatch(sidebar, /tracking-\[0\.2em\][\s\S]{0,120}>\s*UNISON\s*</, 'the plain text logo is gone')
   assert.doesNotMatch(read('components/layout/app-shell.tsx'), /UnisonWordmark/)
 })

@@ -120,7 +120,7 @@ export function Sidebar({ onNavigate, floating }: SidebarProps = {}) {
       {/* Brand */}
       <div className={cn('flex items-center justify-between py-4', collapsed ? 'px-6' : 'px-6')}>
         <Link href="/overview" aria-label="UNISON home" className={cn('inline-flex items-center focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand', collapsed && 'hidden')}>
-          <UnisonWordmark className="h-3.5" />
+          <UnisonWordmark className="h-2.5" />
         </Link>
         <button
           type="button"
